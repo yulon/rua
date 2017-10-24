@@ -8,10 +8,16 @@
 		#define _TMD_UNIX_ 1
 	#endif
 
-	#include <ucontext.h>
-	#include <cstdlib>
+	#if defined(__APPLE__) && defined(__MACH__)
+		#include <sys/ucontext.h>
+		#include <sys/unistd.h>
+	#else
+		#include <ucontext.h>
+		#include <unistd.h>
+	#endif
+
 	#include <pthread.h>
-	#include <unistd.h>
+	#include <cstdlib>
 #else
 	#error tmd::fiber: not support this OS!
 #endif
@@ -37,14 +43,6 @@ namespace tmd {
 
 	class fiber {
 		public:
-			static void enable_from_this_thread() {
-				#if defined(_WIN32)
-					if (!GetCurrentFiber()) {
-						ConvertThreadToFiber(nullptr);
-					}
-				#endif
-			}
-
 			typedef
 			#if defined(_WIN32)
 				LPVOID
@@ -53,18 +51,26 @@ namespace tmd {
 			#endif
 			native_handle_t;
 
-			fiber(const std::function<void()> &func) : _res(std::make_shared<_res_t>()) {
+			fiber() : _res(nullptr)
+				#if defined(_WIN32)
+					, _win_fiber(nullptr)
+				#endif
+			{}
+
+			fiber(const std::function<void()> &func, size_t stack_size = 1024 * 1024) : _res(std::make_shared<_res_t>()) {
 				_res->func = func;
 				_res->owner = this;
 
 				#if defined(_WIN32)
 					_win_fiber = CreateFiber(
-						0,
+						stack_size,
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func_shell),
 						reinterpret_cast<PVOID>(_res.get())
 					);
 				#elif defined(_TMD_UNIX_)
 					getcontext(native_handle());
+					native_handle()->uc_stack.ss_sp = reinterpret_cast<decltype(native_handle()->uc_stack.ss_sp)>(new uint8_t[stack_size]);
+					native_handle()->uc_stack.ss_size = stack_size;
 					native_handle()->uc_stack.ss_flags = 0;
 					native_handle()->uc_link = nullptr;
 					makecontext(native_handle(), &_fiber_func_shell, reinterpret_cast<void *>(_res.get()));
@@ -231,7 +237,7 @@ namespace tmd {
 						}
 					#elif defined(_TMD_UNIX_)
 						if (_res->func) {
-							free(_res->uc.uc_stack.ss_sp);
+							delete[] reinterpret_cast<uint8_t *>(_res->uc.uc_stack.ss_sp);
 						}
 						if (_res.get() == reinterpret_cast<fiber::_res_t *>(pthread_getspecific(*_cur_fiber_res_key)) && _res.use_count() == 1) {
 							pthread_setspecific(*_cur_fiber_res_key, nullptr);
@@ -255,33 +261,38 @@ namespace tmd {
 	namespace this_fiber {
 		inline fiber get() {
 			#if defined(_WIN32)
+
 				auto cur_win_fiber = GetCurrentFiber();
 				assert(cur_win_fiber);
 				auto cur_fiber_res = reinterpret_cast<fiber::_res_t *>(GetFiberData());
-				if (cur_fiber_res) {
-					return fiber(cur_win_fiber, cur_fiber_res);
-				}
-				return fiber(cur_win_fiber);
+				assert(cur_fiber_res);
+				return fiber(cur_win_fiber, cur_fiber_res);
+
 			#elif defined(_TMD_UNIX_)
+
 				auto cur_fiber_res = reinterpret_cast<fiber::_res_t *>(pthread_getspecific(*_cur_fiber_res_key));
-				if (cur_fiber_res) {
-					return fiber(nullptr, cur_fiber_res);
-				}
-				auto res = std::make_shared<_res_t>();
-				pthread_setspecific(*_cur_fiber_res_key, res.get());
-				return fiber(nullptr, res.get());
+				assert(cur_fiber_res);
+				return fiber(nullptr, cur_fiber_res);
+
 			#endif
 		}
 
 		inline fiber get_from_3rd() {
 			#if defined(_WIN32)
+
 				auto cur_win_fiber = GetCurrentFiber();
+				if (!cur_win_fiber) {
+					cur_win_fiber = ConvertThreadToFiber(nullptr);
+				}
 				assert(cur_win_fiber);
 				return fiber(cur_win_fiber);
+
 			#elif defined(_TMD_UNIX_)
+
 				auto res = std::make_shared<_res_t>();
 				pthread_setspecific(*_cur_fiber_res_key, res.get());
 				return fiber(nullptr, res.get());
+
 			#endif
 		}
 
