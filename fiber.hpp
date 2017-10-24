@@ -129,11 +129,10 @@ namespace tmd {
 					SwitchToFiber(native_handle());
 				#elif defined(_TMD_UNIX_)
 					auto cur_fiber_res = reinterpret_cast<_res_t *>(pthread_getspecific(*_cur_fiber_res_key));
+					pthread_setspecific(*_cur_fiber_res_key, _res.get());
 					if (cur_fiber_res) {
-						pthread_setspecific(*_cur_fiber_res_key, _res.get());
 						swapcontext(&cur_fiber_res->uc, native_handle());
 					} else {
-						pthread_setspecific(*_cur_fiber_res_key, _res.get());
 						setcontext(native_handle());
 					}
 				#endif
