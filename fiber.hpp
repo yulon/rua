@@ -274,7 +274,7 @@ namespace tmd {
 			#endif
 		}
 
-		inline fiber get_by_3rd() {
+		inline fiber get_from_3rd() {
 			#if defined(_WIN32)
 				auto cur_win_fiber = GetCurrentFiber();
 				assert(cur_win_fiber);
