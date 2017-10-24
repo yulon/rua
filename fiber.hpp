@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _TMD_FIBER_HPP
+#define _TMD_FIBER_HPP
 
 #if defined(_WIN32)
 	#include <windows.h>
@@ -296,3 +297,5 @@ namespace tmd {
 		}
 	}
 }
+
+#endif
