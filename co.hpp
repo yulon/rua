@@ -50,6 +50,33 @@ namespace tmd {
 			#endif
 			native_handle_t;
 
+			continuation(std::nullptr_t np = nullptr)
+				#if defined(_WIN32)
+					: _ntv_hdl(nullptr)
+				#endif
+			{
+				#if defined(_TMD_UNIX_)
+					_ntv_hdl.uc_stack.ss_sp = nullptr;
+				#endif
+			}
+
+			operator bool() {
+				#if defined(_WIN32)
+					return _ntv_hdl;
+				#elif defined(_TMD_UNIX_)
+					return _ntv_hdl.uc_stack.ss_sp;
+				#endif
+			}
+
+			continuation &operator=(std::nullptr_t) {
+				#if defined(_WIN32)
+					_ntv_hdl
+				#elif defined(_TMD_UNIX_)
+					_ntv_hdl.uc_stack.ss_sp
+				#endif
+				= nullptr;
+			}
+
 			native_handle_t &native_handle() {
 				return _ntv_hdl;
 			}
