@@ -38,6 +38,8 @@ namespace tmd {
 		return true;
 	}
 
+	class coroutine;
+
 	class continuation {
 		public:
 			typedef
@@ -73,6 +75,20 @@ namespace tmd {
 				#endif
 			}
 
+			bool belong_to(const coroutine &cor) {
+				#if defined(_WIN32)
+					if (_ntv_hdl == cor._start_con._ntv_hdl) {
+						return true;
+					}
+				#elif defined(_TMD_UNIX_)
+					if (_ntv_hdl.uc_stack.ss_sp == cor._start_con._ntv_hdl.uc_stack.ss_sp) {
+						return true;
+					}
+				#endif
+
+				return false;
+			}
+
 		private:
 			native_handle_t _ntv_hdl;
 	};
@@ -93,18 +109,18 @@ namespace tmd {
 				_executed = false;
 
 				#if defined(_WIN32)
-					_oc.native_handle() = CreateFiber(
+					_start_con.native_handle() = CreateFiber(
 						stack_size,
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func_shell),
 						reinterpret_cast<PVOID>(_func)
 					);
 				#elif defined(_TMD_UNIX_)
-					getcontext(&_oc.native_handle());
-					_oc.native_handle().uc_stack.ss_sp = reinterpret_cast<decltype(_oc.native_handle().uc_stack.ss_sp)>(new uint8_t[stack_size]);
-					_oc.native_handle().uc_stack.ss_size = stack_size;
-					_oc.native_handle().uc_stack.ss_flags = 0;
-					_oc.native_handle().uc_link = nullptr;
-					makecontext(&_oc.native_handle(), &_fiber_func_shell, reinterpret_cast<void *>(_func));
+					getcontext(&_start_con.native_handle());
+					_start_con.native_handle().uc_stack.ss_sp = reinterpret_cast<decltype(_start_con.native_handle().uc_stack.ss_sp)>(new uint8_t[stack_size]);
+					_start_con.native_handle().uc_stack.ss_size = stack_size;
+					_start_con.native_handle().uc_stack.ss_flags = 0;
+					_start_con.native_handle().uc_link = nullptr;
+					makecontext(&_start_con.native_handle(), &_fiber_func_shell, reinterpret_cast<void *>(_func));
 				#endif
 			}
 
@@ -122,13 +138,13 @@ namespace tmd {
 
 			void execute() {
 				assert(executable());
-				_oc.join();
+				_start_con.join();
 				_executed = true;
 			}
 
 			void execute(continuation &cc_receiver) {
 				assert(executable());
-				_oc.join(cc_receiver);
+				_start_con.join(cc_receiver);
 				_executed = true;
 			}
 
@@ -144,12 +160,12 @@ namespace tmd {
 				_executed = src._executed;
 
 				#if defined(_WIN32)
-					_oc.native_handle() = src._oc.native_handle();
+					_start_con.native_handle() = src._start_con.native_handle();
 				#elif defined(_TMD_UNIX_)
 					if (joined) {
-						_oc.native_handle().uc_stack.ss_sp = src._oc.native_handle().uc_stack.ss_sp;
+						_start_con.native_handle().uc_stack.ss_sp = src._start_con.native_handle().uc_stack.ss_sp;
 					} else {
-						_oc.native_handle() = src._oc.native_handle();
+						_start_con.native_handle() = src._start_con.native_handle();
 					}
 				#endif
 
@@ -166,12 +182,12 @@ namespace tmd {
 					_executed = src._executed;
 
 					#if defined(_WIN32)
-						_oc.native_handle() = src._oc.native_handle();
+						_start_con.native_handle() = src._start_con.native_handle();
 					#elif defined(_TMD_UNIX_)
 						if (joined) {
-							_oc.native_handle().uc_stack.ss_sp = src._oc.native_handle().uc_stack.ss_sp;
+							_start_con.native_handle().uc_stack.ss_sp = src._start_con.native_handle().uc_stack.ss_sp;
 						} else {
-							_oc.native_handle() = src._oc.native_handle();
+							_start_con.native_handle() = src._start_con.native_handle();
 						}
 					#endif
 
@@ -184,14 +200,14 @@ namespace tmd {
 		private:
 			std::function<void()> *_func;
 			bool _executed;
-			continuation _oc;
+			continuation _start_con;
 
 			void _dtor() {
 				if (_func) {
 					#if defined(_WIN32)
-						DeleteFiber(_oc.native_handle());
+						DeleteFiber(_start_con.native_handle());
 					#elif defined(_TMD_UNIX_)
-						delete[] reinterpret_cast<uint8_t *>(_oc.native_handle().uc_stack.ss_sp);
+						delete[] reinterpret_cast<uint8_t *>(_start_con.native_handle().uc_stack.ss_sp);
 					#endif
 
 					delete _func;
@@ -206,6 +222,8 @@ namespace tmd {
 			_fiber_func_shell(std::function<void()> *func) {
 				(*func)();
 			}
+
+			friend continuation;
 	};
 }
 
