@@ -85,7 +85,7 @@ namespace tmd {
 			std::shared_ptr<_res_t> _res;
 
 			scheduler_t *_get_scheduler() {
-				for (auto &scheduler : schedulers) {
+				for (auto &scheduler : _res->schedulers) {
 					if (scheduler.is_available()) {
 						return &scheduler;
 					}
@@ -109,7 +109,7 @@ namespace tmd {
 			void _lock(scheduler_t *scheduler) {
 				if (!_res->mtx.try_lock()) {
 					if (scheduler) {
-						_cond_wait(*scheduler, []()->bool {
+						_cond_wait(*scheduler, [this]()->bool {
 							return _res->mtx.try_lock();
 						});
 					}

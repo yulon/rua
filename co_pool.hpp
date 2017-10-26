@@ -191,9 +191,9 @@ namespace tmd {
 
 			bool _in_task_cors = false;
 
-			continuation _main_con;
+			coroutine::continuation _main_con;
 			std::list<coroutine> _cors;
-			std::stack<continuation> _idle_cor_cons;
+			std::stack<coroutine::continuation> _idle_cor_cons;
 
 			typedef std::list<std::shared_ptr<_task_s>> _task_list_t;
 
@@ -204,13 +204,13 @@ namespace tmd {
 				struct {
 					size_t sleep_to;
 					std::function<bool()> wake_cond;
-					continuation con;
+					coroutine::continuation con;
 
 					operator bool() {
 						return con;
 					}
 
-					continuation &operator=(std::nullptr_t) {
+					void operator=(std::nullptr_t) {
 						con = nullptr;
 					}
 
@@ -244,7 +244,7 @@ namespace tmd {
 			std::stack<task_t> _pre_del_tasks;
 			std::mutex _oth_td_op_mtx;
 
-			void _join_new_task_cor(continuation &ccr) {
+			void _join_new_task_cor(coroutine::continuation &ccr) {
 				if (_idle_cor_cons.empty()) {
 					_cors.emplace_back([this]() {
 						for (;;) {

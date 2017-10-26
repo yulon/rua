@@ -38,90 +38,90 @@ namespace tmd {
 		return true;
 	}
 
-	class coroutine;
-
-	class continuation {
-		public:
-			typedef
-			#if defined(_WIN32)
-				LPVOID
-			#elif defined(_TMD_UNIX_)
-				ucontext_t
-			#endif
-			native_handle_t;
-
-			continuation(std::nullptr_t np = nullptr)
-				#if defined(_WIN32)
-					: _ntv_hdl(nullptr)
-				#endif
-			{
-				#if defined(_TMD_UNIX_)
-					_ntv_hdl.uc_stack.ss_sp = nullptr;
-				#endif
-			}
-
-			operator bool() {
-				#if defined(_WIN32)
-					return _ntv_hdl;
-				#elif defined(_TMD_UNIX_)
-					return _ntv_hdl.uc_stack.ss_sp;
-				#endif
-			}
-
-			continuation &operator=(std::nullptr_t) {
-				#if defined(_WIN32)
-					_ntv_hdl
-				#elif defined(_TMD_UNIX_)
-					_ntv_hdl.uc_stack.ss_sp
-				#endif
-				= nullptr;
-			}
-
-			native_handle_t &native_handle() {
-				return _ntv_hdl;
-			}
-
-			const native_handle_t &native_handle() const {
-				return _ntv_hdl;
-			}
-
-			void join() {
-				#if defined(_WIN32)
-					SwitchToFiber(_ntv_hdl);
-				#elif defined(_TMD_UNIX_)
-					setcontext(_ntv_hdl);
-				#endif
-			}
-
-			void join(continuation &cc_receiver) {
-				#if defined(_WIN32)
-					cc_receiver._ntv_hdl = GetCurrentFiber();
-					SwitchToFiber(_ntv_hdl);
-				#elif defined(_TMD_UNIX_)
-					swapcontext(&cc_receiver._ntv_hdl, native_handle());
-				#endif
-			}
-
-			bool belong_to(const coroutine &cor) {
-				#if defined(_WIN32)
-					if (_ntv_hdl == cor._start_con._ntv_hdl) {
-						return true;
-					}
-				#elif defined(_TMD_UNIX_)
-					if (_ntv_hdl.uc_stack.ss_sp == cor._start_con._ntv_hdl.uc_stack.ss_sp) {
-						return true;
-					}
-				#endif
-
-				return false;
-			}
-
-		private:
-			native_handle_t _ntv_hdl;
-	};
-
 	class coroutine {
 		public:
+			class continuation {
+				public:
+					typedef
+					#if defined(_WIN32)
+						LPVOID
+					#elif defined(_TMD_UNIX_)
+						ucontext_t
+					#endif
+					native_handle_t;
+
+					continuation(std::nullptr_t np = nullptr)
+						#if defined(_WIN32)
+							: _ntv_hdl(nullptr)
+						#endif
+					{
+						#if defined(_TMD_UNIX_)
+							_ntv_hdl.uc_stack.ss_sp = nullptr;
+						#endif
+					}
+
+					operator bool() {
+						#if defined(_WIN32)
+							return _ntv_hdl;
+						#elif defined(_TMD_UNIX_)
+							return _ntv_hdl.uc_stack.ss_sp;
+						#endif
+					}
+
+					continuation &operator=(std::nullptr_t) {
+						#if defined(_WIN32)
+							_ntv_hdl
+						#elif defined(_TMD_UNIX_)
+							_ntv_hdl.uc_stack.ss_sp
+						#endif
+						= nullptr;
+					}
+
+					native_handle_t &native_handle() {
+						return _ntv_hdl;
+					}
+
+					const native_handle_t &native_handle() const {
+						return _ntv_hdl;
+					}
+
+					void join() {
+						#if defined(_WIN32)
+							SwitchToFiber(_ntv_hdl);
+						#elif defined(_TMD_UNIX_)
+							setcontext(_ntv_hdl);
+						#endif
+					}
+
+					void join(continuation &cc_receiver) {
+						#if defined(_WIN32)
+							cc_receiver._ntv_hdl = GetCurrentFiber();
+							SwitchToFiber(_ntv_hdl);
+						#elif defined(_TMD_UNIX_)
+							swapcontext(&cc_receiver._ntv_hdl, native_handle());
+						#endif
+					}
+
+					bool belong_to(const coroutine &cor) {
+						#if defined(_WIN32)
+							if (_ntv_hdl == cor._start_con._ntv_hdl) {
+								return true;
+							}
+						#elif defined(_TMD_UNIX_)
+							if (_ntv_hdl.uc_stack.ss_sp == cor._start_con._ntv_hdl.uc_stack.ss_sp) {
+								return true;
+							}
+						#endif
+
+						return false;
+					}
+
+				private:
+					native_handle_t _ntv_hdl;
+			};
+
+			////////////////////////////////////////////////////////////////////
+
 			static constexpr size_t default_stack_size =
 				#if defined(_WIN32)
 					0
