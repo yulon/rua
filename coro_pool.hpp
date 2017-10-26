@@ -19,6 +19,7 @@
 namespace tmd {
 	class coro_pool {
 		public:
+			coro_pool() = default;
 			coro_pool(const coro_pool &) = delete;
 			coro_pool& operator=(const coro_pool &) = delete;
 			coro_pool(coro_pool &&) = delete;
@@ -44,7 +45,7 @@ namespace tmd {
 					tsk->it = --_tasks.end();
 
 				} else {
-					tsk->del_time = life_duration < 0 ? 0 : _tick() + life_duration;
+					tsk->del_time = static_cast<size_t>(life_duration);
 					tsk->state = _task_s::state_t::adding;
 
 					_oth_td_op_mtx.lock();
@@ -60,17 +61,13 @@ namespace tmd {
 			}
 
 			void wait(size_t ms) {
-				assert(in_task());
-
 				(*_tasks_it)->sleeping.sleep_to = _cur_time + ms;
-				_join_new_task_cor((*_tasks_it)->sleeping.co_ct);
+				_sleep();
 			}
 
 			void wait(const std::function<bool()> &wake_cond) {
-				assert(in_task());
-
 				(*_tasks_it)->sleeping.wake_cond = wake_cond;
-				_join_new_task_cor((*_tasks_it)->sleeping.co_ct);
+				_sleep();
 			}
 
 			template <typename T>
@@ -84,6 +81,10 @@ namespace tmd {
 
 			void del_task(task tsk) {
 				if (_in_work_td()) {
+					if (tsk->state == _task_s::state_t::deleted) {
+						return;
+					}
+
 					if (tsk->state == _task_s::state_t::added) {
 						if (tsk->it == _tasks_it) {
 							_tasks_it = _tasks.erase(_tasks_it);
@@ -93,18 +94,11 @@ namespace tmd {
 						_tasks.erase(tsk->it);
 
 						if (tsk->sleeping) {
-							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-								if (tsk->sleeping.co_ct.belong_to(*it)) {
-									_cos.erase(it);
-									break;
-								}
-							}
-							tsk->sleeping = nullptr;
+							_del_sleeping_co(tsk);
 						}
-					} else if (tsk->state == _task_s::state_t::adding) {
-						// Just mark, main loop help us delete it.
-						tsk->state = _task_s::state_t::deleted;
 					}
+
+					tsk->state = _task_s::state_t::deleted;
 
 				} else {
 					_oth_td_op_mtx.lock();
@@ -136,7 +130,7 @@ namespace tmd {
 			void del_this_task() {
 				assert(in_task());
 
-				_tasks_it = _tasks.erase(_tasks_it);
+				_unsafe_del_this_task();
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
@@ -159,6 +153,10 @@ namespace tmd {
 							auto &tsk = _pre_add_tasks.front();
 							if (tsk->state == _task_s::state_t::adding) {
 								tsk->state = _task_s::state_t::added;
+
+								int life_duration = static_cast<int>(tsk->del_time);
+								tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
+
 								_tasks.push_back(tsk);
 							}
 							_pre_add_tasks.pop_front();
@@ -169,9 +167,7 @@ namespace tmd {
 
 					_tasks_it = _tasks.begin();
 
-					_in_task_cos = true;
-					_join_new_task_cor(_main_co_cts);
-					_in_task_cos = false;
+					_join_new_task_cor(_main_co_ct);
 
 					if (yield) {
 						yield();
@@ -191,7 +187,7 @@ namespace tmd {
 
 			bool _in_task_cos = false;
 
-			coro::cont _main_co_cts;
+			coro::cont _main_co_ct;
 			std::list<coro> _cos;
 			std::stack<coro::cont> _idle_co_cts;
 
@@ -244,35 +240,74 @@ namespace tmd {
 			std::stack<task> _pre_del_tasks;
 			std::mutex _oth_td_op_mtx;
 
+			void _sleep() {
+				assert(in_task());
+
+				_in_task_cos = false;
+				_join_new_task_cor((*_tasks_it++)->sleeping.co_ct);
+			}
+
+			void _wake_this_task() {
+				_in_task_cos = true;
+				auto co_ct = (*_tasks_it)->sleeping.co_ct;
+				(*_tasks_it)->sleeping = nullptr;
+				_idle_co_cts.emplace();
+				co_ct.join(_idle_co_cts.top());
+			}
+
+			void _unsafe_del_this_task() {
+				(*_tasks_it)->state = _task_s::state_t::deleted;
+				_tasks_it = _tasks.erase(_tasks_it);
+			}
+
+			void _del_sleeping_co(task &tsk) {
+				for (auto it = _cos.begin(); it != _cos.end(); ++it) {
+					if (tsk->sleeping.co_ct.belong_to(*it)) {
+						_cos.erase(it);
+						break;
+					}
+				}
+				tsk->sleeping = nullptr;
+			}
+
 			void _join_new_task_cor(coro::cont &ccr) {
 				if (_idle_co_cts.empty()) {
 					_cos.emplace_back([this]() {
 						for (;;) {
 							while (_tasks_it != _tasks.end()) {
-								if ((*_tasks_it)->sleeping) {
-									if ((*_tasks_it)->sleeping.wake_cond) {
-										if (!(*_tasks_it)->sleeping.wake_cond()) {
-											++_tasks_it;
+								auto tsk = *_tasks_it;
+
+								if (tsk->sleeping) {
+									if (tsk->sleeping.wake_cond) {
+										if (tsk->sleeping.wake_cond()) {
+											tsk.reset();
+											_wake_this_task();
 											continue;
 										}
-									} else if (_cur_time < (*_tasks_it)->sleeping.sleep_to) {
-										++_tasks_it;
+									} else if (_cur_time >= tsk->sleeping.sleep_to) {
+										tsk.reset();
+										_wake_this_task();
 										continue;
 									}
-									auto co_ct = (*_tasks_it)->sleeping.co_ct;
-									(*_tasks_it)->sleeping = nullptr;
-									_idle_co_cts.emplace();
-									co_ct.join(_idle_co_cts.top());
+									++_tasks_it;
+									continue;
+								}
 
-								} else if ((*_tasks_it)->del_time > 0 && (*_tasks_it)->del_time >= _cur_time) {
-									_tasks_it = _tasks.erase(_tasks_it);
-								} else {
-									(*_tasks_it)->handler();
+								_in_task_cos = true;
+								tsk->handler();
+								_in_task_cos = false;
+
+								if (tsk->state != _task_s::state_t::deleted) {
+									if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
+										_unsafe_del_this_task();
+										_del_sleeping_co(tsk);
+										continue;
+									}
 									++_tasks_it;
 								}
 							}
 							_idle_co_cts.emplace();
-							_main_co_cts.join(_idle_co_cts.top());
+							_main_co_ct.join(_idle_co_cts.top());
 						}
 					});
 					_cos.back().execute(ccr);

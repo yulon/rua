@@ -28,7 +28,7 @@ namespace tmd {
 				_lock(_get_scheduler());
 
 				if (_res->reqs.size()) {
-					_res->reqs.front()->receiver = value;
+					_res->reqs.front()->value = value;
 					_res->reqs.front()->ok = true;
 					_res->reqs.pop();
 				} else {
@@ -40,9 +40,24 @@ namespace tmd {
 				return *this;
 			}
 
+			chan<T> &operator<<(T &&value) {
+				_lock(_get_scheduler());
+
+				if (_res->reqs.size()) {
+					_res->reqs.front()->value = std::move(value);
+					_res->reqs.front()->ok = true;
+					_res->reqs.pop();
+				} else {
+					_res->buffer.push(std::move(value));
+				}
+
+				_res->mtx.unlock();
+
+				return *this;
+			}
+
 			chan<T> &operator>>(T &receiver) {
 				auto scheduler = _get_scheduler();
-
 				_lock(scheduler);
 
 				if (_res->buffer.size()) {
@@ -52,16 +67,24 @@ namespace tmd {
 					return *this;
 				}
 
-				auto req = new _req_t(receiver);
-				_res->buffer.emplace(req);
+				auto req = new _req_t;
+				req->ok = false;
+				_res->reqs.emplace(req);
 				_res->mtx.unlock();
 
 				if (!req->ok) {
-					_cond_wait(*scheduler, [req]()->bool {
-						return req->ok;
-					});
+					if (scheduler) {
+						_cond_wait(*scheduler, [req]()->bool {
+							return req->ok;
+						});
+					} else {
+						do {
+							std::this_thread::yield();
+						} while (!req->ok);
+					}
 				}
 
+				receiver = std::move(req->value);
 				delete req;
 
 				return *this;
@@ -69,10 +92,8 @@ namespace tmd {
 
 		private:
 			struct _req_t {
-				T &receiver;
 				std::atomic<bool> ok;
-
-				_req_t(T &receiver) : receiver(receiver), ok(true) {}
+				T value;
 			};
 
 			struct _res_t {
@@ -99,19 +120,21 @@ namespace tmd {
 					return;
 				}
 
-				assert(scheduler->yield);
+				assert(scheduler.yield);
 
 				do {
-					scheduler->yield();
+					scheduler.yield();
 				} while (!cond());
 			}
 
 			void _lock(scheduler_t *scheduler) {
 				if (!_res->mtx.try_lock()) {
 					if (scheduler) {
-						_cond_wait(*scheduler, [this]()->bool {
-							return _res->mtx.try_lock();
+						auto res = _res;
+						_cond_wait(*scheduler, [res]()->bool {
+							return res->mtx.try_lock();
 						});
+						return;
 					}
 					_res->mtx.lock();
 				}

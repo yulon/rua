@@ -52,11 +52,11 @@ namespace tmd {
 
 					cont(std::nullptr_t np = nullptr)
 						#if defined(_WIN32)
-							: _ntv_hdl(nullptr)
+							: _ntv_hdl(np)
 						#endif
 					{
 						#if defined(_TMD_UNIX_)
-							_ntv_hdl.uc_stack.ss_sp = nullptr;
+							_ntv_hdl.uc_stack.ss_sp = np;
 						#endif
 					}
 
@@ -75,6 +75,8 @@ namespace tmd {
 							_ntv_hdl.uc_stack.ss_sp
 						#endif
 						= nullptr;
+
+						return *this;
 					}
 
 					native_handle_t &native_handle() {
