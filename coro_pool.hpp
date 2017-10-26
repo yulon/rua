@@ -1,7 +1,7 @@
-#ifndef _TMD_CO_POOL_HPP
-#define _TMD_CO_POOL_HPP
+#ifndef _TMD_CORO_POOL_HPP
+#define _TMD_CORO_POOL_HPP
 
-#include "co.hpp"
+#include "coro.hpp"
 
 #if defined(_TMD_UNIX_)
 	#include <time.h>
@@ -17,45 +17,45 @@
 #include <cassert>
 
 namespace tmd {
-	class co_pool {
+	class coro_pool {
 		public:
-			co_pool(const co_pool &) = delete;
-			co_pool& operator=(const co_pool &) = delete;
-			co_pool(co_pool &&) = delete;
-			co_pool& operator=(co_pool &&) = delete;
+			coro_pool(const coro_pool &) = delete;
+			coro_pool& operator=(const coro_pool &) = delete;
+			coro_pool(coro_pool &&) = delete;
+			coro_pool& operator=(coro_pool &&) = delete;
 
 		private:
 			class _task_s;
 
 		public:
-			typedef std::shared_ptr<_task_s> task_t;
+			typedef std::shared_ptr<_task_s> task;
 
-			task_t add_task(const std::function<void()> &handler, int life_duration = -1) {
-				auto task = std::make_shared<_task_s>();
+			task add_task(const std::function<void()> &handler, int life_duration = -1) {
+				auto tsk = std::make_shared<_task_s>();
 
-				task->handler = handler;
-				task->sleeping = nullptr;
+				tsk->handler = handler;
+				tsk->sleeping = nullptr;
 
 				if (_in_work_td()) {
-					task->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
-					task->state = _task_s::state_t::added;
+					tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
+					tsk->state = _task_s::state_t::added;
 
-					_tasks.push_back(task);
-					task->it = --_tasks.end();
+					_tasks.push_back(tsk);
+					tsk->it = --_tasks.end();
 
 				} else {
-					task->del_time = life_duration < 0 ? 0 : _tick() + life_duration;
-					task->state = _task_s::state_t::adding;
+					tsk->del_time = life_duration < 0 ? 0 : _tick() + life_duration;
+					tsk->state = _task_s::state_t::adding;
 
 					_oth_td_op_mtx.lock();
-					_pre_add_tasks.push_back(task);
+					_pre_add_tasks.push_back(tsk);
 					_oth_td_op_mtx.unlock();
 				}
 
-				return task;
+				return tsk;
 			}
 
-			task_t go(const std::function<void()> &handler) {
+			task go(const std::function<void()> &handler) {
 				return add_task(handler, 0);
 			}
 
@@ -63,14 +63,14 @@ namespace tmd {
 				assert(in_task());
 
 				(*_tasks_it)->sleeping.sleep_to = _cur_time + ms;
-				_join_new_task_cor((*_tasks_it)->sleeping.con);
+				_join_new_task_cor((*_tasks_it)->sleeping.co_ct);
 			}
 
 			void wait(const std::function<bool()> &wake_cond) {
 				assert(in_task());
 
 				(*_tasks_it)->sleeping.wake_cond = wake_cond;
-				_join_new_task_cor((*_tasks_it)->sleeping.con);
+				_join_new_task_cor((*_tasks_it)->sleeping.co_ct);
 			}
 
 			template <typename T>
@@ -82,55 +82,55 @@ namespace tmd {
 				}
 			}
 
-			void del_task(task_t task) {
+			void del_task(task tsk) {
 				if (_in_work_td()) {
-					if (task->state == _task_s::state_t::added) {
-						if (task->it == _tasks_it) {
+					if (tsk->state == _task_s::state_t::added) {
+						if (tsk->it == _tasks_it) {
 							_tasks_it = _tasks.erase(_tasks_it);
 							return;
 						}
 
-						_tasks.erase(task->it);
+						_tasks.erase(tsk->it);
 
-						if (task->sleeping) {
-							for (auto it = _cors.begin(); it != _cors.end(); ++it) {
-								if (task->sleeping.con.belong_to(*it)) {
-									_cors.erase(it);
+						if (tsk->sleeping) {
+							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
+								if (tsk->sleeping.co_ct.belong_to(*it)) {
+									_cos.erase(it);
 									break;
 								}
 							}
-							task->sleeping = nullptr;
+							tsk->sleeping = nullptr;
 						}
-					} else if (task->state == _task_s::state_t::adding) {
+					} else if (tsk->state == _task_s::state_t::adding) {
 						// Just mark, main loop help us delete it.
-						task->state = _task_s::state_t::deleted;
+						tsk->state = _task_s::state_t::deleted;
 					}
 
 				} else {
 					_oth_td_op_mtx.lock();
 
-					// 'task->state' cannot be checked here, may be accessed by tasks thread.
+					// 'tsk->state' cannot be checked here, may be accessed by tasks thread.
 					for (auto it = _pre_add_tasks.begin(); it != _pre_add_tasks.end(); ++it) {
-						if (task == *it) {
+						if (tsk == *it) {
 							_pre_add_tasks.erase(it);
 
 							// It's safe here, unless you have other threads accessing at the same time.
-							task->state = _task_s::state_t::deleted;
+							tsk->state = _task_s::state_t::deleted;
 
 							_oth_td_op_mtx.unlock();
 							return;
 						}
 					}
 
-					_pre_del_tasks.push(task);
+					_pre_del_tasks.push(tsk);
 
 					_oth_td_op_mtx.unlock();
 				}
 			}
 
-			bool has_task(task_t task) {
+			bool has_task(task tsk) {
 				// May be dirty read on other threads, but repeated calls to 'del_task()' do not cause an exception.
-				return task->state != _task_s::state_t::deleted;
+				return tsk->state != _task_s::state_t::deleted;
 			}
 
 			void del_this_task() {
@@ -140,7 +140,7 @@ namespace tmd {
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
-				if (_in_task_cors && !support_co_for_this_thread()) {
+				if (_in_task_cos && !coro::init_for_this_thread()) {
 					return;
 				}
 
@@ -156,10 +156,10 @@ namespace tmd {
 						}
 
 						while (_pre_add_tasks.size()) {
-							auto &task = _pre_add_tasks.front();
-							if (task->state == _task_s::state_t::adding) {
-								task->state = _task_s::state_t::added;
-								_tasks.push_back(task);
+							auto &tsk = _pre_add_tasks.front();
+							if (tsk->state == _task_s::state_t::adding) {
+								tsk->state = _task_s::state_t::added;
+								_tasks.push_back(tsk);
 							}
 							_pre_add_tasks.pop_front();
 						}
@@ -169,9 +169,9 @@ namespace tmd {
 
 					_tasks_it = _tasks.begin();
 
-					_in_task_cors = true;
-					_join_new_task_cor(_main_con);
-					_in_task_cors = false;
+					_in_task_cos = true;
+					_join_new_task_cor(_main_co_cts);
+					_in_task_cos = false;
 
 					if (yield) {
 						yield();
@@ -180,7 +180,7 @@ namespace tmd {
 			}
 
 			bool in_task() {
-				return _in_work_td() && _in_task_cors;
+				return _in_work_td() && _in_task_cos;
 			}
 
 		private:
@@ -189,11 +189,11 @@ namespace tmd {
 				return std::this_thread::get_id() == _work_tid;
 			}
 
-			bool _in_task_cors = false;
+			bool _in_task_cos = false;
 
-			coroutine::continuation _main_con;
-			std::list<coroutine> _cors;
-			std::stack<coroutine::continuation> _idle_cor_cons;
+			coro::cont _main_co_cts;
+			std::list<coro> _cos;
+			std::stack<coro::cont> _idle_co_cts;
 
 			typedef std::list<std::shared_ptr<_task_s>> _task_list_t;
 
@@ -204,14 +204,14 @@ namespace tmd {
 				struct {
 					size_t sleep_to;
 					std::function<bool()> wake_cond;
-					coroutine::continuation con;
+					coro::cont co_ct;
 
 					operator bool() {
-						return con;
+						return co_ct;
 					}
 
 					void operator=(std::nullptr_t) {
-						con = nullptr;
+						co_ct = nullptr;
 					}
 
 				} sleeping;
@@ -240,13 +240,13 @@ namespace tmd {
 				#endif
 			}
 
-			std::list<task_t> _pre_add_tasks;
-			std::stack<task_t> _pre_del_tasks;
+			std::list<task> _pre_add_tasks;
+			std::stack<task> _pre_del_tasks;
 			std::mutex _oth_td_op_mtx;
 
-			void _join_new_task_cor(coroutine::continuation &ccr) {
-				if (_idle_cor_cons.empty()) {
-					_cors.emplace_back([this]() {
+			void _join_new_task_cor(coro::cont &ccr) {
+				if (_idle_co_cts.empty()) {
+					_cos.emplace_back([this]() {
 						for (;;) {
 							while (_tasks_it != _tasks.end()) {
 								if ((*_tasks_it)->sleeping) {
@@ -259,10 +259,10 @@ namespace tmd {
 										++_tasks_it;
 										continue;
 									}
-									auto con = (*_tasks_it)->sleeping.con;
+									auto co_ct = (*_tasks_it)->sleeping.co_ct;
 									(*_tasks_it)->sleeping = nullptr;
-									_idle_cor_cons.emplace();
-									con.join(_idle_cor_cons.top());
+									_idle_co_cts.emplace();
+									co_ct.join(_idle_co_cts.top());
 
 								} else if ((*_tasks_it)->del_time > 0 && (*_tasks_it)->del_time >= _cur_time) {
 									_tasks_it = _tasks.erase(_tasks_it);
@@ -271,15 +271,15 @@ namespace tmd {
 									++_tasks_it;
 								}
 							}
-							_idle_cor_cons.emplace();
-							_main_con.join(_idle_cor_cons.top());
+							_idle_co_cts.emplace();
+							_main_co_cts.join(_idle_co_cts.top());
 						}
 					});
-					_cors.back().execute(ccr);
+					_cos.back().execute(ccr);
 				} else {
-					auto con = _idle_cor_cons.top();
-					_idle_cor_cons.pop();
-					con.join(ccr);
+					auto co_ct = _idle_co_cts.top();
+					_idle_co_cts.pop();
+					co_ct.join(ccr);
 				}
 			}
 	};

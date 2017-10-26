@@ -1,5 +1,5 @@
-#ifndef _TMD_CO_HPP
-#define _TMD_CO_HPP
+#ifndef _TMD_CORO_HPP
+#define _TMD_CORO_HPP
 
 #if defined(_WIN32)
 	#include <windows.h>
@@ -19,7 +19,7 @@
 	#include <pthread.h>
 	#include <cstdlib>
 #else
-	#error tmd::co: not support this OS!
+	#error tmd::coro: not support this OS!
 #endif
 
 #include <functional>
@@ -28,19 +28,19 @@
 #include <cassert>
 
 namespace tmd {
-	bool support_co_for_this_thread() {
-		#if defined(_WIN32)
-			if (!GetCurrentFiber()) {
-				return ConvertThreadToFiber(nullptr);
-			}
-		#endif
-
-		return true;
-	}
-
-	class coroutine {
+	class coro {
 		public:
-			class continuation {
+			static bool init_for_this_thread() {
+				#if defined(_WIN32)
+					if (!GetCurrentFiber()) {
+						return ConvertThreadToFiber(nullptr);
+					}
+				#endif
+
+				return true;
+			}
+
+			class cont {
 				public:
 					typedef
 					#if defined(_WIN32)
@@ -50,7 +50,7 @@ namespace tmd {
 					#endif
 					native_handle_t;
 
-					continuation(std::nullptr_t np = nullptr)
+					cont(std::nullptr_t np = nullptr)
 						#if defined(_WIN32)
 							: _ntv_hdl(nullptr)
 						#endif
@@ -68,7 +68,7 @@ namespace tmd {
 						#endif
 					}
 
-					continuation &operator=(std::nullptr_t) {
+					cont &operator=(std::nullptr_t) {
 						#if defined(_WIN32)
 							_ntv_hdl
 						#elif defined(_TMD_UNIX_)
@@ -93,7 +93,7 @@ namespace tmd {
 						#endif
 					}
 
-					void join(continuation &cc_receiver) {
+					void join(cont &cc_receiver) {
 						#if defined(_WIN32)
 							cc_receiver._ntv_hdl = GetCurrentFiber();
 							SwitchToFiber(_ntv_hdl);
@@ -102,13 +102,13 @@ namespace tmd {
 						#endif
 					}
 
-					bool belong_to(const coroutine &cor) {
+					bool belong_to(const coro &co) {
 						#if defined(_WIN32)
-							if (_ntv_hdl == cor._start_con._ntv_hdl) {
+							if (_ntv_hdl == co._start_ct._ntv_hdl) {
 								return true;
 							}
 						#elif defined(_TMD_UNIX_)
-							if (_ntv_hdl.uc_stack.ss_sp == cor._start_con._ntv_hdl.uc_stack.ss_sp) {
+							if (_ntv_hdl.uc_stack.ss_sp == co._start_ct._ntv_hdl.uc_stack.ss_sp) {
 								return true;
 							}
 						#endif
@@ -130,28 +130,28 @@ namespace tmd {
 				#endif
 			;
 
-			coroutine() : _func(nullptr) {}
+			coro() : _func(nullptr) {}
 
-			coroutine(const std::function<void()> &func, size_t stack_size = default_stack_size) : _func(new std::function<void()>(func)) {
+			coro(const std::function<void()> &func, size_t stack_size = default_stack_size) : _func(new std::function<void()>(func)) {
 				_executed = false;
 
 				#if defined(_WIN32)
-					_start_con.native_handle() = CreateFiber(
+					_start_ct.native_handle() = CreateFiber(
 						stack_size,
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func_shell),
 						reinterpret_cast<PVOID>(_func)
 					);
 				#elif defined(_TMD_UNIX_)
-					getcontext(&_start_con.native_handle());
-					_start_con.native_handle().uc_stack.ss_sp = reinterpret_cast<decltype(_start_con.native_handle().uc_stack.ss_sp)>(new uint8_t[stack_size]);
-					_start_con.native_handle().uc_stack.ss_size = stack_size;
-					_start_con.native_handle().uc_stack.ss_flags = 0;
-					_start_con.native_handle().uc_link = nullptr;
-					makecontext(&_start_con.native_handle(), &_fiber_func_shell, reinterpret_cast<void *>(_func));
+					getcontext(&_start_ct.native_handle());
+					_start_ct.native_handle().uc_stack.ss_sp = reinterpret_cast<decltype(_start_ct.native_handle().uc_stack.ss_sp)>(new uint8_t[stack_size]);
+					_start_ct.native_handle().uc_stack.ss_size = stack_size;
+					_start_ct.native_handle().uc_stack.ss_flags = 0;
+					_start_ct.native_handle().uc_link = nullptr;
+					makecontext(&_start_ct.native_handle(), &_fiber_func_shell, reinterpret_cast<void *>(_func));
 				#endif
 			}
 
-			~coroutine() {
+			~coro() {
 				_dtor();
 			}
 
@@ -165,19 +165,19 @@ namespace tmd {
 
 			void execute() {
 				assert(executable());
-				_start_con.join();
+				_start_ct.join();
 				_executed = true;
 			}
 
-			void execute(continuation &cc_receiver) {
+			void execute(cont &cc_receiver) {
 				assert(executable());
-				_start_con.join(cc_receiver);
+				_start_ct.join(cc_receiver);
 				_executed = true;
 			}
 
-			coroutine(const coroutine &) = delete;
+			coro(const coro &) = delete;
 
-			coroutine(coroutine &&src) {
+			coro(coro &&src) {
 				if (!src._func) {
 					_func = nullptr;
 					return;
@@ -187,21 +187,21 @@ namespace tmd {
 				_executed = src._executed;
 
 				#if defined(_WIN32)
-					_start_con.native_handle() = src._start_con.native_handle();
+					_start_ct.native_handle() = src._start_ct.native_handle();
 				#elif defined(_TMD_UNIX_)
 					if (joined) {
-						_start_con.native_handle().uc_stack.ss_sp = src._start_con.native_handle().uc_stack.ss_sp;
+						_start_ct.native_handle().uc_stack.ss_sp = src._start_ct.native_handle().uc_stack.ss_sp;
 					} else {
-						_start_con.native_handle() = src._start_con.native_handle();
+						_start_ct.native_handle() = src._start_ct.native_handle();
 					}
 				#endif
 
 				src._func = nullptr;
 			}
 
-			coroutine& operator=(const coroutine &) = delete;
+			coro& operator=(const coro &) = delete;
 
-			coroutine& operator=(coroutine &&src) {
+			coro& operator=(coro &&src) {
 				_dtor();
 
 				if (src._func) {
@@ -209,12 +209,12 @@ namespace tmd {
 					_executed = src._executed;
 
 					#if defined(_WIN32)
-						_start_con.native_handle() = src._start_con.native_handle();
+						_start_ct.native_handle() = src._start_ct.native_handle();
 					#elif defined(_TMD_UNIX_)
 						if (joined) {
-							_start_con.native_handle().uc_stack.ss_sp = src._start_con.native_handle().uc_stack.ss_sp;
+							_start_ct.native_handle().uc_stack.ss_sp = src._start_ct.native_handle().uc_stack.ss_sp;
 						} else {
-							_start_con.native_handle() = src._start_con.native_handle();
+							_start_ct.native_handle() = src._start_ct.native_handle();
 						}
 					#endif
 
@@ -227,14 +227,14 @@ namespace tmd {
 		private:
 			std::function<void()> *_func;
 			bool _executed;
-			continuation _start_con;
+			cont _start_ct;
 
 			void _dtor() {
 				if (_func) {
 					#if defined(_WIN32)
-						DeleteFiber(_start_con.native_handle());
+						DeleteFiber(_start_ct.native_handle());
 					#elif defined(_TMD_UNIX_)
-						delete[] reinterpret_cast<uint8_t *>(_start_con.native_handle().uc_stack.ss_sp);
+						delete[] reinterpret_cast<uint8_t *>(_start_ct.native_handle().uc_stack.ss_sp);
 					#endif
 
 					delete _func;
@@ -250,7 +250,7 @@ namespace tmd {
 				(*func)();
 			}
 
-			friend continuation;
+			friend cont;
 	};
 }
 
