@@ -139,9 +139,7 @@ namespace tmd {
 				_tasks_it = _tasks.erase(_tasks_it);
 			}
 
-			void handle_tasks(const std::function<void()> &block_func = []() {
-				std::this_thread::sleep_for(std::chrono::milliseconds(0));
-			}) {
+			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
 				if (_in_task_cors && !support_co_for_this_thread()) {
 					return;
 				}
@@ -175,8 +173,8 @@ namespace tmd {
 					_join_new_task_cor(_main_con);
 					_in_task_cors = false;
 
-					if (block_func) {
-						block_func();
+					if (yield) {
+						yield();
 					}
 				}
 			}
