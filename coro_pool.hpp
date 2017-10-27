@@ -94,7 +94,13 @@ namespace tmd {
 						_tasks.erase(tsk->it);
 
 						if (tsk->sleeping) {
-							_del_sleeping_co(tsk);
+							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
+								if (tsk->sleeping.co_ct.belong_to(*it)) {
+									_cos.erase(it);
+									break;
+								}
+							}
+							tsk->sleeping = nullptr;
 						}
 					}
 
@@ -260,16 +266,6 @@ namespace tmd {
 				_tasks_it = _tasks.erase(_tasks_it);
 			}
 
-			void _del_sleeping_co(task &tsk) {
-				for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-					if (tsk->sleeping.co_ct.belong_to(*it)) {
-						_cos.erase(it);
-						break;
-					}
-				}
-				tsk->sleeping = nullptr;
-			}
-
 			void _join_new_task_cor(coro::cont &ccr) {
 				if (_idle_co_cts.empty()) {
 					_cos.emplace_back([this]() {
@@ -300,7 +296,6 @@ namespace tmd {
 								if (tsk->state != _task_s::state_t::deleted) {
 									if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
 										_unsafe_del_this_task();
-										_del_sleeping_co(tsk);
 										continue;
 									}
 									++_tasks_it;
