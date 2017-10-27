@@ -26,27 +26,27 @@ namespace tmd {
 			coro_pool& operator=(coro_pool &&) = delete;
 
 		private:
-			class _task_s;
+			class _task_info_t;
 
 		public:
-			typedef std::shared_ptr<_task_s> task;
+			typedef std::shared_ptr<_task_info_t> task;
 
 			task add_task(const std::function<void()> &handler, int life_duration = -1) {
-				auto tsk = std::make_shared<_task_s>();
+				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
 				tsk->sleeping = nullptr;
 
 				if (_in_work_td()) {
 					tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
-					tsk->state = _task_s::state_t::added;
+					tsk->state = _task_info_t::state_t::added;
 
 					_tasks.push_back(tsk);
 					tsk->it = --_tasks.end();
 
 				} else {
 					tsk->del_time = static_cast<size_t>(life_duration);
-					tsk->state = _task_s::state_t::adding;
+					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
 					_pre_add_tasks.push_back(tsk);
@@ -81,8 +81,8 @@ namespace tmd {
 
 			void del_task(task tsk) {
 				if (_in_work_td()) {
-					if (tsk->state != _task_s::state_t::deleted) {
-						tsk->state = _task_s::state_t::deleted;
+					if (tsk->state != _task_info_t::state_t::deleted) {
+						tsk->state = _task_info_t::state_t::deleted;
 					}
 
 				} else {
@@ -94,7 +94,7 @@ namespace tmd {
 							_pre_add_tasks.erase(it);
 
 							// It's safe here, unless you have other threads accessing at the same time.
-							tsk->state = _task_s::state_t::deleted;
+							tsk->state = _task_info_t::state_t::deleted;
 
 							_oth_td_op_mtx.unlock();
 							return;
@@ -109,13 +109,13 @@ namespace tmd {
 
 			bool has_task(task tsk) {
 				// May be dirty read on other threads, but repeated calls to 'del_task()' do not cause an exception.
-				return tsk->state != _task_s::state_t::deleted;
+				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
 			void del_this_task() {
 				assert(in_task());
 
-				(*_tasks_it)->state = _task_s::state_t::deleted;
+				(*_tasks_it)->state = _task_info_t::state_t::deleted;
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
@@ -136,8 +136,8 @@ namespace tmd {
 
 						while (_pre_add_tasks.size()) {
 							auto &tsk = _pre_add_tasks.front();
-							if (tsk->state == _task_s::state_t::adding) {
-								tsk->state = _task_s::state_t::added;
+							if (tsk->state == _task_info_t::state_t::adding) {
+								tsk->state = _task_info_t::state_t::added;
 
 								int life_duration = static_cast<int>(tsk->del_time);
 								tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
@@ -176,9 +176,9 @@ namespace tmd {
 			std::list<coro> _cos;
 			std::stack<coro::cont> _idle_co_cts;
 
-			typedef std::list<std::shared_ptr<_task_s>> _task_list_t;
+			typedef std::list<std::shared_ptr<_task_info_t>> _task_list_t;
 
-			struct _task_s {
+			struct _task_info_t {
 				std::function<void()> handler;
 				size_t del_time;
 
@@ -193,6 +193,9 @@ namespace tmd {
 
 					void operator=(std::nullptr_t) {
 						co_ct = nullptr;
+						if (wake_cond) {
+							wake_cond = nullptr;
+						}
 					}
 
 				} sleeping;
@@ -265,10 +268,10 @@ namespace tmd {
 								tsk->handler();
 								_in_task_cos = false;
 
-								if (tsk->state == _task_s::state_t::deleted) {
+								if (tsk->state == _task_info_t::state_t::deleted) {
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
-									tsk->state = _task_s::state_t::deleted;
+									tsk->state = _task_info_t::state_t::deleted;
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else {
 									++_tasks_it;
