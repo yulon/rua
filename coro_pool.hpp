@@ -56,8 +56,8 @@ namespace tmd {
 				return tsk;
 			}
 
-			task go(const std::function<void()> &handler) {
-				return add_task(handler, 0);
+			void go(const std::function<void()> &handler) {
+				add_task(handler, 0);
 			}
 
 			void wait(size_t ms) {
@@ -81,30 +81,9 @@ namespace tmd {
 
 			void del_task(task tsk) {
 				if (_in_work_td()) {
-					if (tsk->state == _task_s::state_t::deleted) {
-						return;
+					if (tsk->state != _task_s::state_t::deleted) {
+						tsk->state = _task_s::state_t::deleted;
 					}
-
-					if (tsk->state == _task_s::state_t::added) {
-						if (tsk->it == _tasks_it) {
-							_tasks_it = _tasks.erase(_tasks_it);
-							return;
-						}
-
-						_tasks.erase(tsk->it);
-
-						if (tsk->sleeping) {
-							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-								if (tsk->sleeping.co_ct.belong_to(*it)) {
-									_cos.erase(it);
-									break;
-								}
-							}
-							tsk->sleeping = nullptr;
-						}
-					}
-
-					tsk->state = _task_s::state_t::deleted;
 
 				} else {
 					_oth_td_op_mtx.lock();
@@ -136,7 +115,7 @@ namespace tmd {
 			void del_this_task() {
 				assert(in_task());
 
-				_unsafe_del_this_task();
+				(*_tasks_it)->state = _task_s::state_t::deleted;
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
@@ -261,27 +240,20 @@ namespace tmd {
 				co_ct.join(_idle_co_cts.top());
 			}
 
-			void _unsafe_del_this_task() {
-				(*_tasks_it)->state = _task_s::state_t::deleted;
-				_tasks_it = _tasks.erase(_tasks_it);
-			}
-
 			void _join_new_task_cor(coro::cont &ccr) {
 				if (_idle_co_cts.empty()) {
 					_cos.emplace_back([this]() {
 						for (;;) {
 							while (_tasks_it != _tasks.end()) {
-								auto tsk = *_tasks_it;
+								auto &tsk = *_tasks_it;
 
 								if (tsk->sleeping) {
 									if (tsk->sleeping.wake_cond) {
 										if (tsk->sleeping.wake_cond()) {
-											tsk.reset();
 											_wake_this_task();
 											continue;
 										}
 									} else if (_cur_time >= tsk->sleeping.sleep_to) {
-										tsk.reset();
 										_wake_this_task();
 										continue;
 									}
@@ -293,11 +265,12 @@ namespace tmd {
 								tsk->handler();
 								_in_task_cos = false;
 
-								if (tsk->state != _task_s::state_t::deleted) {
-									if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
-										_unsafe_del_this_task();
-										continue;
-									}
+								if (tsk->state == _task_s::state_t::deleted) {
+									_tasks_it = _tasks.erase(_tasks_it);
+								} else if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
+									tsk->state = _task_s::state_t::deleted;
+									_tasks_it = _tasks.erase(_tasks_it);
+								} else {
 									++_tasks_it;
 								}
 							}
