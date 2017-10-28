@@ -121,10 +121,10 @@ namespace tmd {
 				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 			}
 
-			void del_this_task() {
-				assert(_in_work_td());
+			task get_this_task() {
+				assert(in_task());
 
-				(*_tasks_it)->state = _task_info_t::state_t::deleted;
+				return *_tasks_it;
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
