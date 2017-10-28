@@ -79,6 +79,7 @@ namespace tmd {
 
 					void join() {
 						#if defined(_WIN32)
+							_touch_cur_fiber();
 							SwitchToFiber(_ntv_hdl);
 						#elif defined(_TMD_UNIX_)
 							setcontext(_ntv_hdl);
@@ -87,7 +88,7 @@ namespace tmd {
 
 					void join(cont &cc_receiver) {
 						#if defined(_WIN32)
-							cc_receiver._ntv_hdl = GetCurrentFiber();
+							cc_receiver._ntv_hdl = _touch_cur_fiber();
 							SwitchToFiber(_ntv_hdl);
 						#elif defined(_TMD_UNIX_)
 							swapcontext(&cc_receiver._ntv_hdl, native_handle());
@@ -110,6 +111,16 @@ namespace tmd {
 
 				private:
 					native_handle_t _ntv_hdl;
+
+					#if defined(_WIN32)
+						LPVOID _touch_cur_fiber() {
+							auto cur = GetCurrentFiber();
+							if (!cur) {
+								return ConvertThreadToFiber(nullptr);
+							}
+							return cur;
+						}
+					#endif
 			};
 
 			////////////////////////////////////////////////////////////////////
@@ -158,16 +169,12 @@ namespace tmd {
 			void execute() {
 				assert(executable());
 
-				_init();
-
 				_start_ct.join();
 				_executed = true;
 			}
 
 			void execute(cont &cc_receiver) {
 				assert(executable());
-
-				_init();
 
 				_start_ct.join(cc_receiver);
 				_executed = true;
@@ -226,15 +233,6 @@ namespace tmd {
 			std::function<void()> *_func;
 			bool _executed;
 			cont _start_ct;
-
-			void _init() {
-				#if defined(_WIN32)
-					if (!GetCurrentFiber()) {
-						auto fiber = ConvertThreadToFiber(nullptr);
-						assert(fiber);
-					}
-				#endif
-			}
 
 			void _dtor() {
 				if (_func) {
