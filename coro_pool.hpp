@@ -173,7 +173,7 @@ namespace tmd {
 				return _in_work_td() && _in_task_cos;
 			}
 
-			bool get_coro_total() {
+			size_t get_coro_total() {
 				return _cos.size();
 			}
 
