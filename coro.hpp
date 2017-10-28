@@ -30,16 +30,6 @@
 namespace tmd {
 	class coro {
 		public:
-			static bool init_for_this_thread() {
-				#if defined(_WIN32)
-					if (!GetCurrentFiber()) {
-						return ConvertThreadToFiber(nullptr);
-					}
-				#endif
-
-				return true;
-			}
-
 			class cont {
 				public:
 					typedef
@@ -167,12 +157,18 @@ namespace tmd {
 
 			void execute() {
 				assert(executable());
+
+				_init();
+
 				_start_ct.join();
 				_executed = true;
 			}
 
 			void execute(cont &cc_receiver) {
 				assert(executable());
+
+				_init();
+
 				_start_ct.join(cc_receiver);
 				_executed = true;
 			}
@@ -230,6 +226,15 @@ namespace tmd {
 			std::function<void()> *_func;
 			bool _executed;
 			cont _start_ct;
+
+			void _init() {
+				#if defined(_WIN32)
+					if (!GetCurrentFiber()) {
+						auto fiber = ConvertThreadToFiber(nullptr);
+						assert(fiber);
+					}
+				#endif
+			}
 
 			void _dtor() {
 				if (_func) {
