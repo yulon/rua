@@ -19,7 +19,10 @@
 namespace tmd {
 	class coro_pool {
 		public:
-			coro_pool() = default;
+			coro_pool(size_t coro_stack_size = coro::default_stack_size) {
+				co_stk_sz = coro_stack_size;
+			}
+
 			coro_pool(const coro_pool &) = delete;
 			coro_pool& operator=(const coro_pool &) = delete;
 			coro_pool(coro_pool &&) = delete;
@@ -31,21 +34,21 @@ namespace tmd {
 		public:
 			typedef std::shared_ptr<_task_info_t> task;
 
-			task add_task(const std::function<void()> &handler, int life_duration = -1) {
+			task add_task(const std::function<void()> &handler, int duration_of_life = -1) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
 				tsk->sleeping = nullptr;
 
 				if (_in_work_td()) {
-					tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
+					tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 					tsk->state = _task_info_t::state_t::added;
 
 					_tasks.push_back(tsk);
 					tsk->it = --_tasks.end();
 
 				} else {
-					tsk->del_time = static_cast<size_t>(life_duration);
+					tsk->del_time = static_cast<size_t>(duration_of_life);
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
@@ -112,8 +115,14 @@ namespace tmd {
 				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
-			void del_this_task() {
+			bool reset_task_dol(task tsk, int duration_of_life = -1) {
 				assert(in_task());
+
+				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
+			}
+
+			void del_this_task() {
+				assert(_in_work_td());
 
 				(*_tasks_it)->state = _task_info_t::state_t::deleted;
 			}
@@ -139,8 +148,8 @@ namespace tmd {
 							if (tsk->state == _task_info_t::state_t::adding) {
 								tsk->state = _task_info_t::state_t::added;
 
-								int life_duration = static_cast<int>(tsk->del_time);
-								tsk->del_time = life_duration < 0 ? 0 : _cur_time + life_duration;
+								int duration_of_life = static_cast<int>(tsk->del_time);
+								tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 
 								_tasks.push_back(tsk);
 							}
@@ -164,6 +173,10 @@ namespace tmd {
 				return _in_work_td() && _in_task_cos;
 			}
 
+			bool get_coro_total() {
+				return _cos.size();
+			}
+
 		private:
 			std::thread::id _work_tid = std::this_thread::get_id();
 			bool _in_work_td() {
@@ -172,8 +185,10 @@ namespace tmd {
 
 			bool _in_task_cos = false;
 
+			size_t co_stk_sz;
+			std::stack<coro> _cos;
+
 			coro::cont _main_co_ct;
-			std::list<coro> _cos;
 			std::stack<coro::cont> _idle_co_cts;
 
 			typedef std::list<std::shared_ptr<_task_info_t>> _task_list_t;
@@ -246,7 +261,7 @@ namespace tmd {
 
 			void _join_new_task_cor(coro::cont &ccr) {
 				if (_idle_co_cts.empty()) {
-					_cos.emplace_back([this]() {
+					_cos.emplace([this]() {
 						for (;;) {
 							while (_tasks_it != _tasks.end()) {
 								auto &tsk = *_tasks_it;
@@ -281,8 +296,8 @@ namespace tmd {
 							_idle_co_cts.emplace();
 							_main_co_ct.join(_idle_co_cts.top());
 						}
-					});
-					_cos.back().execute(ccr);
+					}, co_stk_sz);
+					_cos.top().execute(ccr);
 				} else {
 					auto co_ct = _idle_co_cts.top();
 					_idle_co_cts.pop();
