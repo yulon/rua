@@ -20,7 +20,7 @@ namespace tmd {
 	class coro_pool {
 		public:
 			coro_pool(size_t coro_stack_size = coro::default_stack_size) {
-				co_stk_sz = coro_stack_size;
+				_co_stk_sz = coro_stack_size;
 			}
 
 			coro_pool(const coro_pool &) = delete;
@@ -185,7 +185,7 @@ namespace tmd {
 
 			bool _in_task_cos = false;
 
-			size_t co_stk_sz;
+			size_t _co_stk_sz;
 			std::stack<coro> _cos;
 
 			coro::cont _main_co_ct;
@@ -296,7 +296,7 @@ namespace tmd {
 							_idle_co_cts.emplace();
 							_main_co_ct.join(_idle_co_cts.top());
 						}
-					}, co_stk_sz);
+					}, _co_stk_sz);
 					_cos.top().execute(ccr);
 				} else {
 					auto co_ct = _idle_co_cts.top();
