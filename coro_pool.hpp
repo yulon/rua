@@ -128,9 +128,7 @@ namespace tmd {
 			}
 
 			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
-				if (_in_task_cos && !coro::init_for_this_thread()) {
-					return;
-				}
+				assert(!in_task());
 
 				_work_tid = std::this_thread::get_id();
 
@@ -170,7 +168,7 @@ namespace tmd {
 			}
 
 			bool in_task() {
-				return _in_work_td() && _in_task_cos;
+				return _in_work_td() && _in_task;
 			}
 
 			size_t get_coro_total() {
@@ -183,7 +181,7 @@ namespace tmd {
 				return std::this_thread::get_id() == _work_tid;
 			}
 
-			bool _in_task_cos = false;
+			bool _in_task = false;
 
 			size_t _co_stk_sz;
 			std::stack<coro> _cos;
@@ -247,12 +245,12 @@ namespace tmd {
 			void _sleep() {
 				assert(in_task());
 
-				_in_task_cos = false;
+				_in_task = false;
 				_join_new_task_cor((*_tasks_it++)->sleeping.co_ct);
 			}
 
 			void _wake_this_task() {
-				_in_task_cos = true;
+				_in_task = true;
 				auto co_ct = (*_tasks_it)->sleeping.co_ct;
 				(*_tasks_it)->sleeping = nullptr;
 				_idle_co_cts.emplace();
@@ -280,9 +278,9 @@ namespace tmd {
 									continue;
 								}
 
-								_in_task_cos = true;
+								_in_task = true;
 								tsk->handler();
-								_in_task_cos = false;
+								_in_task = false;
 
 								if (tsk->state == _task_info_t::state_t::deleted) {
 									_tasks_it = _tasks.erase(_tasks_it);
