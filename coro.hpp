@@ -68,15 +68,15 @@ namespace tmd {
 						#endif
 					}
 
-					cont &operator=(std::nullptr_t) {
+					std::nullptr_t operator=(std::nullptr_t np) {
 						#if defined(_WIN32)
 							_ntv_hdl
 						#elif defined(_TMD_UNIX_)
 							_ntv_hdl.uc_stack.ss_sp
 						#endif
-						= nullptr;
+						= np;
 
-						return *this;
+						return np;
 					}
 
 					native_handle_t &native_handle() {

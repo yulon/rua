@@ -191,11 +191,12 @@ namespace tmd {
 						return co_ct;
 					}
 
-					void operator=(std::nullptr_t) {
-						co_ct = nullptr;
+					std::nullptr_t operator=(std::nullptr_t np) {
+						co_ct = np;
 						if (wake_cond) {
-							wake_cond = nullptr;
+							wake_cond = np;
 						}
+						return np;
 					}
 
 				} sleeping;
