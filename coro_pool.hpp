@@ -115,7 +115,7 @@ namespace tmd {
 				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
-			bool reset_task_dol(task tsk, int duration_of_life = -1) {
+			void reset_task_dol(task tsk, int duration_of_life = -1) {
 				assert(in_task());
 
 				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
