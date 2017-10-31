@@ -11,6 +11,7 @@
 #include <string>
 #include <list>
 #include <stack>
+#include <queue>
 #include <thread>
 #include <chrono>
 #include <mutex>
@@ -52,7 +53,7 @@ namespace tmd {
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
-					_pre_add_tasks.push_back(tsk);
+					_pre_add_tasks.push(tsk);
 					_oth_td_op_mtx.unlock();
 				}
 
@@ -83,40 +84,21 @@ namespace tmd {
 			}
 
 			void del_task(task tsk) {
-				if (_in_work_td()) {
-					if (tsk->state != _task_info_t::state_t::deleted) {
-						tsk->state = _task_info_t::state_t::deleted;
-					}
+				assert(_in_work_td());
 
-				} else {
-					_oth_td_op_mtx.lock();
-
-					// 'tsk->state' cannot be checked here, may be accessed by tasks thread.
-					for (auto it = _pre_add_tasks.begin(); it != _pre_add_tasks.end(); ++it) {
-						if (tsk == *it) {
-							_pre_add_tasks.erase(it);
-
-							// It's safe here, unless you have other threads accessing at the same time.
-							tsk->state = _task_info_t::state_t::deleted;
-
-							_oth_td_op_mtx.unlock();
-							return;
-						}
-					}
-
-					_pre_del_tasks.push(tsk);
-
-					_oth_td_op_mtx.unlock();
+				if (tsk->state != _task_info_t::state_t::deleted) {
+					tsk->state = _task_info_t::state_t::deleted;
 				}
 			}
 
 			bool has_task(task tsk) {
-				// May be dirty read on other threads, but repeated calls to 'del_task()' do not cause an exception.
+				assert(_in_work_td());
+
 				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
 			void reset_task_dol(task tsk, int duration_of_life = -1) {
-				assert(in_task());
+				assert(_in_work_td());
 
 				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 			}
@@ -136,11 +118,6 @@ namespace tmd {
 					_cur_time = _tick();
 
 					if (_oth_td_op_mtx.try_lock()) {
-						while (_pre_del_tasks.size()) {
-							del_task(_pre_del_tasks.top());
-							_pre_del_tasks.pop();
-						}
-
 						while (_pre_add_tasks.size()) {
 							auto &tsk = _pre_add_tasks.front();
 							if (tsk->state == _task_info_t::state_t::adding) {
@@ -149,11 +126,10 @@ namespace tmd {
 								int duration_of_life = static_cast<int>(tsk->del_time);
 								tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 
-								_tasks.push_back(tsk);
+								_tasks.emplace_back(std::move(tsk));
 							}
-							_pre_add_tasks.pop_front();
+							_pre_add_tasks.pop();
 						}
-
 						_oth_td_op_mtx.unlock();
 					}
 
@@ -238,8 +214,7 @@ namespace tmd {
 				#endif
 			}
 
-			std::list<task> _pre_add_tasks;
-			std::stack<task> _pre_del_tasks;
+			std::queue<task> _pre_add_tasks;
 			std::mutex _oth_td_op_mtx;
 
 			void _sleep() {
