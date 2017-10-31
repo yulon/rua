@@ -1,7 +1,7 @@
-#ifndef _TMD_CORO_POOL_HPP
-#define _TMD_CORO_POOL_HPP
+#ifndef _TMD_CO_POOL_HPP
+#define _TMD_CO_POOL_HPP
 
-#include "coro.hpp"
+#include "co.hpp"
 
 #if defined(_TMD_UNIX_)
 	#include <time.h>
@@ -17,16 +17,16 @@
 #include <cassert>
 
 namespace tmd {
-	class coro_pool {
+	class co_pool {
 		public:
-			coro_pool(size_t coro_stack_size = coro::default_stack_size) {
+			co_pool(size_t coro_stack_size = coro::default_stack_size) {
 				_co_stk_sz = coro_stack_size;
 			}
 
-			coro_pool(const coro_pool &) = delete;
-			coro_pool& operator=(const coro_pool &) = delete;
-			coro_pool(coro_pool &&) = delete;
-			coro_pool& operator=(coro_pool &&) = delete;
+			co_pool(const co_pool &) = delete;
+			co_pool& operator=(const co_pool &) = delete;
+			co_pool(co_pool &&) = delete;
+			co_pool& operator=(co_pool &&) = delete;
 
 		private:
 			class _task_info_t;
@@ -159,7 +159,7 @@ namespace tmd {
 
 					_tasks_it = _tasks.begin();
 
-					_join_new_task_cor(_main_co_ct);
+					_join_new_task_cor(_main_ct);
 
 					if (yield) {
 						yield();
@@ -186,8 +186,8 @@ namespace tmd {
 			size_t _co_stk_sz;
 			std::stack<coro> _cos;
 
-			coro::cont _main_co_ct;
-			std::stack<coro::cont> _idle_co_cts;
+			cont _main_ct;
+			std::stack<cont> _idle_co_cts;
 
 			typedef std::list<std::shared_ptr<_task_info_t>> _task_list_t;
 
@@ -198,14 +198,14 @@ namespace tmd {
 				struct {
 					size_t sleep_to;
 					std::function<bool()> wake_cond;
-					coro::cont co_ct;
+					cont ct;
 
 					operator bool() {
-						return co_ct;
+						return ct;
 					}
 
 					std::nullptr_t operator=(std::nullptr_t np) {
-						co_ct = np;
+						ct = np;
 						if (wake_cond) {
 							wake_cond = np;
 						}
@@ -246,18 +246,18 @@ namespace tmd {
 				assert(in_task());
 
 				_in_task = false;
-				_join_new_task_cor((*_tasks_it++)->sleeping.co_ct);
+				_join_new_task_cor((*_tasks_it++)->sleeping.ct);
 			}
 
 			void _wake_this_task() {
 				_in_task = true;
-				auto co_ct = (*_tasks_it)->sleeping.co_ct;
+				auto ct = std::move((*_tasks_it)->sleeping.ct);
 				(*_tasks_it)->sleeping = nullptr;
 				_idle_co_cts.emplace();
-				co_ct.join(_idle_co_cts.top());
+				ct.join(_idle_co_cts.top());
 			}
 
-			void _join_new_task_cor(coro::cont &ccr) {
+			void _join_new_task_cor(cont &ccr) {
 				if (_idle_co_cts.empty()) {
 					_cos.emplace([this]() {
 						for (;;) {
@@ -292,14 +292,14 @@ namespace tmd {
 								}
 							}
 							_idle_co_cts.emplace();
-							_main_co_ct.join(_idle_co_cts.top());
+							_main_ct.join(_idle_co_cts.top());
 						}
 					}, _co_stk_sz);
-					_cos.top().execute(ccr);
+					_cos.top().join(ccr);
 				} else {
-					auto co_ct = _idle_co_cts.top();
+					auto ct = std::move(_idle_co_cts.top());
 					_idle_co_cts.pop();
-					co_ct.join(ccr);
+					ct.join(ccr);
 				}
 			}
 	};
