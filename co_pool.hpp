@@ -48,15 +48,15 @@ namespace tmd {
 					tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 					tsk->state = _task_info_t::state_t::added;
 
-					_tasks.emplace_back(std::move(tsk));
-					_tasks.back()->it = --_tasks.end();
+					_tasks.emplace_back(tsk);
+					tsk->it = --_tasks.end();
 
 				} else {
 					tsk->del_time = static_cast<size_t>(duration_of_life);
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
-					_pre_add_tasks.push(tsk);
+					_pre_add_tasks.emplace(tsk);
 					_oth_td_op_mtx.unlock();
 				}
 
