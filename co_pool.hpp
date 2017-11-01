@@ -35,7 +35,10 @@ namespace tmd {
 		public:
 			typedef std::shared_ptr<_task_info_t> task;
 
-			task add_task(const std::function<void()> &handler, int duration_of_life = -1) {
+			static constexpr int duration_always = -1;
+			static constexpr int duration_disposable = 0;
+
+			task add_task(const std::function<void()> &handler, int duration_of_life = duration_always) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
@@ -45,8 +48,8 @@ namespace tmd {
 					tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 					tsk->state = _task_info_t::state_t::added;
 
-					_tasks.push_back(tsk);
-					tsk->it = --_tasks.end();
+					_tasks.emplace_back(std::move(tsk));
+					_tasks.back()->it = --_tasks.end();
 
 				} else {
 					tsk->del_time = static_cast<size_t>(duration_of_life);
@@ -61,7 +64,7 @@ namespace tmd {
 			}
 
 			void go(const std::function<void()> &handler) {
-				add_task(handler, 0);
+				add_task(handler, duration_disposable);
 			}
 
 			void wait(size_t ms) {
@@ -86,8 +89,24 @@ namespace tmd {
 			void del_task(task tsk) {
 				assert(_in_work_td());
 
-				if (tsk->state != _task_info_t::state_t::deleted) {
+				if (tsk->state == _task_info_t::state_t::added) {
+					if (tsk.get() == (*_tasks_it).get()) {
+						reset_task_dol(tsk, duration_disposable);
+						return;
+					}
+
 					tsk->state = _task_info_t::state_t::deleted;
+
+					if (tsk->sleeping) {
+						for (auto it = _cos.begin(); it != _cos.end(); ++it) {
+							if (tsk->sleeping.ct.native_resource_handle() == it->native_resource_handle()) {
+								_cos.erase(it);
+								break;
+							}
+						}
+					}
+
+					_tasks.erase(tsk->it);
 				}
 			}
 
@@ -97,7 +116,7 @@ namespace tmd {
 				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
-			void reset_task_dol(task tsk, int duration_of_life = -1) {
+			void reset_task_dol(task tsk, int duration_of_life) {
 				assert(_in_work_td());
 
 				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
@@ -127,6 +146,7 @@ namespace tmd {
 								tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 
 								_tasks.emplace_back(std::move(tsk));
+								_tasks.back()->it = --_tasks.end();
 							}
 							_pre_add_tasks.pop();
 						}
@@ -160,7 +180,7 @@ namespace tmd {
 			bool _in_task = false;
 
 			size_t _co_stk_sz;
-			std::stack<coro> _cos;
+			std::list<coro> _cos;
 
 			cont _main_ct;
 			std::stack<cont> _idle_co_cts;
@@ -234,7 +254,7 @@ namespace tmd {
 
 			void _join_new_task_cor(cont &ccr) {
 				if (_idle_co_cts.empty()) {
-					_cos.emplace([this]() {
+					_cos.emplace_back([this]() {
 						for (;;) {
 							while (_tasks_it != _tasks.end()) {
 								auto &tsk = *_tasks_it;
@@ -257,9 +277,7 @@ namespace tmd {
 								tsk->handler();
 								_in_task = false;
 
-								if (tsk->state == _task_info_t::state_t::deleted) {
-									_tasks_it = _tasks.erase(_tasks_it);
-								} else if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
+								if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
 									tsk->state = _task_info_t::state_t::deleted;
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else {
@@ -270,7 +288,7 @@ namespace tmd {
 							_main_ct.join(_idle_co_cts.top());
 						}
 					}, _co_stk_sz);
-					_cos.top().join(ccr);
+					_cos.back().join(ccr);
 				} else {
 					auto ct = std::move(_idle_co_cts.top());
 					_idle_co_cts.pop();
