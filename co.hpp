@@ -52,7 +52,7 @@ namespace tmd {
 				#elif defined(_TMD_UNIX_)
 					void *
 				#endif
-			resource_id_t;
+			native_resource_handle_t;
 
 			cont(std::nullptr_t np = nullptr) :
 				#if defined(_WIN32)
@@ -109,7 +109,7 @@ namespace tmd {
 				return _ntv_hdl;
 			}
 
-			resource_id_t resource_id() {
+			native_resource_handle_t native_resource_handle() {
 				#if defined(_WIN32)
 					return _ntv_hdl;
 				#elif defined(_TMD_UNIX_)
@@ -224,10 +224,11 @@ namespace tmd {
 			void free() {
 				if (_func) {
 					#if defined(_WIN32)
-						DeleteFiber(_ntv_hdl);
+						DeleteFiber
 					#elif defined(_TMD_UNIX_)
-						delete[] reinterpret_cast<uint8_t *>(_ntv_hdl.uc_stack.ss_sp);
+						delete[] reinterpret_cast<uint8_t *>
 					#endif
+					(native_resource_handle());
 
 					delete _func;
 					_func = nullptr;
