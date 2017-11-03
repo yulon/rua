@@ -58,7 +58,7 @@ namespace tmd {
 				#if defined(_WIN32)
 					_ntv_hdl(np),
 				#endif
-				_joined(false)
+				_joinable(false)
 			{
 				#if defined(_TMD_UNIX_)
 					_ntv_hdl.uc_stack.ss_sp = np;
@@ -67,26 +67,26 @@ namespace tmd {
 
 			cont(const cont &) = delete;
 
-			cont(cont &&src) : _ntv_hdl(src._ntv_hdl), _joined(src._joined) {
-				src._joined = true;
+			cont(cont &&src) : _ntv_hdl(src._ntv_hdl), _joinable(src._joinable) {
+				src._joinable = false;
 			}
 
 			cont& operator=(const cont &) = delete;
 
 			cont& operator=(cont &&src) {
 				_ntv_hdl = src._ntv_hdl;
-				_joined = src._joined;
+				_joinable = src._joinable;
 
-				src._joined = true;
+				src._joinable = false;
 
 				return *this;
 			}
 
 			bool joinable() const {
 				#if defined(_WIN32)
-					return !_joined && _ntv_hdl;
+					return _joinable && _ntv_hdl;
 				#elif defined(_TMD_UNIX_)
-					return !_joined && _ntv_hdl.uc_stack.ss_sp;
+					return _joinable && _ntv_hdl.uc_stack.ss_sp;
 				#endif
 			}
 
@@ -101,6 +101,8 @@ namespace tmd {
 					_ntv_hdl.uc_stack.ss_sp
 				#endif
 				= np;
+
+				_joinable = false;
 
 				return np;
 			}
@@ -120,7 +122,7 @@ namespace tmd {
 			void join() {
 				assert(joinable());
 
-				_joined = true;
+				_joinable = false;
 
 				#if defined(_WIN32)
 					_touch_cur_fiber();
@@ -133,8 +135,8 @@ namespace tmd {
 			void join(cont &cc_receiver) {
 				assert(joinable());
 
-				_joined = true;
-				cc_receiver._joined = false;
+				_joinable = false;
+				cc_receiver._joinable = true;
 
 				#if defined(_WIN32)
 					cc_receiver._ntv_hdl = _touch_cur_fiber();
@@ -146,7 +148,7 @@ namespace tmd {
 
 		protected:
 			native_handle_s _ntv_hdl;
-			bool _joined;
+			bool _joinable;
 
 			#if defined(_WIN32)
 				LPVOID _touch_cur_fiber() {
@@ -172,6 +174,8 @@ namespace tmd {
 			coro() : _func(nullptr) {}
 
 			coro(const std::function<void()> &func, size_t stack_size = default_stack_size) : _func(new std::function<void()>(func)) {
+				_joinable = true;
+
 				#if defined(_WIN32)
 					_ntv_hdl = CreateFiber(
 						stack_size,
