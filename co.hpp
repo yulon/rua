@@ -54,16 +54,7 @@ namespace tmd {
 				#endif
 			native_resource_handle_t;
 
-			cont(std::nullptr_t np = nullptr) :
-				#if defined(_WIN32)
-					_ntv_hdl(np),
-				#endif
-				_joinable(false)
-			{
-				#if defined(_TMD_UNIX_)
-					_ntv_hdl.uc_stack.ss_sp = np;
-				#endif
-			}
+			cont(std::nullptr_t np = nullptr) : _joinable(false) {}
 
 			cont(const cont &) = delete;
 
@@ -95,15 +86,7 @@ namespace tmd {
 			}
 
 			std::nullptr_t operator=(std::nullptr_t np) {
-				#if defined(_WIN32)
-					_ntv_hdl
-				#elif defined(_TMD_UNIX_)
-					_ntv_hdl.uc_stack.ss_sp
-				#endif
-				= np;
-
 				_joinable = false;
-
 				return np;
 			}
 
