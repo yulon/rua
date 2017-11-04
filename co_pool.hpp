@@ -199,15 +199,6 @@ namespace tmd {
 					operator bool() {
 						return ct;
 					}
-
-					std::nullptr_t operator=(std::nullptr_t np) {
-						ct = np;
-						if (wake_cond) {
-							wake_cond = np;
-						}
-						return np;
-					}
-
 				} sleeping;
 
 				_task_list_t::iterator it;
@@ -244,12 +235,10 @@ namespace tmd {
 				_join_new_task_cor((*_tasks_it++)->sleeping.ct);
 			}
 
-			void _wake_this_task() {
+			void _wake() {
 				_in_task = true;
-				auto ct = std::move((*_tasks_it)->sleeping.ct);
-				(*_tasks_it)->sleeping = nullptr;
 				_idle_co_cts.emplace();
-				ct.join(_idle_co_cts.top());
+				(*_tasks_it)->sleeping.ct.join(_idle_co_cts.top());
 			}
 
 			void _join_new_task_cor(cont &ccr) {
@@ -262,11 +251,12 @@ namespace tmd {
 								if (tsk->sleeping) {
 									if (tsk->sleeping.wake_cond) {
 										if (tsk->sleeping.wake_cond()) {
-											_wake_this_task();
+											tsk->sleeping.wake_cond = nullptr;
+											_wake();
 											continue;
 										}
 									} else if (_cur_time >= tsk->sleeping.sleep_to) {
-										_wake_this_task();
+										_wake();
 										continue;
 									}
 									++_tasks_it;

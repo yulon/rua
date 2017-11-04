@@ -54,7 +54,7 @@ namespace tmd {
 				#endif
 			native_resource_handle_t;
 
-			cont(std::nullptr_t np = nullptr) : _joinable(false) {}
+			cont() : _joinable(false) {}
 
 			cont(const cont &) = delete;
 
@@ -83,11 +83,6 @@ namespace tmd {
 
 			operator bool() const {
 				return joinable();
-			}
-
-			std::nullptr_t operator=(std::nullptr_t np) {
-				_joinable = false;
-				return np;
 			}
 
 			native_handle_t native_handle() const {
