@@ -42,7 +42,6 @@ namespace tmd {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
-				tsk->sleeping = nullptr;
 
 				if (_in_work_td()) {
 					tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
