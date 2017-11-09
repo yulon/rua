@@ -129,10 +129,20 @@ namespace tmd {
 			bool _joinable;
 
 			#if defined(_WIN32)
-				LPVOID _touch_cur_fiber() {
+				#ifdef TMD_WINXP_SUPPORT
+					static LPVOID _conv_this_td_to_fiber() {
+						return ConvertThreadToFiber(nullptr);
+					}
+				#else
+					static LPVOID _conv_this_td_to_fiber() {
+						return ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
+					}
+				#endif
+
+				static LPVOID _touch_cur_fiber() {
 					auto cur = GetCurrentFiber();
 					if (!cur) {
-						return ConvertThreadToFiber(nullptr);
+						return _conv_this_td_to_fiber();
 					}
 					return cur;
 				}
@@ -155,10 +165,10 @@ namespace tmd {
 				_joinable = true;
 
 				#if defined(_WIN32)
-					_ntv_hdl = CreateFiber(
+					_ntv_hdl = _create_fiber(
 						stack_size,
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func_shell),
-						reinterpret_cast<PVOID>(_func)
+						reinterpret_cast<LPVOID>(_func)
 					);
 				#elif defined(_TMD_UNIX_)
 					getcontext(&_ntv_hdl);
@@ -227,6 +237,16 @@ namespace tmd {
 			_fiber_func_shell(std::function<void()> *func) {
 				(*func)();
 			}
+
+			#ifdef TMD_WINXP_SUPPORT
+				static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
+					return CreateFiber(dwStackSize, lpStartAddress, lpParameter);
+				}
+			#else
+				static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
+					return CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter);
+				}
+			#endif
 	};
 }
 
