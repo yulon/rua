@@ -129,20 +129,16 @@ namespace tmd {
 			bool _joinable;
 
 			#if defined(_WIN32)
-				#ifdef TMD_WINXP_SUPPORT
-					static LPVOID _conv_this_td_to_fiber() {
-						return ConvertThreadToFiber(nullptr);
-					}
-				#else
-					static LPVOID _conv_this_td_to_fiber() {
-						return ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH);
-					}
-				#endif
-
 				static LPVOID _touch_cur_fiber() {
 					auto cur = GetCurrentFiber();
 					if (!cur) {
-						return _conv_this_td_to_fiber();
+						return
+							#ifdef TMD_WINXP_SUPPORT
+								ConvertThreadToFiber(nullptr)
+							#else
+								ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH)
+							#endif
+						;
 					}
 					return cur;
 				}
@@ -238,15 +234,15 @@ namespace tmd {
 				(*func)();
 			}
 
-			#ifdef TMD_WINXP_SUPPORT
-				static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
-					return CreateFiber(dwStackSize, lpStartAddress, lpParameter);
-				}
-			#else
-				static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
-					return CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter);
-				}
-			#endif
+			static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
+				return
+					#ifdef TMD_WINXP_SUPPORT
+						CreateFiber(dwStackSize, lpStartAddress, lpParameter)
+					#else
+						CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter)
+					#endif
+				;
+			}
 	};
 }
 
