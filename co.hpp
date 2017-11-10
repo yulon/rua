@@ -54,12 +54,21 @@ namespace tmd {
 				#endif
 			native_resource_handle_t;
 
-			cont() : _joinable(false) {}
+			cont() :
+				#if defined(_WIN32)
+					_ntv_hdl(nullptr),
+				#endif
+				_joinable(false)
+			{
+				#if defined(_TMD_UNIX_)
+					_ntv_hdl.uc_stack.ss_sp = nullptr;
+				#endif
+			}
 
 			cont(const cont &) = delete;
 
 			cont(cont &&src) : _ntv_hdl(src._ntv_hdl), _joinable(src._joinable) {
-				src._joinable = false;
+				src.reset();
 			}
 
 			cont& operator=(const cont &) = delete;
@@ -68,33 +77,29 @@ namespace tmd {
 				_ntv_hdl = src._ntv_hdl;
 				_joinable = src._joinable;
 
-				src._joinable = false;
+				src.reset();
 
 				return *this;
-			}
-
-			bool joinable() const {
-				#if defined(_WIN32)
-					return _joinable && _ntv_hdl;
-				#elif defined(_TMD_UNIX_)
-					return _joinable && _ntv_hdl.uc_stack.ss_sp;
-				#endif
-			}
-
-			operator bool() const {
-				return joinable();
 			}
 
 			native_handle_t native_handle() const {
 				return _ntv_hdl;
 			}
 
-			native_resource_handle_t native_resource_handle() {
+			native_resource_handle_t native_resource_handle() const {
 				#if defined(_WIN32)
 					return _ntv_hdl;
 				#elif defined(_TMD_UNIX_)
 					return _ntv_hdl.uc_stack.ss_sp;
 				#endif
+			}
+
+			bool joinable() const {
+				return _joinable && native_resource_handle();
+			}
+
+			operator bool() const {
+				return joinable();
 			}
 
 			void join() {
@@ -122,6 +127,17 @@ namespace tmd {
 				#elif defined(_TMD_UNIX_)
 					swapcontext(&cc_receiver._ntv_hdl, &_ntv_hdl);
 				#endif
+			}
+
+			void reset() {
+				#if defined(_WIN32)
+					_ntv_hdl
+				#elif defined(_TMD_UNIX_)
+					_ntv_hdl.uc_stack.ss_sp
+				#endif
+				= nullptr;
+
+				_joinable = false;
 			}
 
 		protected:
@@ -220,8 +236,12 @@ namespace tmd {
 
 					delete _func;
 					_func = nullptr;
+
+					cont::reset();
 				}
 			}
+
+			void reset() = delete;
 
 		private:
 			std::function<void()> *_func;
