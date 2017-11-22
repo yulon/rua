@@ -30,7 +30,7 @@ namespace tmd {
 			co_pool& operator=(co_pool &&) = delete;
 
 		private:
-			class _task_info_t;
+			struct _task_info_t;
 
 		public:
 			typedef std::shared_ptr<_task_info_t> task;
