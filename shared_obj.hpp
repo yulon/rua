@@ -15,7 +15,7 @@ namespace tmd {
 			constexpr shared_obj() {}
 
 		public:
-			template<typename... A>
+			template <typename... A>
 			void alloc(A&&... a) {
 				_m = std::make_shared<T>(std::forward<A>(a)...);
 			}
@@ -70,7 +70,7 @@ namespace tmd {
 
 			typedef T access_type;
 
-			template<typename D>
+			template <typename D>
 			D cast_with_type() const {
 				static_assert(std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::dynamic_shared_obj'");
 
@@ -84,7 +84,7 @@ namespace tmd {
 				return dest;
 			}
 
-			template<typename D>
+			template <typename D>
 			D cast_with_type_s() const {
 				static_assert(std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::dynamic_shared_obj'");
 
@@ -102,7 +102,7 @@ namespace tmd {
 				_m = std::move(m);
 			}
 
-			template<typename D>
+			template <typename D>
 			D cast() const {
 				static_assert(std::is_base_of<shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::shared_obj'");
 				static_assert(!std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest cannot be a 'tmd::dynamic_shared_obj'");
@@ -114,7 +114,7 @@ namespace tmd {
 				return dest;
 			}
 
-			template<typename D>
+			template <typename D>
 			D cast_s() const {
 				static_assert(std::is_base_of<shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::shared_obj'");
 				static_assert(!std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest cannot be a 'tmd::dynamic_shared_obj'");
@@ -136,7 +136,7 @@ namespace tmd {
 			constexpr dynamic_shared_obj() : _t(typeid(nullptr)) {}
 
 		public:
-			template<typename... A>
+			template <typename... A>
 			void alloc(A&&... a) {
 				_t = typeid(T);
 				shared_obj<T>::alloc(std::forward<A>(a)...);
@@ -147,7 +147,7 @@ namespace tmd {
 				shared_obj<T>::free();
 			}
 
-			template<typename D>
+			template <typename D>
 			bool type_is() {
 				static_assert(std::is_base_of<shared_obj<typename D::access_type>, D>::value, "target is not a 'tmd::shared_obj'");
 
@@ -158,7 +158,7 @@ namespace tmd {
 				_t = t;
 			}
 
-			template<typename D>
+			template <typename D>
 			D cast_with_type() const {
 				static_assert(std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::dynamic_shared_obj'");
 
@@ -170,7 +170,7 @@ namespace tmd {
 				return dest;
 			}
 
-			template<typename D>
+			template <typename D>
 			D cast_with_type_s() const {
 				static_assert(std::is_base_of<dynamic_shared_obj<typename D::access_type>, D>::value, "dest is not a 'tmd::dynamic_shared_obj'");
 
