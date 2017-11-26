@@ -58,12 +58,11 @@ namespace tmd {
 
 					_ntv_hdl = pi.hProcess;
 
-					if (!pause_main_thread) {
+					if (pause_main_thread) {
+						_main_td = pi.hThread;
+					} else {
 						_main_td = nullptr;
-						return;
 					}
-
-					_main_td = pi.hThread;
 				}
 
 				process(
@@ -127,13 +126,31 @@ namespace tmd {
 					}
 				}
 
+				void wait_for_exit() {
+					if (_ntv_hdl) {
+						resume_main_thread();
+						WaitForSingleObject(_ntv_hdl, INFINITE);
+						reset();
+					}
+				}
+
+				void exit(int code = 1) {
+					if (_ntv_hdl) {
+						TerminateProcess(_ntv_hdl, code);
+						_main_td = nullptr;
+						reset();
+					}
+				}
+
 				void reset() {
 					resume_main_thread();
 
-					if (_need_close) {
-						CloseHandle(_ntv_hdl);
+					if (_ntv_hdl) {
+						if (_need_close) {
+							CloseHandle(_ntv_hdl);
+							_need_close = false;
+						}
 						_ntv_hdl = nullptr;
-						_need_close = false;
 					}
 				}
 
