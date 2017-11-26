@@ -1,5 +1,5 @@
-#include "hook.hpp"
+#include <atomic>
 
 namespace tmd {
-	std::atomic<size_t> hook::_count(0);
+	std::atomic<size_t> _hook_count(0);
 }

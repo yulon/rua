@@ -8,6 +8,8 @@
 #include <atomic>
 
 namespace tmd {
+	extern std::atomic<size_t> _hook_count;
+
 	template <typename T>
 	class hook {
 		public:
@@ -18,7 +20,7 @@ namespace tmd {
 			hook(T target, T detour) :
 				_t(reinterpret_cast<LPVOID>(target))
 			{
-				if (++_count == 1) {
+				if (++_hook_count == 1) {
 					MH_Initialize();
 				}
 				MH_CreateHook(reinterpret_cast<LPVOID>(target), reinterpret_cast<LPVOID>(detour), &_o);
@@ -58,7 +60,7 @@ namespace tmd {
 					MH_DisableHook(_t);
 					MH_RemoveHook(_t);
 					_t = nullptr;
-					if (!--_count) {
+					if (!--_hook_count) {
 						MH_Uninitialize();
 					}
 				}
@@ -75,8 +77,6 @@ namespace tmd {
 
 		private:
 			LPVOID _t, _o;
-
-			static std::atomic<size_t> _count;
 	};
 }
 
