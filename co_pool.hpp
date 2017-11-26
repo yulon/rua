@@ -25,9 +25,9 @@ namespace tmd {
 			}
 
 			co_pool(const co_pool &) = delete;
-			co_pool& operator=(const co_pool &) = delete;
+			co_pool &operator=(const co_pool &) = delete;
 			co_pool(co_pool &&) = delete;
-			co_pool& operator=(co_pool &&) = delete;
+			co_pool &operator=(co_pool &&) = delete;
 
 		private:
 			struct _task_info_t;

@@ -71,9 +71,9 @@ namespace tmd {
 				src.reset();
 			}
 
-			cont& operator=(const cont &) = delete;
+			cont &operator=(const cont &) = delete;
 
-			cont& operator=(cont &&src) {
+			cont &operator=(cont &&src) {
 				_ntv_hdl = src._ntv_hdl;
 				_joinable = src._joinable;
 
@@ -203,9 +203,9 @@ namespace tmd {
 				src._func = nullptr;
 			}
 
-			coro& operator=(const coro &) = delete;
+			coro &operator=(const coro &) = delete;
 
-			coro& operator=(coro &&src) {
+			coro &operator=(coro &&src) {
 				free();
 
 				if (src._func) {
