@@ -73,6 +73,12 @@ namespace tmd {
 
 				process(
 					const std::string &file,
+					const std::string &pwd,
+					bool pause_main_thread = false
+				) : process(file, {}, pwd, pause_main_thread) {}
+
+				process(
+					const std::string &file,
 					bool pause_main_thread = false
 				) : process(file, {}, "", pause_main_thread) {}
 
