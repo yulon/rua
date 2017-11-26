@@ -260,7 +260,7 @@ namespace tmd {
 
 				template <typename F>
 				DWORD syscall(F func, const std::string &param) {
-					return syscall(_ntv_hdl, func, alloc(param));
+					return syscall(func, alloc(param));
 				}
 
 			private:
