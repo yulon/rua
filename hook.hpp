@@ -51,8 +51,8 @@ namespace tmd {
 			}
 
 			template <typename... A>
-			std::invoke_result_t<T, A...> original_fn(A&&... a) const {
-				return std::invoke(reinterpret_cast<T>(_t), std::forward<A>(a)...);
+			std::invoke_result_t<T, A...> orig_fn(A&&... a) const {
+				return std::invoke(reinterpret_cast<T>(_o), std::forward<A>(a)...);
 			}
 
 			void unhook() {
