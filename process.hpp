@@ -2,12 +2,16 @@
 #define _TMD_PROCESS_HPP
 
 #ifdef _WIN32
+	#include "strenc.hpp"
+
 	#include <windows.h>
+	#include <tlhelp32.h>
 #endif
 
 #include <string>
 #include <vector>
 #include <sstream>
+#include <thread>
 #include <cstring>
 #include <cassert>
 
@@ -15,6 +19,29 @@ namespace tmd {
 	#ifdef _WIN32
 		class process {
 			public:
+				static process find(const std::string &name) {
+					std::wstring wname(u8_to_u16(name));
+					for (;;) {
+						HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+						if (snapshot != INVALID_HANDLE_VALUE) {
+							PROCESSENTRY32W entry;
+							entry.dwSize = sizeof(PROCESSENTRY32W);
+							Process32FirstW(snapshot, &entry);
+							do {
+								if (wname == entry.szExeFile) {
+									CloseHandle(snapshot);
+									if (entry.th32ProcessID) {
+										return entry.th32ProcessID;
+									}
+								}
+							} while (Process32NextW(snapshot, &entry));
+						}
+						std::this_thread::sleep_for(std::chrono::milliseconds(500));
+					}
+				}
+
+				////////////////////////////////////////////////////////////////
+
 				constexpr process() : _ntv_hdl(nullptr), _main_td(nullptr), _need_close(false) {}
 
 				process(HANDLE proc) : _ntv_hdl(proc), _main_td(nullptr), _need_close(false) {}
@@ -25,29 +52,30 @@ namespace tmd {
 					const std::string &pwd,
 					bool pause_main_thread = false
 				) : _need_close(false) {
-					STARTUPINFOA si;
+					STARTUPINFOW si;
 					PROCESS_INFORMATION pi;
 					memset(&si, 0, sizeof(si));
 					memset(&pi, 0, sizeof(pi));
 					si.cb = sizeof(si);
 
-					std::stringstream cmd;
+					std::wstring file_w(u8_to_u16(file));
+					std::wstringstream cmd;
 					if (args.size()) {
-						cmd << "\"" << file << "\"";
+						cmd << "\"" << file_w << "\"";
 						for (auto &arg : args) {
-							cmd << " \"" << arg << "\"";
+							cmd << " \"" << u8_to_u16(arg) << "\"";
 						}
 					}
 
-					if (!CreateProcessA(
-						file.c_str(),
-						args.size() ? const_cast<char *>(cmd.str().c_str()) : nullptr,
+					if (!CreateProcessW(
+						file_w.c_str(),
+						args.size() ? const_cast<wchar_t *>(cmd.str().c_str()) : nullptr,
 						nullptr,
 						nullptr,
 						true,
 						pause_main_thread ? CREATE_SUSPENDED : 0,
 						nullptr,
-						pwd.empty() ? nullptr : pwd.c_str(),
+						pwd.empty() ? nullptr : u8_to_u16(pwd).c_str(),
 						&si,
 						&pi
 					)) {
