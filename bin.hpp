@@ -6,6 +6,7 @@
 	#include <psapi.h>
 #endif
 
+#include <cstdint>
 #include <vector>
 
 namespace tmd {
