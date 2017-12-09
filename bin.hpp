@@ -47,14 +47,14 @@ namespace tmd {
 			static constexpr size_t npos = -1;
 
 			bin_view match(const std::vector<uint16_t> &pattern, bool ret_sub = false) const {
-				size_t sub_i = npos;
-				auto end = _sz - pattern.size() + 1;
-				for (size_t i = 0; i < end; i++) {
+				auto end = _sz + 1 - pattern.size();
+				for (size_t i = 0; i < end; ++i) {
 					size_t j;
-					for (j = 0; i + j < _sz && j < pattern.size(); j++) {
+					size_t sub_j = npos;
+					for (j = 0; j < pattern.size(); ++j) {
 						if (pattern[j] > 255) {
-							if (sub_i == npos) {
-								sub_i = j;
+							if (sub_j == npos) {
+								sub_j = j;
 							}
 							continue;
 						}
@@ -64,24 +64,22 @@ namespace tmd {
 					}
 					if (j == pattern.size()) {
 						if (ret_sub) {
-							if (sub_i == npos) {
+							if (sub_j == npos) {
 								return nullptr;
 							}
 
-							auto sub_j = sub_i - i;
-							auto sub_sz_max = pattern.size() - sub_j;
-							auto sub_j_max = sub_sz_max - 1;
+							auto k_max = pattern.size() - 1;
 
-							for (size_t k = 0;; ++i) {
+							for (size_t k = sub_j;; ++k) {
 								size_t sub_sz;
 								if (pattern[k] < 256) {
 									sub_sz = k - sub_j;
-								} else if (k == sub_j_max) {
-									sub_sz = sub_sz_max;
+								} else if (k == k_max) {
+									sub_sz = pattern.size() - sub_j;
 								} else {
 									continue;
 								}
-								return bin_view(_data + sub_i, sub_sz);
+								return bin_view(_data + i + sub_j, sub_sz);
 							}
 
 							return nullptr;
@@ -117,13 +115,13 @@ namespace tmd {
 				}
 				switch (md.size() > 8 ? 8 : md.size()) {
 					case 8:
-						return _data + 8 + md.data().deref<uint64_t>();
+						return md.data() + 8 + md.data().deref<uint64_t>();
 					case 4:
-						return _data + 4 + md.data().deref<uint32_t>();
+						return md.data() + 4 + md.data().deref<uint32_t>();
 					case 2:
-						return _data + 2 + md.data().deref<uint16_t>();
+						return md.data() + 2 + md.data().deref<uint16_t>();
 					case 1:
-						return _data + 1 + *md.data();
+						return md.data() + 1 + *md.data();
 				}
 				return nullptr;
 			}
