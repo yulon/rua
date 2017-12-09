@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 #include <cassert>
 
 namespace tmd {
