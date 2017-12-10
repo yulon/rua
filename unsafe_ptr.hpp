@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
+#include <cstring>
 #include <cassert>
 
 namespace tmd {
@@ -21,17 +22,12 @@ namespace tmd {
 			constexpr unsafe_ptr(std::nullptr_t) : unsafe_ptr() {}
 
 			template <typename T>
-			constexpr unsafe_ptr(T val) : _val(static_cast<uintptr_t>(val)) {}
-
-			constexpr unsafe_ptr(float val) : _val(0) {
-				*reinterpret_cast<float *>(&_val) = val;
-			}
-
-			constexpr unsafe_ptr(double val) : _val(0) {
-				if TMD_CONSTEXPR17 (sizeof(uintptr_t) < sizeof(double)) {
-					*reinterpret_cast<float *>(&_val) = val;
+			constexpr unsafe_ptr(T &&val) {
+				if TMD_CONSTEXPR17 (sizeof(typename std::remove_reference<T>::type) < sizeof(uintptr_t)) {
+					_val = 0;
+					*reinterpret_cast<typename std::remove_reference<T>::type *>(&_val) = val;
 				} else {
-					*reinterpret_cast<double *>(&_val) = val;
+					_val = *reinterpret_cast<uintptr_t *>(&val);
 				}
 			}
 
@@ -49,12 +45,12 @@ namespace tmd {
 			}
 
 			template <typename D>
-			D &align_at(size_t pos) {
+			D &aligned_at(size_t pos) {
 				return reinterpret_cast<D *>(_val)[pos];
 			}
 
 			template <typename D>
-			const D &align_at(size_t pos) const {
+			const D &aligned_at(size_t pos) const {
 				return reinterpret_cast<D *>(_val)[pos];
 			}
 
@@ -196,15 +192,11 @@ namespace tmd {
 			}
 
 			operator float() const {
-				return to<float>();
+				return *reinterpret_cast<const float *>(&_val);
 			}
 
 			operator double() const {
-				if TMD_CONSTEXPR17 (sizeof(uintptr_t) < sizeof(double)) {
-					return to<float>();
-				} else {
-					return *reinterpret_cast<const double *>(&_val);
-				}
+				return to<double>();
 			}
 
 			operator size_t() const {
@@ -217,12 +209,14 @@ namespace tmd {
 
 	template <typename T>
 	inline T unsafe_ptr::to() const {
-		return *reinterpret_cast<const T *>(&_val);
-	}
-
-	template <>
-	inline double unsafe_ptr::to<double>() const {
-		return *this;
+		if TMD_CONSTEXPR17 (sizeof(uintptr_t) > sizeof(double)) {
+			typename std::remove_reference<T>::type r;
+			memset(reinterpret_cast<void *>(&r), 0, sizeof(typename std::remove_reference<T>::type));
+			*reinterpret_cast<uintptr_t *>(&r) = _val;
+			return r;
+		} else {
+			return *reinterpret_cast<const T *>(&_val);
+		}
 	}
 
 	template <>
