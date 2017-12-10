@@ -1,5 +1,5 @@
-#ifndef _TMD_PDM_HPP
-#define _TMD_PDM_HPP
+#ifndef _TMD_PREDEF_HPP
+#define _TMD_PREDEF_HPP
 
 #if defined(_MSC_VER)
 	#if _MSC_VER >= 2000

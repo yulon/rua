@@ -19,7 +19,7 @@
 	#include <pthread.h>
 	#include <cstdlib>
 #else
-	#error tmd::coro: not support this OS!
+	#error tmd::co: not support this OS!
 #endif
 
 #include <functional>
