@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <utility>
+#include <cassert>
 
 namespace tmd {
 	class bin_view {
@@ -42,6 +43,52 @@ namespace tmd {
 
 			size_t size() const {
 				return _sz;
+			}
+
+			template <typename D>
+			D &to() {
+				assert(sizeof(D) <= _sz);
+				return _data.get<D>();
+			}
+
+			template <typename D>
+			const D &to() const {
+				assert(sizeof(D) <= _sz);
+				return _data.get<D>();
+			}
+
+			template <typename D>
+			D &get(size_t pos) {
+				assert(pos + sizeof(D) <= _sz);
+				return _data.get<D>(pos);
+			}
+
+			template <typename D>
+			const D &get(size_t pos) const {
+				assert(pos + sizeof(D) <= _sz);
+				return _data.get<D>(pos);
+			}
+
+			template <typename D>
+			D &aligned_get(size_t ix) {
+				assert((ix + 1) * sizeof(D) <= _sz);
+				return _data.aligned_get<D>(ix);
+			}
+
+			template <typename D>
+			const D &aligned_get(size_t ix) const {
+				assert((ix + 1) * sizeof(D) <= _sz);
+				return _data.aligned_get<D>(ix);
+			}
+
+			uint8_t &operator[](size_t ix) {
+				assert(ix + 1 <= _sz);
+				return _data[ix];
+			}
+
+			uint8_t operator[](size_t ix) const {
+				assert(ix + 1 <= _sz);
+				return _data[ix];
 			}
 
 			static constexpr size_t npos = -1;
@@ -97,13 +144,13 @@ namespace tmd {
 				}
 				switch (md.size() > 8 ? 8 : md.size()) {
 					case 8:
-						return md.data().deref<uint64_t>();
+						return md.to<uint64_t>();
 					case 4:
-						return md.data().deref<uint32_t>();
+						return md.to<uint32_t>();
 					case 2:
-						return md.data().deref<uint16_t>();
+						return md.to<uint16_t>();
 					case 1:
-						return *md.data();
+						return md.to<uint8_t>();
 				}
 				return nullptr;
 			}
@@ -115,13 +162,13 @@ namespace tmd {
 				}
 				switch (md.size() > 8 ? 8 : md.size()) {
 					case 8:
-						return md.data() + 8 + md.data().deref<uint64_t>();
+						return md.data() + 8 + md.to<uint64_t>();
 					case 4:
-						return md.data() + 4 + md.data().deref<uint32_t>();
+						return md.data() + 4 + md.to<uint32_t>();
 					case 2:
-						return md.data() + 2 + md.data().deref<uint16_t>();
+						return md.data() + 2 + md.to<uint16_t>();
 					case 1:
-						return md.data() + 1 + *md.data();
+						return md.data() + 1 + md.to<uint8_t>();
 				}
 				return nullptr;
 			}

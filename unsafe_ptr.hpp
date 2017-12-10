@@ -7,7 +7,6 @@
 #include <type_traits>
 #include <utility>
 #include <cstring>
-#include <cassert>
 
 namespace tmd {
 	class unsafe_ptr {
@@ -23,9 +22,9 @@ namespace tmd {
 
 			template <typename T>
 			constexpr unsafe_ptr(T &&val) {
-				if TMD_CONSTEXPR17 (sizeof(typename std::remove_reference<T>::type) < sizeof(uintptr_t)) {
+				if TMD_CONSTEXPR17 (sizeof(typename std::remove_cv<typename std::remove_reference<T>::type>::type) < sizeof(uintptr_t)) {
 					_val = 0;
-					*reinterpret_cast<typename std::remove_reference<T>::type *>(&_val) = val;
+					*reinterpret_cast<typename std::remove_cv<typename std::remove_reference<T>::type>::type *>(&_val) = val;
 				} else {
 					_val = *reinterpret_cast<uintptr_t *>(&val);
 				}
@@ -35,49 +34,49 @@ namespace tmd {
 			inline T to() const;
 
 			template <typename D>
-			D &at(size_t pos) {
+			D &get() {
+				return *reinterpret_cast<D *>(_val);
+			}
+
+			template <typename D>
+			const D &get() const {
+				return *reinterpret_cast<D *>(_val);
+			}
+
+			template <typename D>
+			D &get(size_t pos) {
 				return *reinterpret_cast<D *>(_val + pos);
 			}
 
 			template <typename D>
-			const D &at(size_t pos) const {
+			const D &get(size_t pos) const {
 				return *reinterpret_cast<D *>(_val + pos);
 			}
 
 			template <typename D>
-			D &aligned_at(size_t pos) {
-				return reinterpret_cast<D *>(_val)[pos];
+			D &aligned_get(size_t ix) {
+				return reinterpret_cast<D *>(_val)[ix];
 			}
 
 			template <typename D>
-			const D &aligned_at(size_t pos) const {
-				return reinterpret_cast<D *>(_val)[pos];
+			const D &aligned_get(size_t ix) const {
+				return reinterpret_cast<D *>(_val)[ix];
 			}
 
-			uint8_t &operator[](size_t pos) {
-				return at<uint8_t>(pos);
+			uint8_t &operator[](size_t ix) {
+				return get<uint8_t>(ix);
 			}
 
-			uint8_t operator[](size_t pos) const {
-				return at<uint8_t>(pos);
-			}
-
-			template <typename D>
-			D &deref() {
-				return at<D>(0);
-			}
-
-			template <typename D>
-			const D &deref() const {
-				return at<D>(0);
+			uint8_t operator[](size_t ix) const {
+				return get<uint8_t>(ix);
 			}
 
 			uint8_t &operator*() {
-				return deref<uint8_t>();
+				return get<uint8_t>();
 			}
 
 			uint8_t operator*() const {
-				return deref<uint8_t>();
+				return get<uint8_t>();
 			}
 
 			uintptr_t value() const {
@@ -86,11 +85,6 @@ namespace tmd {
 
 			operator uintptr_t() const {
 				return _val;
-			}
-
-			operator std::nullptr_t() const {
-				assert(!_val);
-				return nullptr;
 			}
 
 			operator bool() const {
@@ -210,8 +204,8 @@ namespace tmd {
 	template <typename T>
 	inline T unsafe_ptr::to() const {
 		if TMD_CONSTEXPR17 (sizeof(uintptr_t) > sizeof(double)) {
-			typename std::remove_reference<T>::type r;
-			memset(reinterpret_cast<void *>(&r), 0, sizeof(typename std::remove_reference<T>::type));
+			typename std::remove_cv<typename std::remove_reference<T>::type>::type r;
+			memset(reinterpret_cast<void *>(&r), 0, sizeof(typename std::remove_cv<typename std::remove_reference<T>::type>::type));
 			*reinterpret_cast<uintptr_t *>(&r) = _val;
 			return r;
 		} else {
@@ -235,12 +229,12 @@ namespace tmd {
 	}
 
 	template <typename T>
-	inline unsafe_ptr operator-(unsafe_ptr a, T &&b) {
+	inline size_t operator-(unsafe_ptr a, T &&b) {
 		return a.value() - unsafe_ptr(std::forward<T>(b)).value();
 	}
 
 	template <typename T>
-	inline unsafe_ptr operator-(T &&a, unsafe_ptr b) {
+	inline size_t operator-(T &&a, unsafe_ptr b) {
 		return unsafe_ptr(std::forward<T>(a)).value() - b.value();
 	}
 }
