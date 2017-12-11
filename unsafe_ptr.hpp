@@ -14,19 +14,31 @@ namespace tmd {
 			constexpr unsafe_ptr() : _val(0) {}
 
 			template <typename T>
-			constexpr unsafe_ptr(T *val) : _val(reinterpret_cast<uintptr_t>(val)) {}
+			constexpr unsafe_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
 
 			constexpr unsafe_ptr(uintptr_t val) : _val(val) {}
 
 			constexpr unsafe_ptr(std::nullptr_t) : unsafe_ptr() {}
 
 			template <typename T>
-			constexpr unsafe_ptr(T &&val) {
-				if TMD_CONSTEXPR17 (sizeof(typename std::remove_cv<typename std::remove_reference<T>::type>::type) < sizeof(uintptr_t)) {
-					_val = 0;
-					*reinterpret_cast<typename std::remove_cv<typename std::remove_reference<T>::type>::type *>(&_val) = val;
+			TMD_CONSTEXPR_14 unsafe_ptr(T &&src) {
+				using src_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+				#ifdef TMD_CONSTEXPR_IF_SUPPORTED
+					if constexpr (
+						std::is_integral_v<src_t> ||
+						(std::is_class_v<src_t> && std::is_constructible_v<src_t, uintptr_t>)
+					) {
+						_val = src;
+					} else
+				#endif
+
+				if (sizeof(src_t) < sizeof(uintptr_t)) {
+					uintptr_t r = 0;
+					*reinterpret_cast<src_t *>(&r) = src;
+					_val = r;
 				} else {
-					_val = *reinterpret_cast<uintptr_t *>(&val);
+					_val = *reinterpret_cast<uintptr_t *>(&src);
 				}
 			}
 
@@ -79,18 +91,6 @@ namespace tmd {
 				return get<uint8_t>();
 			}
 
-			uintptr_t value() const {
-				return _val;
-			}
-
-			operator uintptr_t() const {
-				return _val;
-			}
-
-			operator bool() const {
-				return _val;
-			}
-
 			bool operator==(unsafe_ptr target) const {
 				return _val == target._val;
 			}
@@ -117,84 +117,26 @@ namespace tmd {
 				return _val--;
 			}
 
-			operator uint8_t() const {
+			uintptr_t value() const {
 				return _val;
 			}
 
-			operator int8_t() const {
+			operator uintptr_t() const {
 				return _val;
 			}
 
-			operator uint16_t() const {
+			operator bool() const {
 				return _val;
 			}
 
-			operator int16_t() const {
-				return _val;
+			template <typename T>
+			operator T *() const {
+				return reinterpret_cast<T *>(_val);
 			}
 
-			operator uint32_t() const {
-				return _val;
-			}
-
-			operator int32_t() const {
-				return _val;
-			}
-
-			operator uint64_t() const {
-				return _val;
-			}
-
-			operator int64_t() const {
-				return _val;
-			}
-
-			operator void *() const {
-				return reinterpret_cast<void *>(_val);
-			}
-
-			operator uint8_t *() const {
-				return reinterpret_cast<uint8_t *>(_val);
-			}
-
-			operator int8_t *() const {
-				return reinterpret_cast<int8_t *>(_val);
-			}
-
-			operator uint16_t *() const {
-				return reinterpret_cast<uint16_t *>(_val);
-			}
-
-			operator int16_t *() const {
-				return reinterpret_cast<int16_t *>(_val);
-			}
-
-			operator uint32_t *() const {
-				return reinterpret_cast<uint32_t *>(_val);
-			}
-
-			operator int32_t *() const {
-				return reinterpret_cast<int32_t *>(_val);
-			}
-
-			operator uint64_t *() const {
-				return reinterpret_cast<uint64_t *>(_val);
-			}
-
-			operator int64_t *() const {
-				return reinterpret_cast<int64_t *>(_val);
-			}
-
-			operator float() const {
-				return *reinterpret_cast<const float *>(&_val);
-			}
-
-			operator double() const {
-				return to<double>();
-			}
-
-			operator size_t() const {
-				return _val;
+			template <typename T>
+			operator T() const {
+				return to<T>();
 			}
 
 		private:
@@ -203,13 +145,24 @@ namespace tmd {
 
 	template <typename T>
 	inline T unsafe_ptr::to() const {
-		if TMD_CONSTEXPR17 (sizeof(uintptr_t) > sizeof(double)) {
-			typename std::remove_cv<typename std::remove_reference<T>::type>::type r;
-			memset(reinterpret_cast<void *>(&r), 0, sizeof(typename std::remove_cv<typename std::remove_reference<T>::type>::type));
+		using dest_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+		#ifdef TMD_CONSTEXPR_IF_SUPPORTED
+			if constexpr (
+				std::is_integral_v<dest_t> ||
+				(std::is_class_v<dest_t> && std::is_constructible_v<uintptr_t, dest_t>)
+			) {
+				return _val;
+			} else
+		#endif
+
+		if (sizeof(uintptr_t) < sizeof(T)) {
+			dest_t r;
+			memset(reinterpret_cast<void *>(&r), 0, sizeof(dest_t));
 			*reinterpret_cast<uintptr_t *>(&r) = _val;
 			return r;
 		} else {
-			return *reinterpret_cast<const T *>(&_val);
+			return *reinterpret_cast<const dest_t *>(&_val);
 		}
 	}
 

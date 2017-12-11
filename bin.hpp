@@ -1,6 +1,7 @@
 #ifndef _TMD_BIN_HPP
 #define _TMD_BIN_HPP
 
+#include "predef.hpp"
 #include "unsafe_ptr.hpp"
 
 #ifdef _WIN32
@@ -29,7 +30,7 @@ namespace tmd {
 
 			constexpr bin_view() : _data(), _sz(0) {}
 
-			constexpr bin_view(unsafe_ptr data, size_t size) : _data(data), _sz(size) {}
+			TMD_CONSTEXPR_14 bin_view(unsafe_ptr data, size_t size) : _data(data), _sz(size) {}
 
 			constexpr bin_view(std::nullptr_t) : bin_view() {}
 
