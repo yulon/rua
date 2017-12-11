@@ -157,6 +157,8 @@ namespace tmd {
 						src._main_td = nullptr;
 						src._need_close = false;
 					}
+
+					return *this;
 				}
 
 				void resume_main_thread() {
@@ -246,6 +248,8 @@ namespace tmd {
 								_ptr = src._ptr;
 								src._ptr = nullptr;
 							}
+
+							return *this;
 						}
 
 						bool write(const uint8_t *data, size_t size = 0) {
