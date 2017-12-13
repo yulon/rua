@@ -3,6 +3,7 @@
 
 #include "predef.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -16,38 +17,27 @@ namespace tmd {
 			template <typename T>
 			constexpr unsafe_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
 
-			constexpr unsafe_ptr(uintptr_t val) : _val(val) {}
+			constexpr unsafe_ptr(uintptr_t src) : _val(src) {}
 
 			constexpr unsafe_ptr(std::nullptr_t) : unsafe_ptr() {}
 
 			template <typename T>
-			TMD_CONSTEXPR_14 unsafe_ptr(T &&src) {
-				using src_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-
-				#ifdef TMD_CONSTEXPR_IF_SUPPORTED
-					if constexpr (
-						std::is_integral_v<src_t> ||
-						(std::is_class_v<src_t> && std::is_convertible_v<src_t, uintptr_t>)
-					) {
-						_val = src;
-					} else
-				#endif
-
-				if (sizeof(src_t) < sizeof(uintptr_t)) {
-					_val = 0;
-					*reinterpret_cast<src_t *>(&_val) = src;
-				} else {
-					static_assert(
-						sizeof(src_t) > sizeof(uintptr_t) ? !(std::is_class<src_t>::value && std::is_convertible<src_t, uintptr_t>::value) : true,
-						"please use C++17!"
-					);
-
-					_val = *reinterpret_cast<const uintptr_t *>(&src);
-				}
-			}
+			TMD_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
+				_t2u<
+					std::is_integral<T>::value ||
+					(std::is_class<T>::value && std::is_convertible<T, uintptr_t>::value)
+				>::fn(std::forward<T>(src)
+			)) {}
 
 			template <typename T>
-			inline T to() const;
+			T to() const {
+				return _u2t<
+					T,
+					std::is_pointer<T>::value,
+					std::is_integral<T>::value ||
+					(std::is_class<T>::value && std::is_convertible<uintptr_t, T>::value)
+				>::fn(_val);
+			}
 
 			bool operator==(unsafe_ptr target) const {
 				return _val == target._val;
@@ -99,40 +89,67 @@ namespace tmd {
 
 		private:
 			uintptr_t _val;
+
+			template <bool IS_DRCT>
+			struct _t2u;
+
+			template <typename T, bool IS_PTR, bool IS_DRCT>
+			struct _u2t;
+	};
+
+	template <>
+	struct unsafe_ptr::_t2u<true> {
+		template <typename T>
+		static constexpr uintptr_t fn(T &&src) {
+			return src;
+		}
+	};
+
+	template <>
+	struct unsafe_ptr::_t2u<false> {
+		template <typename T>
+		static TMD_CONSTEXPR_14 uintptr_t fn(T &&src) {
+			using src_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+			if TMD_CONSTEXPR_IF (sizeof(src_t) < sizeof(uintptr_t)) {
+				uintptr_t _val = 0;
+				*reinterpret_cast<src_t *>(&_val) = src;
+				return _val;
+			} else {
+				return *reinterpret_cast<const uintptr_t *>(&src);
+			}
+		}
 	};
 
 	template <typename T>
-	inline T unsafe_ptr::to() const {
-		using dest_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-
-		#ifdef TMD_CONSTEXPR_IF_SUPPORTED
-			if constexpr (
-				std::is_integral_v<dest_t> ||
-				(std::is_class_v<dest_t> && std::is_convertible_v<uintptr_t, dest_t>)
-			) {
-				return _val;
-			} else
-		#endif
-
-		if (sizeof(uintptr_t) < sizeof(dest_t)) {
-			static_assert(
-				!(std::is_class<dest_t>::value && std::is_convertible<uintptr_t, dest_t>::value),
-				"please use C++17!"
-			);
-
-			uint8_t r[sizeof(dest_t)];
-			memset(reinterpret_cast<void *>(&r), 0, sizeof(dest_t));
-			*reinterpret_cast<uintptr_t *>(&r) = _val;
-			return *reinterpret_cast<const dest_t *>(&r);
-		} else {
-			return *reinterpret_cast<const dest_t *>(&_val);
+	struct unsafe_ptr::_u2t<T, true, false> {
+		static constexpr T fn(const uintptr_t &val) {
+			return reinterpret_cast<T>(val);
 		}
-	}
+	};
 
-	template <>
-	inline uintptr_t unsafe_ptr::to<uintptr_t>() const {
-		return _val;
-	}
+	template <typename T>
+	struct unsafe_ptr::_u2t<T, false, true> {
+		static constexpr T fn(const uintptr_t &val) {
+			return val;
+		}
+	};
+
+	template <typename T>
+	struct unsafe_ptr::_u2t<T, false, false> {
+		static TMD_CONSTEXPR_14 T fn(const uintptr_t &val) {
+			using dest_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+			if TMD_CONSTEXPR_IF (sizeof(uintptr_t) < sizeof(dest_t)) {
+				uint8_t r[sizeof(dest_t)];
+				memset(reinterpret_cast<void *>(&r), 0, sizeof(dest_t));
+				*reinterpret_cast<uintptr_t *>(&r) = val;
+				return *reinterpret_cast<const dest_t *>(&r);
+			} else {
+				return *reinterpret_cast<const dest_t *>(&val);
+			}
+		}
+	};
 
 	template <typename T>
 	inline unsafe_ptr operator+(unsafe_ptr a, T &&b) {
@@ -145,12 +162,12 @@ namespace tmd {
 	}
 
 	template <typename T>
-	inline size_t operator-(unsafe_ptr a, T &&b) {
+	inline ptrdiff_t operator-(unsafe_ptr a, T &&b) {
 		return a.value() - unsafe_ptr(std::forward<T>(b)).value();
 	}
 
 	template <typename T>
-	inline size_t operator-(T &&a, unsafe_ptr b) {
+	inline ptrdiff_t operator-(T &&a, unsafe_ptr b) {
 		return unsafe_ptr(std::forward<T>(a)).value() - b.value();
 	}
 }
