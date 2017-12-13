@@ -27,69 +27,27 @@ namespace tmd {
 				#ifdef TMD_CONSTEXPR_IF_SUPPORTED
 					if constexpr (
 						std::is_integral_v<src_t> ||
-						(std::is_class_v<src_t> && std::is_constructible_v<src_t, uintptr_t>)
+						(std::is_class_v<src_t> && std::is_convertible_v<src_t, uintptr_t>)
 					) {
 						_val = src;
 					} else
 				#endif
 
 				if (sizeof(src_t) < sizeof(uintptr_t)) {
-					uintptr_t r = 0;
-					*reinterpret_cast<src_t *>(&r) = src;
-					_val = r;
+					_val = 0;
+					*reinterpret_cast<src_t *>(&_val) = src;
 				} else {
-					_val = *reinterpret_cast<uintptr_t *>(&src);
+					static_assert(
+						sizeof(src_t) > sizeof(uintptr_t) ? !(std::is_class<src_t>::value && std::is_convertible<src_t, uintptr_t>::value) : true,
+						"please use C++17!"
+					);
+
+					_val = *reinterpret_cast<const uintptr_t *>(&src);
 				}
 			}
 
 			template <typename T>
 			inline T to() const;
-
-			template <typename D>
-			D &get() {
-				return *reinterpret_cast<D *>(_val);
-			}
-
-			template <typename D>
-			const D &get() const {
-				return *reinterpret_cast<D *>(_val);
-			}
-
-			template <typename D>
-			D &get(size_t pos) {
-				return *reinterpret_cast<D *>(_val + pos);
-			}
-
-			template <typename D>
-			const D &get(size_t pos) const {
-				return *reinterpret_cast<D *>(_val + pos);
-			}
-
-			template <typename D>
-			D &aligned_get(size_t ix) {
-				return reinterpret_cast<D *>(_val)[ix];
-			}
-
-			template <typename D>
-			const D &aligned_get(size_t ix) const {
-				return reinterpret_cast<D *>(_val)[ix];
-			}
-
-			uint8_t &operator[](size_t ix) {
-				return get<uint8_t>(ix);
-			}
-
-			uint8_t operator[](size_t ix) const {
-				return get<uint8_t>(ix);
-			}
-
-			uint8_t &operator*() {
-				return get<uint8_t>();
-			}
-
-			uint8_t operator*() const {
-				return get<uint8_t>();
-			}
 
 			bool operator==(unsafe_ptr target) const {
 				return _val == target._val;
@@ -150,17 +108,22 @@ namespace tmd {
 		#ifdef TMD_CONSTEXPR_IF_SUPPORTED
 			if constexpr (
 				std::is_integral_v<dest_t> ||
-				(std::is_class_v<dest_t> && std::is_constructible_v<uintptr_t, dest_t>)
+				(std::is_class_v<dest_t> && std::is_convertible_v<uintptr_t, dest_t>)
 			) {
 				return _val;
 			} else
 		#endif
 
-		if (sizeof(uintptr_t) < sizeof(T)) {
-			dest_t r;
+		if (sizeof(uintptr_t) < sizeof(dest_t)) {
+			static_assert(
+				!(std::is_class<dest_t>::value && std::is_convertible<uintptr_t, dest_t>::value),
+				"please use C++17!"
+			);
+
+			uint8_t r[sizeof(dest_t)];
 			memset(reinterpret_cast<void *>(&r), 0, sizeof(dest_t));
 			*reinterpret_cast<uintptr_t *>(&r) = _val;
-			return r;
+			return *reinterpret_cast<const dest_t *>(&r);
 		} else {
 			return *reinterpret_cast<const dest_t *>(&_val);
 		}

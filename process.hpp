@@ -1,11 +1,15 @@
 #ifndef _TMD_PROCESS_HPP
 #define _TMD_PROCESS_HPP
 
+#include "bin.hpp"
+#include "unsafe_ptr.hpp"
+
 #ifdef _WIN32
 	#include "strenc.hpp"
 
 	#include <windows.h>
 	#include <tlhelp32.h>
+	#include <psapi.h>
 #endif
 
 #include <string>
@@ -38,6 +42,10 @@ namespace tmd {
 						}
 						std::this_thread::sleep_for(std::chrono::milliseconds(500));
 					}
+				}
+
+				static process from_this() {
+					return GetCurrentProcess();
 				}
 
 				////////////////////////////////////////////////////////////////
@@ -116,7 +124,9 @@ namespace tmd {
 					bool pause_main_thread = false
 				) : process(file, {}, "", pause_main_thread) {}
 
-				process(DWORD pid) : _ntv_hdl(OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_WRITE, FALSE, pid)), _main_td(nullptr), _need_close(true) {}
+				process(DWORD pid) : _ntv_hdl(
+					OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid)
+				), _main_td(nullptr), _need_close(true) {}
 
 				~process() {
 					reset();
@@ -132,6 +142,14 @@ namespace tmd {
 
 				operator bool() const {
 					return native_handle();
+				}
+
+				bool operator==(const process &target) {
+					return _ntv_hdl == target._ntv_hdl;
+				}
+
+				bool operator!=(const process &target) {
+					return _ntv_hdl != target._ntv_hdl;
 				}
 
 				process(const process &) = delete;
@@ -198,97 +216,48 @@ namespace tmd {
 
 				////////////////////////////////////////////////////////////////
 
-				class mem_t {
-					public:
-						constexpr mem_t() : _proc(nullptr), _ptr(nullptr), _sz(0) {}
-
-						mem_t(const process &proc, size_t size) :
-							_proc(&proc),
-							_ptr(VirtualAllocEx(proc, NULL, size, MEM_COMMIT, PAGE_READWRITE)),
-							_sz(size)
-						{}
-
-						mem_t(const process &proc, const std::string &str) : mem_t(proc, str.length() + 1) {
-							if (!write(reinterpret_cast<const uint8_t *>(str.c_str()))) {
-								free();
-							}
+				bin::allocator_t mem_allocator() {
+					return *this == process::from_this() ? bin::allocator_t{nullptr, nullptr} : bin::allocator_t{
+						[this](size_t size)->unsafe_ptr {
+							return VirtualAllocEx(_ntv_hdl, nullptr, size, MEM_COMMIT, PAGE_READWRITE);
+						},
+						[this](unsafe_ptr ptr, size_t size) {
+							VirtualFreeEx(_ntv_hdl, ptr, size, MEM_COMMIT);
 						}
+					};
+				}
 
-						~mem_t() {
-							free();
-						}
-
-						LPVOID native_handle() const {
-							return _ptr;
-						}
-
-						operator LPVOID() const {
-							return native_handle();
-						}
-
-						operator bool() {
-							return native_handle();
-						}
-
-						mem_t(const mem_t &) = delete;
-
-						mem_t &operator=(const mem_t &) = delete;
-
-						mem_t(mem_t &&src) : _proc(src._proc), _ptr(src._ptr) {
-							if (src) {
-								src._ptr = nullptr;
-							}
-						}
-
-						mem_t &operator=(mem_t &&src) {
-							free();
-
-							if (src) {
-								_proc = src._proc;
-								_ptr = src._ptr;
-								src._ptr = nullptr;
-							}
-
-							return *this;
-						}
-
-						bool write(const uint8_t *data, size_t size = 0) {
-							assert(_ptr);
-
-							if (!size) {
-								size = _sz;
-							}
-
+				bin_ref::read_writer_t mem_read_writer() {
+					return *this == process::from_this() ? bin_ref::read_writer_t{nullptr, nullptr} : bin_ref::read_writer_t{
+						[this](unsafe_ptr src, unsafe_ptr data, size_t size) {
 							SIZE_T writed_len;
-							if (!WriteProcessMemory(*_proc, _ptr, data, size, &writed_len)) {
-								return false;
-							}
-							if (writed_len != size) {
-								return false;
-							}
-							return true;
+							ReadProcessMemory(_ntv_hdl, src, data, size, &writed_len);
+						},
+						[this](unsafe_ptr dest, unsafe_ptr data, size_t size) {
+							SIZE_T writed_len;
+							WriteProcessMemory(_ntv_hdl, dest, data, size, &writed_len);
 						}
+					};
+				}
 
-						void free() {
-							if (_ptr) {
-								VirtualFreeEx(*_proc, _ptr, _sz, MEM_COMMIT);
-								_ptr = nullptr;
-							}
-						}
+				bin mem_alloc(size_t size) {
+					return bin(size, mem_allocator(), mem_read_writer());
+				}
 
-					private:
-						const process *_proc;
-						LPVOID _ptr;
-						size_t _sz;
-				};
+				bin mem_alloc(const std::string &str) {
+					return bin(str.c_str(), str.length() + 1, mem_allocator(), mem_read_writer());
+				}
 
-				template <typename... A>
-				mem_t alloc(A&&... a) {
-					return mem_t(_ntv_hdl, std::forward<A>(a)...);
+				bin mem_alloc(const std::wstring &wstr) {
+					return bin(wstr.c_str(), (wstr.length() + 1) * sizeof(wchar_t), mem_allocator(), mem_read_writer());
+				}
+
+				bin_ref mem_ref(unsafe_ptr ptr, size_t size) {
+					return bin_ref(ptr, size, mem_read_writer());
 				}
 
 				template <typename F>
-				DWORD syscall(F func, LPVOID param) {
+				unsafe_ptr syscall(F func, unsafe_ptr param) {
 					HANDLE td;
 					DWORD tid;
 					td = CreateRemoteThread(_ntv_hdl, NULL, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(func), param, 0, &tid);
@@ -303,8 +272,35 @@ namespace tmd {
 				}
 
 				template <typename F>
-				DWORD syscall(F func, const std::string &param) {
-					return syscall(func, alloc(param));
+				unsafe_ptr syscall(F func, const std::string &param) {
+					return syscall(func, mem_alloc(param).data());
+				}
+
+				template <typename F>
+				unsafe_ptr syscall(F func, const std::wstring &param) {
+					return syscall(func, mem_alloc(param).data());
+				}
+
+				template <typename F>
+				unsafe_ptr syscall(F func, const char *param) {
+					return syscall(func, std::string(param));
+				}
+
+				template <typename F>
+				unsafe_ptr syscall(F func, const wchar_t *param) {
+					return syscall(func, std::wstring(param));
+				}
+
+				bin_ref mem_ref(const std::string &mdu_name = "") {
+					HMODULE mdu;
+					if (*this == process::from_this()) {
+						mdu = GetModuleHandleW(mdu_name.empty() ? nullptr : u8_to_u16(mdu_name).c_str());
+					} else {
+						mdu = syscall(&GetModuleHandleW, mdu_name.empty() ? nullptr : u8_to_u16(mdu_name));
+					}
+					MODULEINFO mi;
+					GetModuleInformation(_ntv_hdl, mdu, &mi, sizeof(MODULEINFO));
+					return bin_ref(mi.lpBaseOfDll, mi.SizeOfImage, mem_read_writer());
 				}
 
 			private:
