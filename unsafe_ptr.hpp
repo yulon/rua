@@ -24,8 +24,8 @@ namespace tmd {
 			template <typename T>
 			TMD_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
 				_t2u<
-					std::is_integral<T>::value ||
-					(std::is_class<T>::value && std::is_convertible<T, uintptr_t>::value)
+					std::is_integral<typename std::remove_reference<T>::type>::value ||
+					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<T, uintptr_t>::value)
 				>::fn(std::forward<T>(src)
 			)) {}
 
@@ -33,9 +33,9 @@ namespace tmd {
 			T to() const {
 				return _u2t<
 					T,
-					std::is_pointer<T>::value,
-					std::is_integral<T>::value ||
-					(std::is_class<T>::value && std::is_convertible<uintptr_t, T>::value)
+					std::is_pointer<typename std::remove_reference<T>::type>::value,
+					std::is_integral<typename std::remove_reference<T>::type>::value ||
+					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<uintptr_t, T>::value)
 				>::fn(_val);
 			}
 
@@ -111,6 +111,8 @@ namespace tmd {
 		static TMD_CONSTEXPR_14 uintptr_t fn(T &&src) {
 			using src_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
+			TMD_STATIC_ASSERT(std::is_trivially_copyable<src_t>::value);
+
 			if TMD_CONSTEXPR_IF (sizeof(src_t) < sizeof(uintptr_t)) {
 				uintptr_t _val = 0;
 				*reinterpret_cast<src_t *>(&_val) = src;
@@ -139,6 +141,8 @@ namespace tmd {
 	struct unsafe_ptr::_u2t<T, false, false> {
 		static TMD_CONSTEXPR_14 T fn(const uintptr_t &val) {
 			using dest_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+			TMD_STATIC_ASSERT(std::is_trivially_copyable<dest_t>::value);
 
 			if TMD_CONSTEXPR_IF (sizeof(uintptr_t) < sizeof(dest_t)) {
 				uint8_t r[sizeof(dest_t)];
