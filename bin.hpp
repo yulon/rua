@@ -92,28 +92,28 @@ namespace tmd {
 			D &at(size_t pos = 0) {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *reinterpret_cast<D *>(_data.value() + pos);
+				return *(_data + pos).to<D *>();
 			}
 
 			template <typename D>
 			const D &at(size_t pos = 0) const {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *reinterpret_cast<D *>(_data.value() + pos);
+				return *(_data + pos).to<D *>();
 			}
 
 			template <typename D>
 			D &aligned_at(size_t ix = 0) {
 				assert((ix + 1) * sizeof(D) <= _sz && !_rw);
 
-				return reinterpret_cast<D *>(_data.value())[ix];
+				return _data.to<D *>()[ix];
 			}
 
 			template <typename D>
 			const D &aligned_at(size_t ix = 0) const {
 				assert((ix + 1) * sizeof(D) <= _sz && !_rw);
 
-				return reinterpret_cast<D *>(_data.value())[ix];
+				return _data.to<D *>()[ix];
 			}
 
 			uint8_t &operator[](size_t ix) {
@@ -145,7 +145,7 @@ namespace tmd {
 					_rw.read(_data + ix * sizeof(D), &cache, sizeof(D));
 					return *reinterpret_cast<D *>(cache);
 				}
-				return aligned_get<D>(ix);
+				return aligned_at<D>(ix);
 			}
 
 			template <typename D>
@@ -156,7 +156,7 @@ namespace tmd {
 					_rw.write(_data + pos, &d, sizeof(D));
 					return;
 				}
-				get<D>(pos);
+				at<D>(pos) = d;
 			}
 
 			template <typename D>
@@ -167,7 +167,7 @@ namespace tmd {
 					_rw.write(_data + ix * sizeof(D), &d, sizeof(D));
 					return;
 				}
-				aligned_get<D>(ix);
+				aligned_at<D>(ix) = d;
 			}
 
 			template <typename D>
@@ -178,6 +178,26 @@ namespace tmd {
 			template <typename D>
 			D aligned_set(const D &d) {
 				aligned_set<D>(0, d);
+			}
+
+			void copy(const bin_ref &src) {
+				auto sz = size() <= src.size() ? size() : src.size();
+				if (read_writer().write) {
+					if (src.read_writer().read) {
+						read_writer_t::copy(read_writer().write, data(), src.read_writer().read, src.data(), sz);
+					} else {
+						read_writer().write(data(), src.data(), sz);
+					}
+				} else {
+					if (src.read_writer().read) {
+						auto cache = new uint8_t[sz];
+						src.read_writer().read(src.data(), cache, sz);
+						memcpy(data(), cache, sz);
+						delete[] cache;
+					} else {
+						memcpy(data(), src.data(), sz);
+					}
+				}
 			}
 
 			static constexpr size_t npos = -1;
@@ -309,26 +329,6 @@ namespace tmd {
 				}
 			}
 
-			void copy(const bin_ref &src) {
-				auto sz = size() <= src.size() ? size() : src.size();
-				if (read_writer().write) {
-					if (src.read_writer().read) {
-						read_writer_t::copy(read_writer().write, data(), src.read_writer().read, src.data(), sz);
-					} else {
-						read_writer().write(data(), src.data(), sz);
-					}
-				} else {
-					if (src.read_writer().read) {
-						auto cache = new uint8_t[sz];
-						src.read_writer().read(src.data(), cache, sz);
-						memcpy(data(), cache, sz);
-						delete[] cache;
-					} else {
-						memcpy(data(), src.data(), sz);
-					}
-				}
-			}
-
 			bin(
 				const bin_ref &src,
 				const allocator_t &alcr = {nullptr, nullptr},
@@ -414,8 +414,8 @@ namespace tmd {
 			}
 
 			bin &operator=(bin &&src) {
+				reset();
 				if (!src) {
-					reset();
 					return *this;
 				}
 				bin_ref::reset(src.data(), src.size(), src.read_writer());
