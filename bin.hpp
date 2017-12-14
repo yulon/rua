@@ -235,7 +235,7 @@ namespace tmd {
 								} else {
 									continue;
 								}
-								return bin_ref(_data + i + sub_j, sub_sz);
+								return bin_ref(_data + i + sub_j, sub_sz, _rw);
 							}
 
 							return nullptr;
