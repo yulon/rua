@@ -17,21 +17,23 @@ namespace tmd {
 
 			constexpr hook() : _t(nullptr), _o(nullptr) {}
 
-			hook(T target, T detour) :
-				_t(reinterpret_cast<LPVOID>(target))
-			{
+			hook(T target, T detour) : _t(target) {
 				if (++_hook_count == 1) {
 					MH_Initialize();
 				}
-				MH_CreateHook(reinterpret_cast<LPVOID>(target), reinterpret_cast<LPVOID>(detour), &_o);
+				MH_CreateHook(reinterpret_cast<LPVOID>(target), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID *>(&_o));
 				MH_EnableHook(reinterpret_cast<LPVOID>(target));
 			}
 
 			hook(const hook<T> &) = delete;
 
-			hook<T>& operator=(const hook<T> &) = delete;
+			hook<T> &operator=(const hook<T> &) = delete;
 
-			hook(hook<T> &&src) : _t(src._t), _o(src._o) { src._t = nullptr; }
+			hook(hook<T> &&src) : _t(src._t), _o(src._o) {
+				if (src._t) {
+					src._t = nullptr;
+				}
+			}
 
 			hook<T> &operator=(hook<T> &&src) {
 				unhook();
@@ -51,14 +53,14 @@ namespace tmd {
 			}
 
 			template <typename... A>
-			std::invoke_result_t<T, A...> orig_fn(A&&... a) const {
-				return std::invoke(reinterpret_cast<T>(_o), std::forward<A>(a)...);
+			auto orig_fn(A&&... a) const -> decltype((*reinterpret_cast<T>(0))(std::forward<A>(a)...)) {
+				return _o(std::forward<A>(a)...);
 			}
 
 			void unhook() {
 				if (_t) {
-					MH_DisableHook(_t);
-					MH_RemoveHook(_t);
+					MH_DisableHook(reinterpret_cast<LPVOID>(_t));
+					MH_RemoveHook(reinterpret_cast<LPVOID>(_t));
 					_t = nullptr;
 					if (!--_hook_count) {
 						MH_Uninitialize();
@@ -76,7 +78,7 @@ namespace tmd {
 			}
 
 		private:
-			LPVOID _t, _o;
+			T _t, _o;
 	};
 }
 
