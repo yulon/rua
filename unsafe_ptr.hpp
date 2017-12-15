@@ -154,26 +154,6 @@ namespace tmd {
 			}
 		}
 	};
-
-	template <typename T>
-	inline unsafe_ptr operator+(unsafe_ptr a, T &&b) {
-		return a.value() + unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline unsafe_ptr operator+(T &&a, unsafe_ptr b) {
-		return unsafe_ptr(std::forward<T>(a)).value() + b.value();
-	}
-
-	template <typename T>
-	inline ptrdiff_t operator-(unsafe_ptr a, T &&b) {
-		return a.value() - unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline ptrdiff_t operator-(T &&a, unsafe_ptr b) {
-		return unsafe_ptr(std::forward<T>(a)).value() - b.value();
-	}
 }
 
 #endif

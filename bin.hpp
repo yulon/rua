@@ -92,14 +92,14 @@ namespace tmd {
 			D &at(size_t pos = 0) {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *(_data + pos).to<D *>();
+				return *unsafe_ptr(_data.value() + pos).to<D *>();
 			}
 
 			template <typename D>
 			const D &at(size_t pos = 0) const {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *(_data + pos).to<D *>();
+				return *unsafe_ptr(_data.value() + pos).to<D *>();
 			}
 
 			template <typename D>
@@ -130,7 +130,7 @@ namespace tmd {
 
 				if (_rw.read) {
 					uint8_t cache[sizeof(D)];
-					_rw.read(_data + pos, &cache, sizeof(D));
+					_rw.read(_data.value() + pos, &cache, sizeof(D));
 					return *reinterpret_cast<D *>(cache);
 				}
 				return at<D>(pos);
@@ -142,7 +142,7 @@ namespace tmd {
 
 				if (_rw.read) {
 					uint8_t cache[sizeof(D)];
-					_rw.read(_data + ix * sizeof(D), &cache, sizeof(D));
+					_rw.read(_data.value() + ix * sizeof(D), &cache, sizeof(D));
 					return *reinterpret_cast<D *>(cache);
 				}
 				return aligned_at<D>(ix);
@@ -153,7 +153,7 @@ namespace tmd {
 				assert(pos + sizeof(D) <= _sz);
 
 				if (_rw.write) {
-					_rw.write(_data + pos, &d, sizeof(D));
+					_rw.write(_data.value() + pos, &d, sizeof(D));
 					return;
 				}
 				at<D>(pos) = d;
@@ -164,7 +164,7 @@ namespace tmd {
 				assert((ix + 1) * sizeof(D) <= _sz);
 
 				if (_rw.write) {
-					_rw.write(_data + ix * sizeof(D), &d, sizeof(D));
+					_rw.write(_data.value() + ix * sizeof(D), &d, sizeof(D));
 					return;
 				}
 				aligned_at<D>(ix) = d;
@@ -235,12 +235,12 @@ namespace tmd {
 								} else {
 									continue;
 								}
-								return bin_ref(_data + i + sub_j, sub_sz, _rw);
+								return bin_ref(_data.value() + i + sub_j, sub_sz, _rw);
 							}
 
 							return nullptr;
 						}
-						return bin_ref(_data + i, pattern.size(), _rw);
+						return bin_ref(_data.value() + i, pattern.size(), _rw);
 					}
 				}
 				return nullptr;
@@ -271,13 +271,13 @@ namespace tmd {
 				}
 				switch (md.size() > 8 ? 8 : md.size()) {
 					case 8:
-						return md.data() + 8 + md.get<uint64_t>();
+						return md.data().value() + 8 + md.get<uint64_t>();
 					case 4:
-						return md.data() + 4 + md.get<uint32_t>();
+						return md.data().value() + 4 + md.get<uint32_t>();
 					case 2:
-						return md.data() + 2 + md.get<uint16_t>();
+						return md.data().value() + 2 + md.get<uint16_t>();
 					case 1:
-						return md.data() + 1 + md.get<uint8_t>();
+						return md.data().value() + 1 + md.get<uint8_t>();
 				}
 				return nullptr;
 			}
