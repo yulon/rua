@@ -36,23 +36,23 @@ namespace tmd {
 		public:
 			typedef std::shared_ptr<_task_info_t> task;
 
-			static constexpr int duration_always = -1;
-			static constexpr int duration_disposable = 0;
+			static constexpr size_t duration_always = -1;
+			static constexpr size_t duration_disposable = 0;
 
-			task add(const std::function<void()> &handler, int duration_of_life = duration_always) {
+			task add(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
 
 				if (_in_work_td()) {
-					tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
+					tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
 					tsk->state = _task_info_t::state_t::added;
 
 					_tasks.emplace_back(tsk);
 					tsk->it = --_tasks.end();
 
 				} else {
-					tsk->del_time = static_cast<size_t>(duration_of_life);
+					tsk->del_time = duration_of_life;
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
@@ -103,10 +103,14 @@ namespace tmd {
 				}
 			}
 
-			void reset_dol(task tsk, int duration_of_life) {
+			void reset_dol(task tsk, size_t duration_of_life) {
 				assert(_in_work_td());
 
-				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
+				tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
+			}
+
+			void reset_dol(size_t duration_of_life) {
+				reset_dol(*_tasks_it, duration_of_life);
 			}
 
 			void erase(task tsk) {
@@ -133,10 +137,18 @@ namespace tmd {
 				}
 			}
 
+			void erase() {
+				erase(*_tasks_it);
+			}
+
 			bool has(task tsk) const {
 				assert(_in_work_td());
 
 				return tsk->state != _task_info_t::state_t::deleted;
+			}
+
+			void has() {
+				has(*_tasks_it);
 			}
 
 			task running() const {
@@ -160,8 +172,7 @@ namespace tmd {
 						if (tsk->state == _task_info_t::state_t::adding) {
 							tsk->state = _task_info_t::state_t::added;
 
-							int duration_of_life = static_cast<int>(tsk->del_time);
-							tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
+							tsk->del_time = tsk->del_time == duration_always ? duration_always : _cur_time + tsk->del_time;
 
 							_tasks.emplace_back(std::move(tsk));
 							_tasks.back()->it = --_tasks.end();
@@ -289,7 +300,7 @@ namespace tmd {
 								tsk->handler();
 								_in_task = false;
 
-								if (tsk->del_time > 0 && _cur_time >= tsk->del_time) {
+								if (tsk->del_time != duration_always && _cur_time >= tsk->del_time) {
 									tsk->state = _task_info_t::state_t::deleted;
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else {
