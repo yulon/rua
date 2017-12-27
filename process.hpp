@@ -202,6 +202,29 @@ namespace tmd {
 					}
 				}
 
+				HMODULE native_module_handle(const std::string &name = "") {
+					HMODULE mdu;
+					if (*this == process::from_this()) {
+						mdu = GetModuleHandleW(name.empty() ? nullptr : u8_to_u16(name).c_str());
+					} else {
+						if (name.empty()) {
+							mdu = syscall(&GetModuleHandleW, nullptr);
+						} else {
+							mdu = syscall(&GetModuleHandleW, u8_to_u16(name));
+						}
+					}
+					return mdu;
+				}
+
+				std::string file_path(HMODULE mdu = nullptr) {
+					if (!mdu) {
+						mdu = native_module_handle();
+					}
+					WCHAR path[MAX_PATH];
+					GetModuleFileNameExW(_ntv_hdl, mdu, path, MAX_PATH);
+					return u16_to_u8(path);
+				}
+
 				void reset() {
 					resume_main_thread();
 
@@ -272,6 +295,11 @@ namespace tmd {
 				}
 
 				template <typename F>
+				unsafe_ptr syscall(F func, std::nullptr_t) {
+					return syscall(func, unsafe_ptr(nullptr));
+				}
+
+				template <typename F>
 				unsafe_ptr syscall(F func, const std::string &param) {
 					return syscall(func, mem_alloc(param).data());
 				}
@@ -291,12 +319,9 @@ namespace tmd {
 					return syscall(func, std::wstring(param));
 				}
 
-				bin_ref mem_ref(const std::string &mdu_name = "") {
-					HMODULE mdu;
-					if (*this == process::from_this()) {
-						mdu = GetModuleHandleW(mdu_name.empty() ? nullptr : u8_to_u16(mdu_name).c_str());
-					} else {
-						mdu = syscall(&GetModuleHandleW, mdu_name.empty() ? nullptr : u8_to_u16(mdu_name));
+				bin_ref mem_ref(HMODULE mdu = nullptr) {
+					if (!mdu) {
+						mdu = native_module_handle();
 					}
 					MODULEINFO mi;
 					GetModuleInformation(_ntv_hdl, mdu, &mi, sizeof(MODULEINFO));
