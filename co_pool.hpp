@@ -15,14 +15,15 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <atomic>
 #include <cassert>
 
 namespace tmd {
 	class co_pool {
 		public:
-			co_pool(size_t coro_stack_size = coro::default_stack_size) {
-				_co_stk_sz = coro_stack_size;
-			}
+			co_pool(size_t coro_stack_size = coro::default_stack_size) :
+				_co_stk_sz(coro_stack_size), _pre_add_tasks_sz(0)
+			{}
 
 			co_pool(const co_pool &) = delete;
 			co_pool &operator=(const co_pool &) = delete;
@@ -38,7 +39,7 @@ namespace tmd {
 			static constexpr int duration_always = -1;
 			static constexpr int duration_disposable = 0;
 
-			task add_task(const std::function<void()> &handler, int duration_of_life = duration_always) {
+			task add(const std::function<void()> &handler, int duration_of_life = duration_always) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
@@ -56,6 +57,7 @@ namespace tmd {
 
 					_oth_td_op_mtx.lock();
 					_pre_add_tasks.emplace(tsk);
+					++_pre_add_tasks_sz;
 					_oth_td_op_mtx.unlock();
 				}
 
@@ -63,17 +65,33 @@ namespace tmd {
 			}
 
 			void go(const std::function<void()> &handler) {
-				add_task(handler, duration_disposable);
+				add(handler, duration_disposable);
 			}
 
-			void wait(size_t ms) {
-				(*_tasks_it)->sleeping.sleep_to = _cur_time + ms;
-				_sleep();
+			void sleep(task tsk, size_t ms) {
+				assert(_in_work_td());
+
+				tsk->sleeping.sleep_to = _cur_time + ms;
+				if (in_task() && tsk == *_tasks_it) {
+					_sleep_this_task();
+				}
+			}
+
+			void sleep(size_t ms) {
+				sleep(*_tasks_it, ms);
+			}
+
+			void wait(task tsk, const std::function<bool()> &wake_cond) {
+				assert(_in_work_td());
+
+				tsk->sleeping.wake_cond = wake_cond;
+				if (in_task() && tsk == *_tasks_it) {
+					_sleep_this_task();
+				}
 			}
 
 			void wait(const std::function<bool()> &wake_cond) {
-				(*_tasks_it)->sleeping.wake_cond = wake_cond;
-				_sleep();
+				wait(*_tasks_it, wake_cond);
 			}
 
 			template <typename T>
@@ -85,12 +103,18 @@ namespace tmd {
 				}
 			}
 
-			void del_task(task tsk) {
+			void reset_dol(task tsk, int duration_of_life) {
+				assert(_in_work_td());
+
+				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
+			}
+
+			void erase(task tsk) {
 				assert(_in_work_td());
 
 				if (tsk->state == _task_info_t::state_t::added) {
 					if (tsk.get() == (*_tasks_it).get()) {
-						reset_task_dol(tsk, duration_disposable);
+						reset_dol(tsk, duration_disposable);
 						return;
 					}
 
@@ -109,70 +133,67 @@ namespace tmd {
 				}
 			}
 
-			bool has_task(task tsk) {
+			bool has(task tsk) const {
 				assert(_in_work_td());
 
 				return tsk->state != _task_info_t::state_t::deleted;
 			}
 
-			void reset_task_dol(task tsk, int duration_of_life) {
+			task running() const {
 				assert(_in_work_td());
-
-				tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
-			}
-
-			task get_this_task() {
-				assert(in_task());
 
 				return *_tasks_it;
 			}
 
-			void handle_tasks(const std::function<void()> &yield = std::this_thread::yield) {
+			void init() {
+				_work_tid = std::this_thread::get_id();
+			}
+
+			void handle_tasks() {
 				assert(!in_task());
 
-				_work_tid = std::this_thread::get_id();
+				_cur_time = _tick();
 
-				for (;;) {
-					_cur_time = _tick();
+				if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
+					while (_pre_add_tasks.size()) {
+						auto &tsk = _pre_add_tasks.front();
+						if (tsk->state == _task_info_t::state_t::adding) {
+							tsk->state = _task_info_t::state_t::added;
 
-					if (_oth_td_op_mtx.try_lock()) {
-						while (_pre_add_tasks.size()) {
-							auto &tsk = _pre_add_tasks.front();
-							if (tsk->state == _task_info_t::state_t::adding) {
-								tsk->state = _task_info_t::state_t::added;
+							int duration_of_life = static_cast<int>(tsk->del_time);
+							tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
 
-								int duration_of_life = static_cast<int>(tsk->del_time);
-								tsk->del_time = duration_of_life < 0 ? 0 : _cur_time + duration_of_life;
-
-								_tasks.emplace_back(std::move(tsk));
-								_tasks.back()->it = --_tasks.end();
-							}
-							_pre_add_tasks.pop();
+							_tasks.emplace_back(std::move(tsk));
+							_tasks.back()->it = --_tasks.end();
 						}
-						_oth_td_op_mtx.unlock();
+						_pre_add_tasks.pop();
+						--_pre_add_tasks_sz;
 					}
+					_oth_td_op_mtx.unlock();
+				}
 
+				if (_tasks.size()) {
 					_tasks_it = _tasks.begin();
-
 					_join_new_task_cor(_main_ct);
-
-					if (yield) {
-						yield();
-					}
 				}
 			}
 
-			bool in_task() {
+			bool in_task() const {
 				return _in_work_td() && _in_task;
 			}
 
-			size_t get_coro_total() {
+			size_t size() const {
+				return _tasks.size() + _pre_add_tasks_sz.load();
+			}
+
+			size_t coro_total() const {
 				return _cos.size();
 			}
 
 		private:
 			std::thread::id _work_tid = std::this_thread::get_id();
-			bool _in_work_td() {
+
+			bool _in_work_td() const {
 				return std::this_thread::get_id() == _work_tid;
 			}
 
@@ -224,10 +245,12 @@ namespace tmd {
 				#endif
 			}
 
-			std::queue<task> _pre_add_tasks;
 			std::mutex _oth_td_op_mtx;
 
-			void _sleep() {
+			std::queue<task> _pre_add_tasks;
+			std::atomic<size_t> _pre_add_tasks_sz;
+
+			void _sleep_this_task() {
 				assert(in_task());
 
 				_in_task = false;
