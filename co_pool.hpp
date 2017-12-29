@@ -161,7 +161,7 @@ namespace tmd {
 				_work_tid = std::this_thread::get_id();
 			}
 
-			void handle_tasks() {
+			void handle() {
 				assert(!in_task());
 
 				_cur_time = _tick();
