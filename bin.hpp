@@ -246,16 +246,20 @@ namespace tmd {
 				return nullptr;
 			}
 
-			unsafe_ptr match_ptr(const std::vector<uint16_t> &pattern) const {
+			unsafe_ptr match_ptr(const std::vector<uint16_t> &pattern, uint8_t size = 0) const {
 				auto md = match(pattern, true);
 				if (!md) {
 					return nullptr;
 				}
-				switch (md.size() > 8 ? 8 : md.size()) {
+				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
 					case 8:
 						return md.get<uint64_t>();
+					case 7:
+					case 6:
+					case 5:
 					case 4:
 						return md.get<uint32_t>();
+					case 3:
 					case 2:
 						return md.get<uint16_t>();
 					case 1:
@@ -264,16 +268,20 @@ namespace tmd {
 				return nullptr;
 			}
 
-			unsafe_ptr match_rel_ptr(const std::vector<uint16_t> &pattern) const {
+			unsafe_ptr match_rel_ptr(const std::vector<uint16_t> &pattern, uint8_t size = 0) const {
 				auto md = match(pattern, true);
 				if (!md) {
 					return nullptr;
 				}
-				switch (md.size() > 8 ? 8 : md.size()) {
+				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
 					case 8:
 						return md.data().value() + 8 + md.get<uint64_t>();
+					case 7:
+					case 6:
+					case 5:
 					case 4:
 						return md.data().value() + 4 + md.get<uint32_t>();
+					case 3:
 					case 2:
 						return md.data().value() + 2 + md.get<uint16_t>();
 					case 1:
