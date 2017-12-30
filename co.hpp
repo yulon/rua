@@ -147,7 +147,7 @@ namespace rua {
 			#if defined(_WIN32)
 				static LPVOID _touch_cur_fiber() {
 					auto cur = GetCurrentFiber();
-					if (!cur) {
+					if (!cur || cur == reinterpret_cast<decltype(cur)>(static_cast<uintptr_t>(0x1E00))) {
 						return
 							#ifdef TMD_WINXP_SUPPORT
 								ConvertThreadToFiber(nullptr)
