@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace tmd {
+namespace rua {
 	#ifdef _WIN32
 		inline std::wstring u8_to_u16(const std::string &u8_str) {
 			if (u8_str.empty()) {

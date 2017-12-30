@@ -3,7 +3,7 @@
 
 #include <functional>
 
-namespace tmd {
+namespace rua {
 	template <typename T>
 	class observer {
 		public:

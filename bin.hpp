@@ -12,7 +12,7 @@
 #include <utility>
 #include <cassert>
 
-namespace tmd {
+namespace rua {
 	class bin_ref {
 		public:
 			class read_writer_t {

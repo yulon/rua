@@ -18,7 +18,7 @@
 #include <atomic>
 #include <cassert>
 
-namespace tmd {
+namespace rua {
 	class co_pool {
 		public:
 			co_pool(size_t coro_stack_size = coro::default_stack_size) :

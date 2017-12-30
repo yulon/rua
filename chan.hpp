@@ -8,7 +8,7 @@
 #include <functional>
 #include <vector>
 
-namespace tmd {
+namespace rua {
 	template <typename T>
 	class chan {
 		public:

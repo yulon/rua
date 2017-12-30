@@ -9,7 +9,7 @@
 #include <utility>
 #include <cstring>
 
-namespace tmd {
+namespace rua {
 	class unsafe_ptr {
 		public:
 			constexpr unsafe_ptr() : _val(0) {}

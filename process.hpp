@@ -19,7 +19,7 @@
 #include <cstring>
 #include <cassert>
 
-namespace tmd {
+namespace rua {
 	#ifdef _WIN32
 		class process {
 			public:

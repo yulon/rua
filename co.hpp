@@ -19,7 +19,7 @@
 	#include <pthread.h>
 	#include <cstdlib>
 #else
-	#error tmd::co: not support this OS!
+	#error rua::co: not support this OS!
 #endif
 
 #include <functional>
@@ -27,7 +27,7 @@
 #include <string>
 #include <cassert>
 
-namespace tmd {
+namespace rua {
 	class cont {
 		public:
 			typedef

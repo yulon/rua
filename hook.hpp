@@ -7,7 +7,7 @@
 #include <vector>
 #include <atomic>
 
-namespace tmd {
+namespace rua {
 	extern std::atomic<size_t> _hook_count;
 
 	template <typename T>
