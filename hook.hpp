@@ -1,5 +1,5 @@
-#ifndef _TMD_HOOK_HPP
-#define _TMD_HOOK_HPP
+#ifndef _RUA_HOOK_HPP
+#define _RUA_HOOK_HPP
 
 #include <MinHook.h>
 

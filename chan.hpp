@@ -1,5 +1,5 @@
-#ifndef _TMD_CHAN_HPP
-#define _TMD_CHAN_HPP
+#ifndef _RUA_CHAN_HPP
+#define _RUA_CHAN_HPP
 
 #include <memory>
 #include <queue>

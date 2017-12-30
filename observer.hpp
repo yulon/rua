@@ -1,5 +1,5 @@
-#ifndef _TMD_OBSERVER_HPP
-#define _TMD_OBSERVER_HPP
+#ifndef _RUA_OBSERVER_HPP
+#define _RUA_OBSERVER_HPP
 
 #include <functional>
 

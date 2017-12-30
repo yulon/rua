@@ -1,5 +1,5 @@
-#ifndef _TMD_BIN_HPP
-#define _TMD_BIN_HPP
+#ifndef _RUA_BIN_HPP
+#define _RUA_BIN_HPP
 
 #include "predef.hpp"
 #include "unsafe_ptr.hpp"

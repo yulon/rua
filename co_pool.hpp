@@ -1,9 +1,9 @@
-#ifndef _TMD_CO_POOL_HPP
-#define _TMD_CO_POOL_HPP
+#ifndef _RUA_CO_POOL_HPP
+#define _RUA_CO_POOL_HPP
 
 #include "co.hpp"
 
-#if defined(_TMD_UNIX_)
+#if defined(_RUA_UNIX_)
 	#include <time.h>
 #endif
 
@@ -249,7 +249,7 @@ namespace rua {
 			static size_t _tick() {
 				#if defined(_WIN32)
 					return GetTickCount();
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					timespec ts;
 					clock_gettime(CLOCK_MONOTONIC, &ts);
 					return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;

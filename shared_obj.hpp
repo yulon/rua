@@ -1,5 +1,5 @@
-#ifndef _TMD_SHARED_OBJ_HPP
-#define _TMD_SHARED_OBJ_HPP
+#ifndef _RUA_SHARED_OBJ_HPP
+#define _RUA_SHARED_OBJ_HPP
 
 #include <memory>
 #include <typeindex>

@@ -1,5 +1,5 @@
-#ifndef _TMD_UNSAFE_PTR_HPP
-#define _TMD_UNSAFE_PTR_HPP
+#ifndef _RUA_UNSAFE_PTR_HPP
+#define _RUA_UNSAFE_PTR_HPP
 
 #include "predef.hpp"
 
@@ -22,7 +22,7 @@ namespace rua {
 			constexpr unsafe_ptr(std::nullptr_t) : unsafe_ptr() {}
 
 			template <typename T>
-			TMD_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
+			RUA_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
 				_t2u<
 					std::is_integral<typename std::remove_reference<T>::type>::value ||
 					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<T, uintptr_t>::value)
@@ -134,12 +134,12 @@ namespace rua {
 	template <>
 	struct unsafe_ptr::_t2u<false> {
 		template <typename T>
-		static TMD_CONSTEXPR_14 uintptr_t fn(T &&src) {
+		static RUA_CONSTEXPR_14 uintptr_t fn(T &&src) {
 			using src_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
-			TMD_STATIC_ASSERT(std::is_trivially_copyable<src_t>::value);
+			RUA_STATIC_ASSERT(std::is_trivially_copyable<src_t>::value);
 
-			if TMD_CONSTEXPR_IF (sizeof(src_t) < sizeof(uintptr_t)) {
+			if RUA_CONSTEXPR_IF (sizeof(src_t) < sizeof(uintptr_t)) {
 				uintptr_t _val = 0;
 				*reinterpret_cast<src_t *>(&_val) = src;
 				return _val;
@@ -165,12 +165,12 @@ namespace rua {
 
 	template <typename T>
 	struct unsafe_ptr::_u2t<T, false, false> {
-		static TMD_CONSTEXPR_14 T fn(const uintptr_t &val) {
+		static RUA_CONSTEXPR_14 T fn(const uintptr_t &val) {
 			using dest_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
 
-			TMD_STATIC_ASSERT(std::is_trivially_copyable<dest_t>::value);
+			RUA_STATIC_ASSERT(std::is_trivially_copyable<dest_t>::value);
 
-			if TMD_CONSTEXPR_IF (sizeof(uintptr_t) < sizeof(dest_t)) {
+			if RUA_CONSTEXPR_IF (sizeof(uintptr_t) < sizeof(dest_t)) {
 				uint8_t r[sizeof(dest_t)];
 				memset(reinterpret_cast<void *>(&r), 0, sizeof(dest_t));
 				*reinterpret_cast<uintptr_t *>(&r) = val;

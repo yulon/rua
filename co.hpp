@@ -1,11 +1,11 @@
-#ifndef _TMD_CO_HPP
-#define _TMD_CO_HPP
+#ifndef _RUA_CO_HPP
+#define _RUA_CO_HPP
 
 #if defined(_WIN32)
 	#include <windows.h>
 #elif defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
-	#ifndef _TMD_UNIX_
-		#define _TMD_UNIX_ 1
+	#ifndef _RUA_UNIX_
+		#define _RUA_UNIX_ 1
 	#endif
 
 	#if defined(__APPLE__) && defined(__MACH__)
@@ -33,7 +33,7 @@ namespace rua {
 			typedef
 				#if defined(_WIN32)
 					LPVOID
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					ucontext_t
 				#endif
 			native_handle_s;
@@ -41,7 +41,7 @@ namespace rua {
 			typedef
 				#if defined(_WIN32)
 					native_handle_s
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					const native_handle_s &
 				#endif
 			native_handle_t;
@@ -49,7 +49,7 @@ namespace rua {
 			typedef
 				#if defined(_WIN32)
 					LPVOID
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					void *
 				#endif
 			native_resource_handle_t;
@@ -60,7 +60,7 @@ namespace rua {
 				#endif
 				_joinable(false)
 			{
-				#if defined(_TMD_UNIX_)
+				#if defined(_RUA_UNIX_)
 					_ntv_hdl.uc_stack.ss_sp = nullptr;
 				#endif
 			}
@@ -89,7 +89,7 @@ namespace rua {
 			native_resource_handle_t native_resource_handle() const {
 				#if defined(_WIN32)
 					return _ntv_hdl;
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					return _ntv_hdl.uc_stack.ss_sp;
 				#endif
 			}
@@ -110,7 +110,7 @@ namespace rua {
 				#if defined(_WIN32)
 					_touch_cur_fiber();
 					SwitchToFiber(_ntv_hdl);
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					setcontext(&_ntv_hdl);
 				#endif
 			}
@@ -124,7 +124,7 @@ namespace rua {
 				#if defined(_WIN32)
 					cc_receiver._ntv_hdl = _touch_cur_fiber();
 					SwitchToFiber(_ntv_hdl);
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					swapcontext(&cc_receiver._ntv_hdl, &_ntv_hdl);
 				#endif
 			}
@@ -132,7 +132,7 @@ namespace rua {
 			void reset() {
 				#if defined(_WIN32)
 					_ntv_hdl
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					_ntv_hdl.uc_stack.ss_sp
 				#endif
 				= nullptr;
@@ -149,7 +149,7 @@ namespace rua {
 					auto cur = GetCurrentFiber();
 					if (!cur || cur == reinterpret_cast<decltype(cur)>(static_cast<uintptr_t>(0x1E00))) {
 						return
-							#ifdef TMD_WINXP_SUPPORT
+							#ifdef RUA_WINXP_SUPPORT
 								ConvertThreadToFiber(nullptr)
 							#else
 								ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH)
@@ -166,7 +166,7 @@ namespace rua {
 			static constexpr size_t default_stack_size =
 				#if defined(_WIN32)
 					0
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					8 * 1024
 				#endif
 			;
@@ -182,7 +182,7 @@ namespace rua {
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func_shell),
 						reinterpret_cast<LPVOID>(_func)
 					);
-				#elif defined(_TMD_UNIX_)
+				#elif defined(_RUA_UNIX_)
 					getcontext(&_ntv_hdl);
 					_ntv_hdl.uc_stack.ss_sp = reinterpret_cast<void *>(new uint8_t[stack_size]);
 					_ntv_hdl.uc_stack.ss_size = stack_size;
@@ -229,7 +229,7 @@ namespace rua {
 				if (_func) {
 					#if defined(_WIN32)
 						DeleteFiber
-					#elif defined(_TMD_UNIX_)
+					#elif defined(_RUA_UNIX_)
 						delete[] reinterpret_cast<uint8_t *>
 					#endif
 					(native_resource_handle());
@@ -256,7 +256,7 @@ namespace rua {
 
 			static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
 				return
-					#ifdef TMD_WINXP_SUPPORT
+					#ifdef RUA_WINXP_SUPPORT
 						CreateFiber(dwStackSize, lpStartAddress, lpParameter)
 					#else
 						CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter)

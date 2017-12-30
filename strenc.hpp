@@ -1,5 +1,5 @@
-#ifndef _TMD_STRENC_HPP
-#define _TMD_STRENC_HPP
+#ifndef _RUA_STRENC_HPP
+#define _RUA_STRENC_HPP
 
 #ifdef _WIN32
 	#include <windows.h>
