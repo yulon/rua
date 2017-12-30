@@ -92,14 +92,14 @@ namespace tmd {
 			D &at(size_t pos = 0) {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *unsafe_ptr(_data.value() + pos).to<D *>();
+				return *(_data.cr() + pos).to<D *>();
 			}
 
 			template <typename D>
 			const D &at(size_t pos = 0) const {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *unsafe_ptr(_data.value() + pos).to<D *>();
+				return *(_data.cr() + pos).to<D *>();
 			}
 
 			template <typename D>
@@ -240,7 +240,7 @@ namespace tmd {
 
 							return nullptr;
 						}
-						return bin_ref(_data.value() + i, pattern.size(), _rw);
+						return bin_ref(_data.cr() + i, pattern.size(), _rw);
 					}
 				}
 				return nullptr;

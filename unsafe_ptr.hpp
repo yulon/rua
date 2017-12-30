@@ -87,6 +87,32 @@ namespace tmd {
 				return to<T>();
 			}
 
+			class const_reference {
+				public:
+					using type = const unsafe_ptr &;
+
+					explicit const_reference(type ref) : _ref(ref) {}
+
+					type get() const {
+						return _ref;
+					}
+
+					operator type() const {
+						return get();
+					}
+
+				private:
+					type _ref;
+			};
+
+			const_reference cr() const {
+				return const_reference(*this);
+			}
+
+			operator const_reference() const {
+				return cr();
+			}
+
 		private:
 			uintptr_t _val;
 
@@ -154,6 +180,22 @@ namespace tmd {
 			}
 		}
 	};
+
+	inline unsafe_ptr operator+(const unsafe_ptr::const_reference &a, const unsafe_ptr &b) {
+		return a.get().value() + b.value();
+	}
+
+	inline unsafe_ptr operator+(const unsafe_ptr &a, const unsafe_ptr::const_reference &b) {
+		return a.value() + b.get().value();
+	}
+
+	inline ptrdiff_t operator-(const unsafe_ptr::const_reference &a, const unsafe_ptr &b) {
+		return a.get().value() - b.value();
+	}
+
+	inline ptrdiff_t operator-(const unsafe_ptr &a, const unsafe_ptr::const_reference &b) {
+		return a.value() - b.get().value();
+	}
 }
 
 #endif
