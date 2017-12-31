@@ -195,7 +195,7 @@ namespace rua {
 				return _is_running;
 			}
 
-			bool this_caller_on_task() const {
+			bool this_caller_in_task() const {
 				return _in_work_td() && _is_running;
 			}
 
