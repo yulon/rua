@@ -23,7 +23,9 @@ namespace rua {
 		public:
 			co_pool(size_t coro_stack_size = coro::default_stack_size) :
 				_co_stk_sz(coro_stack_size), _pre_add_tasks_sz(0)
-			{}
+			{
+				_tasks_it = _tasks.end();
+			}
 
 			co_pool(const co_pool &) = delete;
 			co_pool &operator=(const co_pool &) = delete;
@@ -39,7 +41,7 @@ namespace rua {
 			static constexpr size_t duration_always = -1;
 			static constexpr size_t duration_disposable = 0;
 
-			task add(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
+			task add(task pos, const std::function<void()> &handler, size_t duration_of_life = duration_always) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = handler;
@@ -48,15 +50,21 @@ namespace rua {
 					tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
 					tsk->state = _task_info_t::state_t::added;
 
-					_tasks.emplace_back(tsk);
-					tsk->it = --_tasks.end();
+					if (has(pos)) {
+						auto pos_it = pos->it;
+						_tasks.insert(++pos_it, tsk);
+						(*(--pos_it))->it = pos_it;
+					} else {
+						_tasks.emplace_front(tsk);
+						_tasks.front()->it = _tasks.begin();
+					}
 
 				} else {
 					tsk->del_time = duration_of_life;
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
-					_pre_add_tasks.emplace(tsk);
+					_pre_add_tasks.emplace(_pre_task_info_t{tsk, std::move(pos)});
 					++_pre_add_tasks_sz;
 					_oth_td_op_mtx.unlock();
 				}
@@ -64,34 +72,52 @@ namespace rua {
 				return tsk;
 			}
 
-			void go(const std::function<void()> &handler) {
-				add(handler, duration_disposable);
+			task add(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
+				return add(current(), handler, duration_of_life);
+			}
+
+			task go(const std::function<void()> &handler) {
+				return add(handler, duration_disposable);
+			}
+
+			task add_front(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
+				return add(nullptr, handler, duration_of_life);
+			}
+
+			task add_back(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
+				return add(back(), handler, duration_of_life);
 			}
 
 			void sleep(task tsk, size_t ms) {
 				assert(_in_work_td());
 
 				tsk->sleeping.sleep_to = _cur_time + ms;
-				if (in_task() && tsk == *_tasks_it) {
-					_sleep_this_task();
+				if (is_running() && tsk.get() == _tasks_it->get()) {
+					tsk.reset();
+					_sleep_running();
 				}
 			}
 
 			void sleep(size_t ms) {
-				sleep(*_tasks_it, ms);
+				assert(_in_work_td());
+
+				sleep(current(), ms);
 			}
 
 			void wait(task tsk, const std::function<bool()> &wake_cond) {
 				assert(_in_work_td());
 
 				tsk->sleeping.wake_cond = wake_cond;
-				if (in_task() && tsk == *_tasks_it) {
-					_sleep_this_task();
+				if (is_running() && tsk.get() == _tasks_it->get()) {
+					tsk.reset();
+					_sleep_running();
 				}
 			}
 
 			void wait(const std::function<bool()> &wake_cond) {
-				wait(*_tasks_it, wake_cond);
+				assert(_in_work_td());
+
+				wait(current(), wake_cond);
 			}
 
 			template <typename T>
@@ -110,14 +136,16 @@ namespace rua {
 			}
 
 			void reset_dol(size_t duration_of_life) {
-				reset_dol(*_tasks_it, duration_of_life);
+				assert(_in_work_td());
+
+				reset_dol(current(), duration_of_life);
 			}
 
 			void erase(task tsk) {
 				assert(_in_work_td());
 
 				if (tsk->state == _task_info_t::state_t::added) {
-					if (tsk.get() == (*_tasks_it).get()) {
+					if (tsk.get() == _tasks_it->get()) {
 						reset_dol(tsk, duration_disposable);
 						return;
 					}
@@ -138,23 +166,49 @@ namespace rua {
 			}
 
 			void erase() {
-				erase(*_tasks_it);
+				assert(_in_work_td());
+
+				erase(current());
 			}
 
 			bool has(task tsk) const {
 				assert(_in_work_td());
 
-				return tsk->state != _task_info_t::state_t::deleted;
+				return tsk && tsk->state != _task_info_t::state_t::deleted;
 			}
 
-			void has() {
-				has(*_tasks_it);
+			task current() const {
+				assert(_in_work_td());
+
+				return _tasks_it == _tasks.end() ? nullptr : *_tasks_it;
 			}
 
 			task running() const {
 				assert(_in_work_td());
 
-				return *_tasks_it;
+				return _is_running ? *_tasks_it : nullptr;
+			}
+
+			bool is_running() const {
+				assert(_in_work_td());
+
+				return _is_running;
+			}
+
+			bool this_caller_on_task() const {
+				return _in_work_td() && _is_running;
+			}
+
+			task front() const {
+				assert(_in_work_td());
+
+				return _tasks.size() ? _tasks.front() : nullptr;
+			}
+
+			task back() const {
+				assert(_in_work_td());
+
+				return _tasks.size() ? _tasks.back() : nullptr;
 			}
 
 			void init() {
@@ -162,20 +216,26 @@ namespace rua {
 			}
 
 			void handle() {
-				assert(!in_task());
+				assert(!is_running());
 
 				_cur_time = _tick();
 
 				if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
 					while (_pre_add_tasks.size()) {
-						auto &tsk = _pre_add_tasks.front();
-						if (tsk->state == _task_info_t::state_t::adding) {
-							tsk->state = _task_info_t::state_t::added;
+						auto &pt = _pre_add_tasks.front();
+						if (pt.tsk->state == _task_info_t::state_t::adding) {
+							pt.tsk->state = _task_info_t::state_t::added;
 
-							tsk->del_time = tsk->del_time == duration_always ? duration_always : _cur_time + tsk->del_time;
+							pt.tsk->del_time = pt.tsk->del_time == duration_always ? duration_always : _cur_time + pt.tsk->del_time;
 
-							_tasks.emplace_back(std::move(tsk));
-							_tasks.back()->it = --_tasks.end();
+							if (has(pt.pos)) {
+								auto pos_it = pt.pos->it;
+								_tasks.insert(++pos_it, std::move(pt.tsk));
+								(*(--pos_it))->it = pos_it;
+							} else {
+								_tasks.emplace_front(std::move(pt.tsk));
+								_tasks.front()->it = _tasks.begin();
+							}
 						}
 						_pre_add_tasks.pop();
 						--_pre_add_tasks_sz;
@@ -187,10 +247,6 @@ namespace rua {
 					_tasks_it = _tasks.begin();
 					_join_new_task_cor(_main_ct);
 				}
-			}
-
-			bool in_task() const {
-				return _in_work_td() && _in_task;
 			}
 
 			size_t size() const {
@@ -208,7 +264,7 @@ namespace rua {
 				return std::this_thread::get_id() == _work_tid;
 			}
 
-			bool _in_task = false;
+			bool _is_running = false;
 
 			size_t _co_stk_sz;
 			std::list<coro> _cos;
@@ -258,18 +314,22 @@ namespace rua {
 
 			std::mutex _oth_td_op_mtx;
 
-			std::queue<task> _pre_add_tasks;
+			struct _pre_task_info_t {
+				task tsk, pos;
+			};
+
+			std::queue<_pre_task_info_t> _pre_add_tasks;
 			std::atomic<size_t> _pre_add_tasks_sz;
 
-			void _sleep_this_task() {
-				assert(in_task());
+			void _sleep_running() {
+				assert(is_running());
 
-				_in_task = false;
+				_is_running = false;
 				_join_new_task_cor((*_tasks_it++)->sleeping.ct);
 			}
 
 			void _wake() {
-				_in_task = true;
+				_is_running = true;
 				_idle_co_cts.emplace();
 				(*_tasks_it)->sleeping.ct.join(_idle_co_cts.top());
 			}
@@ -296,9 +356,9 @@ namespace rua {
 									continue;
 								}
 
-								_in_task = true;
+								_is_running = true;
 								tsk->handler();
-								_in_task = false;
+								_is_running = false;
 
 								if (tsk->del_time != duration_always && _cur_time >= tsk->del_time) {
 									tsk->state = _task_info_t::state_t::deleted;
