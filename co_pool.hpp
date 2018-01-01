@@ -178,9 +178,7 @@ namespace rua {
 			}
 
 			task current() const {
-				assert(_in_work_td());
-
-				return _tasks_it == _tasks.end() ? nullptr : *_tasks_it;
+				return _in_work_td() && _tasks_it != _tasks.end() ? *_tasks_it : nullptr;
 			}
 
 			task running() const {
