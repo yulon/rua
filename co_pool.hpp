@@ -91,6 +91,10 @@ namespace rua {
 			void sleep(task tsk, size_t ms) {
 				assert(_in_work_td());
 
+				if (!has(tsk)) {
+					return;
+				}
+
 				tsk->sleeping.sleep_to = _cur_time + ms;
 				if (is_running() && tsk.get() == _tasks_it->get()) {
 					tsk.reset();
@@ -106,6 +110,10 @@ namespace rua {
 
 			void wait(task tsk, const std::function<bool()> &wake_cond) {
 				assert(_in_work_td());
+
+				if (!has(tsk)) {
+					return;
+				}
 
 				tsk->sleeping.wake_cond = wake_cond;
 				if (is_running() && tsk.get() == _tasks_it->get()) {
@@ -132,6 +140,10 @@ namespace rua {
 			void reset_dol(task tsk, size_t duration_of_life) {
 				assert(_in_work_td());
 
+				if (!has(tsk)) {
+					return;
+				}
+
 				tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
 			}
 
@@ -143,6 +155,10 @@ namespace rua {
 
 			void erase(task tsk) {
 				assert(_in_work_td());
+
+				if (!has(tsk)) {
+					return;
+				}
 
 				if (tsk->state == _task_info_t::state_t::added) {
 					if (tsk.get() == _tasks_it->get()) {
@@ -162,6 +178,9 @@ namespace rua {
 					}
 
 					_tasks.erase(tsk->it);
+
+				} else {
+					tsk->state = _task_info_t::state_t::deleted;
 				}
 			}
 
