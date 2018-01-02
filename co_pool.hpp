@@ -11,6 +11,7 @@
 #include <string>
 #include <list>
 #include <stack>
+#include <deque>
 #include <thread>
 #include <chrono>
 #include <mutex>
@@ -63,11 +64,7 @@ namespace rua {
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
-					if (has(pos)) {
-						_pre_add_tasks.emplace_back(_pre_task_info_t{tsk, std::move(pos)});
-					} else {
-						_pre_add_tasks.emplace_front(_pre_task_info_t{tsk, nullptr});
-					}
+					_pre_add_tasks.emplace_front(_pre_task_info_t{tsk, std::move(pos)});
 					++_pre_add_tasks_sz;
 					_oth_td_op_mtx.unlock();
 				}
@@ -241,27 +238,28 @@ namespace rua {
 				_cur_time = _tick();
 
 				if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
-					for (auto it = _pre_add_tasks.begin(); it != _pre_add_tasks.end();) {
-						if (it->tsk->state == _task_info_t::state_t::adding) {
-							it->tsk->state = _task_info_t::state_t::added;
+					while (_pre_add_tasks.size()) {
+						auto &pt = _pre_add_tasks.front();
+						if (pt.tsk->state == _task_info_t::state_t::adding) {
+							pt.tsk->state = _task_info_t::state_t::added;
 
-							it->tsk->del_time = it->tsk->del_time == duration_always ? duration_always : _cur_time + it->tsk->del_time;
+							pt.tsk->del_time = pt.tsk->del_time == duration_always ? duration_always : _cur_time + pt.tsk->del_time;
 
-							if (has(it->pos)) {
-								if (it->pos->state == _task_info_t::state_t::adding) {
-									_pre_add_tasks.push_back(std::move(*it));
-									it = _pre_add_tasks.erase(it);
+							if (has(pt.pos)) {
+								if (pt.pos->state == _task_info_t::state_t::adding) {
+									_pre_add_tasks.emplace_back(std::move(pt));
+									_pre_add_tasks.pop_front();
 									continue;
 								}
-								auto pos_it = it->pos->it;
-								_tasks.insert(++pos_it, std::move(it->tsk));
+								auto pos_it = pt.pos->it;
+								_tasks.insert(++pos_it, std::move(pt.tsk));
 								(*(--pos_it))->it = pos_it;
 							} else {
-								_tasks.emplace_front(std::move(it->tsk));
+								_tasks.emplace_front(std::move(pt.tsk));
 								_tasks.front()->it = _tasks.begin();
 							}
 						}
-						it = _pre_add_tasks.erase(it);
+						_pre_add_tasks.pop_front();
 						--_pre_add_tasks_sz;
 					}
 					_oth_td_op_mtx.unlock();
@@ -342,7 +340,7 @@ namespace rua {
 				task tsk, pos;
 			};
 
-			std::list<_pre_task_info_t> _pre_add_tasks;
+			std::deque<_pre_task_info_t> _pre_add_tasks;
 			std::atomic<size_t> _pre_add_tasks_sz;
 
 			void _sleep_running() {
