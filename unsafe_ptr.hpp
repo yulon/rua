@@ -12,14 +12,14 @@
 namespace rua {
 	class unsafe_ptr {
 		public:
-			constexpr unsafe_ptr() : _val(0) {}
+			unsafe_ptr() = default;
+
+			constexpr unsafe_ptr(std::nullptr_t) : _val(0) {}
 
 			template <typename T>
 			constexpr unsafe_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
 
 			constexpr unsafe_ptr(uintptr_t src) : _val(src) {}
-
-			constexpr unsafe_ptr(std::nullptr_t) : unsafe_ptr() {}
 
 			template <typename T>
 			RUA_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
