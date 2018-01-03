@@ -5,37 +5,35 @@
 
 #include <functional>
 #include <vector>
-#include <atomic>
+#include <mutex>
+#include <cassert>
 
 namespace rua {
-	extern std::atomic<size_t> _hook_count;
+	extern size_t _hooked_count;
+	extern std::mutex _hook_mtx;
 
 	template <typename T>
-	class hook {
+	class hooked {
 		public:
 			using target_type = T;
 
-			constexpr hook() : _t(nullptr), _o(nullptr) {}
+			constexpr hooked() : _t(nullptr), _o(nullptr) {}
 
-			hook(T target, T detour) : _t(target) {
-				if (++_hook_count == 1) {
-					MH_Initialize();
-				}
-				MH_CreateHook(reinterpret_cast<LPVOID>(target), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID *>(&_o));
-				MH_EnableHook(reinterpret_cast<LPVOID>(target));
+			hooked(T target, T detour) : _t(nullptr) {
+				hook(target, detour);
 			}
 
-			hook(const hook<T> &) = delete;
+			hooked(const hooked<T> &) = delete;
 
-			hook<T> &operator=(const hook<T> &) = delete;
+			hooked<T> &operator=(const hooked<T> &) = delete;
 
-			hook(hook<T> &&src) : _t(src._t), _o(src._o) {
+			hooked(hooked<T> &&src) : _t(src._t), _o(src._o) {
 				if (src._t) {
 					src._t = nullptr;
 				}
 			}
 
-			hook<T> &operator=(hook<T> &&src) {
+			hooked<T> &operator=(hooked<T> &&src) {
 				unhook();
 
 				if (src._t) {
@@ -48,12 +46,49 @@ namespace rua {
 				return *this;
 			}
 
-			~hook() {
+			~hooked() {
 				unhook();
 			}
 
+			bool hook(T target, T detour) {
+				unhook();
+
+				_hook_mtx.lock();
+
+				if (!_hooked_count) {
+					if (MH_Initialize() == MH_ERROR_MEMORY_ALLOC) {
+						return false;
+					}
+				}
+
+				if (MH_CreateHook(reinterpret_cast<LPVOID>(target), reinterpret_cast<LPVOID>(detour), reinterpret_cast<LPVOID *>(&_o)) != MH_OK) {
+					if (!_hooked_count) {
+						MH_Uninitialize();
+					}
+					return false;
+				}
+
+				if (MH_EnableHook(reinterpret_cast<LPVOID>(target)) != MH_OK) {
+					if (!_hooked_count) {
+						MH_Uninitialize();
+					}
+					return false;
+				}
+
+				++_hooked_count;
+
+				_hook_mtx.unlock();
+
+				_t = target;
+				return true;
+			}
+
+			operator bool() const {
+				return _t;
+			}
+
 			template <typename... A>
-			auto orig_fn(A&&... a) const -> decltype((*reinterpret_cast<T>(0))(std::forward<A>(a)...)) {
+			auto operator()(A&&... a) const -> decltype((*reinterpret_cast<T>(0))(std::forward<A>(a)...)) {
 				return _o(std::forward<A>(a)...);
 			}
 
@@ -62,19 +97,13 @@ namespace rua {
 					MH_DisableHook(reinterpret_cast<LPVOID>(_t));
 					MH_RemoveHook(reinterpret_cast<LPVOID>(_t));
 					_t = nullptr;
-					if (!--_hook_count) {
+
+					_hook_mtx.lock();
+					if (!--_hooked_count) {
 						MH_Uninitialize();
 					}
+					_hook_mtx.unlock();
 				}
-			}
-
-			operator bool() const {
-				return _t;
-			}
-
-			template <typename... A>
-			void assign(A&&... a) {
-				*this = hook<T>(std::forward<A>(a)...);
 			}
 
 		private:

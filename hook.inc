@@ -1,5 +1,6 @@
-#include <atomic>
+#include "hook.hpp"
 
 namespace rua {
-	std::atomic<size_t> _hook_count(0);
+	size_t _hooked_count = 0;
+	std::mutex _hook_mtx;
 }
