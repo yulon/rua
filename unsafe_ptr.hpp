@@ -24,6 +24,10 @@ namespace rua {
 				return _val;
 			}
 
+			operator uintptr_t() const {
+				return _val;
+			}
+
 		private:
 			uintptr_t _val;
 	};
@@ -81,10 +85,6 @@ namespace rua {
 
 			unsafe_ptr operator--(int) {
 				return value()--;
-			}
-
-			operator uintptr_t() const {
-				return value();
 			}
 
 			operator bool() const {
