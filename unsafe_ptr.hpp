@@ -11,11 +11,12 @@
 
 namespace rua {
 	class _unsafe_ptr_valuer {
-		public:
+		protected:
 			_unsafe_ptr_valuer() = default;
 
 			explicit constexpr _unsafe_ptr_valuer(uintptr_t val) : _val(val) {}
 
+		public:
 			uintptr_t &value() {
 				return _val;
 			}
@@ -59,14 +60,6 @@ namespace rua {
 					std::is_integral<typename std::remove_reference<T>::type>::value ||
 					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<uintptr_t, T>::value)
 				>::fn(value());
-			}
-
-			bool operator==(unsafe_ptr target) const {
-				return value() == target.value();
-			}
-
-			bool operator!=(unsafe_ptr target) const {
-				return value() != target.value();
 			}
 
 			unsafe_ptr &operator++() {
@@ -166,6 +159,26 @@ namespace rua {
 			}
 		}
 	};
+
+	template <typename T>
+	bool operator==(const _unsafe_ptr_valuer &a, T &&b) {
+		return a.value() == unsafe_ptr(std::forward<T>(b)).value();
+	}
+
+	template <typename T>
+	bool operator==(T &&a, const _unsafe_ptr_valuer &b) {
+		return unsafe_ptr(std::forward<T>(a)).value() == b.value();
+	}
+
+	template <typename T>
+	bool operator!=(const _unsafe_ptr_valuer &a, T &&b) {
+		return a.value() != unsafe_ptr(std::forward<T>(b)).value();
+	}
+
+	template <typename T>
+	bool operator!=(T &&a, const _unsafe_ptr_valuer &b) {
+		return unsafe_ptr(std::forward<T>(a)).value() != b.value();
+	}
 
 	template <typename T>
 	inline unsafe_ptr operator+(const _unsafe_ptr_valuer &a, T &&b) {
