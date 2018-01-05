@@ -43,7 +43,8 @@ namespace rua {
 			obj(A&& a) : _sp(
 				_ctor<
 					T,
-					std::is_same<typename std::remove_cv<typename std::remove_reference<A>::type>::type, obj<T>>::value
+					std::is_same<typename std::remove_cv<typename std::remove_reference<A>::type>::type, obj<T>>::value,
+					std::is_same<typename std::remove_cv<typename std::remove_reference<A>::type>::type, std::shared_ptr<T>>::value
 				>::fn(std::forward<A>(a))
 			) {}
 
@@ -102,13 +103,13 @@ namespace rua {
 		private:
 			std::shared_ptr<T> _sp;
 
-			template <typename TT, bool IS_THIS_T>
+			template <typename TT, bool IS_THIS_T, bool IS_THIS_SP>
 			struct _ctor;
 	};
 
 	template <typename T>
 	template <typename TT>
-	struct obj<T>::_ctor<TT, false> {
+	struct obj<T>::_ctor<TT, false, false> {
 		template <typename A>
 		static std::shared_ptr<T> fn(A &&a) {
 			return std::make_shared<T>(std::forward<A>(a));
@@ -117,12 +118,23 @@ namespace rua {
 
 	template <typename T>
 	template <typename TT>
-	struct obj<T>::_ctor<TT, true> {
+	struct obj<T>::_ctor<TT, true, false> {
 		static std::shared_ptr<T> fn(const obj<T> &a) {
 			return a._sp;
 		}
 		static std::shared_ptr<T> fn(obj<T> &&a) {
 			return std::move(a._sp);
+		}
+	};
+
+	template <typename T>
+	template <typename TT>
+	struct obj<T>::_ctor<TT, false, true> {
+		static std::shared_ptr<T> fn(const std::shared_ptr<T> &a) {
+			return a;
+		}
+		static std::shared_ptr<T> fn(std::shared_ptr<T> &&a) {
+			return std::move(a);
 		}
 	};
 
@@ -167,9 +179,7 @@ namespace rua {
 				assert(*this);
 				assert(type_is<R>());
 
-				RR dest;
-				*static_cast<obj<typename RR::access_type> &>(dest) = std::static_pointer_cast<typename RR::access_type>(**this);
-				return dest;
+				return std::static_pointer_cast<typename RR::access_type>(**this);
 			}
 
 			std::shared_ptr<T> &operator*() = delete;
