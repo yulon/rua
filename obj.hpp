@@ -39,18 +39,21 @@ namespace rua {
 			template <typename... A>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
 
-			template <typename A>
-			obj(A&& a) : _sp(
-				_ctor<
-					T,
-					std::is_same<typename std::remove_cv<typename std::remove_reference<A>::type>::type, obj<T>>::value,
-					std::is_same<typename std::remove_cv<typename std::remove_reference<A>::type>::type, std::shared_ptr<T>>::value
-				>::fn(std::forward<A>(a))
-			) {}
+			obj(std::shared_ptr<T> &sp) : _sp(sp) {}
+
+			obj(const std::shared_ptr<T> &sp) : _sp(sp) {}
+
+			obj(std::shared_ptr<T> &&sp) : _sp(std::move(sp)) {}
 
 			obj(const obj &) = default;
 
+			obj &operator=(const obj &) = default;
+
 			obj(obj &&) = default;
+
+			obj &operator=(obj &&) = default;
+
+			obj(obj &o) : obj(const_cast<const obj &>(o)) {}
 
 			void reset() {
 				_sp.reset();
@@ -92,50 +95,12 @@ namespace rua {
 				return _sp.get();
 			}
 
-			std::shared_ptr<T> &operator*() {
-				return _sp;
-			}
-
 			const std::shared_ptr<T> &operator*() const {
 				return _sp;
 			}
 
 		private:
 			std::shared_ptr<T> _sp;
-
-			template <typename TT, bool IS_THIS_T, bool IS_THIS_SP>
-			struct _ctor;
-	};
-
-	template <typename T>
-	template <typename TT>
-	struct obj<T>::_ctor<TT, false, false> {
-		template <typename A>
-		static std::shared_ptr<T> fn(A &&a) {
-			return std::make_shared<T>(std::forward<A>(a));
-		}
-	};
-
-	template <typename T>
-	template <typename TT>
-	struct obj<T>::_ctor<TT, true, false> {
-		static std::shared_ptr<T> fn(const obj<T> &a) {
-			return a._sp;
-		}
-		static std::shared_ptr<T> fn(obj<T> &&a) {
-			return std::move(a._sp);
-		}
-	};
-
-	template <typename T>
-	template <typename TT>
-	struct obj<T>::_ctor<TT, false, true> {
-		static std::shared_ptr<T> fn(const std::shared_ptr<T> &a) {
-			return a;
-		}
-		static std::shared_ptr<T> fn(std::shared_ptr<T> &&a) {
-			return std::move(a);
-		}
 	};
 
 	template <typename T>
@@ -144,18 +109,25 @@ namespace rua {
 			constexpr itf(std::nullptr_t) : obj<T>(nullptr), _t(typeid(nullptr)) {}
 
 			template <typename A>
-			itf(A&& a) : obj<T>(nullptr), _t(
-				_get_type<
-					T,
-					is_itf<A>()
-				>::fn(std::forward<A>(a))
-			) {
-				static_assert(is_obj<A>(), "dest is not a 'rua::obj'");
+			itf(A&& a) : obj<T>(
+				_cast(std::forward<A>(a))),
+				_t(
+					_get_type<
+						T,
+						is_itf<A>()
+					>::fn(std::forward<A>(a)
+				)
+			) {}
 
-				assert(a);
+			itf(const itf &) = default;
 
-				obj<T>::operator*() = std::static_pointer_cast<T>(*a);
-			}
+			itf &operator=(const itf &) = default;
+
+			itf(itf &&) = default;
+
+			itf &operator=(itf &&) = default;
+
+			itf(itf &o) : itf(const_cast<const itf &>(o)) {}
 
 			void reset() {
 				_t = typeid(nullptr);
@@ -164,7 +136,7 @@ namespace rua {
 
 			template <typename R>
 			bool type_is() const {
-				static_assert(is_obj<R>(), "target is not a 'rua::obj'");
+				RUA_STATIC_ASSERT(is_obj<R>());
 
 				return _t == typeid(typename std::remove_cv<typename std::remove_reference<R>::type>::type);
 			}
@@ -173,8 +145,8 @@ namespace rua {
 			R to() const {
 				using RR = typename std::remove_cv<typename std::remove_reference<R>::type>::type;
 
-				static_assert(is_obj<R>(), "dest is not a 'rua::obj'");
-				static_assert(!is_itf<R>(), "dest cannot be a 'rua::itf'");
+				RUA_STATIC_ASSERT(is_obj<R>());
+				RUA_STATIC_ASSERT(!is_itf<R>());
 
 				assert(*this);
 				assert(type_is<R>());
@@ -182,14 +154,17 @@ namespace rua {
 				return std::static_pointer_cast<typename RR::access_type>(**this);
 			}
 
-			std::shared_ptr<T> &operator*() = delete;
-
-			const std::shared_ptr<T> &operator*() const {
-				return obj<T>::operator*();
-			}
-
 		private:
 			std::type_index _t;
+
+			template <typename A>
+			static std::shared_ptr<T> _cast(A&& a) {
+				RUA_STATIC_ASSERT(is_obj<A>());
+
+				assert(a);
+
+				return std::static_pointer_cast<T>(*a);
+			}
 
 			template <typename TT, bool IS_ITF>
 			struct _get_type;
