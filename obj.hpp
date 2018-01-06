@@ -39,12 +39,6 @@ namespace rua {
 			template <typename... A>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
 
-			obj(std::shared_ptr<T> &sp) : _sp(sp) {}
-
-			obj(const std::shared_ptr<T> &sp) : _sp(sp) {}
-
-			obj(std::shared_ptr<T> &&sp) : _sp(std::move(sp)) {}
-
 			obj(const obj &) = default;
 
 			obj &operator=(const obj &) = default;
@@ -95,6 +89,10 @@ namespace rua {
 				return _sp.get();
 			}
 
+			std::shared_ptr<T> &operator*() {
+				return _sp;
+			}
+
 			const std::shared_ptr<T> &operator*() const {
 				return _sp;
 			}
@@ -109,15 +107,16 @@ namespace rua {
 			constexpr itf(std::nullptr_t) : obj<T>(nullptr), _t(typeid(nullptr)) {}
 
 			template <typename A>
-			itf(A&& a) : obj<T>(
-				_cast(std::forward<A>(a))),
-				_t(
-					_get_type<
-						T,
-						is_itf<A>()
-					>::fn(std::forward<A>(a)
-				)
-			) {}
+			itf(A&& a) :
+				obj<T>(nullptr),
+				_t(_get_type<A, is_itf<A>()>::fn(std::forward<A>(a))
+			) {
+				RUA_STATIC_ASSERT(is_obj<A>());
+
+				assert(a);
+
+				*static_cast<obj<T> &>(*this) = std::static_pointer_cast<T>(*a);
+			}
 
 			itf(const itf &) = default;
 
@@ -151,38 +150,35 @@ namespace rua {
 				assert(*this);
 				assert(type_is<R>());
 
-				return std::static_pointer_cast<typename RR::access_type>(**this);
+				RR r(nullptr);
+				*static_cast<obj<typename RR::access_type> &>(r) = std::static_pointer_cast<typename RR::access_type>(**this);
+				return r;
+			}
+
+			std::shared_ptr<T> &operator*() = delete;
+
+			const std::shared_ptr<T> &operator*() const {
+				return obj<T>::operator*();
 			}
 
 		private:
 			std::type_index _t;
 
-			template <typename A>
-			static std::shared_ptr<T> _cast(A&& a) {
-				RUA_STATIC_ASSERT(is_obj<A>());
-
-				assert(a);
-
-				return std::static_pointer_cast<T>(*a);
-			}
-
-			template <typename TT, bool IS_ITF>
+			template <typename A, bool IS_ITF>
 			struct _get_type;
 	};
 
 	template <typename T>
-	template <typename TT>
-	struct itf<T>::_get_type<TT, false> {
-		template <typename A>
+	template <typename A>
+	struct itf<T>::_get_type<A, false> {
 		static std::type_index fn(A &&) {
 			return typeid(typename std::remove_cv<typename std::remove_reference<A>::type>::type);
 		}
 	};
 
 	template <typename T>
-	template <typename TT>
-	struct itf<T>::_get_type<TT, true> {
-		template <typename A>
+	template <typename A>
+	struct itf<T>::_get_type<A, true> {
 		static std::type_index fn(A &&a) {
 			return typeid(a._t);
 		}
