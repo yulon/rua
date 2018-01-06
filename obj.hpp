@@ -101,6 +101,9 @@ namespace rua {
 			std::shared_ptr<T> _sp;
 	};
 
+	template <bool IS_ITF>
+	struct _obj_type;
+
 	template <typename T>
 	class itf : public obj<T> {
 		public:
@@ -109,7 +112,7 @@ namespace rua {
 			template <typename A>
 			itf(A&& a) :
 				obj<T>(nullptr),
-				_t(_get_type<A, is_itf<A>()>::fn(std::forward<A>(a))
+				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a))
 			) {
 				RUA_STATIC_ASSERT(is_obj<A>());
 
@@ -140,6 +143,10 @@ namespace rua {
 				return _t == typeid(typename std::remove_cv<typename std::remove_reference<R>::type>::type);
 			}
 
+			std::type_index type() const {
+				return _t;
+			}
+
 			template <typename R>
 			R to() const {
 				using RR = typename std::remove_cv<typename std::remove_reference<R>::type>::type;
@@ -163,24 +170,21 @@ namespace rua {
 
 		private:
 			std::type_index _t;
-
-			template <typename A, bool IS_ITF>
-			struct _get_type;
 	};
 
-	template <typename T>
-	template <typename A>
-	struct itf<T>::_get_type<A, false> {
+	template <>
+	struct _obj_type<false> {
+		template <typename A>
 		static std::type_index fn(A &&) {
 			return typeid(typename std::remove_cv<typename std::remove_reference<A>::type>::type);
 		}
 	};
 
-	template <typename T>
-	template <typename A>
-	struct itf<T>::_get_type<A, true> {
+	template <>
+	struct _obj_type<true> {
+		template <typename A>
 		static std::type_index fn(A &&a) {
-			return typeid(a._t);
+			return typeid(a.type());
 		}
 	};
 }
