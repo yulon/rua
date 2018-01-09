@@ -171,22 +171,22 @@ namespace rua {
 	};
 
 	template <typename T>
-	bool operator==(const _unsafe_ptr_valuer &a, T &&b) {
+	inline bool operator==(const _unsafe_ptr_valuer &a, T &&b) {
 		return a.value() == unsafe_ptr(std::forward<T>(b)).value();
 	}
 
 	template <typename T>
-	bool operator==(T &&a, const _unsafe_ptr_valuer &b) {
+	inline bool operator==(T &&a, const _unsafe_ptr_valuer &b) {
 		return unsafe_ptr(std::forward<T>(a)).value() == b.value();
 	}
 
 	template <typename T>
-	bool operator!=(const _unsafe_ptr_valuer &a, T &&b) {
+	inline bool operator!=(const _unsafe_ptr_valuer &a, T &&b) {
 		return a.value() != unsafe_ptr(std::forward<T>(b)).value();
 	}
 
 	template <typename T>
-	bool operator!=(T &&a, const _unsafe_ptr_valuer &b) {
+	inline bool operator!=(T &&a, const _unsafe_ptr_valuer &b) {
 		return unsafe_ptr(std::forward<T>(a)).value() != b.value();
 	}
 
