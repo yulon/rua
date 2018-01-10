@@ -61,7 +61,7 @@ namespace rua {
 				_lock(scheduler);
 
 				if (_res->buffer.size()) {
-					receiver = _res->buffer.front();
+					receiver = std::move(_res->buffer.front());
 					_res->buffer.pop();
 					_res->mtx.unlock();
 					return *this;
