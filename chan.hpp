@@ -128,7 +128,7 @@ namespace rua {
 				if (!_res->mtx.try_lock()) {
 					if (scheduler) {
 						auto res = _res;
-						_cond_wait(*scheduler, [res]()->bool {
+						_cond_wait(scheduler, [res]()->bool {
 							return res->mtx.try_lock();
 						});
 						return;
