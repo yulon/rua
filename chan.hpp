@@ -24,31 +24,16 @@ namespace rua {
 				_res->schedulers = schedulers;
 			}
 
-			chan<T> &operator<<(const T &value) {
-				_lock(_get_scheduler());
-
-				if (_res->reqs.size()) {
-					_res->reqs.front()->value = value;
-					_res->reqs.front()->ok = true;
-					_res->reqs.pop();
-				} else {
-					_res->buffer.push(value);
-				}
-
-				_res->mtx.unlock();
-
-				return *this;
-			}
-
-			chan<T> &operator<<(T &&value) {
+			chan<T> &operator<<(T value) {
 				_lock(_get_scheduler());
 
 				if (_res->reqs.size()) {
 					_res->reqs.front()->value = std::move(value);
-					_res->reqs.front()->ok = true;
+					_res->reqs.front()->filled = true;
 					_res->reqs.pop();
 				} else {
 					_res->buffer.push(std::move(value));
+					_res->buffered = true;
 				}
 
 				_res->mtx.unlock();
@@ -56,32 +41,36 @@ namespace rua {
 				return *this;
 			}
 
-			chan<T> &operator>>(T &receiver) {
+			template <typename R>
+			chan<T> &operator>>(R &receiver) {
 				auto scheduler = _get_scheduler();
+
+				if (!_res->buffered) {
+					auto &buffered = _res->buffered;
+					_cond_wait(scheduler, [&buffered]()->bool {
+						return buffered;
+					});
+				}
+
 				_lock(scheduler);
 
 				if (_res->buffer.size()) {
 					receiver = std::move(_res->buffer.front());
 					_res->buffer.pop();
+					_res->buffered = _res->buffer.size();
 					_res->mtx.unlock();
 					return *this;
 				}
 
 				auto req = new _req_t;
-				req->ok = false;
 				_res->reqs.emplace(req);
 				_res->mtx.unlock();
 
-				if (!req->ok) {
-					if (scheduler) {
-						_cond_wait(*scheduler, [req]()->bool {
-							return req->ok;
-						});
-					} else {
-						do {
-							std::this_thread::yield();
-						} while (!req->ok);
-					}
+				if (!req->filled) {
+					auto &filled = req->filled;
+					_cond_wait(scheduler, [&filled]()->bool {
+						return filled;
+					});
 				}
 
 				receiver = std::move(req->value);
@@ -92,7 +81,7 @@ namespace rua {
 
 		private:
 			struct _req_t {
-				std::atomic<bool> ok;
+				std::atomic<bool> filled = false;
 				T value;
 			};
 
@@ -100,6 +89,7 @@ namespace rua {
 				std::mutex mtx;
 				std::vector<scheduler_t> schedulers;
 				std::queue<T> buffer;
+				std::atomic<bool> buffered = false;
 				std::queue<_req_t *> reqs;
 			};
 
@@ -114,16 +104,23 @@ namespace rua {
 				return nullptr;
 			}
 
-			void _cond_wait(scheduler_t &scheduler, const std::function<bool()> &cond) {
-				if (scheduler.cond_wait) {
-					scheduler.cond_wait(cond);
+			void _cond_wait(scheduler_t *scheduler, const std::function<bool()> &cond) {
+				if (!scheduler) {
+					do {
+						std::this_thread::yield();
+					} while (!cond());
 					return;
 				}
 
-				assert(scheduler.yield);
+				if (scheduler->cond_wait) {
+					scheduler->cond_wait(cond);
+					return;
+				}
+
+				assert(scheduler->yield);
 
 				do {
-					scheduler.yield();
+					scheduler->yield();
 				} while (!cond());
 			}
 
