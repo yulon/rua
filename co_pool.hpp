@@ -42,17 +42,18 @@ namespace rua {
 		public:
 			using task = std::shared_ptr<_task_info_t>;
 
-			static constexpr size_t duration_always = SIZE_MAX;
+			static constexpr size_t duration_forever = SIZE_MAX;
 			static constexpr size_t duration_disposable = 0;
 
-			task add(task pos, std::function<void()> handler, size_t duration_of_life = duration_always) {
+			task add(task pos, std::function<void()> handler, size_t duration = duration_forever) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = std::move(handler);
-				tsk->sleeping.notified = false;
+				tsk->sleeping = false;
+				tsk->sleep_info.notified = false;
 
 				if (_in_work_td()) {
-					tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
+					tsk->del_time = _dur2time(duration);
 					tsk->state = _task_info_t::state_t::added;
 
 					if (has(pos)) {
@@ -65,7 +66,7 @@ namespace rua {
 					}
 
 				} else {
-					tsk->del_time = duration_of_life;
+					tsk->del_time = duration;
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
@@ -77,59 +78,63 @@ namespace rua {
 				return tsk;
 			}
 
-			task add(std::function<void()> handler, size_t duration_of_life = duration_always) {
-				return add(current(), std::move(handler), duration_of_life);
+			task add(std::function<void()> handler, size_t duration = duration_forever) {
+				return add(current(), std::move(handler), duration);
 			}
 
 			task go(std::function<void()> handler) {
 				return add(std::move(handler), duration_disposable);
 			}
 
-			task add_front(std::function<void()> handler, size_t duration_of_life = duration_always) {
-				return add(nullptr, std::move(handler), duration_of_life);
+			task add_front(std::function<void()> handler, size_t duration = duration_forever) {
+				return add(nullptr, std::move(handler), duration);
 			}
 
-			task add_back(std::function<void()> handler, size_t duration_of_life = duration_always) {
-				return add(back(), std::move(handler), duration_of_life);
+			task add_back(std::function<void()> handler, size_t duration = duration_forever) {
+				return add(back(), std::move(handler), duration);
 			}
 
-			void sleep(task tsk, size_t ms) {
+			void sleep(task tsk, size_t duration) {
 				assert(_in_work_td() && has(tsk));
 
-				tsk->sleeping.sleep_to = _cur_time + ms;
-				if (is_running() && tsk.get() == _tasks_it->get()) {
-					tsk.reset();
-					_sleep_running();
-				}
+				tsk->sleep_info.wake_time = _dur2time(duration);
+
+				_sleep(tsk);
 			}
 
-			void sleep(size_t ms) {
-				sleep(current(), ms);
+			void sleep(size_t duration) {
+				sleep(current(), duration);
 			}
 
-			void cond_wait(task tsk, std::function<bool()> pred) {
+			void yield(task tsk) {
+				sleep(tsk, 0);
+			}
+
+			void yield() {
+				yield(current());
+			}
+
+			void cond_wait(task tsk, std::function<bool()> pred, size_t timeout_duration = duration_forever) {
 				assert(_in_work_td() && has(tsk));
 
-				if (tsk->sleeping.notified.exchange(false) && pred()) {
+				if (tsk->sleep_info.notified.exchange(false) && pred()) {
 					return;
 				}
 
-				tsk->sleeping.wake_cond = std::move(pred);
+				tsk->sleep_info.wake_time = _dur2time(timeout_duration);
+				tsk->sleep_info.wake_cond = std::move(pred);
 
-				if (is_running() && tsk.get() == _tasks_it->get()) {
-					tsk.reset();
-					_sleep_running();
-				}
+				_sleep(tsk);
 			}
 
-			void cond_wait(std::function<bool()> pred) {
-				cond_wait(current(), std::move(pred));
+			void cond_wait(std::function<bool()> pred, size_t timeout_duration = duration_forever) {
+				cond_wait(current(), std::move(pred), timeout_duration);
 			}
 
 			void notify(task tsk) {
 				assert(has(tsk));
 
-				tsk->sleeping.notified = true;
+				tsk->sleep_info.notified = true;
 			}
 
 			void notify() {
@@ -139,7 +144,7 @@ namespace rua {
 			void notify_all() {
 				if (_in_work_td()) {
 					for (auto &tsk : _tasks) {
-						if (tsk->sleeping && tsk->sleeping.wake_cond) {
+						if (tsk->sleeping && tsk->sleep_info.wake_cond) {
 							notify(tsk);
 						}
 					}
@@ -148,14 +153,14 @@ namespace rua {
 				}
 			}
 
-			void reset_dol(task tsk, size_t duration_of_life) {
+			void reset_dol(task tsk, size_t duration) {
 				assert(_in_work_td() && has(tsk));
 
-				tsk->del_time = duration_of_life == duration_always ? duration_always : _cur_time + duration_of_life;
+				tsk->del_time = _dur2time(duration);
 			}
 
-			void reset_dol(size_t duration_of_life) {
-				reset_dol(current(), duration_of_life);
+			void reset_dol(size_t duration) {
+				reset_dol(current(), duration);
 			}
 
 			void erase(task tsk) {
@@ -169,9 +174,9 @@ namespace rua {
 
 					tsk->state = _task_info_t::state_t::deleted;
 
-					if (tsk->sleeping) {
+					if (tsk->sleeping && tsk->sleep_info.ct) {
 						for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-							if (tsk->sleeping.ct.native_resource_handle() == it->native_resource_handle()) {
+							if (tsk->sleep_info.ct.native_resource_handle() == it->native_resource_handle()) {
 								_cos.erase(it);
 								break;
 							}
@@ -230,7 +235,7 @@ namespace rua {
 			}
 
 			void handle() {
-				assert(!is_running());
+				assert(_in_work_td() && !is_running());
 
 				_cur_time = _tick();
 
@@ -240,7 +245,7 @@ namespace rua {
 						if (pt.tsk->state == _task_info_t::state_t::adding) {
 							pt.tsk->state = _task_info_t::state_t::added;
 
-							pt.tsk->del_time = pt.tsk->del_time == duration_always ? duration_always : _cur_time + pt.tsk->del_time;
+							pt.tsk->del_time = _dur2time(pt.tsk->del_time);
 
 							if (has(pt.pos)) {
 								if (pt.pos->state == _task_info_t::state_t::adding) {
@@ -299,15 +304,13 @@ namespace rua {
 				size_t del_time;
 
 				struct {
-					size_t sleep_to;
+					size_t wake_time;
 					std::function<bool()> wake_cond;
 					std::atomic<bool> notified;
 					cont ct;
+				} sleep_info;
 
-					operator bool() {
-						return ct;
-					}
-				} sleeping;
+				bool sleeping;
 
 				_task_list_t::iterator it;
 
@@ -335,6 +338,14 @@ namespace rua {
 				#endif
 			}
 
+			size_t _dur2time(size_t duration) {
+				duration > duration_forever - _cur_time ? duration_forever : _cur_time + duration;
+			}
+
+			bool _is_expiration(size_t time) {
+				return time != duration_forever && _cur_time >= time;
+			}
+
 			std::mutex _oth_td_op_mtx;
 
 			struct _pre_task_info_t {
@@ -347,17 +358,24 @@ namespace rua {
 			std::atomic<bool> _notify_all;
 			bool _notified_all;
 
-			void _sleep_running() {
-				assert(is_running());
+			void _sleep(task &tsk) {
+				tsk->sleeping = true;
 
-				_is_running = false;
-				_join_new_task_cor((*_tasks_it++)->sleeping.ct);
+				if (is_running() && tsk.get() == _tasks_it->get()) {
+					tsk.reset();
+					_is_running = false;
+					_join_new_task_cor((*_tasks_it++)->sleep_info.ct);
+				}
 			}
 
 			void _wake() {
-				_is_running = true;
-				_idle_co_cts.emplace();
-				(*_tasks_it)->sleeping.ct.join(_idle_co_cts.top());
+				(*_tasks_it)->sleeping = false;
+
+				if ((*_tasks_it)->sleep_info.ct) {
+					_is_running = true;
+					_idle_co_cts.emplace();
+					(*_tasks_it)->sleep_info.ct.join(_idle_co_cts.top());
+				}
 			}
 
 			void _join_new_task_cor(cont &ccr) {
@@ -368,18 +386,21 @@ namespace rua {
 								auto &tsk = *_tasks_it;
 
 								if (tsk->sleeping) {
-									if (tsk->sleeping.wake_cond) {
-										if (tsk->sleeping.notified.exchange(false) || _notified_all) {
-											if (tsk->sleeping.wake_cond()) {
-												tsk->sleeping.wake_cond = nullptr;
-												_wake();
-												continue;
-											}
-										}
-									} else if (_cur_time >= tsk->sleeping.sleep_to) {
+									if (_is_expiration(tsk->sleep_info.wake_time)) {
 										_wake();
 										continue;
 									}
+
+									if (
+										tsk->sleep_info.wake_cond &&
+										(tsk->sleep_info.notified.exchange(false) || _notified_all) &&
+										tsk->sleep_info.wake_cond()
+									) {
+										tsk->sleep_info.wake_cond = nullptr;
+										_wake();
+										continue;
+									}
+
 									++_tasks_it;
 									continue;
 								}
@@ -388,7 +409,7 @@ namespace rua {
 								tsk->handler();
 								_is_running = false;
 
-								if (_cur_time >= tsk->del_time) {
+								if (_is_expiration(tsk->del_time)) {
 									tsk->state = _task_info_t::state_t::deleted;
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else {
