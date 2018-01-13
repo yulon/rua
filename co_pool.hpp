@@ -23,6 +23,8 @@ namespace rua {
 	class co_pool {
 		public:
 			co_pool(size_t coro_stack_size = coro::default_stack_size) :
+				_exit_on_empty(true),
+				_running(false),
 				_co_stk_sz(coro_stack_size),
 				_pre_add_tasks_sz(0),
 				_notify_all(false)
@@ -205,17 +207,17 @@ namespace rua {
 			task running() const {
 				assert(_in_work_td());
 
-				return _is_running ? *_tasks_it : nullptr;
+				return _running ? *_tasks_it : nullptr;
 			}
 
 			bool is_running() const {
 				assert(_in_work_td());
 
-				return _is_running;
+				return _running;
 			}
 
 			bool this_caller_in_task() const {
-				return _in_work_td() && _is_running;
+				return _in_work_td() && _running;
 			}
 
 			task front() const {
@@ -268,28 +270,48 @@ namespace rua {
 				}
 
 				if (_tasks.size()) {
+					_life = true;
 					_notified_all = _notify_all.exchange(false);
-					_tasks_it = _tasks.begin();
 					_join_new_task_cor(_main_ct);
 				}
 			}
 
 			size_t size() const {
+				assert(_in_work_td());
+
 				return _tasks.size() + _pre_add_tasks_sz.load();
 			}
 
+			size_t empty() const {
+				return !size();
+			}
+
 			size_t coro_total() const {
+				assert(_in_work_td());
+
 				return _cos.size();
 			}
 
+			void exit() {
+				assert(_in_work_td());
+
+				_life = false;
+			}
+
+			void exit_on_empty(bool toggle = true) {
+				assert(_in_work_td());
+
+				_exit_on_empty = toggle;
+			}
+
 		private:
-			std::thread::id _work_tid = std::this_thread::get_id();
+			std::thread::id _work_tid;
 
 			bool _in_work_td() const {
 				return std::this_thread::get_id() == _work_tid;
 			}
 
-			bool _is_running = false;
+			bool _life, _exit_on_empty, _running;
 
 			size_t _co_stk_sz;
 			std::list<coro> _cos;
@@ -363,7 +385,7 @@ namespace rua {
 
 				if (is_running() && tsk.get() == _tasks_it->get()) {
 					tsk.reset();
-					_is_running = false;
+					_running = false;
 					_join_new_task_cor((*_tasks_it++)->sleep_info.ct);
 				}
 			}
@@ -372,7 +394,7 @@ namespace rua {
 				(*_tasks_it)->sleeping = false;
 
 				if ((*_tasks_it)->sleep_info.ct) {
-					_is_running = true;
+					_running = true;
 					_idle_co_cts.emplace();
 					(*_tasks_it)->sleep_info.ct.join(_idle_co_cts.top());
 				}
@@ -382,7 +404,11 @@ namespace rua {
 				if (_idle_co_cts.empty()) {
 					_cos.emplace_back([this]() {
 						for (;;) {
-							while (_tasks_it != _tasks.end()) {
+							while (_life && (_exit_on_empty ? size() : true)) {
+								if (_tasks_it == _tasks.end()) {
+									_tasks_it = _tasks.begin();
+								}
+
 								auto &tsk = *_tasks_it;
 
 								if (tsk->sleeping) {
@@ -405,9 +431,9 @@ namespace rua {
 									continue;
 								}
 
-								_is_running = true;
+								_running = true;
 								tsk->handler();
-								_is_running = false;
+								_running = false;
 
 								if (_is_expiration(tsk->del_time)) {
 									tsk->state = _task_info_t::state_t::deleted;
