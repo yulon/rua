@@ -45,10 +45,10 @@ namespace rua {
 			static constexpr size_t duration_always = SIZE_MAX;
 			static constexpr size_t duration_disposable = 0;
 
-			task add(task pos, const std::function<void()> &handler, size_t duration_of_life = duration_always) {
+			task add(task pos, std::function<void()> handler, size_t duration_of_life = duration_always) {
 				auto tsk = std::make_shared<_task_info_t>();
 
-				tsk->handler = handler;
+				tsk->handler = std::move(handler);
 				tsk->sleeping.notified = false;
 
 				if (_in_work_td()) {
@@ -77,20 +77,20 @@ namespace rua {
 				return tsk;
 			}
 
-			task add(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
-				return add(current(), handler, duration_of_life);
+			task add(std::function<void()> handler, size_t duration_of_life = duration_always) {
+				return add(current(), std::move(handler), duration_of_life);
 			}
 
-			task go(const std::function<void()> &handler) {
-				return add(handler, duration_disposable);
+			task go(std::function<void()> handler) {
+				return add(std::move(handler), duration_disposable);
 			}
 
-			task add_front(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
-				return add(nullptr, handler, duration_of_life);
+			task add_front(std::function<void()> handler, size_t duration_of_life = duration_always) {
+				return add(nullptr, std::move(handler), duration_of_life);
 			}
 
-			task add_back(const std::function<void()> &handler, size_t duration_of_life = duration_always) {
-				return add(back(), handler, duration_of_life);
+			task add_back(std::function<void()> handler, size_t duration_of_life = duration_always) {
+				return add(back(), std::move(handler), duration_of_life);
 			}
 
 			void sleep(task tsk, size_t ms) {
@@ -107,14 +107,14 @@ namespace rua {
 				sleep(current(), ms);
 			}
 
-			void cond_wait(task tsk, const std::function<bool()> &cond) {
+			void cond_wait(task tsk, std::function<bool()> pred) {
 				assert(_in_work_td() && has(tsk));
 
-				if (tsk->sleeping.notified.exchange(false) && cond()) {
+				if (tsk->sleeping.notified.exchange(false) && pred()) {
 					return;
 				}
 
-				tsk->sleeping.wake_cond = cond;
+				tsk->sleeping.wake_cond = std::move(pred);
 
 				if (is_running() && tsk.get() == _tasks_it->get()) {
 					tsk.reset();
@@ -122,8 +122,8 @@ namespace rua {
 				}
 			}
 
-			void cond_wait(const std::function<bool()> &wake_cond) {
-				cond_wait(current(), wake_cond);
+			void cond_wait(std::function<bool()> pred) {
+				cond_wait(current(), std::move(pred));
 			}
 
 			void notify(task tsk) {
