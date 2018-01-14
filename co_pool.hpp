@@ -361,7 +361,7 @@ namespace rua {
 			}
 
 			size_t _dur2time(size_t duration) {
-				duration > duration_forever - _cur_time ? duration_forever : _cur_time + duration;
+				return duration > duration_forever - _cur_time ? duration_forever : _cur_time + duration;
 			}
 
 			bool _is_expiration(size_t time) {
