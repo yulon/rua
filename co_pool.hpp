@@ -270,7 +270,7 @@ namespace rua {
 					_oth_td_op_mtx.unlock();
 				}
 
-				if (_tasks.size()) {
+				if (_exit_on_empty ? size() : true) {
 					_life = true;
 					_notified_all = _notify_all.exchange(false);
 					_join_new_task_cor(_main_ct);
