@@ -104,6 +104,9 @@ namespace rua {
 	template <bool IS_ITF>
 	struct _obj_type;
 
+	template <typename D_ELEM, bool S_IS_POLY>
+	struct _ptr_cast;
+
 	template <typename T>
 	class itf : public obj<T> {
 		public:
@@ -112,8 +115,8 @@ namespace rua {
 			template <typename A>
 			itf(A&& a) :
 				obj<T>(nullptr),
-				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a))
-			) {
+				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
+			{
 				RUA_STATIC_ASSERT(is_obj<A>());
 
 				assert(a);
@@ -158,7 +161,7 @@ namespace rua {
 				assert(type_is<R>());
 
 				RR r(nullptr);
-				*static_cast<obj<typename RR::access_type> &>(r) = std::static_pointer_cast<typename RR::access_type>(**this);
+				*static_cast<obj<typename RR::access_type> &>(r) = _ptr_cast<typename RR::access_type, std::is_polymorphic<T>::value>::fn(**this);
 				return r;
 			}
 
@@ -185,6 +188,22 @@ namespace rua {
 		template <typename A>
 		static std::type_index fn(A &&a) {
 			return typeid(a.type());
+		}
+	};
+
+	template <typename D_ELEM>
+	struct _ptr_cast<D_ELEM, false> {
+		template <typename S>
+		static std::shared_ptr<D_ELEM> fn(const S &src) {
+			return std::static_pointer_cast<D_ELEM>(src);
+		}
+	};
+
+	template <typename D_ELEM>
+	struct _ptr_cast<D_ELEM, true> {
+		template <typename S>
+		static std::shared_ptr<D_ELEM> fn(const S &src) {
+			return std::dynamic_pointer_cast<D_ELEM>(src);
 		}
 	};
 }
