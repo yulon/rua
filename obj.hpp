@@ -166,8 +166,6 @@ namespace rua {
 				return r;
 			}
 
-			std::shared_ptr<T> &operator*() = delete;
-
 			const std::shared_ptr<T> &operator*() const {
 				return obj<T>::operator*();
 			}
