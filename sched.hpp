@@ -31,10 +31,10 @@ namespace rua {
 
 	using scheduler = itf<scheduler_c>;
 
-	class _thread_cond_var : public cond_var_c {
+	class _thread_cond_var_c : public cond_var_c {
 		public:
-			_thread_cond_var() = default;
-			virtual ~_thread_cond_var() = default;
+			_thread_cond_var_c() = default;
+			virtual ~_thread_cond_var_c() = default;
 
 			virtual void cond_wait(std::function<bool()> pred) {
 				cv.wait(lck, pred);
@@ -50,12 +50,12 @@ namespace rua {
 			std::unique_lock<std::mutex> lck;
 	};
 
-	using thread_cond_var = obj<_thread_cond_var>;
+	using thread_cond_var = obj<_thread_cond_var_c>;
 
-	class _thread_scheduler : public scheduler_c {
+	class _thread_scheduler_c : public scheduler_c {
 		public:
-			_thread_scheduler() = default;
-			virtual ~_thread_scheduler() = default;
+			_thread_scheduler_c() = default;
+			virtual ~_thread_scheduler_c() = default;
 
 			virtual bool is_available() const {
 				return true;
@@ -70,7 +70,7 @@ namespace rua {
 			}
 	};
 
-	using thread_scheduler = obj<_thread_scheduler>;
+	using thread_scheduler = obj<_thread_scheduler_c>;
 
 	class multi_scheduler {
 		public:
@@ -86,7 +86,8 @@ namespace rua {
 						return scdlr;
 					}
 				}
-				return thread_scheduler();
+				static scheduler td_scdlr = thread_scheduler();
+				return td_scdlr;
 			}
 
 			template <typename L>
