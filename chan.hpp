@@ -1,7 +1,7 @@
 #ifndef _RUA_CHAN_HPP
 #define _RUA_CHAN_HPP
 
-#include "scheduler.hpp"
+#include "sched.hpp"
 
 #include <memory>
 #include <queue>
@@ -28,9 +28,7 @@ namespace rua {
 					auto &req = *_res->reqs.front();
 					req.value = std::move(value);
 					req.filled = true;
-					if (req.notify) {
-						req.notify();
-					}
+					req.cv->notify();
 					_res->reqs.pop();
 				} else {
 					_res->buffer.push(std::move(value));
@@ -54,34 +52,13 @@ namespace rua {
 
 				auto req = new _req_t;
 				_res->reqs.emplace(req);
-
-				if (scdlr.cond_wait) {
-					if (scdlr.get_notify) {
-						req->notify = scdlr.get_notify();
-					} else {
-						assert(scdlr.notify_all);
-						req->notify = scdlr.notify_all;
-					}
-
-					_res->mtx.unlock();
-
-					scdlr.cond_wait([req]()->bool {
-						return req->filled;
-					});
-
-					receiver = std::move(req->value);
-					delete req;
-
-					return *this;
-				}
+				req->cv = scdlr->make_cond_var();
 
 				_res->mtx.unlock();
 
-				assert(scdlr.yield);
-
-				while (!req->filled) {
-					scdlr.yield();
-				}
+				req->cv->cond_wait([req]()->bool {
+					return req->filled;
+				});
 
 				receiver = std::move(req->value);
 				delete req;
@@ -93,7 +70,7 @@ namespace rua {
 			struct _req_t {
 				std::atomic<bool> filled = false;
 				T value;
-				std::function<void()> notify;
+				cond_var cv;
 			};
 
 			struct _res_t {

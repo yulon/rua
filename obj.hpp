@@ -110,7 +110,8 @@ namespace rua {
 	template <typename T>
 	class itf : public obj<T> {
 		public:
-			constexpr itf(std::nullptr_t) : obj<T>(nullptr), _t(typeid(nullptr)) {}
+			constexpr itf() : obj<T>(nullptr), _t(typeid(nullptr)) {}
+			constexpr itf(std::nullptr_t) : itf() {}
 
 			template <typename A>
 			itf(A&& a) :

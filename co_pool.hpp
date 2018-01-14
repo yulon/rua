@@ -2,6 +2,7 @@
 #define _RUA_CO_POOL_HPP
 
 #include "co.hpp"
+#include "sched.hpp"
 
 #if defined(_RUA_UNIX_)
 	#include <time.h>
@@ -302,6 +303,59 @@ namespace rua {
 				assert(_in_work_td());
 
 				_exit_on_empty = toggle;
+			}
+
+			class cond_var_c : public rua::cond_var_c {
+				public:
+					cond_var_c(co_pool &cp) : _cp(cp), _tsk(cp.current()) {
+						assert(cp.this_caller_in_task());
+					}
+
+					virtual ~cond_var_c() = default;
+
+					virtual void cond_wait(std::function<bool()> pred) {
+						assert(_cp.this_caller_in_task() && _tsk.get() == _cp.current().get());
+
+						_cp.cond_wait(_tsk, pred);
+					}
+
+					virtual void notify() {
+						_cp.notify(_tsk);
+					}
+
+				private:
+					co_pool &_cp;
+					co_pool::task _tsk;
+			};
+
+			using cond_var = obj<cond_var_c>;
+
+			class scheduler_c : public rua::scheduler_c {
+				public:
+					scheduler_c(co_pool &cp) : _cp(cp) {}
+
+					virtual ~scheduler_c() = default;
+
+					virtual bool is_available() const {
+						return _cp.this_caller_in_task();
+					}
+
+					virtual void yield() const {
+						_cp.yield();
+					}
+
+					virtual rua::cond_var make_cond_var() const {
+						return cond_var(_cp);
+					}
+
+				private:
+					co_pool &_cp;
+			};
+
+			using scheduler = obj<scheduler_c>;
+
+			scheduler get_scheduler() {
+				return scheduler(*this);
 			}
 
 		private:
