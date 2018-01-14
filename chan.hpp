@@ -21,63 +21,86 @@ namespace rua {
 				_res->mscdlr = std::move(mscdlr);
 			}
 
-			chan<T> &operator<<(T value) {
-				_res->mscdlr.lock(_res->mtx);
+		private:
+			struct _res_t;
 
-				if (_res->reqs.size()) {
-					auto &req = *_res->reqs.front();
-					req.value = std::move(value);
-					req.filled = true;
-					req.cv->notify();
-					_res->reqs.pop();
-				} else {
-					_res->buffer.push(std::move(value));
-				}
+		public:
+			class scoped_stream_t {
+				public:
+					scoped_stream_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
 
-				_res->mtx.unlock();
+					~scoped_stream_t() {
+						if (!_res) {
+							return;
+						}
+						if (_res->reqs.size()) {
+							_res->reqs.front()->notify();
+						}
+						_res->mtx.unlock();
+					}
 
-				return *this;
+					scoped_stream_t(const scoped_stream_t &) = delete;
+
+					scoped_stream_t &operator=(const scoped_stream_t &) = delete;
+
+					scoped_stream_t(scoped_stream_t &&) = default;
+
+					scoped_stream_t &operator=(scoped_stream_t &&) = default;
+
+					chan<T>::scoped_stream_t &operator<<(T value) {
+						_res->buffer.push(std::move(value));
+						return *this;
+					}
+
+					template <typename R>
+					chan<T>::scoped_stream_t &operator>>(R &receiver) {
+						if (!_res->buffer.size()) {
+							auto res = _res;
+							auto req = _scdlr->make_cond_var();
+							res->reqs.emplace(req);
+							for (;;) {
+								res->mtx.unlock();
+								req->cond_wait([res]()->bool {
+									return res->mtx.try_lock();
+								});
+								if (res->buffer.size()) {
+									assert(&**res->reqs.front() == &**req);
+									res->reqs.pop();
+									break;
+								}
+							};
+						}
+
+						receiver = std::move(_res->buffer.front());
+						_res->buffer.pop();
+
+						return *this;
+					}
+
+				private:
+					std::shared_ptr<_res_t> _res;
+					scheduler _scdlr;
+			};
+
+			chan<T>::scoped_stream_t scoped_stream() const {
+				return scoped_stream_t(*this);
+			}
+
+			chan<T>::scoped_stream_t operator<<(T value) {
+				return std::move(scoped_stream() << value);
 			}
 
 			template <typename R>
-			chan<T> &operator>>(R &receiver) {
-				auto scdlr = _res->mscdlr.lock(_res->mtx);
-
-				if (_res->buffer.size()) {
-					receiver = std::move(_res->buffer.front());
-					_res->buffer.pop();
-					_res->mtx.unlock();
-					return *this;
-				}
-
-				auto req = new _req_t;
-				_res->reqs.emplace(req);
-				req->cv = scdlr->make_cond_var();
-
-				_res->mtx.unlock();
-
-				req->cv->cond_wait([req]()->bool {
-					return req->filled;
-				});
-
-				receiver = std::move(req->value);
-				delete req;
-
-				return *this;
+			chan<T>::scoped_stream_t operator>>(R &receiver) {
+				return std::move(scoped_stream() >> receiver);
 			}
 
 		private:
-			struct _req_t {
-				std::atomic<bool> filled = false;
-				T value;
-				cond_var cv;
-			};
-
 			struct _res_t {
 				std::mutex mtx;
 				multi_scheduler mscdlr;
 				std::queue<T> buffer;
-				std::queue<_req_t *> reqs;
+				std::queue<cond_var> reqs;
 			};
 
 			std::shared_ptr<_res_t> _res;
