@@ -34,7 +34,10 @@ namespace rua {
 							return;
 						}
 						if (_res->buffer.size() && _res->reqs.size()) {
-							_res->reqs.front()->notify();
+							auto req = _res->reqs.front();
+							_res->mtx.unlock();
+							req->notify();
+							return;
 						}
 						_res->mtx.unlock();
 					}
