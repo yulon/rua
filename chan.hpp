@@ -33,7 +33,7 @@ namespace rua {
 						if (!_res) {
 							return;
 						}
-						if (_res->reqs.size()) {
+						if (_res->buffer.size() && _res->reqs.size()) {
 							_res->reqs.front()->notify();
 						}
 						_res->mtx.unlock();
