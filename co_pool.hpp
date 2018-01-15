@@ -240,36 +240,6 @@ namespace rua {
 			void handle() {
 				assert(_in_work_td() && !is_running());
 
-				_cur_time = _tick();
-
-				if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
-					while (_pre_add_tasks.size()) {
-						auto &pt = _pre_add_tasks.front();
-						if (pt.tsk->state == _task_info_t::state_t::adding) {
-							pt.tsk->state = _task_info_t::state_t::added;
-
-							pt.tsk->del_time = _dur2time(pt.tsk->del_time);
-
-							if (has(pt.pos)) {
-								if (pt.pos->state == _task_info_t::state_t::adding) {
-									_pre_add_tasks.emplace_back(std::move(pt));
-									_pre_add_tasks.pop_front();
-									continue;
-								}
-								auto pos_it = pt.pos->it;
-								_tasks.insert(++pos_it, std::move(pt.tsk));
-								(*(--pos_it))->it = pos_it;
-							} else {
-								_tasks.emplace_front(std::move(pt.tsk));
-								_tasks.front()->it = _tasks.begin();
-							}
-						}
-						_pre_add_tasks.pop_front();
-						--_pre_add_tasks_sz;
-					}
-					_oth_td_op_mtx.unlock();
-				}
-
 				if (_exit_on_empty ? size() : true) {
 					_life = true;
 					_notified_all = _notify_all.exchange(false);
@@ -460,6 +430,36 @@ namespace rua {
 						for (;;) {
 							while (_life && (_exit_on_empty ? size() : true)) {
 								if (_tasks_it == _tasks.end()) {
+									_cur_time = _tick();
+
+									if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
+										while (_pre_add_tasks.size()) {
+											auto &pt = _pre_add_tasks.front();
+											if (pt.tsk->state == _task_info_t::state_t::adding) {
+												pt.tsk->state = _task_info_t::state_t::added;
+
+												pt.tsk->del_time = _dur2time(pt.tsk->del_time);
+
+												if (has(pt.pos)) {
+													if (pt.pos->state == _task_info_t::state_t::adding) {
+														_pre_add_tasks.emplace_back(std::move(pt));
+														_pre_add_tasks.pop_front();
+														continue;
+													}
+													auto pos_it = pt.pos->it;
+													_tasks.insert(++pos_it, std::move(pt.tsk));
+													(*(--pos_it))->it = pos_it;
+												} else {
+													_tasks.emplace_front(std::move(pt.tsk));
+													_tasks.front()->it = _tasks.begin();
+												}
+											}
+											_pre_add_tasks.pop_front();
+											--_pre_add_tasks_sz;
+										}
+										_oth_td_op_mtx.unlock();
+									}
+
 									_tasks_it = _tasks.begin();
 								}
 
