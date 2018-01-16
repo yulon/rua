@@ -30,7 +30,7 @@ namespace rua {
 				_pre_add_tasks_sz(0),
 				_notify_all(false)
 			{
-				init();
+				bind_this_thread();
 				_tasks_it = _tasks.end();
 			}
 
@@ -55,7 +55,7 @@ namespace rua {
 				tsk->sleeping = false;
 				tsk->sleep_info.notified = false;
 
-				if (_in_work_td()) {
+				if (this_thread_is_binded()) {
 					tsk->del_time = _dur2time(duration);
 					tsk->state = _task_info_t::state_t::added;
 
@@ -98,7 +98,7 @@ namespace rua {
 			}
 
 			void sleep(task tsk, size_t duration) {
-				assert(_in_work_td() && has(tsk));
+				assert(this_thread_is_binded() && has(tsk));
 
 				tsk->sleep_info.wake_time = _dur2time(duration);
 
@@ -118,7 +118,7 @@ namespace rua {
 			}
 
 			void cond_wait(task tsk, std::function<bool()> pred, size_t timeout_duration = duration_forever) {
-				assert(_in_work_td() && has(tsk));
+				assert(this_thread_is_binded() && has(tsk));
 
 				if (tsk->sleep_info.notified.exchange(false) && pred()) {
 					return;
@@ -145,7 +145,7 @@ namespace rua {
 			}
 
 			void notify_all() {
-				if (_in_work_td()) {
+				if (this_thread_is_binded()) {
 					for (auto &tsk : _tasks) {
 						if (tsk->sleeping && tsk->sleep_info.wake_cond) {
 							notify(tsk);
@@ -157,7 +157,7 @@ namespace rua {
 			}
 
 			void reset_dol(task tsk, size_t duration) {
-				assert(_in_work_td() && has(tsk));
+				assert(this_thread_is_binded() && has(tsk));
 
 				tsk->del_time = _dur2time(duration);
 			}
@@ -167,7 +167,7 @@ namespace rua {
 			}
 
 			void erase(task tsk) {
-				assert(_in_work_td() && has(tsk));
+				assert(this_thread_is_binded() && has(tsk));
 
 				if (tsk->state == _task_info_t::state_t::added) {
 					if (tsk.get() == _tasks_it->get()) {
@@ -202,43 +202,51 @@ namespace rua {
 			}
 
 			task current() const {
-				return _in_work_td() && _tasks_it != _tasks.end() ? *_tasks_it : nullptr;
+				return this_thread_is_binded() && _tasks_it != _tasks.end() ? *_tasks_it : nullptr;
 			}
 
 			task running() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _running ? *_tasks_it : nullptr;
 			}
 
 			bool is_running() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _running;
 			}
 
 			bool this_caller_in_task() const {
-				return _in_work_td() && _running;
+				return this_thread_is_binded() && _running;
 			}
 
 			task front() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _tasks.size() ? _tasks.front() : nullptr;
 			}
 
 			task back() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _tasks.size() ? _tasks.back() : nullptr;
 			}
 
-			void init() {
+			void bind_this_thread() {
 				_work_tid = std::this_thread::get_id();
 			}
 
+			std::thread::id binded_thread_id() const {
+				return _work_tid;
+			}
+
+			bool this_thread_is_binded() const {
+				return std::this_thread::get_id() == _work_tid;
+			}
+
 			void handle() {
-				assert(_in_work_td() && !is_running());
+				assert(this_thread_is_binded() && !is_running());
 
 				if (_exit_on_empty ? size() : true) {
 					_life = true;
@@ -248,7 +256,7 @@ namespace rua {
 			}
 
 			size_t size() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _tasks.size() + _pre_add_tasks_sz.load();
 			}
@@ -258,19 +266,19 @@ namespace rua {
 			}
 
 			size_t coro_total() const {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				return _cos.size();
 			}
 
 			void exit() {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				_life = false;
 			}
 
 			void exit_on_empty(bool toggle = true) {
-				assert(_in_work_td());
+				assert(this_thread_is_binded());
 
 				_exit_on_empty = toggle;
 			}
@@ -330,10 +338,6 @@ namespace rua {
 
 		private:
 			std::thread::id _work_tid;
-
-			bool _in_work_td() const {
-				return std::this_thread::get_id() == _work_tid;
-			}
 
 			bool _life, _exit_on_empty, _running;
 
