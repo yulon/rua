@@ -197,6 +197,24 @@ namespace rua {
 				erase(current());
 			}
 
+			void erase_all(bool erase_pre_add_tasks = false) {
+				for (auto it = _tasks.begin(); it != _tasks.end(); ++it) {
+					erase(*it);
+				}
+				if (erase_pre_add_tasks && _pre_add_tasks_sz) {
+					_oth_td_op_mtx.lock();
+					while (_pre_add_tasks.size()) {
+						auto &pt = _pre_add_tasks.front();
+						if (pt.tsk->state == _task_info_t::state_t::adding) {
+							pt.tsk->state = _task_info_t::state_t::deleted;
+						}
+						_pre_add_tasks.pop_front();
+						--_pre_add_tasks_sz;
+					}
+					_oth_td_op_mtx.unlock();
+				}
+			}
+
 			bool has(task tsk) const {
 				return tsk && tsk->state != _task_info_t::state_t::deleted;
 			}
