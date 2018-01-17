@@ -95,12 +95,12 @@ namespace rua {
 				auto scdlr = get();
 				if (scdlr.type_is<thread_scheduler>()) {
 					lock.lock();
-					return std::move(scdlr);
+					return scdlr;
 				}
 				while (!lock.try_lock()) {
 					scdlr->yield();
 				}
-				return std::move(scdlr);
+				return scdlr;
 			}
 	};
 }
