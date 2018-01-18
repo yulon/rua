@@ -4,10 +4,6 @@
 #include "co.hpp"
 #include "sched.hpp"
 
-#if defined(_RUA_UNIX_)
-	#include <time.h>
-#endif
-
 #include <functional>
 #include <string>
 #include <list>
@@ -45,18 +41,30 @@ namespace rua {
 		public:
 			using task = std::shared_ptr<_task_info_t>;
 
-			static constexpr size_t duration_forever = SIZE_MAX;
-			static constexpr size_t duration_disposable = 0;
+			class duration : public std::chrono::milliseconds {
+				public:
+					static constexpr size_t forever = SIZE_MAX;
+					static constexpr size_t disposable = 0;
 
-			task add(task pos, std::function<void()> handler, size_t duration = duration_forever) {
+					duration() = default;
+
+					constexpr duration(size_t ms) : std::chrono::milliseconds(
+						ms == SIZE_MAX ?
+						std::chrono::milliseconds::max() :
+						(ms == 0 ? std::chrono::milliseconds::min() : std::chrono::milliseconds(ms))
+					) {}
+			};
+
+			task add(task pos, std::function<void()> handler, duration timeout = duration::forever) {
 				auto tsk = std::make_shared<_task_info_t>();
 
 				tsk->handler = std::move(handler);
+				tsk->timeout = timeout;
 				tsk->sleeping = false;
 				tsk->sleep_info.notified = false;
 
 				if (this_thread_is_binded()) {
-					tsk->del_time = _dur2time(duration);
+					tsk->start_time = _cur_time;
 					tsk->state = _task_info_t::state_t::added;
 
 					if (has(pos)) {
@@ -69,7 +77,6 @@ namespace rua {
 					}
 
 				} else {
-					tsk->del_time = duration;
 					tsk->state = _task_info_t::state_t::adding;
 
 					_oth_td_op_mtx.lock();
@@ -81,32 +88,32 @@ namespace rua {
 				return tsk;
 			}
 
-			task add(std::function<void()> handler, size_t duration = duration_forever) {
-				return add(current(), std::move(handler), duration);
+			task add(std::function<void()> handler, duration timeout = duration::forever) {
+				return add(current(), std::move(handler), timeout);
 			}
 
 			task go(std::function<void()> handler) {
-				return add(std::move(handler), duration_disposable);
+				return add(std::move(handler), duration::disposable);
 			}
 
-			task add_front(std::function<void()> handler, size_t duration = duration_forever) {
-				return add(nullptr, std::move(handler), duration);
+			task add_front(std::function<void()> handler, duration timeout = duration::forever) {
+				return add(nullptr, std::move(handler), timeout);
 			}
 
-			task add_back(std::function<void()> handler, size_t duration = duration_forever) {
-				return add(back(), std::move(handler), duration);
+			task add_back(std::function<void()> handler, duration timeout = duration::forever) {
+				return add(back(), std::move(handler), timeout);
 			}
 
-			void sleep(task tsk, size_t duration) {
+			void sleep(task tsk, duration timeout) {
 				assert(this_thread_is_binded() && has(tsk));
 
-				tsk->sleep_info.wake_time = _dur2time(duration);
+				tsk->sleep_info.wake_time = _cur_time + timeout;
 
 				_sleep(tsk);
 			}
 
-			void sleep(size_t duration) {
-				sleep(current(), duration);
+			void sleep(duration timeout) {
+				sleep(current(), timeout);
 			}
 
 			void yield(task tsk) {
@@ -117,21 +124,21 @@ namespace rua {
 				yield(current());
 			}
 
-			void cond_wait(task tsk, std::function<bool()> pred, size_t timeout_duration = duration_forever) {
+			void cond_wait(task tsk, std::function<bool()> pred, duration timeout = duration::forever) {
 				assert(this_thread_is_binded() && has(tsk));
 
 				if (tsk->sleep_info.notified.exchange(false) && pred()) {
 					return;
 				}
 
-				tsk->sleep_info.wake_time = _dur2time(timeout_duration);
+				tsk->sleep_info.wake_time = _cur_time + timeout;
 				tsk->sleep_info.wake_cond = std::move(pred);
 
 				_sleep(tsk);
 			}
 
-			void cond_wait(std::function<bool()> pred, size_t timeout_duration = duration_forever) {
-				cond_wait(current(), std::move(pred), timeout_duration);
+			void cond_wait(std::function<bool()> pred, duration timeout = duration::forever) {
+				cond_wait(current(), std::move(pred), timeout);
 			}
 
 			void notify(task tsk) {
@@ -156,13 +163,13 @@ namespace rua {
 				}
 			}
 
-			void reset_dol(task tsk, size_t duration) {
+			void reset_dol(task tsk, duration duration) {
 				assert(this_thread_is_binded() && has(tsk));
 
-				tsk->del_time = _dur2time(duration);
+				tsk->timeout = duration;
 			}
 
-			void reset_dol(size_t duration) {
+			void reset_dol(duration duration) {
 				reset_dol(current(), duration);
 			}
 
@@ -171,7 +178,7 @@ namespace rua {
 
 				if (tsk->state == _task_info_t::state_t::added) {
 					if (tsk.get() == _tasks_it->get()) {
-						reset_dol(tsk, duration_disposable);
+						reset_dol(tsk, duration::disposable);
 						return;
 					}
 
@@ -367,12 +374,34 @@ namespace rua {
 
 			using _task_list_t = std::list<task>;
 
+			class _time_point : public std::chrono::steady_clock::time_point {
+				public:
+					_time_point() = default;
+
+					_time_point(const std::chrono::steady_clock::time_point &std_tp) :
+						std::chrono::steady_clock::time_point(std_tp)
+					{}
+
+					_time_point(std::chrono::steady_clock::time_point &&std_tp) :
+						std::chrono::steady_clock::time_point(std::move(std_tp))
+					{}
+
+					_time_point operator+(const co_pool::duration &dur) {
+						return
+							dur == co_pool::duration(co_pool::duration::forever) ?
+							_time_point::max() :
+							static_cast<const std::chrono::steady_clock::time_point &>(*this) + dur
+						;
+					}
+			};
+
 			struct _task_info_t {
 				std::function<void()> handler;
-				size_t del_time;
+				_time_point start_time;
+				duration timeout;
 
 				struct {
-					size_t wake_time;
+					_time_point wake_time;
 					std::function<bool()> wake_cond;
 					std::atomic<bool> notified;
 					cont ct;
@@ -394,24 +423,10 @@ namespace rua {
 			_task_list_t _tasks;
 			_task_list_t::iterator _tasks_it;
 
-			size_t _cur_time;
+			_time_point _cur_time;
 
-			static size_t _tick() {
-				#if defined(_WIN32)
-					return GetTickCount();
-				#elif defined(_RUA_UNIX_)
-					timespec ts;
-					clock_gettime(CLOCK_MONOTONIC, &ts);
-					return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-				#endif
-			}
-
-			size_t _dur2time(size_t duration) {
-				return duration > duration_forever - _cur_time ? duration_forever : _cur_time + duration;
-			}
-
-			bool _is_expiration(size_t time) {
-				return time != duration_forever && _cur_time >= time;
+			bool _is_expiration(_time_point time) {
+				return time != _time_point::max() && _cur_time >= time;
 			}
 
 			std::mutex _oth_td_op_mtx;
@@ -452,7 +467,7 @@ namespace rua {
 						for (;;) {
 							while (_life && (_exit_on_empty ? size() : true)) {
 								if (_tasks_it == _tasks.end()) {
-									_cur_time = _tick();
+									_cur_time = std::chrono::steady_clock::now();
 
 									if (_pre_add_tasks_sz && _oth_td_op_mtx.try_lock()) {
 										while (_pre_add_tasks.size()) {
@@ -460,7 +475,7 @@ namespace rua {
 											if (pt.tsk->state == _task_info_t::state_t::adding) {
 												pt.tsk->state = _task_info_t::state_t::added;
 
-												pt.tsk->del_time = _dur2time(pt.tsk->del_time);
+												pt.tsk->start_time = _cur_time;
 
 												if (has(pt.pos)) {
 													if (pt.pos->state == _task_info_t::state_t::adding) {
@@ -511,7 +526,7 @@ namespace rua {
 								tsk->handler();
 								_running = false;
 
-								if (_is_expiration(tsk->del_time)) {
+								if (_is_expiration(tsk->start_time + tsk->timeout)) {
 									tsk->state = _task_info_t::state_t::deleted;
 									_tasks_it = _tasks.erase(_tasks_it);
 								} else {
