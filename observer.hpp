@@ -48,9 +48,9 @@ namespace rua {
 
 		private:
 			T _data;
-			std::function<T(const T &)> _set,
-			std::function<T(const T &)> _get,
-			std::function<void(const T &)> _chg
+			std::function<T(const T &)> _set;
+			std::function<T(const T &)> _get;
+			std::function<void(const T &)> _chg;
 	};
 }
 
