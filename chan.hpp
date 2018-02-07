@@ -27,16 +27,17 @@ namespace rua {
 		public:
 			class scoped_stream_t {
 				public:
-					scoped_stream_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
+					scoped_stream_t(const chan<T> &ch) : _res(ch._res) {}
 
 					~scoped_stream_t() {
-						if (!_res) {
+						if (!_scdlr) {
 							return;
 						}
 						if (_res->buffer.size() && _res->reqs.size()) {
-							auto req = _res->reqs.front();
+							auto cv = _res->reqs.front();
+							_res->reqs.pop();
 							_res->mtx.unlock();
-							req->notify();
+							cv->notify();
 							return;
 						}
 						_res->mtx.unlock();
@@ -51,31 +52,39 @@ namespace rua {
 					scoped_stream_t &operator=(scoped_stream_t &&) = default;
 
 					chan<T>::scoped_stream_t &operator<<(T value) {
-						_res->buffer.push(std::move(value));
+						assert(_res);
+
+						if (!_scdlr) {
+							_scdlr = ch._res->mscdlr.lock(ch._res->mtx);
+						}
+
+						_res->buffer.emplace(std::move(value));
+
 						return *this;
 					}
 
 					template <typename R>
 					chan<T>::scoped_stream_t &operator>>(R &receiver) {
-						if (!_res->buffer.size()) {
-							auto res = _res;
-							auto req = _scdlr->make_cond_var();
-							res->reqs.emplace(req);
-							for (;;) {
-								res->mtx.unlock();
-								req->cond_wait([res]()->bool {
-									return res->mtx.try_lock();
-								});
-								if (res->buffer.size()) {
-									assert(&**res->reqs.front() == &**req);
-									res->reqs.pop();
-									break;
-								}
-							};
+						RUA_STATIC_ASSERT(std::is_convertible<T, R>::value);
+						assert(_res);
+
+						auto res = _res;
+
+						if (!_scdlr) {
+							_scdlr = res->mscdlr.get();
 						}
 
-						receiver = std::move(_res->buffer.front());
-						_res->buffer.pop();
+						auto cv = _scdlr->make_cond_var();
+						cv->cond_wait(res->mtx, [res, cv]()->bool {
+							if (res->buffer.size()) {
+								return true;
+							}
+							res->reqs.emplace(cv);
+							return false;
+						});
+
+						receiver = std::move(res->buffer.front());
+						res->buffer.pop();
 
 						return *this;
 					}
