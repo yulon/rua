@@ -123,28 +123,38 @@ namespace rua {
 				yield(current());
 			}
 
-			void cond_wait(task tsk, std::mutex &mtx, std::function<bool()> pred, duration timeout = duration::forever) {
+			void cond_wait(task tsk, std::mutex &lock, duration timeout = duration::forever) {
 				assert(this_thread_is_binded() && has(tsk));
 
 				tsk->sleep_info.cv_notified = false;
 
-				while (!mtx.try_lock()) {
-					yield();
-				}
-				if (pred()) {
-					return;
-				}
-				mtx.unlock();
+				lock.unlock();
 
 				tsk->sleep_info.wake_time = _cur_time + timeout;
-				tsk->sleep_info.cv_cond = std::move(pred);
-				tsk->sleep_info.cv_mtx = &mtx;
+				tsk->sleep_info.cv_lock = &lock;
 
 				_sleep(tsk);
 			}
 
-			void cond_wait(std::mutex &mtx, std::function<bool()> pred, duration timeout = duration::forever) {
-				cond_wait(current(), mtx, std::move(pred), timeout);
+			void cond_wait(std::mutex &lock, duration timeout = duration::forever) {
+				cond_wait(current(), lock, timeout);
+			}
+
+			void cond_wait(task tsk, std::mutex &lock, std::function<bool()> pred, duration timeout = duration::forever) {
+				assert(this_thread_is_binded() && has(tsk));
+
+				auto wake_time = _cur_time + timeout;
+
+				while (!pred()) {
+					cond_wait(tsk, lock, std::chrono::duration_cast<std::chrono::milliseconds>(wake_time - _cur_time).count());
+					if (_is_expiration(wake_time)) {
+						return;
+					}
+				}
+			}
+
+			void cond_wait(std::mutex &lock, std::function<bool()> pred, duration timeout = duration::forever) {
+				cond_wait(current(), lock, std::move(pred), timeout);
 			}
 
 			void notify(task tsk) {
@@ -160,7 +170,7 @@ namespace rua {
 			void notify_all() {
 				if (this_thread_is_binded()) {
 					for (auto &tsk : _tasks) {
-						if (tsk->sleeping && tsk->sleep_info.cv_cond) {
+						if (tsk->sleeping && tsk->sleep_info.cv_lock) {
 							notify(tsk);
 						}
 					}
@@ -324,10 +334,10 @@ namespace rua {
 
 					virtual ~cond_var_c() = default;
 
-					virtual void cond_wait(std::mutex &mtx, std::function<bool()> pred) {
+					virtual void cond_wait(std::mutex &lock, std::function<bool()> pred) {
 						assert(_cp.this_caller_in_task() && _tsk.get() == _cp.current().get());
 
-						_cp.cond_wait(_tsk, mtx, pred);
+						_cp.cond_wait(_tsk, lock, pred);
 					}
 
 					virtual void notify() {
@@ -410,8 +420,7 @@ namespace rua {
 
 				struct {
 					_time_point wake_time;
-					std::function<bool()> cv_cond;
-					std::mutex *cv_mtx;
+					std::mutex *cv_lock;
 					std::atomic<bool> cv_notified;
 					cont ct;
 				} sleep_info;
@@ -513,24 +522,20 @@ namespace rua {
 
 								if (tsk->sleeping) {
 									if (_is_expiration(tsk->sleep_info.wake_time)) {
-										if (tsk->sleep_info.cv_cond) {
-											tsk->sleep_info.cv_cond = nullptr;
+										if (tsk->sleep_info.cv_lock) {
+											tsk->sleep_info.cv_lock = nullptr;
 										}
 										_wake();
 										continue;
 									}
 
 									if (
-										tsk->sleep_info.cv_cond &&
+										tsk->sleep_info.cv_lock &&
 										tsk->sleep_info.cv_notified &&
-										tsk->sleep_info.cv_mtx->try_lock()
+										tsk->sleep_info.cv_lock->try_lock()
 									) {
-										if (tsk->sleep_info.cv_cond()) {
-											tsk->sleep_info.cv_cond = nullptr;
-											_wake();
-										} else {
-											tsk->sleep_info.cv_notified = false;
-										}
+										tsk->sleep_info.cv_lock = nullptr;
+										_wake();
 										continue;
 									}
 

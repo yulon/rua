@@ -2,6 +2,7 @@
 #define _RUA_CHAN_HPP
 
 #include "sched.hpp"
+#include "predef.hpp"
 
 #include <memory>
 #include <queue>
@@ -27,10 +28,10 @@ namespace rua {
 		public:
 			class scoped_stream_t {
 				public:
-					scoped_stream_t(const chan<T> &ch) : _res(ch._res) {}
+					scoped_stream_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
 
 					~scoped_stream_t() {
-						if (!_scdlr) {
+						if (!_res) {
 							return;
 						}
 						if (_res->buffer.size() && _res->reqs.size()) {
@@ -54,10 +55,6 @@ namespace rua {
 					chan<T>::scoped_stream_t &operator<<(T value) {
 						assert(_res);
 
-						if (!_scdlr) {
-							_scdlr = ch._res->mscdlr.lock(ch._res->mtx);
-						}
-
 						_res->buffer.emplace(std::move(value));
 
 						return *this;
@@ -65,14 +62,10 @@ namespace rua {
 
 					template <typename R>
 					chan<T>::scoped_stream_t &operator>>(R &receiver) {
-						RUA_STATIC_ASSERT(std::is_convertible<T, R>::value);
+						RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
 						assert(_res);
 
 						auto res = _res;
-
-						if (!_scdlr) {
-							_scdlr = res->mscdlr.get();
-						}
 
 						auto cv = _scdlr->make_cond_var();
 						cv->cond_wait(res->mtx, [res, cv]()->bool {

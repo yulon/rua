@@ -14,7 +14,7 @@ namespace rua {
 		public:
 			virtual ~cond_var_c() = default;
 
-			virtual void cond_wait(std::mutex &mtx, std::function<bool()>) = 0;
+			virtual void cond_wait(std::mutex &lock, std::function<bool()>) = 0;
 			virtual void notify() = 0;
 	};
 
@@ -36,8 +36,8 @@ namespace rua {
 			_thread_cond_var_c() = default;
 			virtual ~_thread_cond_var_c() = default;
 
-			virtual void cond_wait(std::mutex &mtx, std::function<bool()> pred) {
-				cv.wait(mtx, pred);
+			virtual void cond_wait(std::mutex &lock, std::function<bool()> pred) {
+				cv.wait(lock, pred);
 			}
 
 			virtual void notify() {
