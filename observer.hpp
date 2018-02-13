@@ -8,10 +8,26 @@ namespace rua {
 	class observer {
 		public:
 			observer(
+				T init_val,
 				const std::function<T(const T &)> &on_set,
 				const std::function<T(const T &)> &on_get,
 				const std::function<void(const T &)> &on_change
-			) : _set(on_set), _get(on_get), _chg(on_change) {}
+			) : _data(std::move(init_val)), _set(on_set), _get(on_get), _chg(on_change) {}
+
+			observer(
+				const std::function<T(const T &)> &on_set,
+				const std::function<T(const T &)> &on_get,
+				const std::function<void(const T &)> &on_change
+			) : _data(), _set(on_set), _get(on_get), _chg(on_change) {}
+
+			observer(
+				T init_val,
+				const std::function<void(const T &)> &on_change
+			) : _data(std::move(init_val)), _set(nullptr), _get(nullptr), _chg(on_change) {}
+
+			observer(
+				const std::function<void(const T &)> &on_change
+			) : _data(), _set(nullptr), _get(nullptr), _chg(on_change) {}
 
 			T get() {
 				if (_get) {
@@ -41,9 +57,9 @@ namespace rua {
 				}
 			}
 
-			const T &operator=(const T &value) {
+			observer<T> &operator=(const T &value) {
 				set(value);
-				return value;
+				return *this;
 			}
 
 		private:
