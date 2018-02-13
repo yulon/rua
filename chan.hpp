@@ -82,6 +82,22 @@ namespace rua {
 						return *this;
 					}
 
+					T get() {
+						T r;
+						*this >> r;
+						return r;
+					}
+
+					std::queue<T> get_all() {
+						std::queue<T> r;
+						r.push(get());
+						while (_res->buffer.size()) {
+							r.push(std::move(_res->buffer.front()));
+							_res->buffer.pop();
+						}
+						return r;
+					}
+
 				private:
 					std::shared_ptr<_res_t> _res;
 					scheduler _scdlr;
@@ -98,6 +114,14 @@ namespace rua {
 			template <typename R>
 			chan<T>::scoped_stream_t operator>>(R &receiver) {
 				return std::move(scoped_stream() >> receiver);
+			}
+
+			T get() {
+				return scoped_stream().get();
+			}
+
+			std::queue<T> get_all() {
+				return scoped_stream().get_all();
 			}
 
 		private:
