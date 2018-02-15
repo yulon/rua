@@ -15,19 +15,21 @@ namespace rua {
 			) : _data(std::move(init_val)), _set(on_set), _get(on_get), _chg(on_change) {}
 
 			observer(
+				T init_val,
+				const std::function<T(const T &)> &on_set,
+				const std::function<T(const T &)> &on_get
+			) : _data(std::move(init_val)), _set(on_set), _get(on_get), _chg(nullptr) {}
+
+			observer(
 				const std::function<T(const T &)> &on_set,
 				const std::function<T(const T &)> &on_get,
 				const std::function<void(const T &)> &on_change
 			) : _data(), _set(on_set), _get(on_get), _chg(on_change) {}
 
 			observer(
-				T init_val,
-				const std::function<void(const T &)> &on_change
-			) : _data(std::move(init_val)), _set(nullptr), _get(nullptr), _chg(on_change) {}
-
-			observer(
-				const std::function<void(const T &)> &on_change
-			) : _data(), _set(nullptr), _get(nullptr), _chg(on_change) {}
+				const std::function<T(const T &)> &on_set,
+				const std::function<T(const T &)> &on_get
+			) : _data(), _set(on_set), _get(on_get), _chg(nullptr) {}
 
 			T get() {
 				if (_get) {
@@ -68,6 +70,16 @@ namespace rua {
 			std::function<T(const T &)> _get;
 			std::function<void(const T &)> _chg;
 	};
+
+	template <typename R, typename V>
+	static inline bool set_and_is_changed(R &receiver, V &&value) {
+		if (receiver == std::forward<V>(value)) {
+			receiver = std::forward<V>(value);
+			return false;
+		}
+		receiver = std::forward<V>(value);
+		return true;
+	}
 }
 
 #endif
