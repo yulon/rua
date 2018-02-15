@@ -80,6 +80,15 @@ namespace rua {
 		receiver = std::forward<V>(value);
 		return true;
 	}
+
+	template <typename R, typename V>
+	static inline bool set_when_changing(R &receiver, V &&value) {
+		if (receiver == std::forward<V>(value)) {
+			return false;
+		}
+		receiver = std::forward<V>(value);
+		return true;
+	}
 }
 
 #endif
