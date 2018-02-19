@@ -75,8 +75,8 @@ namespace rua {
 				_sz = sz;
 			}
 
-			void reset(unsafe_ptr data) {
-				reset(data, data ? -1 : 0);
+			void reset(size_t sz) {
+				_sz = sz;
 			}
 
 			void reset(unsafe_ptr data, size_t sz, const read_writer_t &rw) {
@@ -200,44 +200,38 @@ namespace rua {
 				}
 			}
 
-			static constexpr size_t npos = -1;
-
-			bin_ref match(const std::vector<uint16_t> &pattern, bool ret_sub = false) const {
+			bin_ref match(const std::vector<uint16_t> &pattern, int ret_sub_ix = -1) const {
 				auto end = _sz + 1 - pattern.size();
 				for (size_t i = 0; i < end; ++i) {
 					size_t j;
-					size_t sub_j = npos;
+					struct sub_range_t {
+						size_t pos, sz;
+					};
+					std::vector<sub_range_t> subs;
 					for (j = 0; j < pattern.size(); ++j) {
 						if (pattern[j] > 255) {
-							if (sub_j == npos) {
-								sub_j = j;
+							if (subs.empty() || subs.back().sz) {
+								subs.emplace_back(sub_range_t{j, 0});
 							}
 							continue;
 						}
 						if (pattern[j] != get<uint8_t>(i + j)) {
 							break;
 						}
+						if (subs.size() && !subs.back().sz) {
+							subs.back().sz = j - subs.back().pos;
+						}
 					}
 					if (j == pattern.size()) {
-						if (ret_sub) {
-							if (sub_j == npos) {
+						if (ret_sub_ix > -1) {
+							if (ret_sub_ix > static_cast<int>(subs.size()) - 1) {
 								return nullptr;
 							}
-
-							auto k_max = pattern.size() - 1;
-
-							for (size_t k = sub_j;; ++k) {
-								size_t sub_sz;
-								if (pattern[k] < 256) {
-									sub_sz = k - sub_j;
-								} else if (k == k_max) {
-									sub_sz = pattern.size() - sub_j;
-								} else {
-									continue;
-								}
-								return bin_ref(_data + i + sub_j, sub_sz, _rw);
-							}
-
+							return bin_ref(
+								_data + i + subs[ret_sub_ix].pos,
+								subs[ret_sub_ix].sz ? subs[ret_sub_ix].sz : j - subs[ret_sub_ix].pos,
+								_rw
+							);
 							return nullptr;
 						}
 						return bin_ref(_data + i, pattern.size(), _rw);
@@ -246,46 +240,46 @@ namespace rua {
 				return nullptr;
 			}
 
-			unsafe_ptr match_ptr(const std::vector<uint16_t> &pattern, uint8_t size = 0) const {
-				auto md = match(pattern, true);
+			unsafe_ptr match_ptr(const std::vector<uint16_t> &pattern, int ret_sub_ix = 0, uint8_t size = 0) const {
+				auto md = match(pattern, ret_sub_ix);
 				if (!md) {
 					return nullptr;
 				}
 				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
 					case 8:
-						return md.get<uint64_t>();
+						return md.get<int64_t>();
 					case 7:
 					case 6:
 					case 5:
 					case 4:
-						return md.get<uint32_t>();
+						return md.get<int32_t>();
 					case 3:
 					case 2:
-						return md.get<uint16_t>();
+						return md.get<int16_t>();
 					case 1:
-						return md.get<uint8_t>();
+						return md.get<int8_t>();
 				}
 				return nullptr;
 			}
 
-			unsafe_ptr match_rel_ptr(const std::vector<uint16_t> &pattern, uint8_t size = 0) const {
-				auto md = match(pattern, true);
+			unsafe_ptr match_rel_ptr(const std::vector<uint16_t> &pattern, int ret_sub_ix = 0, uint8_t size = 0) const {
+				auto md = match(pattern, ret_sub_ix);
 				if (!md) {
 					return nullptr;
 				}
 				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
 					case 8:
-						return md.data() + 8 + md.get<uint64_t>();
+						return md.data() + 8 + md.get<int64_t>();
 					case 7:
 					case 6:
 					case 5:
 					case 4:
-						return md.data() + 4 + md.get<uint32_t>();
+						return md.data() + 4 + md.get<int32_t>();
 					case 3:
 					case 2:
-						return md.data() + 2 + md.get<uint16_t>();
+						return md.data() + 2 + md.get<int16_t>();
 					case 1:
-						return md.data() + 1 + md.get<uint8_t>();
+						return md.data() + 1 + md.get<int8_t>();
 				}
 				return nullptr;
 			}
