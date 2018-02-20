@@ -185,37 +185,9 @@ namespace rua {
 				aligned_set<D>(0, d);
 			}
 
-			template <typename I = int>
-			I get_int(ptrdiff_t pos = 0, size_t storager_size = 0, bool ext_wrd_wid = false) const {
-				if (!storager_size) {
-					storager_size = size() - pos;
-				}
-				if (ext_wrd_wid) {
-					// TODO
-				} else {
-					switch (storager_size > 8 ? 8 : storager_size) {
-						case 8:
-							return get<int64_t>(pos);
-						case 7:
-						case 6:
-						case 5:
-						case 4:
-							return get<int32_t>(pos);
-						case 3:
-						case 2:
-							return get<int16_t>(pos);
-						case 1:
-							return get<int8_t>(pos);
-					}
-				}
-				return 0;
-			}
-
-			unsafe_ptr get_rel_ptr(ptrdiff_t pos = 0, size_t storager_size = 0, bool ext_wrd_wid = false) const {
-				if (!storager_size) {
-					storager_size = size() - pos;
-				}
-				return base().value() + pos + storager_size + get_int(pos, storager_size, ext_wrd_wid);
+			template <typename RELPTR_T>
+			unsafe_ptr derelative(ptrdiff_t pos = 0) const {
+				return base().value() + pos + get<RELPTR_T>(pos) + sizeof(RELPTR_T);
 			}
 
 			void copy(const bin_ref &src) {
