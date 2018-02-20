@@ -10,42 +10,19 @@
 #include <cstring>
 
 namespace rua {
-	class _unsafe_ptr_valuer {
-		protected:
-			_unsafe_ptr_valuer() = default;
-
-			explicit constexpr _unsafe_ptr_valuer(uintptr_t val) : _val(val) {}
-
-		public:
-			uintptr_t &value() {
-				return _val;
-			}
-
-			uintptr_t value() const {
-				return _val;
-			}
-
-			operator uintptr_t() const {
-				return _val;
-			}
-
-		private:
-			uintptr_t _val;
-	};
-
-	class unsafe_ptr : public _unsafe_ptr_valuer {
+	class unsafe_ptr {
 		public:
 			unsafe_ptr() = default;
 
-			constexpr unsafe_ptr(std::nullptr_t) : _unsafe_ptr_valuer(0) {}
+			constexpr unsafe_ptr(std::nullptr_t) : _val(0) {}
 
 			template <typename T>
-			constexpr unsafe_ptr(T *src) : _unsafe_ptr_valuer(reinterpret_cast<uintptr_t>(src)) {}
+			constexpr unsafe_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
 
-			constexpr unsafe_ptr(uintptr_t src) : _unsafe_ptr_valuer(src) {}
+			constexpr unsafe_ptr(uintptr_t src) : _val(src) {}
 
 			template <typename T>
-			RUA_CONSTEXPR_14 unsafe_ptr(T &&src) : _unsafe_ptr_valuer(
+			RUA_CONSTEXPR_14 unsafe_ptr(T &&src) : _val(
 				_t2u<
 					std::is_integral<typename std::remove_reference<T>::type>::value ||
 					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<T, uintptr_t>::value)
@@ -62,41 +39,31 @@ namespace rua {
 
 			constexpr unsafe_ptr(unsafe_ptr &o) : unsafe_ptr(const_cast<const unsafe_ptr &>(o)) {}
 
+			uintptr_t &value() {
+				return _val;
+			}
+
+			uintptr_t value() const {
+				return _val;
+			}
+
+			operator uintptr_t() const {
+				return _val;
+			}
+
+			operator bool() const {
+				return _val;
+			}
+
 			template <typename T>
 			T to() const {
 				return _u2t<
 					T,
-					std::is_pointer<typename std::remove_reference<T>::type>::value,
+					std::is_pointer<typename std::remove_reference<T>::type>::value ||
+					std::is_member_pointer<typename std::remove_reference<T>::type>::value,
 					std::is_integral<typename std::remove_reference<T>::type>::value ||
 					(std::is_class<typename std::remove_reference<T>::type>::value && std::is_convertible<uintptr_t, T>::value)
-				>::fn(value());
-			}
-
-			unsafe_ptr &operator++() {
-				++value();
-				return *this;
-			}
-
-			unsafe_ptr operator++(int) {
-				return value()++;
-			}
-
-			unsafe_ptr &operator--() {
-				--value();
-				return *this;
-			}
-
-			unsafe_ptr operator--(int) {
-				return value()--;
-			}
-
-			operator bool() const {
-				return value();
-			}
-
-			template <typename T>
-			operator T *() const {
-				return reinterpret_cast<T *>(value());
+				>::fn(_val);
 			}
 
 			template <typename T>
@@ -105,6 +72,8 @@ namespace rua {
 			}
 
 		private:
+			uintptr_t _val;
+
 			template <bool IS_DRCT>
 			struct _t2u;
 
@@ -138,8 +107,8 @@ namespace rua {
 		}
 	};
 
-	template <typename T>
-	struct unsafe_ptr::_u2t<T, true, false> {
+	template <typename T, bool IS_DRCT>
+	struct unsafe_ptr::_u2t<T, true, IS_DRCT> {
 		static constexpr T fn(const uintptr_t &val) {
 			return reinterpret_cast<T>(val);
 		}
@@ -169,46 +138,6 @@ namespace rua {
 			}
 		}
 	};
-
-	template <typename T>
-	inline bool operator==(const _unsafe_ptr_valuer &a, T &&b) {
-		return a.value() == unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline bool operator==(T &&a, const _unsafe_ptr_valuer &b) {
-		return unsafe_ptr(std::forward<T>(a)).value() == b.value();
-	}
-
-	template <typename T>
-	inline bool operator!=(const _unsafe_ptr_valuer &a, T &&b) {
-		return a.value() != unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline bool operator!=(T &&a, const _unsafe_ptr_valuer &b) {
-		return unsafe_ptr(std::forward<T>(a)).value() != b.value();
-	}
-
-	template <typename T>
-	inline unsafe_ptr operator+(const _unsafe_ptr_valuer &a, T &&b) {
-		return a.value() + unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline unsafe_ptr operator+(T &&a, const _unsafe_ptr_valuer &b) {
-		return unsafe_ptr(std::forward<T>(a)).value() + b.value();
-	}
-
-	template <typename T>
-	inline unsafe_ptr operator-(const _unsafe_ptr_valuer &a, T &&b) {
-		return a.value() - unsafe_ptr(std::forward<T>(b)).value();
-	}
-
-	template <typename T>
-	inline unsafe_ptr operator-(T &&a, const _unsafe_ptr_valuer &b) {
-		return unsafe_ptr(std::forward<T>(a)).value() - b.value();
-	}
 }
 
 #endif
