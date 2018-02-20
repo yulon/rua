@@ -17,8 +17,8 @@ namespace rua {
 		public:
 			class read_writer_t {
 				public:
-					using reader_t = std::function<void(unsafe_ptr src, unsafe_ptr data, size_t)>;
-					using writer_t = std::function<void(unsafe_ptr dest, unsafe_ptr data, size_t)>;
+					using reader_t = std::function<void(unsafe_ptr src, unsafe_ptr base, size_t)>;
+					using writer_t = std::function<void(unsafe_ptr dest, unsafe_ptr base, size_t)>;
 
 					reader_t read;
 					writer_t write;
@@ -44,43 +44,48 @@ namespace rua {
 					}
 			};
 
-			bin_ref() : _data(nullptr), _sz(0) {}
+			bin_ref() : _base(nullptr), _sz(0) {}
 
 			bin_ref(std::nullptr_t) : bin_ref() {}
 
-			bin_ref(unsafe_ptr data, size_t size = -1) : _data(data), _sz(size) {}
+			bin_ref(unsafe_ptr base, size_t size = -1) : _base(base), _sz(size) {}
 
-			bin_ref(unsafe_ptr data, size_t size, const read_writer_t &rw) : _data(data), _sz(size), _rw(rw) {}
+			bin_ref(unsafe_ptr base, size_t size, const read_writer_t &rw) : _base(base), _sz(size), _rw(rw) {}
 
-			bin_ref(unsafe_ptr data, const read_writer_t &rw) : bin_ref(data, -1, rw) {}
+			bin_ref(unsafe_ptr base, const read_writer_t &rw) : bin_ref(base, -1, rw) {}
 
 			operator bool() const {
-				return _data;
+				return _base;
 			}
 
-			unsafe_ptr data() const {
-				return _data;
+			unsafe_ptr base() const {
+				return _base;
+			}
+
+			void rebase(unsafe_ptr base) {
+				_base = base;
 			}
 
 			size_t size() const {
 				return _sz;
 			}
 
+			void resize(size_t sz) {
+				_sz = sz;
+			}
+
 			const read_writer_t &read_writer() const {
 				return _rw;
 			}
 
-			void reset(unsafe_ptr data, size_t sz) {
-				_data = data;
+			void reset(unsafe_ptr base, size_t sz = -1) {
+				_base = base;
 				_sz = sz;
 			}
 
-			void reset(size_t sz) {
+			void reset(unsafe_ptr base, size_t sz, const read_writer_t &rw) {
+				_base = base;
 				_sz = sz;
-			}
-
-			void reset(unsafe_ptr data, size_t sz, const read_writer_t &rw) {
-				reset(data, data ? (sz ? sz : -1) : 0);
 				_rw = rw;
 			}
 
@@ -89,82 +94,82 @@ namespace rua {
 			}
 
 			template <typename D>
-			D &at(size_t pos = 0) {
+			D &at(ptrdiff_t pos = 0) {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *(_data + pos).to<D *>();
+				return *unsafe_ptr(_base.value() + pos).to<D *>();
 			}
 
 			template <typename D>
-			const D &at(size_t pos = 0) const {
+			const D &at(ptrdiff_t pos = 0) const {
 				assert(pos + sizeof(D) <= _sz && !_rw);
 
-				return *(_data + pos).to<D *>();
+				return *unsafe_ptr(_base.value() + pos).to<D *>();
 			}
 
 			template <typename D>
-			D &aligned_at(size_t ix = 0) {
+			D &aligned_at(ptrdiff_t ix = 0) {
 				assert((ix + 1) * sizeof(D) <= _sz && !_rw);
 
-				return _data.to<D *>()[ix];
+				return _base.to<D *>()[ix];
 			}
 
 			template <typename D>
-			const D &aligned_at(size_t ix = 0) const {
+			const D &aligned_at(ptrdiff_t ix = 0) const {
 				assert((ix + 1) * sizeof(D) <= _sz && !_rw);
 
-				return _data.to<D *>()[ix];
+				return _base.to<D *>()[ix];
 			}
 
-			uint8_t &operator[](size_t ix) {
+			uint8_t &operator[](ptrdiff_t ix) {
 				return aligned_at<uint8_t>(ix);
 			}
 
-			uint8_t operator[](size_t ix) const {
+			uint8_t operator[](ptrdiff_t ix) const {
 				return aligned_at<uint8_t>(ix);
 			}
 
 			template <typename D>
-			D get(size_t pos = 0) const {
+			D get(ptrdiff_t pos = 0) const {
 				assert(pos + sizeof(D) <= _sz);
 
 				if (_rw.read) {
 					uint8_t cache[sizeof(D)];
-					_rw.read(_data + pos, &cache, sizeof(D));
+					_rw.read(_base.value() + pos, &cache, sizeof(D));
 					return *reinterpret_cast<D *>(cache);
 				}
 				return at<D>(pos);
 			}
 
 			template <typename D>
-			D aligned_get(size_t ix = 0) const {
+			D aligned_get(ptrdiff_t ix = 0) const {
 				assert((ix + 1) * sizeof(D) <= _sz);
 
 				if (_rw.read) {
 					uint8_t cache[sizeof(D)];
-					_rw.read(_data + ix * sizeof(D), &cache, sizeof(D));
+					_rw.read(_base.value() + ix * sizeof(D), &cache, sizeof(D));
 					return *reinterpret_cast<D *>(cache);
 				}
 				return aligned_at<D>(ix);
 			}
 
 			template <typename D>
-			void set(size_t pos, const D &d) {
+			void set(ptrdiff_t pos, const D &d) {
 				assert(pos + sizeof(D) <= _sz);
 
 				if (_rw.write) {
-					_rw.write(_data + pos, &d, sizeof(D));
+					_rw.write(_base.value() + pos, &d, sizeof(D));
 					return;
 				}
 				at<D>(pos) = d;
 			}
 
 			template <typename D>
-			D aligned_set(size_t ix, const D &d) {
+			D aligned_set(ptrdiff_t ix, const D &d) {
 				assert((ix + 1) * sizeof(D) <= _sz);
 
 				if (_rw.write) {
-					_rw.write(_data + ix * sizeof(D), &d, sizeof(D));
+					_rw.write(_base.value() + ix * sizeof(D), &d, sizeof(D));
 					return;
 				}
 				aligned_at<D>(ix) = d;
@@ -180,112 +185,110 @@ namespace rua {
 				aligned_set<D>(0, d);
 			}
 
+			template <typename I = int>
+			I get_int(ptrdiff_t pos = 0, size_t storager_size = 0, bool ext_wrd_wid = false) const {
+				if (!storager_size) {
+					storager_size = size() - pos;
+				}
+				if (ext_wrd_wid) {
+					// TODO
+				} else {
+					switch (storager_size > 8 ? 8 : storager_size) {
+						case 8:
+							return get<int64_t>(pos);
+						case 7:
+						case 6:
+						case 5:
+						case 4:
+							return get<int32_t>(pos);
+						case 3:
+						case 2:
+							return get<int16_t>(pos);
+						case 1:
+							return get<int8_t>(pos);
+					}
+				}
+				return 0;
+			}
+
+			unsafe_ptr get_rel_ptr(ptrdiff_t pos = 0, size_t storager_size = 0, bool ext_wrd_wid = false) const {
+				if (!storager_size) {
+					storager_size = size() - pos;
+				}
+				return base().value() + pos + storager_size + get_int(pos, storager_size, ext_wrd_wid);
+			}
+
 			void copy(const bin_ref &src) {
 				auto sz = size() <= src.size() ? size() : src.size();
 				if (read_writer().write) {
 					if (src.read_writer().read) {
-						read_writer_t::copy(read_writer().write, data(), src.read_writer().read, src.data(), sz);
+						read_writer_t::copy(read_writer().write, _base, src.read_writer().read, src._base, sz);
 					} else {
-						read_writer().write(data(), src.data(), sz);
+						read_writer().write(_base, src._base, sz);
 					}
 				} else {
 					if (src.read_writer().read) {
 						auto cache = new uint8_t[sz];
-						src.read_writer().read(src.data(), cache, sz);
-						memcpy(data(), cache, sz);
+						src.read_writer().read(src._base, cache, sz);
+						memcpy(_base, cache, sz);
 						delete[] cache;
 					} else {
-						memcpy(data(), src.data(), sz);
+						memcpy(_base, src._base, sz);
 					}
 				}
 			}
 
-			bin_ref match(const std::vector<uint16_t> &pattern, int ret_sub_ix = -1) const {
+			bin_ref match(const std::vector<uint16_t> &pattern) const {
 				auto end = _sz + 1 - pattern.size();
 				for (size_t i = 0; i < end; ++i) {
 					size_t j;
-					struct sub_range_t {
-						size_t pos, sz;
-					};
-					std::vector<sub_range_t> subs;
 					for (j = 0; j < pattern.size(); ++j) {
 						if (pattern[j] > 255) {
-							if (subs.empty() || subs.back().sz) {
-								subs.emplace_back(sub_range_t{j, 0});
+							continue;
+						}
+						if (pattern[j] != get<uint8_t>(i + j)) {
+							break;
+						}
+					}
+					if (j == pattern.size()) {
+						return bin_ref(_base.value() + i, pattern.size(), _rw);
+					}
+				}
+				return nullptr;
+			}
+
+			std::vector<bin_ref> match_sub(const std::vector<uint16_t> &pattern) const {
+				std::vector<bin_ref> subs;
+				auto end = _sz + 1 - pattern.size();
+				for (size_t i = 0; i < end; ++i) {
+					size_t j;
+					for (j = 0; j < pattern.size(); ++j) {
+						if (pattern[j] > 255) {
+							if (subs.empty() || subs.back().size()) {
+								subs.emplace_back(_base.value() + i + j, 0, _rw);
 							}
 							continue;
 						}
 						if (pattern[j] != get<uint8_t>(i + j)) {
 							break;
 						}
-						if (subs.size() && !subs.back().sz) {
-							subs.back().sz = j - subs.back().pos;
+						if (subs.size() && !subs.back().size()) {
+							subs.back().resize(_base.value() + i + j - subs.back().base().value());
 						}
 					}
 					if (j == pattern.size()) {
-						if (ret_sub_ix > -1) {
-							if (ret_sub_ix > static_cast<int>(subs.size()) - 1) {
-								return nullptr;
-							}
-							return bin_ref(
-								_data + i + subs[ret_sub_ix].pos,
-								subs[ret_sub_ix].sz ? subs[ret_sub_ix].sz : j - subs[ret_sub_ix].pos,
-								_rw
-							);
-							return nullptr;
+						if (subs.size() && !subs.back().size()) {
+							subs.back().resize(_base.value() + i + j - subs.back().base().value());
 						}
-						return bin_ref(_data + i, pattern.size(), _rw);
+						return subs;
 					}
+					subs.clear();
 				}
-				return nullptr;
-			}
-
-			unsafe_ptr match_ptr(const std::vector<uint16_t> &pattern, int ret_sub_ix = 0, uint8_t size = 0) const {
-				auto md = match(pattern, ret_sub_ix);
-				if (!md) {
-					return nullptr;
-				}
-				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
-					case 8:
-						return md.get<int64_t>();
-					case 7:
-					case 6:
-					case 5:
-					case 4:
-						return md.get<int32_t>();
-					case 3:
-					case 2:
-						return md.get<int16_t>();
-					case 1:
-						return md.get<int8_t>();
-				}
-				return nullptr;
-			}
-
-			unsafe_ptr match_rel_ptr(const std::vector<uint16_t> &pattern, int ret_sub_ix = 0, uint8_t size = 0) const {
-				auto md = match(pattern, ret_sub_ix);
-				if (!md) {
-					return nullptr;
-				}
-				switch (size ? (size > 8 ? 8 : size) : (md.size() > 8 ? 8 : md.size())) {
-					case 8:
-						return md.data() + 8 + md.get<int64_t>();
-					case 7:
-					case 6:
-					case 5:
-					case 4:
-						return md.data() + 4 + md.get<int32_t>();
-					case 3:
-					case 2:
-						return md.data() + 2 + md.get<int16_t>();
-					case 1:
-						return md.data() + 1 + md.get<int8_t>();
-				}
-				return nullptr;
+				return subs;
 			}
 
 		private:
-			unsafe_ptr _data;
+			unsafe_ptr _base;
 			size_t _sz;
 			read_writer_t _rw;
 	};
@@ -308,8 +311,8 @@ namespace rua {
 
 			bin(size_t size) : bin_ref(new uint8_t[size], size) {}
 
-			bin(unsafe_ptr src_data, size_t size) : bin_ref(new uint8_t[size], size) {
-				memcpy(data(), src_data, size);
+			bin(unsafe_ptr src_base, size_t size) : bin_ref(new uint8_t[size], size) {
+				memcpy(base(), src_base, size);
 			}
 
 			bin(
@@ -319,15 +322,15 @@ namespace rua {
 			) : bin_ref(alcr.alloc ? alcr.alloc(size) : unsafe_ptr(new uint8_t[size]), size, rw), _alcr(alcr) {}
 
 			bin(
-				unsafe_ptr src_data,
+				unsafe_ptr src_base,
 				size_t size,
 				const allocator_t &alcr = {nullptr, nullptr},
 				const read_writer_t &rw = {nullptr, nullptr}
 			) : bin(size, alcr, rw) {
 				if (rw.write) {
-					rw.write(data(), src_data, size);
+					rw.write(base(), src_base, size);
 				} else {
-					memcpy(data(), src_data, size);
+					memcpy(base(), src_base, size);
 				}
 			}
 
@@ -352,26 +355,24 @@ namespace rua {
 				return _alcr;
 			}
 
-			void reset() {
+			void rebase(size_t new_sz = 0) {
 				if (*this) {
-					if (_alcr.free) {
-						_alcr.free(data(), size());
-					} else {
-						delete data().to<uint8_t *>();
+					if (!new_sz) {
+						new_sz = size();
 					}
-					bin_ref::reset();
+					*this = bin(*this, new_sz, _alcr, read_writer());
 				}
 			}
 
-			void reset(size_t sz) {
+			void resize(size_t sz) {
 				if (*this) {
 					if (sz == size()) {
 						return;
 					}
 					if (_alcr.free) {
-						_alcr.free(data(), size());
+						_alcr.free(base(), size());
 					} else {
-						delete data().to<uint8_t *>();
+						delete base().to<uint8_t *>();
 					}
 					if (!sz) {
 						bin_ref::reset(nullptr, 0);
@@ -379,6 +380,21 @@ namespace rua {
 					}
 				}
 				bin_ref::reset(_alcr.alloc ? _alcr.alloc(sz) : unsafe_ptr(new uint8_t[sz]), sz);
+			}
+
+			void reset(unsafe_ptr base, size_t sz) = delete;
+
+			void reset(unsafe_ptr base, size_t sz, const read_writer_t &rw) = delete;
+
+			void reset() {
+				if (*this) {
+					if (_alcr.free) {
+						_alcr.free(base(), size());
+					} else {
+						delete base().to<uint8_t *>();
+					}
+					bin_ref::reset();
+				}
 			}
 
 			void reset(
@@ -389,6 +405,24 @@ namespace rua {
 				reset();
 				_alcr = alcr;
 				bin_ref::reset(alcr.alloc ? alcr.alloc(sz) : unsafe_ptr(new uint8_t[sz]), sz, rw);
+			}
+
+			void reset(size_t sz) {
+				reset(sz, _alcr, read_writer());
+			}
+
+			void reset(
+				size_t sz,
+				const allocator_t &alcr
+			) {
+				reset(sz, alcr, read_writer());
+			}
+
+			void reset(
+				size_t sz,
+				const read_writer_t &rw
+			) {
+				reset(sz, _alcr, rw);
 			}
 
 			~bin() {
@@ -409,7 +443,7 @@ namespace rua {
 				return *this;
 			}
 
-			bin(bin &&src) : bin_ref(src.data(), src.size(), src.read_writer()), _alcr(src._alcr) {
+			bin(bin &&src) : bin_ref(src.base(), src.size(), src.read_writer()), _alcr(src._alcr) {
 				if (src) {
 					static_cast<bin_ref &>(src).reset();
 				}
@@ -420,7 +454,7 @@ namespace rua {
 				if (!src) {
 					return *this;
 				}
-				bin_ref::reset(src.data(), src.size(), src.read_writer());
+				bin_ref::reset(src.base(), src.size(), src.read_writer());
 				_alcr = src._alcr;
 				static_cast<bin_ref &>(src).reset();
 				return *this;

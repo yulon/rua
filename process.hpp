@@ -301,12 +301,12 @@ namespace rua {
 
 				template <typename F>
 				unsafe_ptr syscall(F func, const std::string &param) {
-					return syscall(func, mem_alloc(param).data());
+					return syscall(func, mem_alloc(param).base());
 				}
 
 				template <typename F>
 				unsafe_ptr syscall(F func, const std::wstring &param) {
-					return syscall(func, mem_alloc(param).data());
+					return syscall(func, mem_alloc(param).base());
 				}
 
 				template <typename F>
