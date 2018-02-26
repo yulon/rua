@@ -36,6 +36,9 @@ namespace rua {
 
 			constexpr obj(std::nullptr_t) : _sp(nullptr) {}
 
+			template <typename A>
+			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_convertible<A, obj<T>>())) {}
+
 			template <typename... A>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
 
@@ -46,8 +49,6 @@ namespace rua {
 			obj(obj &&) = default;
 
 			obj &operator=(obj &&) = default;
-
-			obj(obj &o) : obj(const_cast<const obj &>(o)) {}
 
 			void reset() {
 				_sp.reset();
@@ -99,6 +100,18 @@ namespace rua {
 
 		private:
 			std::shared_ptr<T> _sp;
+
+			template <typename A>
+			static std::shared_ptr<T> _get_shared(A &&a, std::false_type) {
+				return std::make_shared<T>(std::forward<A>(a));
+			}
+
+			static std::shared_ptr<T> _get_shared(const obj<T> &o, std::true_type) {
+				return o._sp;
+			}
+
+		protected:
+			obj(std::shared_ptr<T> &&sp) : _sp(std::move(sp)) {}
 	};
 
 	template <bool IS_ITF>
@@ -115,15 +128,9 @@ namespace rua {
 
 			template <typename A>
 			itf(A&& a) :
-				obj<T>(nullptr),
+				obj<T>(_get_shared(std::forward<A>(a), std::is_convertible<A, itf<T>>())),
 				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
-			{
-				RUA_STATIC_ASSERT(is_obj<A>());
-
-				assert(a);
-
-				*static_cast<obj<T> &>(*this) = std::static_pointer_cast<T>(*a);
-			}
+			{}
 
 			itf(const itf &) = default;
 
@@ -132,8 +139,6 @@ namespace rua {
 			itf(itf &&) = default;
 
 			itf &operator=(itf &&) = default;
-
-			itf(itf &o) : itf(const_cast<const itf &>(o)) {}
 
 			void reset() {
 				_t = typeid(nullptr);
@@ -172,6 +177,18 @@ namespace rua {
 
 		private:
 			std::type_index _t;
+
+			template <typename A>
+			static std::shared_ptr<T> _get_shared(A &&a, std::false_type) {
+				RUA_STATIC_ASSERT(is_obj<A>());
+				assert(a);
+				return std::static_pointer_cast<T>(*std::forward<A>(a));
+			}
+
+			static std::shared_ptr<T> _get_shared(const itf<T> &i, std::true_type) {
+				assert(i);
+				return *i;
+			}
 	};
 
 	template <>

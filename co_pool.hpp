@@ -16,6 +16,15 @@
 #include <cstdint>
 #include <cassert>
 
+#ifdef _MSC_VER
+	#ifdef max
+		#undef max
+	#endif
+	#ifdef min
+		#undef min
+	#endif
+#endif
+
 namespace rua {
 	class co_pool {
 		public:

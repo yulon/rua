@@ -2,14 +2,28 @@
 #define _RUA_PREDEF_HPP
 
 #ifdef _MSC_VER
-	#if _MSC_VER >= 1910
-		#define RUA_CPP 17
-	#elif _MSC_VER >= 1900
-		#define RUA_CPP 14
-	#elif _MSC_VER >= 1800
-		#define RUA_CPP 11
+	#ifdef _MSVC_LANG
+		#if _MSVC_LANG >= 201703L
+			#define RUA_CPP 17
+		#elif _MSVC_LANG >= 201402L
+			#define RUA_CPP 14
+		#elif _MSVC_LANG >= 201103L
+			#define RUA_CPP 11
+		#elif _MSVC_LANG >= 199711L
+			#define RUA_CPP 98
+		#else
+			#define RUA_CPP 1
+		#endif
 	#else
-		#define RUA_CPP 98
+		#if _MSC_VER >= 1910
+			#define RUA_CPP 17
+		#elif _MSC_VER >= 1900
+			#define RUA_CPP 14
+		#elif _MSC_VER >= 1800
+			#define RUA_CPP 11
+		#else
+			#define RUA_CPP 98
+		#endif
 	#endif
 #else
 	#if __cplusplus >= 201703L

@@ -29,16 +29,6 @@ namespace rua {
 				>::fn(std::forward<T>(src)
 			)) {}
 
-			constexpr unsafe_ptr(const unsafe_ptr &) = default;
-
-			unsafe_ptr &operator=(const unsafe_ptr &) = default;
-
-			constexpr unsafe_ptr(unsafe_ptr &&) = default;
-
-			unsafe_ptr &operator=(unsafe_ptr &&) = default;
-
-			constexpr unsafe_ptr(unsafe_ptr &o) : unsafe_ptr(const_cast<const unsafe_ptr &>(o)) {}
-
 			uintptr_t &value() {
 				return _val;
 			}

@@ -52,7 +52,7 @@ namespace rua {
 
 					scoped_stream_t &operator=(scoped_stream_t &&) = default;
 
-					chan<T>::scoped_stream_t &operator<<(T value) {
+					scoped_stream_t &operator<<(T value) {
 						assert(_res);
 
 						_res->buffer.emplace(std::move(value));
@@ -61,7 +61,7 @@ namespace rua {
 					}
 
 					template <typename R>
-					chan<T>::scoped_stream_t &operator>>(R &receiver) {
+					scoped_stream_t &operator>>(R &receiver) {
 						RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
 						assert(_res);
 
@@ -103,16 +103,16 @@ namespace rua {
 					scheduler _scdlr;
 			};
 
-			chan<T>::scoped_stream_t scoped_stream() const {
+			typename chan<T>::scoped_stream_t scoped_stream() const {
 				return scoped_stream_t(*this);
 			}
 
-			chan<T>::scoped_stream_t operator<<(T value) {
+			typename chan<T>::scoped_stream_t operator<<(T value) {
 				return std::move(scoped_stream() << value);
 			}
 
 			template <typename R>
-			chan<T>::scoped_stream_t operator>>(R &receiver) {
+			typename chan<T>::scoped_stream_t operator>>(R &receiver) {
 				return std::move(scoped_stream() >> receiver);
 			}
 
