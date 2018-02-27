@@ -128,7 +128,7 @@ namespace rua {
 
 			template <typename A>
 			itf(A&& a) :
-				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<itf<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())),
+				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())),
 				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
 			{}
 
@@ -203,7 +203,7 @@ namespace rua {
 	struct _obj_type<true> {
 		template <typename A>
 		static std::type_index fn(A &&a) {
-			return typeid(a.type());
+			return a.type();
 		}
 	};
 
