@@ -37,7 +37,7 @@ namespace rua {
 			constexpr obj(std::nullptr_t) : _sp(nullptr) {}
 
 			template <typename A>
-			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_convertible<A, obj<T>>())) {}
+			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())) {}
 
 			template <typename... A>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
@@ -128,7 +128,7 @@ namespace rua {
 
 			template <typename A>
 			itf(A&& a) :
-				obj<T>(_get_shared(std::forward<A>(a), std::is_convertible<A, itf<T>>())),
+				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<itf<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())),
 				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
 			{}
 
