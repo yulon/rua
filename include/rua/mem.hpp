@@ -134,7 +134,7 @@ namespace rua {
 						}
 					#endif
 
-					return get<D>(_base, offset);
+					return mem::get<D>(_base, offset);
 				}
 
 				template <typename D>
@@ -146,7 +146,7 @@ namespace rua {
 						}
 					#endif
 
-					return aligned_get<D>(_base, ix);
+					return mem::aligned_get<D>(_base, ix);
 				}
 
 				data slice(ptrdiff_t begin, ptrdiff_t end) const {
