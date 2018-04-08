@@ -65,6 +65,32 @@ namespace rua {
 				return to<T *>();
 			}
 
+			any_ptr &operator++() {
+				++_val;
+				return *this;
+			}
+
+			any_ptr operator++() const {
+				return any_ptr(_val + 1);
+			}
+
+			any_ptr operator++(int) {
+				return any_ptr(_val++);
+			}
+
+			any_ptr &operator--() {
+				--_val;
+				return *this;
+			}
+
+			any_ptr operator--() const {
+				return any_ptr(_val - 1);
+			}
+
+			any_ptr operator--(int) {
+				return any_ptr(_val--);
+			}
+
 			template <typename T>
 			any_ptr operator+(T &&target) const {
 				return _ptr_plus(std::forward<T>(target));
