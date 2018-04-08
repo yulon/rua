@@ -3,6 +3,7 @@
 
 #include "macros.hpp"
 #include "any_ptr.hpp"
+#include "nullpos.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -18,11 +19,9 @@ namespace rua {
 					return _this()->base() + pos + _this()->template get<RelPtr>(pos) + sizeof(RelPtr);
 				}
 
-				static constexpr size_t npos = static_cast<size_t>(-1);
-
 				size_t match(const std::vector<uint16_t> &pattern) const {
 					if (!pattern.size()) {
-						return npos;
+						return nullpos;
 					}
 					size_t end = _this()->size() ? _this()->size() + 1 - pattern.size() : 0;
 					for (size_t i = 0; i < end || !end; ++i) {
@@ -39,7 +38,7 @@ namespace rua {
 							return i;
 						}
 					}
-					return npos;
+					return nullpos;
 				}
 
 				std::vector<size_t> match_sub(const std::vector<uint16_t> &pattern) const {
