@@ -1,7 +1,7 @@
 #ifndef _RUA_OBJ_HPP
 #define _RUA_OBJ_HPP
 
-#include "predef.hpp"
+#include "macros.hpp"
 
 #include <memory>
 #include <typeindex>
@@ -14,7 +14,7 @@ namespace rua {
 
 	template <typename T>
 	constexpr bool is_obj() {
-		using TT = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+		using TT = typename std::decay<T>::type;
 
 		return std::is_base_of<obj<typename TT::access_type>, TT>::value;
 	}
@@ -24,7 +24,7 @@ namespace rua {
 
 	template <typename T>
 	constexpr bool is_itf() {
-		using TT = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+		using TT = typename std::decay<T>::type;
 
 		return std::is_base_of<itf<typename TT::access_type>, TT>::value;
 	}
@@ -37,7 +37,7 @@ namespace rua {
 			constexpr obj(std::nullptr_t) : _sp(nullptr) {}
 
 			template <typename A>
-			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())) {}
+			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::decay<A>::type>())) {}
 
 			template <typename... A>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
@@ -128,7 +128,7 @@ namespace rua {
 
 			template <typename A>
 			itf(A&& a) :
-				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::remove_cv<typename std::remove_reference<A>::type>::type>())),
+				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::decay<A>::type>())),
 				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
 			{}
 
@@ -149,7 +149,7 @@ namespace rua {
 			bool type_is() const {
 				RUA_STATIC_ASSERT(is_obj<R>());
 
-				return _t == typeid(typename std::remove_cv<typename std::remove_reference<R>::type>::type);
+				return _t == typeid(typename std::decay<R>::type);
 			}
 
 			std::type_index type() const {
@@ -158,16 +158,17 @@ namespace rua {
 
 			template <typename R>
 			R to() const {
-				using RR = typename std::remove_cv<typename std::remove_reference<R>::type>::type;
+				using RR = typename std::decay<R>::type;
 
 				RUA_STATIC_ASSERT(is_obj<R>());
 				RUA_STATIC_ASSERT(!is_itf<R>());
 
-				assert(*this);
 				assert(type_is<R>());
 
 				RR r(nullptr);
-				*static_cast<obj<typename RR::access_type> &>(r) = _ptr_cast<typename RR::access_type, std::is_polymorphic<T>::value>::fn(**this);
+				if (*this) {
+					*static_cast<obj<typename RR::access_type> &>(r) = _ptr_cast<typename RR::access_type, std::is_polymorphic<T>::value>::fn(**this);
+				}
 				return r;
 			}
 
@@ -181,13 +182,20 @@ namespace rua {
 			template <typename A>
 			static std::shared_ptr<T> _get_shared(A &&a, std::false_type) {
 				RUA_STATIC_ASSERT(is_obj<A>());
-				assert(a);
-				return std::static_pointer_cast<T>(*std::forward<A>(a));
+
+				if (a) {
+					return std::static_pointer_cast<T>(*std::forward<A>(a));
+				} else {
+					return nullptr;
+				}
 			}
 
 			static std::shared_ptr<T> _get_shared(const itf<T> &i, std::true_type) {
-				assert(i);
-				return *i;
+				if (i) {
+					return *i;
+				} else {
+					return nullptr;
+				}
 			}
 	};
 
@@ -195,7 +203,7 @@ namespace rua {
 	struct _obj_type<false> {
 		template <typename A>
 		static std::type_index fn(A &&) {
-			return typeid(typename std::remove_cv<typename std::remove_reference<A>::type>::type);
+			return typeid(typename std::decay<A>::type);
 		}
 	};
 

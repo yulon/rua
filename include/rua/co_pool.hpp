@@ -14,16 +14,10 @@
 #include <mutex>
 #include <atomic>
 #include <cstdint>
+#include <limits>
 #include <cassert>
 
-#ifdef _MSC_VER
-	#ifdef max
-		#undef max
-	#endif
-	#ifdef min
-		#undef min
-	#endif
-#endif
+#include "disable_msvc_sh1t.h"
 
 namespace rua {
 	class co_pool {
@@ -52,13 +46,13 @@ namespace rua {
 
 			class duration : public std::chrono::milliseconds {
 				public:
-					static constexpr size_t forever = SIZE_MAX;
+					static constexpr size_t forever = std::numeric_limits<size_t>::max();
 					static constexpr size_t disposable = 0;
 
 					duration() = default;
 
 					constexpr duration(size_t ms) : std::chrono::milliseconds(
-						ms == SIZE_MAX ?
+						ms == std::numeric_limits<size_t>::max() ?
 						std::chrono::milliseconds::max() :
 						(ms == 0 ? std::chrono::milliseconds::min() : std::chrono::milliseconds(ms))
 					) {}

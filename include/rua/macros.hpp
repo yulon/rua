@@ -1,5 +1,5 @@
-#ifndef _RUA_PREDEF_HPP
-#define _RUA_PREDEF_HPP
+#ifndef _RUA_MACROS_HPP
+#define _RUA_MACROS_HPP
 
 #ifdef _MSC_VER
 	#ifdef _MSVC_LANG
@@ -101,6 +101,14 @@
 	#define RUA_STATIC_ASSERT(cond) static_assert(cond, #cond)
 #else
 	#define RUA_STATIC_ASSERT(cond) assert(cond)
+#endif
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+	#define RUA_UNIX
+
+	#if defined(__APPLE__) && defined(__MACH__)
+		#define RUA_MAC
+	#endif
 #endif
 
 #endif

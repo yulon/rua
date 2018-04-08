@@ -1,8 +1,8 @@
 #ifndef _RUA_PROCESS_HPP
 #define _RUA_PROCESS_HPP
 
-#include "bin.hpp"
-#include "unsafe_ptr.hpp"
+#include "io.hpp"
+#include "any_word.hpp"
 
 #ifdef _WIN32
 	#include "strenc.hpp"
@@ -19,59 +19,70 @@
 #include <cstring>
 #include <cassert>
 
+#include "disable_msvc_sh1t.h"
+
 namespace rua {
 	#ifdef _WIN32
 		class process {
 			public:
 				static process find(const std::string &name) {
-					std::wstring wname(u8_to_u16(name));
-					for (;;) {
-						HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-						if (snapshot != INVALID_HANDLE_VALUE) {
-							PROCESSENTRY32W entry;
-							entry.dwSize = sizeof(PROCESSENTRY32W);
-							Process32FirstW(snapshot, &entry);
-							do {
-								if (wname == entry.szExeFile) {
-									CloseHandle(snapshot);
-									if (entry.th32ProcessID) {
-										return entry.th32ProcessID;
-									}
+					std::wstring wname(u8_to_w(name));
+					HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+					if (snapshot != INVALID_HANDLE_VALUE) {
+						PROCESSENTRY32W entry;
+						entry.dwSize = sizeof(PROCESSENTRY32W);
+						Process32FirstW(snapshot, &entry);
+						do {
+							if (wname == entry.szExeFile) {
+								CloseHandle(snapshot);
+								if (entry.th32ProcessID) {
+									return entry.th32ProcessID;
 								}
-							} while (Process32NextW(snapshot, &entry));
-						}
-						std::this_thread::sleep_for(std::chrono::milliseconds(500));
+							}
+						} while (Process32NextW(snapshot, &entry));
 					}
+					return nullptr;
 				}
 
 				static process from_this() {
-					return GetCurrentProcess();
+					process tp;
+					tp._ntv_hdl = GetCurrentProcess();
+					return tp;
 				}
 
 				////////////////////////////////////////////////////////////////
 
-				constexpr process() : _ntv_hdl(nullptr), _main_td(nullptr), _need_close(false) {}
+				process() : _ntv_hdl(nullptr), _main_td(nullptr), _need_close(false), _mem_mgr(nullptr) {}
 
-				process(HANDLE proc) : _ntv_hdl(proc), _main_td(nullptr), _need_close(false) {}
+				process(std::nullptr_t) : process() {}
+
+				process(HANDLE proc) : _ntv_hdl(proc), _main_td(nullptr), _need_close(false), _mem_mgr(nullptr) {
+					if (!proc) {
+						return;
+					}
+					if (*this != process::from_this()) {
+						_mem_mgr = mem_mgr_t(*this);
+					}
+				}
 
 				process(
 					const std::string &file,
 					const std::vector<std::string> &args,
 					const std::string &pwd,
 					bool pause_main_thread = false
-				) : _need_close(false) {
+				) : _need_close(false), _mem_mgr(nullptr) {
 					STARTUPINFOW si;
 					PROCESS_INFORMATION pi;
 					memset(&si, 0, sizeof(si));
 					memset(&pi, 0, sizeof(pi));
 					si.cb = sizeof(si);
 
-					std::wstring file_w(u8_to_u16(file));
+					std::wstring file_w(u8_to_w(file));
 					std::wstringstream cmd;
 					if (args.size()) {
 						cmd << "\"" << file_w << "\"";
 						for (auto &arg : args) {
-							cmd << " \"" << u8_to_u16(arg) << "\"";
+							cmd << " \"" << u8_to_w(arg) << "\"";
 						}
 					}
 
@@ -83,7 +94,7 @@ namespace rua {
 						true,
 						pause_main_thread ? CREATE_SUSPENDED : 0,
 						nullptr,
-						pwd.empty() ? nullptr : u8_to_u16(pwd).c_str(),
+						pwd.empty() ? nullptr : u8_to_w(pwd).c_str(),
 						&si,
 						&pi
 					)) {
@@ -99,6 +110,8 @@ namespace rua {
 					} else {
 						_main_td = nullptr;
 					}
+
+					_mem_mgr = mem_mgr_t(*this);
 				}
 
 				process(
@@ -126,7 +139,11 @@ namespace rua {
 
 				process(DWORD pid) : _ntv_hdl(
 					OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid)
-				), _main_td(nullptr), _need_close(true) {}
+				), _main_td(nullptr), _need_close(true), _mem_mgr(nullptr) {
+					if (*this != process::from_this()) {
+						_mem_mgr = mem_mgr_t(*this);
+					}
+				}
 
 				~process() {
 					reset();
@@ -144,11 +161,11 @@ namespace rua {
 					return native_handle();
 				}
 
-				bool operator==(const process &target) {
+				bool operator==(const process &target) const {
 					return _ntv_hdl == target._ntv_hdl;
 				}
 
-				bool operator!=(const process &target) {
+				bool operator!=(const process &target) const {
 					return _ntv_hdl != target._ntv_hdl;
 				}
 
@@ -156,11 +173,12 @@ namespace rua {
 
 				process &operator=(const process &) = delete;
 
-				process(process &&src) : _ntv_hdl(src._ntv_hdl), _main_td(src._main_td), _need_close(src._need_close) {
+				process(process &&src) : _ntv_hdl(src._ntv_hdl), _main_td(src._main_td), _need_close(src._need_close), _mem_mgr(src._need_close) {
 					if (src) {
 						src._ntv_hdl = nullptr;
 						src._main_td = nullptr;
 						src._need_close = false;
+						src._mem_mgr = nullptr;
 					}
 				}
 
@@ -171,9 +189,11 @@ namespace rua {
 						_ntv_hdl = src._ntv_hdl;
 						_main_td = src._main_td;
 						_need_close = src._need_close;
+						_mem_mgr = src._mem_mgr;
 						src._ntv_hdl = nullptr;
 						src._main_td = nullptr;
 						src._need_close = false;
+						src._mem_mgr = nullptr;
 					}
 
 					return *this;
@@ -205,12 +225,12 @@ namespace rua {
 				HMODULE native_module_handle(const std::string &name = "") {
 					HMODULE mdu;
 					if (*this == process::from_this()) {
-						mdu = GetModuleHandleW(name.empty() ? nullptr : u8_to_u16(name).c_str());
+						mdu = GetModuleHandleW(name.empty() ? nullptr : u8_to_w(name).c_str());
 					} else {
 						if (name.empty()) {
 							mdu = syscall(&GetModuleHandleW, nullptr);
 						} else {
-							mdu = syscall(&GetModuleHandleW, u8_to_u16(name));
+							mdu = syscall(&GetModuleHandleW, u8_to_w(name));
 						}
 					}
 					return mdu;
@@ -222,7 +242,7 @@ namespace rua {
 					}
 					WCHAR path[MAX_PATH];
 					GetModuleFileNameExW(_ntv_hdl, mdu, path, MAX_PATH);
-					return u16_to_u8(path);
+					return w_to_u8(path);
 				}
 
 				void reset() {
@@ -239,51 +259,78 @@ namespace rua {
 
 				////////////////////////////////////////////////////////////////
 
-				bin::allocator_t mem_allocator() {
-					return *this == process::from_this() ? bin::allocator_t{nullptr, nullptr} : bin::allocator_t{
-						[this](size_t size)->unsafe_ptr {
-							return VirtualAllocEx(_ntv_hdl, nullptr, size, MEM_COMMIT, PAGE_READWRITE);
-						},
-						[this](unsafe_ptr ptr, size_t size) {
-							VirtualFreeEx(_ntv_hdl, ptr, size, MEM_COMMIT);
+				class mem_mgr_t_c : public virtual io::allocator_c, public virtual io::read_writer_at_c {
+					public:
+						mem_mgr_t_c(const process &proc) : _ph(proc.native_handle()) {}
+
+						virtual ~mem_mgr_t_c() {}
+
+						virtual any_ptr alloc(size_t size) {
+							return VirtualAllocEx(_ph, nullptr, size, MEM_COMMIT, PAGE_READWRITE);
 						}
-					};
-				}
 
-				bin_ref::read_writer_t mem_read_writer() {
-					return *this == process::from_this() ? bin_ref::read_writer_t{nullptr, nullptr} : bin_ref::read_writer_t{
-						[this](unsafe_ptr src, unsafe_ptr data, size_t size) {
-							SIZE_T writed_len;
-							ReadProcessMemory(_ntv_hdl, src, data, size, &writed_len);
-						},
-						[this](unsafe_ptr dest, unsafe_ptr data, size_t size) {
-							SIZE_T writed_len;
-							WriteProcessMemory(_ntv_hdl, dest, data, size, &writed_len);
+						virtual void free(any_ptr ptr) {
+							VirtualFreeEx(_ph, ptr, 0, MEM_RELEASE);
 						}
-					};
+
+						virtual mem::data read_at(ptrdiff_t pos, size_t size = std::numeric_limits<size_t>::max()) const {
+							mem::data cache(size);
+							SIZE_T sz;
+							ReadProcessMemory(_ph, any_ptr(pos), cache.base(), cache.size(), &sz);
+							return cache.slice(0, sz);
+						}
+
+						virtual size_t write_at(ptrdiff_t pos, const mem::data &dat) {
+							SIZE_T sz;
+							WriteProcessMemory(_ph, any_ptr(pos), dat.base(), dat.size(), &sz);
+							return sz;
+						}
+
+					private:
+						HANDLE _ph;
+				};
+
+				using mem_mgr_t = obj<mem_mgr_t_c>;
+
+				mem_mgr_t mem_mgr() {
+					return _mem_mgr;
 				}
 
-				bin mem_alloc(size_t size) {
-					return bin(size, mem_allocator(), mem_read_writer());
+				io::data mem_data(any_ptr base, size_t size = 0) {
+					return io::data(base, size, _mem_mgr, _mem_mgr);
 				}
 
-				bin mem_alloc(const std::string &str) {
-					return bin(str.c_str(), str.length() + 1, mem_allocator(), mem_read_writer());
+				io::data mem_image(HMODULE mdu = nullptr) {
+					if (!mdu) {
+						mdu = native_module_handle();
+					}
+					MODULEINFO mi;
+					GetModuleInformation(_ntv_hdl, mdu, &mi, sizeof(MODULEINFO));
+					return mem_data(mi.lpBaseOfDll, mi.SizeOfImage);
 				}
 
-				bin mem_alloc(const std::wstring &wstr) {
-					return bin(wstr.c_str(), (wstr.length() + 1) * sizeof(wchar_t), mem_allocator(), mem_read_writer());
+				io::data mem_data(size_t size) {
+					return io::data(size, _mem_mgr, _mem_mgr);
 				}
 
-				bin_ref mem_ref(unsafe_ptr ptr, size_t size) {
-					return bin_ref(ptr, size, mem_read_writer());
+				io::data mem_data(const std::string &str) {
+					auto sz = str.length() + 1;
+					auto md = mem_data(sz);
+					md.copy(io::data(str.c_str(), sz));
+					return std::move(md);
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, unsafe_ptr param) {
+				io::data mem_data(const std::wstring &wstr) {
+					auto byt_sz = (wstr.length() + 1) * sizeof(wchar_t);
+					auto md = mem_data(byt_sz);
+					md.copy(io::data(wstr.c_str(), byt_sz));
+					return std::move(md);
+				}
+
+				any_word syscall(any_ptr func, any_word param = nullptr) {
 					HANDLE td;
 					DWORD tid;
-					td = CreateRemoteThread(_ntv_hdl, NULL, 0, reinterpret_cast<LPTHREAD_START_ROUTINE>(func), param, 0, &tid);
+					td = CreateRemoteThread(_ntv_hdl, NULL, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
 					if (!td) {
 						return 0;
 					}
@@ -294,43 +341,30 @@ namespace rua {
 					return result;
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, std::nullptr_t) {
-					return syscall(func, unsafe_ptr(nullptr));
+				any_word syscall(any_ptr func, std::nullptr_t) {
+					return syscall(func);
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, const std::string &param) {
-					return syscall(func, mem_alloc(param).base());
+				any_word syscall(any_ptr func, const std::string &param) {
+					return syscall(func, any_word(mem_data(param).base()));
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, const std::wstring &param) {
-					return syscall(func, mem_alloc(param).base());
+				any_word syscall(any_ptr func, const std::wstring &param) {
+					return syscall(func, any_word(mem_data(param).base()));
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, const char *param) {
+				any_word syscall(any_ptr func, const char *param) {
 					return syscall(func, std::string(param));
 				}
 
-				template <typename F>
-				unsafe_ptr syscall(F func, const wchar_t *param) {
+				any_word syscall(any_ptr func, const wchar_t *param) {
 					return syscall(func, std::wstring(param));
-				}
-
-				bin_ref mem_ref(HMODULE mdu = nullptr) {
-					if (!mdu) {
-						mdu = native_module_handle();
-					}
-					MODULEINFO mi;
-					GetModuleInformation(_ntv_hdl, mdu, &mi, sizeof(MODULEINFO));
-					return bin_ref(mi.lpBaseOfDll, mi.SizeOfImage, mem_read_writer());
 				}
 
 			private:
 				HANDLE _ntv_hdl, _main_td;
 				bool _need_close;
+				mem_mgr_t _mem_mgr;
 		};
 	#endif
 }

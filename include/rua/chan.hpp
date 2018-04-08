@@ -2,7 +2,7 @@
 #define _RUA_CHAN_HPP
 
 #include "sched.hpp"
-#include "predef.hpp"
+#include "macros.hpp"
 
 #include <memory>
 #include <queue>
