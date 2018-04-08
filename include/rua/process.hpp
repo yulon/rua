@@ -137,9 +137,14 @@ namespace rua {
 					bool pause_main_thread = false
 				) : process(file, {}, "", pause_main_thread) {}
 
-				process(DWORD pid) : _ntv_hdl(
-					OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid)
-				), _main_td(nullptr), _need_close(true), _mem_mgr(nullptr) {
+				process(DWORD pid) : _main_td(nullptr), _mem_mgr(nullptr) {
+					if (!pid) {
+						_ntv_hdl = nullptr;
+						_need_close = false;
+						return;
+					}
+					_ntv_hdl = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+					_need_close = true;
 					if (*this != process::from_this()) {
 						_mem_mgr = mem_mgr_t(*this);
 					}
@@ -173,7 +178,7 @@ namespace rua {
 
 				process &operator=(const process &) = delete;
 
-				process(process &&src) : _ntv_hdl(src._ntv_hdl), _main_td(src._main_td), _need_close(src._need_close), _mem_mgr(src._need_close) {
+				process(process &&src) : _ntv_hdl(src._ntv_hdl), _main_td(src._main_td), _need_close(src._need_close), _mem_mgr(src._mem_mgr) {
 					if (src) {
 						src._ntv_hdl = nullptr;
 						src._main_td = nullptr;
