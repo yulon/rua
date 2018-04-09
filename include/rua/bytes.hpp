@@ -141,10 +141,6 @@ namespace rua {
 						return pos != nullpos;
 					}
 
-					operator size_t() const {
-						return pos;
-					}
-
 					size_t operator[](size_t ix) const {
 						return void_block_poss[ix];
 					}
