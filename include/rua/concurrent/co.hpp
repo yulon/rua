@@ -1,7 +1,7 @@
-#ifndef _RUA_CO_HPP
-#define _RUA_CO_HPP
+#ifndef _RUA_CONCURRENT_CO_HPP
+#define _RUA_CONCURRENT_CO_HPP
 
-#include "macros.hpp"
+#include "../macros.hpp"
 
 #if defined(_WIN32)
 	#include <windows.h>

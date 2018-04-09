@@ -1,8 +1,9 @@
-#ifndef _RUA_CHAN_HPP
-#define _RUA_CHAN_HPP
+#ifndef _RUA_CONCURRENT_CHAN_HPP
+#define _RUA_CONCURRENT_CHAN_HPP
 
 #include "sched.hpp"
-#include "macros.hpp"
+
+#include "../macros.hpp"
 
 #include <memory>
 #include <queue>

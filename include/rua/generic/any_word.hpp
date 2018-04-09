@@ -1,8 +1,8 @@
-#ifndef _RUA_ANY_WORD_HPP
-#define _RUA_ANY_WORD_HPP
+#ifndef _RUA_GENERIC_ANY_WORD_HPP
+#define _RUA_GENERIC_ANY_WORD_HPP
 
-#include "macros.hpp"
-#include "tmp.hpp"
+#include "../macros.hpp"
+#include "../tmp.hpp"
 
 #include <cstddef>
 #include <cstdint>

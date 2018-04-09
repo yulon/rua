@@ -1,5 +1,5 @@
-#ifndef _RUA_CO_POOL_HPP
-#define _RUA_CO_POOL_HPP
+#ifndef _RUA_CONCURRENT_CO_POOL_HPP
+#define _RUA_CONCURRENT_CO_POOL_HPP
 
 #include "co.hpp"
 #include "sched.hpp"
@@ -17,7 +17,7 @@
 #include <limits>
 #include <cassert>
 
-#include "disable_msvc_sh1t.h"
+#include "../disable_msvc_sh1t.h"
 
 namespace rua {
 	class co_pool {
@@ -46,13 +46,13 @@ namespace rua {
 
 			class duration : public std::chrono::milliseconds {
 				public:
-					static constexpr size_t forever = std::numeric_limits<size_t>::max();
+					static constexpr size_t forever = static_cast<size_t>(-1);
 					static constexpr size_t disposable = 0;
 
 					duration() = default;
 
 					constexpr duration(size_t ms) : std::chrono::milliseconds(
-						ms == std::numeric_limits<size_t>::max() ?
+						ms == static_cast<size_t>(-1) ?
 						std::chrono::milliseconds::max() :
 						(ms == 0 ? std::chrono::milliseconds::min() : std::chrono::milliseconds(ms))
 					) {}

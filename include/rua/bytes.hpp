@@ -1,11 +1,10 @@
 #ifndef _RUA_BYTES_HPP
 #define _RUA_BYTES_HPP
 
+#include "generic/any_ptr.hpp"
 #include "mem/get.hpp"
 
 #include "macros.hpp"
-#include "any_ptr.hpp"
-#include "nullpos.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -250,11 +249,13 @@ namespace rua {
 				}
 
 				struct match_result_t {
+					static constexpr size_t npos = static_cast<size_t>(-1);
+
 					size_t pos;
 					std::vector<size_t> void_block_poss;
 
 					operator bool() const {
-						return pos != nullpos;
+						return pos != npos;
 					}
 
 					size_t operator[](size_t ix) const {
@@ -266,7 +267,7 @@ namespace rua {
 
 				match_result_t match(const pattern &pat) const {
 					if (!pat.size()) {
-						return match_result_t{ nullpos, {} };
+						return match_result_t{ match_result_t::npos, {} };
 					}
 
 					size_t end = _this()->size() ? _this()->size() + 1 - pat.size() : 0;
@@ -315,7 +316,7 @@ namespace rua {
 						}
 					}
 
-					return match_result_t{ nullpos, {} };
+					return match_result_t{ match_result_t::npos, {} };
 				}
 
 			private:

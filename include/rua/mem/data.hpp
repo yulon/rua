@@ -7,10 +7,7 @@
 #include "../bytes.hpp"
 
 #include <cstdint>
-#include <cstring>
 #include <string>
-#include <vector>
-#include <functional>
 #include <utility>
 #include <atomic>
 #include <cassert>

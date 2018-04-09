@@ -1,8 +1,8 @@
 #ifndef _RUA_PROCESS_HPP
 #define _RUA_PROCESS_HPP
 
-#include "io.hpp"
-#include "any_word.hpp"
+#include "io/data.hpp"
+#include "generic/any_word.hpp"
 
 #ifdef _WIN32
 	#include "strenc.hpp"
@@ -18,8 +18,6 @@
 #include <thread>
 #include <cstring>
 #include <cassert>
-
-#include "disable_msvc_sh1t.h"
 
 namespace rua {
 	#ifdef _WIN32
@@ -278,7 +276,7 @@ namespace rua {
 							VirtualFreeEx(_ph, ptr, 0, MEM_RELEASE);
 						}
 
-						virtual mem::data read_at(ptrdiff_t pos, size_t size = std::numeric_limits<size_t>::max()) const {
+						virtual mem::data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const {
 							mem::data cache(size);
 							SIZE_T sz;
 							ReadProcessMemory(_ph, any_ptr(pos), cache.base(), cache.size(), &sz);

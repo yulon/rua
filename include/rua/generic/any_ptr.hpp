@@ -1,8 +1,8 @@
-#ifndef _RUA_ANY_PTR_HPP
-#define _RUA_ANY_PTR_HPP
+#ifndef _RUA_GENERIC_ANY_PTR_HPP
+#define _RUA_GENERIC_ANY_PTR_HPP
 
-#include "macros.hpp"
-#include "tmp.hpp"
+#include "../macros.hpp"
+#include "../tmp.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <limits>
 #include <cassert>
 
-#include "disable_msvc_sh1t.h"
+#include "../disable_msvc_sh1t.h"
 
 namespace rua {
 	class any_ptr {

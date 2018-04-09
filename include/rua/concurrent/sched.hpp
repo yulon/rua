@@ -1,7 +1,7 @@
-#ifndef _RUA_SCHEDULER_HPP
-#define _RUA_SCHEDULER_HPP
+#ifndef _RUA_CONCURRENT_SCHED_HPP
+#define _RUA_CONCURRENT_SCHED_HPP
 
-#include "poly.hpp"
+#include "../poly.hpp"
 
 #include <functional>
 #include <vector>
