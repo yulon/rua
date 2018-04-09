@@ -113,7 +113,7 @@
 
 #if RUA_CPP >= 17
 	#define RUA_FALLTHROUGH [[fallthrough]]
-#elif defined(__GNU__)
+#elif defined(__GNUC__)
 	#if RUA_CPP >= 11
 		#define RUA_FALLTHROUGH [[gnu::fallthrough]]
 	#else
