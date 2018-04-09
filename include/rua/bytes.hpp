@@ -1,6 +1,8 @@
 #ifndef _RUA_BYTES_HPP
 #define _RUA_BYTES_HPP
 
+#include "mem/get.hpp"
+
 #include "macros.hpp"
 #include "any_ptr.hpp"
 #include "nullpos.hpp"
@@ -19,7 +21,7 @@ namespace rua {
 							if (_blocks.empty() || _blocks.back().is_void || _blocks.back().size == sizeof(uintptr_t)) {
 								_blocks.push_back({false, 0, 0});
 							}
-							reinterpret_cast<uint8_t *>(&_blocks.back().value)[_blocks.back().size++] = static_cast<uint8_t>(val);
+							mem::get<uint8_t>(&_blocks.back().value, _blocks.back().size++) = static_cast<uint8_t>(val);
 						} else {
 							if (_blocks.empty() || !_blocks.back().is_void) {
 								_blocks.push_back({true, 0, 0});
@@ -45,20 +47,20 @@ namespace rua {
 						}
 						switch (size) {
 							case 8:
-								return value == dat.template get<uint64_t>(pos);
+								return mem::get<uint64_t>(&value) == dat.template get<uint64_t>(pos);
 
 							////////////////////////////////////////////////////////////
 
 							case 7:
-								if (value != dat.template get<uint8_t>(pos + 6)) {
+								if (mem::get<uint8_t>(&value, 6) != dat.template get<uint8_t>(pos + 6)) {
 									return false;
 								}
 								RUA_FALLTHROUGH;
 
 							case 6:
 								if (
-									value == dat.template get<uint32_t>(pos) &&
-									value == dat.template get<uint16_t>(pos + 4)
+									mem::get<uint32_t>(&value) == dat.template get<uint32_t>(pos) &&
+									mem::get<uint16_t>(&value, 4) == dat.template get<uint16_t>(pos + 4)
 								) {
 									return true;
 								}
@@ -67,41 +69,40 @@ namespace rua {
 							////////////////////////////////////////////////////////////
 
 							case 5:
-								if (value != dat.template get<uint8_t>(pos + 4)) {
+								if (mem::get<uint8_t>(&value, 4) != dat.template get<uint8_t>(pos + 4)) {
 									return false;
 								}
 								RUA_FALLTHROUGH;
 
 							case 4:
-								return value == dat.template get<uint32_t>(pos);
+								return mem::get<uint32_t>(&value) == dat.template get<uint32_t>(pos);
 
 							////////////////////////////////////////////////////////////
 
 							case 3:
-								if (value != dat.template get<uint8_t>(pos + 2)) {
+								if (mem::get<uint8_t>(&value, 2) != dat.template get<uint8_t>(pos + 2)) {
 									return false;
 								}
 								RUA_FALLTHROUGH;
 
 							case 2:
-								return value == dat.template get<uint16_t>(pos);
+								return mem::get<uint16_t>(&value) == dat.template get<uint16_t>(pos);
 
 							////////////////////////////////////////////////////////////
 
 							case 1:
-								return value == dat.template get<uint8_t>(pos);
+								return mem::get<uint8_t>(&value) == dat.template get<uint8_t>(pos);
 
 							////////////////////////////////////////////////////////////
 
 							default:
 								for (size_t i = 0; i < size; ++i) {
-									if (reinterpret_cast<const uint8_t *>(&value)[i] != dat.template get<uint8_t>(pos + i)) {
+									if (mem::get<uint8_t>(&value, i) != dat.template get<uint8_t>(pos + i)) {
 										return false;
 									}
 								}
-								return true;
 						}
-						return false;
+						return true;
 					}
 				};
 
