@@ -16,14 +16,15 @@ namespace rua {
 		class pattern {
 			public:
 				pattern(std::initializer_list<uint16_t> container) : _sz(container.size()) {
-					for (auto val : container) {
-						if (val < 256) {
+					for (size_t i = 0; i < container.size(); ++i) {
+						if (container.begin()[i] < 256) {
 							if (_blocks.empty() || _blocks.back().is_void || _blocks.back().size == sizeof(uintptr_t)) {
 								_blocks.push_back({false, 0, 0});
 							}
-							mem::get<uint8_t>(&_blocks.back().value, _blocks.back().size++) = static_cast<uint8_t>(val);
+							mem::get<uint8_t>(&_blocks.back().value, _blocks.back().size++) = static_cast<uint8_t>(container.begin()[i]);
 						} else {
 							if (_blocks.empty() || !_blocks.back().is_void) {
+								_void_block_poss.push_back(i);
 								_blocks.push_back({true, 0, 0});
 							}
 							++_blocks.back().size;
@@ -143,6 +144,8 @@ namespace rua {
 					}
 
 					size_t operator[](size_t ix) const {
+						assert(void_block_poss.size());
+
 						return void_block_poss[ix];
 					}
 				};
