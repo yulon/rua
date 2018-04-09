@@ -11,6 +11,120 @@
 
 namespace rua {
 	namespace bytes {
+		class pattern {
+			public:
+				pattern(std::initializer_list<uint16_t> container) : _sz(container.size()) {
+					for (auto val : container) {
+						if (val < 256) {
+							if (_blocks.empty() || _blocks.back().is_void || _blocks.back().size == sizeof(uintptr_t)) {
+								_blocks.push_back({false, 0, 0});
+							}
+							reinterpret_cast<uint8_t *>(&_blocks.back().value)[_blocks.back().size++] = static_cast<uint8_t>(val);
+						} else {
+							if (_blocks.empty() || !_blocks.back().is_void) {
+								_blocks.push_back({true, 0, 0});
+							}
+							++_blocks.back().size;
+						}
+					}
+				}
+
+				size_t size() const {
+					return _sz;
+				}
+
+				struct block {
+					bool is_void;
+					size_t size;
+					uintptr_t value;
+
+					template <typename Data>
+					bool compare(const Data &dat, size_t pos = 0) const {
+						if (is_void) {
+							return true;
+						}
+						switch (size) {
+							case 8:
+								return value == dat.template get<uint64_t>(pos);
+
+							////////////////////////////////////////////////////////////
+
+							case 7:
+								if (value != dat.template get<uint8_t>(pos + 6)) {
+									return false;
+								}
+								RUA_FALLTHROUGH;
+
+							case 6:
+								if (
+									value == dat.template get<uint32_t>(pos) &&
+									value == dat.template get<uint16_t>(pos + 4)
+								) {
+									return true;
+								}
+								return false;
+
+							////////////////////////////////////////////////////////////
+
+							case 5:
+								if (value != dat.template get<uint8_t>(pos + 4)) {
+									return false;
+								}
+								RUA_FALLTHROUGH;
+
+							case 4:
+								return value == dat.template get<uint32_t>(pos);
+
+							////////////////////////////////////////////////////////////
+
+							case 3:
+								if (value != dat.template get<uint8_t>(pos + 2)) {
+									return false;
+								}
+								RUA_FALLTHROUGH;
+
+							case 2:
+								return value == dat.template get<uint16_t>(pos);
+
+							////////////////////////////////////////////////////////////
+
+							case 1:
+								return value == dat.template get<uint8_t>(pos);
+
+							////////////////////////////////////////////////////////////
+
+							default:
+								for (size_t i = 0; i < size; ++i) {
+									if (reinterpret_cast<const uint8_t *>(&value)[i] != dat.template get<uint8_t>(pos + i)) {
+										return false;
+									}
+								}
+								return true;
+						}
+						return false;
+					}
+				};
+
+				const std::vector<block> &blocks() const {
+					return _blocks;
+				}
+
+				std::vector<size_t> void_block_poss(size_t base = 0) const {
+					std::vector<size_t> vbposs(_void_block_poss);
+					if (base) {
+						for (auto &vbpos : vbposs) {
+							vbpos += base;
+						}
+					}
+					return vbposs;
+				}
+
+			private:
+				size_t _sz;
+				std::vector<block> _blocks;
+				std::vector<size_t> _void_block_poss;
+		};
+
 		template <typename Data>
 		class operation {
 			public:
@@ -19,59 +133,42 @@ namespace rua {
 					return _this()->base() + pos + _this()->template get<RelPtr>(pos) + sizeof(RelPtr);
 				}
 
-				size_t match(const std::vector<uint16_t> &pattern) const {
-					if (!pattern.size()) {
-						return nullpos;
-					}
-					size_t end = _this()->size() ? _this()->size() + 1 - pattern.size() : 0;
-					for (size_t i = 0; i < end || !end; ++i) {
-						size_t j;
-						for (j = 0; j < pattern.size(); ++j) {
-							if (pattern[j] > 255) {
-								continue;
-							}
-							if (pattern[j] != _this()->template get<uint8_t>(i + j)) {
-								break;
-							}
-						}
-						if (j == pattern.size()) {
-							return i;
-						}
-					}
-					return nullpos;
-				}
+				struct match_result_t {
+					size_t pos;
+					std::vector<size_t> void_block_poss;
 
-				std::vector<size_t> match_sub(const std::vector<uint16_t> &pattern) const {
-					if (!pattern.size()) {
-						return std::vector<size_t>();
+					operator bool() const {
+						return pos != nullpos;
 					}
-					std::vector<size_t> subs;
-					bool in_sub = false;
-					size_t end = _this()->size() ? _this()->size() + 1 - pattern.size() : 0;
+
+					operator size_t() const {
+						return pos;
+					}
+
+					size_t operator[](size_t ix) const {
+						return void_block_poss[ix];
+					}
+				};
+
+				match_result_t match(const pattern &pat) const {
+					if (!pat.size()) {
+						return match_result_t{ nullpos, {} };
+					}
+					size_t end = _this()->size() ? _this()->size() + 1 - pat.size() : 0;
 					for (size_t i = 0; i < end || !end; ++i) {
-						size_t j;
-						for (j = 0; j < pattern.size(); ++j) {
-							if (pattern[j] > 255) {
-								if (!in_sub) {
-									subs.emplace_back(i + j);
-									in_sub = true;
-								}
-								continue;
-							}
-							if (pattern[j] != _this()->template get<uint8_t>(i + j)) {
+						size_t j = 0;
+						for (auto &blk : pat.blocks()) {
+							if (blk.compare(*_this(), i + j)) {
+								j += blk.size;
+							} else {
 								break;
 							}
-							if (in_sub) {
-								in_sub = false;
-							}
 						}
-						if (j == pattern.size()) {
-							return subs;
+						if (j == pat.size()) {
+							return match_result_t{ i, pat.void_block_poss(i) };
 						}
-						subs.clear();
-						in_sub = false;
 					}
-					return subs;
+					return match_result_t{ nullpos, {} };
 				}
 
 			private:
