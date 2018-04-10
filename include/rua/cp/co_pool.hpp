@@ -330,7 +330,7 @@ namespace rua {
 					_exit_on_empty = toggle;
 				}
 
-				class cond_var_c : public rua::cond_var_c {
+				class cond_var_c : public cp::cond_var_c {
 					public:
 						cond_var_c(co_pool &cp) : _cp(cp), _tsk(cp.current()) {
 							assert(cp.this_caller_in_task());
@@ -355,7 +355,7 @@ namespace rua {
 
 				using cond_var = obj<cond_var_c>;
 
-				class scheduler_c : public rua::scheduler_c {
+				class scheduler_c : public cp::scheduler_c {
 					public:
 						scheduler_c(co_pool &cp) : _cp(cp) {}
 
@@ -369,7 +369,7 @@ namespace rua {
 							_cp.yield();
 						}
 
-						virtual rua::cond_var make_cond_var() const {
+						virtual cp::cond_var make_cond_var() const {
 							return cond_var(_cp);
 						}
 
