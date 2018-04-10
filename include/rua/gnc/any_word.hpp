@@ -1,5 +1,5 @@
-#ifndef _RUA_GENERIC_ANY_WORD_HPP
-#define _RUA_GENERIC_ANY_WORD_HPP
+#ifndef _RUA_GNC_ANY_WORD_HPP
+#define _RUA_GNC_ANY_WORD_HPP
 
 #include "../macros.hpp"
 #include "../tmp.hpp"

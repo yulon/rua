@@ -1,5 +1,5 @@
-#ifndef _RUA_GENERIC_ANY_PTR_HPP
-#define _RUA_GENERIC_ANY_PTR_HPP
+#ifndef _RUA_GNC_ANY_PTR_HPP
+#define _RUA_GNC_ANY_PTR_HPP
 
 #include "../macros.hpp"
 #include "../tmp.hpp"

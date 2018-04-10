@@ -1,7 +1,7 @@
 #ifndef _RUA_MEM_GET_HPP
 #define _RUA_MEM_GET_HPP
 
-#include "../generic/any_ptr.hpp"
+#include "../gnc/any_ptr.hpp"
 
 #include <cstddef>
 

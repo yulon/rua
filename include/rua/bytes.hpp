@@ -1,7 +1,7 @@
 #ifndef _RUA_BYTES_HPP
 #define _RUA_BYTES_HPP
 
-#include "generic/any_ptr.hpp"
+#include "gnc/any_ptr.hpp"
 #include "mem/get.hpp"
 
 #include "macros.hpp"
@@ -9,8 +9,6 @@
 #include <cstdint>
 #include <vector>
 #include <cassert>
-
-#include <iostream>
 
 namespace rua {
 	namespace bytes {
@@ -240,7 +238,7 @@ namespace rua {
 			return sz;
 		}
 
-		template <typename Data>
+		template <typename Getter>
 		class operation {
 			public:
 				template <typename RelPtr>
@@ -320,12 +318,12 @@ namespace rua {
 				}
 
 			private:
-				Data *_this() {
-					return static_cast<Data *>(this);
+				Getter *_this() {
+					return static_cast<Getter *>(this);
 				}
 
-				const Data *_this() const {
-					return static_cast<const Data *>(this);
+				const Getter *_this() const {
+					return static_cast<const Getter *>(this);
 				}
 
 			protected:

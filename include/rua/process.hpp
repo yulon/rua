@@ -2,7 +2,7 @@
 #define _RUA_PROCESS_HPP
 
 #include "io/data.hpp"
-#include "generic/any_word.hpp"
+#include "gnc/any_word.hpp"
 
 #ifdef _WIN32
 	#include "strenc.hpp"
