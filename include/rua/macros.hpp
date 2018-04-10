@@ -1,42 +1,21 @@
 #ifndef _RUA_MACROS_HPP
 #define _RUA_MACROS_HPP
 
+#define RUA_CPP_17 201703L
+#define RUA_CPP_14 201402L
+#define RUA_CPP_11 201103L
+#define RUA_CPP_98 199711L
+
 #ifdef _MSC_VER
-	#ifdef _MSVC_LANG
-		#if _MSVC_LANG >= 201703L
-			#define RUA_CPP 17
-		#elif _MSVC_LANG >= 201402L
-			#define RUA_CPP 14
-		#elif _MSVC_LANG >= 201103L
-			#define RUA_CPP 11
-		#elif _MSVC_LANG >= 199711L
-			#define RUA_CPP 98
-		#else
-			#define RUA_CPP 1
-		#endif
+	#if __cplusplus > RUA_CPP_98
+		#define RUA_CPP __cplusplus
+	#elif defined(_MSVC_LANG)
+		#define RUA_CPP _MSVC_LANG
 	#else
-		#if _MSC_VER >= 1910
-			#define RUA_CPP 17
-		#elif _MSC_VER >= 1900
-			#define RUA_CPP 14
-		#elif _MSC_VER >= 1800
-			#define RUA_CPP 11
-		#else
-			#define RUA_CPP 98
-		#endif
+		#define RUA_CPP RUA_CPP_98
 	#endif
 #else
-	#if __cplusplus >= 201703L
-		#define RUA_CPP 17
-	#elif __cplusplus >= 201402L
-		#define RUA_CPP 14
-	#elif __cplusplus >= 201103L
-		#define RUA_CPP 11
-	#elif __cplusplus >= 199711L
-		#define RUA_CPP 98
-	#else
-		#define RUA_CPP 1
-	#endif
+	#define RUA_CPP __cplusplus
 #endif
 
 #ifdef __cpp_constexpr
@@ -97,7 +76,7 @@
 
 #if defined(__cpp_static_assert) && __cpp_static_assert >= 201411
 	#define RUA_STATIC_ASSERT(cond) static_assert(cond)
-#elif RUA_CPP >= 11
+#elif RUA_CPP >= RUA_CPP_11
 	#define RUA_STATIC_ASSERT(cond) static_assert(cond, #cond)
 #else
 	#define RUA_STATIC_ASSERT(cond) assert(cond)
@@ -111,7 +90,7 @@
 	#endif
 #endif
 
-#if RUA_CPP >= 17
+#if RUA_CPP >= RUA_CPP_17
 	#define RUA_FALLTHROUGH [[fallthrough]]
 #elif defined(__GNUC__)
 	#if RUA_CPP >= 11
