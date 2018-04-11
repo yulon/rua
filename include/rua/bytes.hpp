@@ -8,56 +8,21 @@
 
 #include <cstdint>
 #include <vector>
+#include <type_traits>
 #include <cassert>
 
 namespace rua {
 	namespace bytes {
-		class pattern {
+		template <typename Alignment = uintmax_t>
+		class aligned {
 			public:
-				pattern(std::initializer_list<uint16_t> container) : _sz(container.size()), _sz_rmdr(container.size() % sizeof(uintptr_t)) {
-					if (!_sz) {
-						return;
-					}
+				template <typename Container>
+				aligned(const Container &byt_vals) {
+					_input(byt_vals);
+				}
 
-					_words.emplace_back(word{0, 0});
-
-					bool in_void = false;
-					size_t last_sz = 0;
-
-					for (size_t i = 0; i < _sz; ++i) {
-						if (container.begin()[i] < 256) {
-							if (in_void) {
-								in_void = false;
-							}
-							if (last_sz == sizeof(uintptr_t)) {
-								last_sz = 0;
-								_words.emplace_back(word{0, 0});
-							}
-							mem::get<uint8_t>(&_words.back().mask, last_sz) = 255;
-							mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(container.begin()[i]);
-						} else {
-							if (!in_void) {
-								in_void = true;
-								_void_block_poss.emplace_back(i);
-							}
-							if (last_sz == sizeof(uintptr_t)) {
-								if (_words.back().is_void()) {
-									if (_words.back().value) {
-										++_words.back().value;
-									} else {
-										_words.back().value = sizeof(uintptr_t) + 1;
-									}
-									++last_sz;
-									continue;
-								}
-								last_sz = 0;
-								_words.emplace_back(word{0, 0});
-							}
-							mem::get<uint8_t>(&_words.back().mask, last_sz) = 0;
-							mem::get<uint8_t>(&_words.back().value, last_sz) = 0;
-						}
-						++last_sz;
-					}
+				aligned(std::initializer_list<uint8_t> byt_vals) {
+					_input(byt_vals);
 				}
 
 				size_t size() const {
@@ -65,20 +30,249 @@ namespace rua {
 				}
 
 				struct word {
-					uintptr_t mask, value;
+					typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
+
+					size_t eq(any_ptr ptr) const {
+						return mem::get<Alignment>(&value) == mem::get<Alignment>(ptr) ? sizeof(Alignment) : 0;
+					}
+
+					size_t eq(any_ptr ptr, size_t sz) const {
+						switch (sz) {
+							case 7:
+								if (mem::get<uint8_t>(&value, 6) != mem::get<uint8_t>(ptr, 6)) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
+
+							case 6:
+								if (
+									mem::get<uint32_t>(&value) == mem::get<uint32_t>(ptr) &&
+									mem::get<uint16_t>(&value, 4) == mem::get<uint16_t>(ptr, 4)
+								) {
+									return sz;
+								}
+								return 0;
+
+							////////////////////////////////////////////////////////////
+
+							case 5:
+								if (mem::get<uint8_t>(&value, 4) != mem::get<uint8_t>(ptr, 4)) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
+
+							case 4:
+								return mem::get<uint32_t>(&value) == mem::get<uint32_t>(ptr);
+
+							////////////////////////////////////////////////////////////
+
+							case 3:
+								if (mem::get<uint8_t>(&value, 2) != mem::get<uint8_t>(ptr, 2)) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
+
+							case 2:
+								return mem::get<uint16_t>(&value) == mem::get<uint16_t>(ptr);
+
+							////////////////////////////////////////////////////////////
+
+							case 1:
+								return mem::get<uint8_t>(&value) == mem::get<uint8_t>(ptr);
+
+							////////////////////////////////////////////////////////////
+
+							default:
+								for (size_t i = 0; i < sz; ++i) {
+									if (mem::get<uint8_t>(&value, i) == mem::get<uint8_t>(ptr, i)) {
+										return 0;
+									}
+								}
+						}
+
+						return sz;
+					}
+				};
+
+				const std::vector<word> &words() const {
+					return _words;
+				}
+
+				size_t size_remainder() const {
+					return _sz_rmdr;
+				}
+
+			private:
+				size_t _sz;
+				size_t _sz_rmdr;
+				std::vector<word> _words;
+
+				template <typename Container>
+				void _input(const Container &byt_vals) {
+					_sz = byt_vals.size();
+
+					if (!_sz) {
+						return;
+					}
+
+					_sz_rmdr = byt_vals.size() % sizeof(Alignment);
+
+					_words.emplace_back(word{0});
+
+					size_t last_sz = 0;
+
+					for (size_t i = 0; i < _sz; ++i) {
+						if (last_sz == sizeof(Alignment)) {
+							last_sz = 0;
+							_words.emplace_back(word{0});
+						}
+						mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
+						++last_sz;
+					}
+				}
+		};
+
+		template <typename Alignment = uintmax_t>
+		class pattern {
+			public:
+				template <typename Container>
+				pattern(const Container &byt_vals) {
+					_input(byt_vals);
+				}
+
+				pattern(std::initializer_list<uint16_t> byt_vals) {
+					_input(byt_vals);
+				}
+
+				size_t size() const {
+					return _sz;
+				}
+
+				struct word {
+					Alignment mask;
+					typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
 
 					bool is_void() const {
 						return !mask;
 					}
 
-					template <bool IsVoid>
-					inline size_t size() const;
+					size_t eq(any_ptr ptr) const {
+						if (is_void()) {
+							return value;
+						}
+						return mem::get<Alignment>(&value) == (mem::get<Alignment>(ptr) & mask) ? sizeof(Alignment) : 0;
+					}
 
-					inline size_t size() const;
+					size_t eq(any_ptr ptr, size_t sz) const {
+						if (is_void()) {
+							return value ? value : sz;
+						}
 
-					inline size_t compare(any_ptr ptr) const;
+						switch (sz) {
+							case 7:
+								if (
+									mem::get<uint8_t>(&value, 6) !=
+									(
+										mem::get<uint8_t>(ptr, 6) &
+										mem::get<uint8_t>(&mask, 6)
+									)
+								) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
 
-					inline size_t compare(any_ptr ptr, size_t sz) const;
+							case 6:
+								if (
+									mem::get<uint32_t>(&value) ==
+									(
+										mem::get<uint32_t>(ptr) &
+										mem::get<uint32_t>(&mask)
+									) &&
+									mem::get<uint16_t>(&value, 4) ==
+									(
+										mem::get<uint16_t>(ptr, 4) &
+										mem::get<uint16_t>(&mask, 4)
+									)
+								) {
+									return sz;
+								}
+								return 0;
+
+							////////////////////////////////////////////////////////////
+
+							case 5:
+								if (
+									mem::get<uint8_t>(&value, 4) !=
+									(
+										mem::get<uint8_t>(ptr, 4) &
+										mem::get<uint8_t>(&mask, 4)
+									)
+								) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
+
+							case 4:
+								return
+									mem::get<uint32_t>(&value) ==
+									(
+										mem::get<uint32_t>(ptr) &
+										mem::get<uint32_t>(&mask)
+									)
+								;
+
+							////////////////////////////////////////////////////////////
+
+							case 3:
+								if (
+									mem::get<uint8_t>(&value, 2) !=
+									(
+										mem::get<uint8_t>(ptr, 2) &
+										mem::get<uint8_t>(&mask, 2)
+									)
+								) {
+									return 0;
+								}
+								RUA_FALLTHROUGH;
+
+							case 2:
+								return
+									mem::get<uint16_t>(&value) ==
+									(
+										mem::get<uint16_t>(ptr) &
+										mem::get<uint16_t>(&mask)
+									)
+								;
+
+							////////////////////////////////////////////////////////////
+
+							case 1:
+								return
+									mem::get<uint8_t>(&value) ==
+									(
+										mem::get<uint8_t>(ptr) &
+										mem::get<uint8_t>(&mask)
+									)
+								;
+
+							////////////////////////////////////////////////////////////
+
+							default:
+								for (size_t i = 0; i < sz; ++i) {
+									if (
+										mem::get<uint8_t>(&value, i) !=
+										(
+											mem::get<uint8_t>(ptr, i) &
+											mem::get<uint8_t>(&mask, i)
+										)
+									) {
+										return 0;
+									}
+								}
+						}
+
+						return sz;
+					}
 				};
 
 				const std::vector<word> &words() const {
@@ -104,139 +298,58 @@ namespace rua {
 				size_t _sz_rmdr;
 				std::vector<word> _words;
 				std::vector<size_t> _void_block_poss;
-		};
 
-		template <>
-		inline size_t pattern::word::size<true>() const {
-			return value;
-		}
+				template <typename Container>
+				void _input(const Container &byt_vals) {
+					_sz = byt_vals.size();
 
-		template <>
-		inline size_t pattern::word::size<false>() const {
-			return sizeof(uintptr_t);
-		}
-
-		inline size_t pattern::word::size() const {
-			return is_void() ? size<true>() : size<false>();
-		}
-
-		inline size_t pattern::word::compare(any_ptr ptr) const {
-			if (is_void()) {
-				return size<true>();
-			}
-			return value == (mem::get<uintptr_t>(ptr) & mask) ? size<false>() : 0;
-		}
-
-		inline size_t pattern::word::compare(any_ptr ptr, size_t sz) const {
-			if (is_void()) {
-				return sz;
-			}
-
-			switch (sz) {
-				case 7:
-					if (
-						mem::get<uint8_t>(&value, 6) !=
-						(
-							mem::get<uint8_t>(ptr, 6) &
-							mem::get<uint8_t>(&mask, 6)
-						)
-					) {
-						return 0;
+					if (!_sz) {
+						return;
 					}
-					RUA_FALLTHROUGH;
 
-				case 6:
-					if (
-						mem::get<uint32_t>(&value) ==
-						(
-							mem::get<uint32_t>(ptr) &
-							mem::get<uint32_t>(&mask)
-						) &&
-						mem::get<uint16_t>(&value, 4) ==
-						(
-							mem::get<uint16_t>(ptr, 4) &
-							mem::get<uint16_t>(&mask, 4)
-						)
-					) {
-						return sz;
-					}
-					return 0;
+					_sz_rmdr = byt_vals.size() % sizeof(Alignment);
 
-				////////////////////////////////////////////////////////////
+					_words.emplace_back(word{0, 0});
 
-				case 5:
-					if (
-						mem::get<uint8_t>(&value, 4) !=
-						(
-							mem::get<uint8_t>(ptr, 4) &
-							mem::get<uint8_t>(&mask, 4)
-						)
-					) {
-						return 0;
-					}
-					RUA_FALLTHROUGH;
+					bool in_void = false;
+					size_t last_sz = 0;
 
-				case 4:
-					return
-						mem::get<uint32_t>(&value) ==
-						(
-							mem::get<uint32_t>(ptr) &
-							mem::get<uint32_t>(&mask)
-						)
-					;
-
-				////////////////////////////////////////////////////////////
-
-				case 3:
-					if (
-						mem::get<uint8_t>(&value, 2) !=
-						(
-							mem::get<uint8_t>(ptr, 2) &
-							mem::get<uint8_t>(&mask, 2)
-						)
-					) {
-						return 0;
-					}
-					RUA_FALLTHROUGH;
-
-				case 2:
-					return
-						mem::get<uint16_t>(&value) ==
-						(
-							mem::get<uint16_t>(ptr) &
-							mem::get<uint16_t>(&mask)
-						)
-					;
-
-				////////////////////////////////////////////////////////////
-
-				case 1:
-					return
-						mem::get<uint8_t>(&value) ==
-						(
-							mem::get<uint8_t>(ptr) &
-							mem::get<uint8_t>(&mask)
-						)
-					;
-
-				////////////////////////////////////////////////////////////
-
-				default:
-					for (size_t i = 0; i < sz; ++i) {
-						if (
-							mem::get<uint8_t>(&value, i) !=
-							(
-								mem::get<uint8_t>(ptr, i) &
-								mem::get<uint8_t>(&mask, i)
-							)
-						) {
-							return 0;
+					for (size_t i = 0; i < _sz; ++i) {
+						if (byt_vals.begin()[i] < 256) {
+							if (in_void) {
+								in_void = false;
+							}
+							if (last_sz == sizeof(Alignment)) {
+								last_sz = 0;
+								_words.emplace_back(word{0, 0});
+							}
+							mem::get<uint8_t>(&_words.back().mask, last_sz) = 255;
+							mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
+						} else {
+							if (!in_void) {
+								in_void = true;
+								_void_block_poss.emplace_back(i);
+							}
+							if (last_sz == sizeof(Alignment)) {
+								if (_words.back().is_void()) {
+									if (_words.back().value) {
+										++_words.back().value;
+									} else {
+										_words.back().value = sizeof(Alignment) + 1;
+									}
+									++last_sz;
+									continue;
+								}
+								last_sz = 0;
+								_words.emplace_back(word{0, 0});
+							}
+							mem::get<uint8_t>(&_words.back().mask, last_sz) = 0;
+							mem::get<uint8_t>(&_words.back().value, last_sz) = 0;
 						}
+						++last_sz;
 					}
-			}
-
-			return sz;
-		}
+				}
+		};
 
 		template <typename Getter>
 		class operation {
@@ -246,9 +359,72 @@ namespace rua {
 					return _this()->base() + pos + _this()->template get<RelPtr>(pos) + sizeof(RelPtr);
 				}
 
-				struct match_result_t {
-					static constexpr size_t npos = static_cast<size_t>(-1);
+				static constexpr size_t npos = static_cast<size_t>(-1);
 
+				struct find_result_t {
+					size_t pos;
+
+					operator bool() const {
+						return pos != npos;
+					}
+				};
+
+				template <typename Alignment = uintmax_t, typename Formatted = aligned<Alignment>>
+				find_result_t find(const Formatted &byts) const {
+					if (!byts.size()) {
+						return find_result_t{ npos };
+					}
+
+					size_t end = _this()->size() ? _this()->size() + 1 - byts.size() : 0;
+
+					size_t sm_sz = 0;
+
+					if (byts.size_remainder()) {
+						if (byts.words().size() > 1) {
+							auto ful_wd_c = byts.words().size() - 1;
+							for (size_t i = 0; i < end || !end; ++i) {
+								for (size_t j = 0; j < ful_wd_c; ++j) {
+									auto sz = byts.words()[j].eq(_this()->base() + i + sm_sz);
+									if (!sz) {
+										sm_sz = 0;
+										break;
+									}
+									sm_sz += sz;
+								}
+								if (sm_sz) {
+									if (byts.words().back().eq(_this()->base() + i + sm_sz, byts.size_remainder())) {
+										return find_result_t{ i };
+									}
+									sm_sz = 0;
+								}
+							}
+						} else {
+							for (size_t i = 0; i < end || !end; ++i) {
+								if (byts.words().back().eq(_this()->base() + i + sm_sz, byts.size_remainder())) {
+									return find_result_t{ i };
+								}
+							}
+						}
+					} else {
+						for (size_t i = 0; i < end || !end; ++i) {
+							for (auto &wd : byts.words()) {
+								auto sz = wd.eq(_this()->base() + i + sm_sz);
+								if (!sz) {
+									sm_sz = 0;
+									break;
+								}
+								sm_sz += sz;
+							}
+							if (sm_sz) {
+								return find_result_t{ i };
+							}
+						}
+					}
+
+					return find_result_t{ npos };
+				}
+
+				struct match_result_t {
 					size_t pos;
 					std::vector<size_t> void_block_poss;
 
@@ -263,58 +439,13 @@ namespace rua {
 					}
 				};
 
-				match_result_t match(const pattern &pat) const {
-					if (!pat.size()) {
-						return match_result_t{ match_result_t::npos, {} };
+				template <typename Alignment = uintmax_t>
+				match_result_t match(const pattern<Alignment> &pat) const {
+					auto fr = find<Alignment, pattern<Alignment>>(pat);
+					if (!fr) {
+						return match_result_t{ npos, {} };
 					}
-
-					size_t end = _this()->size() ? _this()->size() + 1 - pat.size() : 0;
-
-					size_t sm_sz = 0;
-
-					if (pat.size_remainder()) {
-						if (pat.words().size() > 1) {
-							auto ful_wd_c = pat.words().size() - 1;
-							for (size_t i = 0; i < end || !end; ++i) {
-								for (size_t j = 0; j < ful_wd_c; ++j) {
-									auto sz = pat.words()[j].compare(_this()->base() + i + sm_sz);
-									if (!sz) {
-										sm_sz = 0;
-										break;
-									}
-									sm_sz += sz;
-								}
-								if (sm_sz) {
-									if (pat.words().back().compare(_this()->base() + i + sm_sz, pat.size_remainder())) {
-										return match_result_t{ i, pat.void_block_poss(i) };
-									}
-									sm_sz = 0;
-								}
-							}
-						} else {
-							for (size_t i = 0; i < end || !end; ++i) {
-								if (pat.words().back().compare(_this()->base() + i + sm_sz, pat.size_remainder())) {
-									return match_result_t{ i, pat.void_block_poss(i) };
-								}
-							}
-						}
-					} else {
-						for (size_t i = 0; i < end || !end; ++i) {
-							for (auto &wd : pat.words()) {
-								auto sz = wd.compare(_this()->base() + i + sm_sz);
-								if (!sz) {
-									sm_sz = 0;
-									break;
-								}
-								sm_sz += sz;
-							}
-							if (sm_sz) {
-								return match_result_t{ i, pat.void_block_poss(i) };
-							}
-						}
-					}
-
-					return match_result_t{ match_result_t::npos, {} };
+					return match_result_t{ fr.pos, pat.void_block_poss(fr.pos) };
 				}
 
 			private:
