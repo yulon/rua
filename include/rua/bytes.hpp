@@ -370,7 +370,7 @@ namespace rua {
 
 				static constexpr size_t npos = static_cast<size_t>(-1);
 
-				struct find_result_t {
+				struct search_result_t {
 					size_t pos;
 
 					operator bool() const {
@@ -378,10 +378,10 @@ namespace rua {
 					}
 				};
 
-				template <typename Alignment = uintmax_t, typename Formatted = aligned<Alignment>>
-				find_result_t find(const Formatted &byts) const {
+				template <typename Formatted>
+				search_result_t search(const Formatted &byts) const {
 					if (!byts.size()) {
-						return find_result_t{ npos };
+						return search_result_t{ npos };
 					}
 
 					size_t end = _this()->size() ? _this()->size() + 1 - byts.size() : 0;
@@ -401,7 +401,7 @@ namespace rua {
 								}
 								if (sm_sz) {
 									if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
-										return find_result_t{ i };
+										return search_result_t{ i };
 									}
 									sm_sz = 0;
 								}
@@ -409,7 +409,7 @@ namespace rua {
 						} else {
 							for (size_t i = 0; i < end || !end; ++i) {
 								if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
-									return find_result_t{ i };
+									return search_result_t{ i };
 								}
 							}
 						}
@@ -424,12 +424,19 @@ namespace rua {
 								sm_sz += sz;
 							}
 							if (sm_sz) {
-								return find_result_t{ i };
+								return search_result_t{ i };
 							}
 						}
 					}
 
-					return find_result_t{ npos };
+					return search_result_t{ npos };
+				}
+
+				using find_result_t = search_result_t;
+
+				template <typename Alignment = uintmax_t>
+				find_result_t find(const aligned<Alignment> &byts) const {
+					return search(byts);
 				}
 
 				struct match_result_t {
@@ -449,11 +456,11 @@ namespace rua {
 
 				template <typename Alignment = uintmax_t>
 				match_result_t match(const pattern<Alignment> &pat) const {
-					auto fr = find<Alignment, pattern<Alignment>>(pat);
-					if (!fr) {
+					auto sr = search(pat);
+					if (!sr) {
 						return match_result_t{ npos, {} };
 					}
-					return match_result_t{ fr.pos, pat.void_block_poss(fr.pos) };
+					return match_result_t{ sr.pos, pat.void_block_poss(sr.pos) };
 				}
 
 			private:
