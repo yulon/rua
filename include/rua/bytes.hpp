@@ -32,22 +32,24 @@ namespace rua {
 				struct word {
 					typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
 
-					size_t eq(any_ptr ptr) const {
-						return mem::get<Alignment>(&value) == mem::get<Alignment>(ptr) ? sizeof(Alignment) : 0;
+					template <typename Getter>
+					size_t eq(const Getter &gtr, size_t gtr_off = 0) const {
+						return mem::get<Alignment>(&value) == gtr.template get<Alignment>(gtr_off) ? sizeof(Alignment) : 0;
 					}
 
-					size_t eq(any_ptr ptr, size_t sz) const {
+					template <typename Getter>
+					size_t eq(const Getter &gtr, size_t gtr_off, size_t sz) const {
 						switch (sz) {
 							case 7:
-								if (mem::get<uint8_t>(&value, 6) != mem::get<uint8_t>(ptr, 6)) {
+								if (mem::get<uint8_t>(&value, 6) != gtr.template get<uint8_t>(gtr_off + 6)) {
 									return 0;
 								}
 								RUA_FALLTHROUGH;
 
 							case 6:
 								if (
-									mem::get<uint32_t>(&value) == mem::get<uint32_t>(ptr) &&
-									mem::get<uint16_t>(&value, 4) == mem::get<uint16_t>(ptr, 4)
+									mem::get<uint32_t>(&value) == gtr.template get<uint32_t>(gtr_off) &&
+									mem::get<uint16_t>(&value, 4) == gtr.template get<uint16_t>(gtr_off + 4)
 								) {
 									return sz;
 								}
@@ -56,35 +58,35 @@ namespace rua {
 							////////////////////////////////////////////////////////////
 
 							case 5:
-								if (mem::get<uint8_t>(&value, 4) != mem::get<uint8_t>(ptr, 4)) {
+								if (mem::get<uint8_t>(&value, 4) != gtr.template get<uint8_t>(gtr_off + 4)) {
 									return 0;
 								}
 								RUA_FALLTHROUGH;
 
 							case 4:
-								return mem::get<uint32_t>(&value) == mem::get<uint32_t>(ptr);
+								return mem::get<uint32_t>(&value) == gtr.template get<uint32_t>(gtr_off);
 
 							////////////////////////////////////////////////////////////
 
 							case 3:
-								if (mem::get<uint8_t>(&value, 2) != mem::get<uint8_t>(ptr, 2)) {
+								if (mem::get<uint8_t>(&value, 2) != gtr.template get<uint8_t>(gtr_off + 2)) {
 									return 0;
 								}
 								RUA_FALLTHROUGH;
 
 							case 2:
-								return mem::get<uint16_t>(&value) == mem::get<uint16_t>(ptr);
+								return mem::get<uint16_t>(&value) == gtr.template get<uint16_t>(gtr_off);
 
 							////////////////////////////////////////////////////////////
 
 							case 1:
-								return mem::get<uint8_t>(&value) == mem::get<uint8_t>(ptr);
+								return mem::get<uint8_t>(&value) == gtr.template get<uint8_t>(gtr_off);
 
 							////////////////////////////////////////////////////////////
 
 							default:
 								for (size_t i = 0; i < sz; ++i) {
-									if (mem::get<uint8_t>(&value, i) == mem::get<uint8_t>(ptr, i)) {
+									if (mem::get<uint8_t>(&value, i) == gtr.template get<uint8_t>(gtr_off + i)) {
 										return 0;
 									}
 								}
@@ -117,16 +119,21 @@ namespace rua {
 
 					_sz_rmdr = byt_vals.size() % sizeof(Alignment);
 
-					_words.emplace_back(word{0});
+					if (_sz_rmdr) {
+						_words.resize(byt_vals.size() / sizeof(Alignment) + 1);
+					} else {
+						_words.resize(byt_vals.size() / sizeof(Alignment));
+					}
 
+					size_t wi = 0;
 					size_t last_sz = 0;
 
 					for (size_t i = 0; i < _sz; ++i) {
 						if (last_sz == sizeof(Alignment)) {
 							last_sz = 0;
-							_words.emplace_back(word{0});
+							++wi;
 						}
-						mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
+						mem::get<uint8_t>(&_words[wi].value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
 						++last_sz;
 					}
 				}
@@ -156,14 +163,16 @@ namespace rua {
 						return !mask;
 					}
 
-					size_t eq(any_ptr ptr) const {
+					template <typename Getter>
+					size_t eq(const Getter &gtr, size_t gtr_off = 0) const {
 						if (is_void()) {
 							return value;
 						}
-						return mem::get<Alignment>(&value) == (mem::get<Alignment>(ptr) & mask) ? sizeof(Alignment) : 0;
+						return mem::get<Alignment>(&value) == (gtr.template get<Alignment>(gtr_off) & mask) ? sizeof(Alignment) : 0;
 					}
 
-					size_t eq(any_ptr ptr, size_t sz) const {
+					template <typename Getter>
+					size_t eq(const Getter &gtr, size_t gtr_off, size_t sz) const {
 						if (is_void()) {
 							return value ? value : sz;
 						}
@@ -173,7 +182,7 @@ namespace rua {
 								if (
 									mem::get<uint8_t>(&value, 6) !=
 									(
-										mem::get<uint8_t>(ptr, 6) &
+										gtr.template get<uint8_t>(gtr_off + 6) &
 										mem::get<uint8_t>(&mask, 6)
 									)
 								) {
@@ -185,12 +194,12 @@ namespace rua {
 								if (
 									mem::get<uint32_t>(&value) ==
 									(
-										mem::get<uint32_t>(ptr) &
+										gtr.template get<uint32_t>(gtr_off) &
 										mem::get<uint32_t>(&mask)
 									) &&
 									mem::get<uint16_t>(&value, 4) ==
 									(
-										mem::get<uint16_t>(ptr, 4) &
+										gtr.template get<uint16_t>(gtr_off + 4) &
 										mem::get<uint16_t>(&mask, 4)
 									)
 								) {
@@ -204,7 +213,7 @@ namespace rua {
 								if (
 									mem::get<uint8_t>(&value, 4) !=
 									(
-										mem::get<uint8_t>(ptr, 4) &
+										gtr.template get<uint8_t>(gtr_off + 4) &
 										mem::get<uint8_t>(&mask, 4)
 									)
 								) {
@@ -216,7 +225,7 @@ namespace rua {
 								return
 									mem::get<uint32_t>(&value) ==
 									(
-										mem::get<uint32_t>(ptr) &
+										gtr.template get<uint32_t>(gtr_off) &
 										mem::get<uint32_t>(&mask)
 									)
 								;
@@ -227,7 +236,7 @@ namespace rua {
 								if (
 									mem::get<uint8_t>(&value, 2) !=
 									(
-										mem::get<uint8_t>(ptr, 2) &
+										gtr.template get<uint8_t>(gtr_off + 2) &
 										mem::get<uint8_t>(&mask, 2)
 									)
 								) {
@@ -239,7 +248,7 @@ namespace rua {
 								return
 									mem::get<uint16_t>(&value) ==
 									(
-										mem::get<uint16_t>(ptr) &
+										gtr.template get<uint16_t>(gtr_off) &
 										mem::get<uint16_t>(&mask)
 									)
 								;
@@ -250,7 +259,7 @@ namespace rua {
 								return
 									mem::get<uint8_t>(&value) ==
 									(
-										mem::get<uint8_t>(ptr) &
+										gtr.template get<uint8_t>(gtr_off) &
 										mem::get<uint8_t>(&mask)
 									)
 								;
@@ -262,7 +271,7 @@ namespace rua {
 									if (
 										mem::get<uint8_t>(&value, i) !=
 										(
-											mem::get<uint8_t>(ptr, i) &
+											gtr.template get<uint8_t>(gtr_off + i) &
 											mem::get<uint8_t>(&mask, i)
 										)
 									) {
@@ -376,7 +385,6 @@ namespace rua {
 					}
 
 					size_t end = _this()->size() ? _this()->size() + 1 - byts.size() : 0;
-
 					size_t sm_sz = 0;
 
 					if (byts.size_remainder()) {
@@ -384,7 +392,7 @@ namespace rua {
 							auto ful_wd_c = byts.words().size() - 1;
 							for (size_t i = 0; i < end || !end; ++i) {
 								for (size_t j = 0; j < ful_wd_c; ++j) {
-									auto sz = byts.words()[j].eq(_this()->base() + i + sm_sz);
+									auto sz = byts.words()[j].eq(*_this(), i + sm_sz);
 									if (!sz) {
 										sm_sz = 0;
 										break;
@@ -392,7 +400,7 @@ namespace rua {
 									sm_sz += sz;
 								}
 								if (sm_sz) {
-									if (byts.words().back().eq(_this()->base() + i + sm_sz, byts.size_remainder())) {
+									if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
 										return find_result_t{ i };
 									}
 									sm_sz = 0;
@@ -400,7 +408,7 @@ namespace rua {
 							}
 						} else {
 							for (size_t i = 0; i < end || !end; ++i) {
-								if (byts.words().back().eq(_this()->base() + i + sm_sz, byts.size_remainder())) {
+								if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
 									return find_result_t{ i };
 								}
 							}
@@ -408,7 +416,7 @@ namespace rua {
 					} else {
 						for (size_t i = 0; i < end || !end; ++i) {
 							for (auto &wd : byts.words()) {
-								auto sz = wd.eq(_this()->base() + i + sm_sz);
+								auto sz = wd.eq(*_this(), i + sm_sz);
 								if (!sz) {
 									sm_sz = 0;
 									break;
