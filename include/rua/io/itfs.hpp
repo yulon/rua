@@ -1,6 +1,7 @@
 #ifndef _RUA_IO_ITFS_HPP
 #define _RUA_IO_ITFS_HPP
 
+#include "../mem/data.hpp"
 #include "../gnc/any_ptr.hpp"
 
 #include "../poly.hpp"
