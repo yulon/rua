@@ -83,12 +83,15 @@ namespace rua {
 				static LPVOID _touch_cur_fiber() {
 					auto cur = GetCurrentFiber();
 					if (!cur || reinterpret_cast<uintptr_t>(cur) == 0x1E00) {
+						static auto dl_ConvertThreadToFiberEx =
+							reinterpret_cast<decltype(&ConvertThreadToFiberEx)>(
+								GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "ConvertThreadToFiberEx")
+							)
+						;
 						return
-							#ifdef RUA_WINXP_SUPPORT
-								ConvertThreadToFiber(nullptr)
-							#else
-								ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH)
-							#endif
+							dl_ConvertThreadToFiberEx ?
+							dl_ConvertThreadToFiberEx(nullptr, FIBER_FLAG_FLOAT_SWITCH) :
+							ConvertThreadToFiber(nullptr)
 						;
 					}
 					return cur;
@@ -159,12 +162,15 @@ namespace rua {
 				}
 
 				static LPVOID _create_fiber(SIZE_T dwStackSize, LPFIBER_START_ROUTINE lpStartAddress, LPVOID lpParameter) {
+					static auto dl_CreateFiberEx =
+						reinterpret_cast<decltype(&CreateFiberEx)>(
+							GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "CreateFiberEx")
+						)
+					;
 					return
-						#ifdef RUA_WINXP_SUPPORT
-							CreateFiber(dwStackSize, lpStartAddress, lpParameter)
-						#else
-							CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter)
-						#endif
+						dl_CreateFiberEx ?
+						dl_CreateFiberEx(dwStackSize, dwStackSize, FIBER_FLAG_FLOAT_SWITCH, lpStartAddress, lpParameter) :
+						CreateFiber(dwStackSize, lpStartAddress, lpParameter)
 					;
 				}
 		};
