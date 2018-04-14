@@ -1,16 +1,18 @@
-#ifndef _RUA_PROCESS_HPP
-#define _RUA_PROCESS_HPP
+#ifndef _RUA_OS_PROCESS_WIN32_HPP
+#define _RUA_OS_PROCESS_WIN32_HPP
 
-#include "io/data.hpp"
-#include "gnc/any_word.hpp"
-
-#ifdef _WIN32
-	#include "strenc.hpp"
-
-	#include <windows.h>
-	#include <tlhelp32.h>
-	#include <psapi.h>
+#ifndef _WIN32
+	#error rua::process: not supported this platform!
 #endif
+
+#include "../../io/data.hpp"
+#include "../../gnc/any_word.hpp"
+
+#include "../../strenc.hpp"
+
+#include <windows.h>
+#include <tlhelp32.h>
+#include <psapi.h>
 
 #include <string>
 #include <vector>
@@ -20,7 +22,7 @@
 #include <cassert>
 
 namespace rua {
-	#ifdef _WIN32
+	namespace os {
 		class process {
 			public:
 				static process find(const std::string &name) {
@@ -369,7 +371,7 @@ namespace rua {
 				bool _need_close;
 				mem_mgr_t _mem_mgr;
 		};
-	#endif
+	}
 }
 
 #endif
