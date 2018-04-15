@@ -278,14 +278,14 @@ namespace rua {
 							VirtualFreeEx(_ph, ptr, 0, MEM_RELEASE);
 						}
 
-						virtual mem::data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const {
-							mem::data cache(size);
+						virtual data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const {
+							data cache(size);
 							SIZE_T sz;
 							ReadProcessMemory(_ph, any_ptr(pos), cache.base(), cache.size(), &sz);
 							return cache.slice(0, sz);
 						}
 
-						virtual size_t write_at(ptrdiff_t pos, const mem::data &dat) {
+						virtual size_t write_at(ptrdiff_t pos, const data &dat) {
 							SIZE_T sz;
 							WriteProcessMemory(_ph, any_ptr(pos), dat.base(), dat.size(), &sz);
 							return sz;

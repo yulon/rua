@@ -3,20 +3,18 @@
 
 #include "itfs.hpp"
 
-#include "../mem/data.hpp"
-
 #include <cassert>
 
 namespace rua {
 	namespace io {
-		class data : public mem::data, public bytes::operation<data> {
+		class data : public rua::data, public bytes::operation<data> {
 			public:
-				data() : mem::data(), _alr(nullptr), _rwa(nullptr) {}
+				data() : rua::data(), _alr(nullptr), _rwa(nullptr) {}
 
 				data(std::nullptr_t) : data() {}
 
 				explicit data(size_t size, allocator alr = nullptr, read_writer_at rwa = nullptr) :
-					mem::data(mem::data::_dont_init{})
+					rua::data(rua::data::_dont_init{})
 				{
 					if (size) {
 						_alr = alr;
@@ -27,7 +25,7 @@ namespace rua {
 					}
 				}
 
-				data(any_ptr base, size_t size = 0, allocator alr = nullptr, read_writer_at rwa = nullptr) :
+				data(any_ptr base, size_t size = static_cast<size_t>(-1), allocator alr = nullptr, read_writer_at rwa = nullptr) :
 					data(base, size, nullptr, alr, rwa)
 				{}
 
@@ -43,12 +41,8 @@ namespace rua {
 							}
 							delete[] _alloced.to<uint8_t *>();
 						}
-						_alloced = nullptr;
 					}
-					_base = nullptr;
-					_sz = 0;
-					_alr = nullptr;
-					_rwa = nullptr;
+					_clear(0);
 				}
 
 				data(const data &src) : data(src._sz) {
@@ -71,7 +65,7 @@ namespace rua {
 						_alloced = src._alloced;
 						_alr = src._alr;
 						_rwa = src._rwa;
-						src._clear();
+						src._clear(0);
 					}
 				}
 
@@ -83,7 +77,7 @@ namespace rua {
 						_alloced = src._alloced;
 						_alr = src._alr;
 						_rwa = src._rwa;
-						src._clear();
+						src._clear(0);
 					}
 					return *this;
 				}
@@ -98,7 +92,7 @@ namespace rua {
 						if (src._rwa) {
 							_rwa->write_at(_base.signed_value(), src._rwa->read_at(src._base.signed_value(), cp_sz));
 						} else {
-							_rwa->write_at(base().signed_value(), static_cast<const mem::data &>(src));
+							_rwa->write_at(base().signed_value(), static_cast<const rua::data &>(src));
 						}
 					} else if (src._rwa) {
 						auto cache = src._rwa->read_at(src._base.signed_value(), cp_sz);
@@ -121,7 +115,7 @@ namespace rua {
 					if (_rwa) {
 						return _rwa->read_at((_base + offset).signed_value(), sizeof(D)).get<D>();
 					} else {
-						return mem::data::get<D>(offset);
+						return rua::data::get<D>(offset);
 					}
 				}
 
@@ -137,7 +131,7 @@ namespace rua {
 					if (_rwa) {
 						return _rwa->read_at((_base + ix * sizeof(D)).signed_value(), sizeof(D)).aligned_get<D>();
 					} else {
-						return mem::data::aligned_get<D>(ix);
+						return rua::data::aligned_get<D>(ix);
 					}
 				}
 
@@ -153,9 +147,9 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						_rwa->write_at((_base + offset).signed_value(), mem::data(&std::forward<V>(val), sizeof(VV)));
+						_rwa->write_at((_base + offset).signed_value(), rua::data(&std::forward<V>(val), sizeof(VV)));
 					} else {
-						mem::data::get<VV>(offset) = std::forward<V>(val);
+						rua::data::get<VV>(offset) = std::forward<V>(val);
 					}
 				}
 
@@ -171,9 +165,9 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						_rwa->write_at((_base + ix * sizeof(V)).signed_value(), mem::data(&std::forward<V>(val), sizeof(VV)));
+						_rwa->write_at((_base + ix * sizeof(V)).signed_value(), rua::data(&std::forward<V>(val), sizeof(VV)));
 					} else {
-						mem::data::aligned_get<VV>(ix) = std::forward<V>(val);
+						rua::data::aligned_get<VV>(ix) = std::forward<V>(val);
 					}
 				}
 
@@ -234,27 +228,27 @@ namespace rua {
 					;
 				}
 
-				mem::data to_mem_data() const {
+				rua::data to_local() const {
 					if (_rwa) {
 						return _rwa->read_at(base().signed_value(), _sz);
 					} else if (_alr) {
-						return *static_cast<const mem::data *>(this);
+						return *static_cast<const rua::data *>(this);
 					} else {
-						return static_cast<const mem::data *>(this)->ref();
+						return static_cast<const rua::data *>(this)->ref();
 					}
 				}
 
-				mem::data to_mem_data_ref() const {
+				rua::data to_local_ref() const {
 					assert(!_alr && !_rwa);
 
-					return static_cast<const mem::data *>(this)->ref();
+					return static_cast<const rua::data *>(this)->ref();
 				}
 
 			protected:
 				allocator _alr;
 				read_writer_at _rwa;
 
-				data(any_ptr base, size_t size, any_ptr alloced, allocator alr, read_writer_at rwa) : mem::data(base, size, alloced), _alr(alr), _rwa(rwa) {}
+				data(any_ptr base, size_t size, any_ptr alloced, allocator alr, read_writer_at rwa) : rua::data(base, size, alloced), _alr(alr), _rwa(rwa) {}
 
 				any_ptr &_alloced_base_ref() const {
 					return *(_alloced + sizeof(std::atomic<size_t>) + sizeof(size_t)).to<any_ptr *>();
@@ -264,7 +258,7 @@ namespace rua {
 					if (_alr) {
 						return _alloced_base_ref();
 					} else {
-						return mem::data::_alloced_base();
+						return rua::data::_alloced_base();
 					}
 				}
 
@@ -278,12 +272,12 @@ namespace rua {
 						_base = _alloced_base_ref();
 						_sz = size;
 					} else {
-						mem::data::_alloc(size);
+						rua::data::_alloc(size);
 					}
 				}
 
-				void _clear() {
-					mem::data::_clear();
+				void _clear(size_t sz = static_cast<size_t>(-1)) {
+					rua::data::_clear(sz);
 					_alr = nullptr;
 					_rwa = nullptr;
 				}

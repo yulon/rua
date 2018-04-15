@@ -380,11 +380,11 @@ namespace rua {
 
 				template <typename Formatted>
 				search_result_t search(const Formatted &byts) const {
-					if (!byts.size()) {
+					if (!byts.size() || _this()->size() < byts.size()) {
 						return search_result_t{ npos };
 					}
 
-					size_t end = _this()->size() ? _this()->size() + 1 - byts.size() : 0;
+					size_t end = _this()->size() + 1 - byts.size();
 					size_t sm_sz = 0;
 
 					if (byts.size_remainder()) {

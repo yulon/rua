@@ -1,7 +1,7 @@
 #ifndef _RUA_IO_ITFS_HPP
 #define _RUA_IO_ITFS_HPP
 
-#include "../mem/data.hpp"
+#include "../gnc/data.hpp"
 #include "../gnc/any_ptr.hpp"
 
 #include "../poly.hpp"
@@ -14,7 +14,7 @@ namespace rua {
 			public:
 				virtual ~reader_c() = default;
 
-				virtual mem::data read(size_t size = static_cast<size_t>(-1)) const = 0;
+				virtual data read(size_t size = static_cast<size_t>(-1)) const = 0;
 		};
 
 		using reader = itf<reader_c>;
@@ -23,7 +23,7 @@ namespace rua {
 			public:
 				virtual ~writer_c() = default;
 
-				virtual size_t write(const mem::data &) = 0;
+				virtual size_t write(const data &) = 0;
 		};
 
 		using writer = itf<writer_c>;
@@ -39,7 +39,7 @@ namespace rua {
 			public:
 				virtual ~reader_at_c() = default;
 
-				virtual mem::data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const = 0;
+				virtual data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const = 0;
 		};
 
 		using reader_at = itf<reader_at_c>;
@@ -48,7 +48,7 @@ namespace rua {
 			public:
 				virtual ~writer_at_c() = default;
 
-				virtual size_t write_at(ptrdiff_t pos, const mem::data &) = 0;
+				virtual size_t write_at(ptrdiff_t pos, const data &) = 0;
 		};
 
 		using writer_at = itf<writer_at_c>;
