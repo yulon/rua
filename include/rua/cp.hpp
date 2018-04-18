@@ -3,7 +3,7 @@
 
 #include "cp/sched.hpp"
 #include "cp/chan.hpp"
-#include "cp/co.hpp"
-#include "cp/co_pool.hpp"
+#include "cp/coro.hpp"
+#include "cp/coro_pool.hpp"
 
 #endif

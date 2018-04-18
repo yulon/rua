@@ -1,7 +1,7 @@
-#ifndef _RUA_CP_CO_POOL_HPP
-#define _RUA_CP_CO_POOL_HPP
+#ifndef _RUA_CP_CORO_POOL_HPP
+#define _RUA_CP_CORO_POOL_HPP
 
-#include "co.hpp"
+#include "coro.hpp"
 #include "sched.hpp"
 
 #include <functional>
@@ -21,9 +21,9 @@
 
 namespace rua {
 	namespace cp {
-		class co_pool {
+		class coro_pool {
 			public:
-				co_pool(size_t coro_stack_size = coro::default_stack_size) :
+				coro_pool(size_t coro_stack_size = coro::default_stack_size) :
 					_exit_on_empty(true),
 					_running(false),
 					_co_stk_sz(coro_stack_size),
@@ -34,10 +34,10 @@ namespace rua {
 					_tasks_it = _tasks.end();
 				}
 
-				co_pool(const co_pool &) = delete;
-				co_pool &operator=(const co_pool &) = delete;
-				co_pool(co_pool &&) = delete;
-				co_pool &operator=(co_pool &&) = delete;
+				coro_pool(const coro_pool &) = delete;
+				coro_pool &operator=(const coro_pool &) = delete;
+				coro_pool(coro_pool &&) = delete;
+				coro_pool &operator=(coro_pool &&) = delete;
 
 			private:
 				struct _task_info_t;
@@ -204,9 +204,9 @@ namespace rua {
 
 						tsk->state = _task_info_t::state_t::deleted;
 
-						if (tsk->sleeping && tsk->sleep_info.ct) {
+						if (tsk->sleeping && tsk->sleep_info.cojo) {
 							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-								if (tsk->sleep_info.ct.native_resource_handle() == it->native_resource_handle()) {
+								if (tsk->sleep_info.cojo.id() == it->id()) {
 									_cos.erase(it);
 									break;
 								}
@@ -298,7 +298,8 @@ namespace rua {
 						if (_notify_all.exchange(false)) {
 							notify_all();
 						}
-						_join_new_task_cor(_main_ct);
+						_main_cojo = this_coro::joiner();
+						_join_new_task_co();
 					}
 				}
 
@@ -332,7 +333,7 @@ namespace rua {
 
 				class cond_var_c : public cp::cond_var_c {
 					public:
-						cond_var_c(co_pool &cp) : _cp(cp), _tsk(cp.current()) {
+						cond_var_c(coro_pool &cp) : _cp(cp), _tsk(cp.current()) {
 							assert(cp.this_caller_in_task());
 						}
 
@@ -349,15 +350,15 @@ namespace rua {
 						}
 
 					private:
-						co_pool &_cp;
-						co_pool::task _tsk;
+						coro_pool &_cp;
+						coro_pool::task _tsk;
 				};
 
 				using cond_var = obj<cond_var_c>;
 
 				class scheduler_c : public cp::scheduler_c {
 					public:
-						scheduler_c(co_pool &cp) : _cp(cp) {}
+						scheduler_c(coro_pool &cp) : _cp(cp) {}
 
 						virtual ~scheduler_c() = default;
 
@@ -374,7 +375,7 @@ namespace rua {
 						}
 
 					private:
-						co_pool &_cp;
+						coro_pool &_cp;
 				};
 
 				using scheduler = obj<scheduler_c>;
@@ -391,8 +392,8 @@ namespace rua {
 				size_t _co_stk_sz;
 				std::list<coro> _cos;
 
-				cont _main_ct;
-				std::stack<cont> _idle_co_cts;
+				coro_joiner _main_cojo;
+				std::stack<coro_joiner> _idle_cos;
 
 				using _task_list_t = std::list<task>;
 
@@ -408,9 +409,9 @@ namespace rua {
 							std::chrono::steady_clock::time_point(std::move(std_tp))
 						{}
 
-						_time_point operator+(const co_pool::duration &dur) {
+						_time_point operator+(const coro_pool::duration &dur) {
 							return
-								dur == co_pool::duration(co_pool::duration::forever) ?
+								dur == coro_pool::duration(coro_pool::duration::forever) ?
 								_time_point::max() :
 								static_cast<const std::chrono::steady_clock::time_point &>(*this) + dur
 							;
@@ -426,7 +427,7 @@ namespace rua {
 						_time_point wake_time;
 						std::mutex *cv_lock;
 						std::atomic<bool> cv_notified;
-						cont ct;
+						coro_joiner cojo;
 					} sleep_info;
 
 					bool sleeping;
@@ -469,22 +470,23 @@ namespace rua {
 					if (is_running() && tsk.get() == _tasks_it->get()) {
 						tsk.reset();
 						_running = false;
-						_join_new_task_cor((*_tasks_it++)->sleep_info.ct);
+						(*_tasks_it++)->sleep_info.cojo = this_coro::joiner();
+						_join_new_task_co();
 					}
 				}
 
 				void _wake() {
 					(*_tasks_it)->sleeping = false;
 
-					if ((*_tasks_it)->sleep_info.ct) {
+					if ((*_tasks_it)->sleep_info.cojo) {
 						_running = true;
-						_idle_co_cts.emplace();
-						(*_tasks_it)->sleep_info.ct.join(_idle_co_cts.top());
+						_idle_cos.emplace(this_coro::joiner());
+						(*_tasks_it)->sleep_info.cojo.join();
 					}
 				}
 
-				void _join_new_task_cor(cont &ccr) {
-					if (_idle_co_cts.empty()) {
+				void _join_new_task_co() {
+					if (_idle_cos.empty()) {
 						_cos.emplace_back([this]() {
 							for (;;) {
 								while (_life && (_exit_on_empty ? size() : true)) {
@@ -558,15 +560,15 @@ namespace rua {
 										++_tasks_it;
 									}
 								}
-								_idle_co_cts.emplace();
-								_main_ct.join(_idle_co_cts.top());
+								_idle_cos.emplace(this_coro::joiner());
+								_main_cojo.join();
 							}
 						}, _co_stk_sz);
-						_cos.back().join(ccr);
+						_cos.back().join();
 					} else {
-						auto ct = std::move(_idle_co_cts.top());
-						_idle_co_cts.pop();
-						ct.join(ccr);
+						auto cojo = std::move(_idle_cos.top());
+						_idle_cos.pop();
+						cojo.join();
 					}
 				}
 		};
