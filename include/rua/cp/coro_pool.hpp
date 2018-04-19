@@ -21,9 +21,10 @@
 
 namespace rua {
 	namespace cp {
-		class coro_pool {
+		template <typename Coro>
+		class base_coro_pool {
 			public:
-				coro_pool(size_t coro_stack_size = coro::default_stack_size) :
+				base_coro_pool(size_t coro_stack_size = Coro::default_stack_size) :
 					_exit_on_empty(true),
 					_running(false),
 					_co_stk_sz(coro_stack_size),
@@ -34,10 +35,10 @@ namespace rua {
 					_tasks_it = _tasks.end();
 				}
 
-				coro_pool(const coro_pool &) = delete;
-				coro_pool &operator=(const coro_pool &) = delete;
-				coro_pool(coro_pool &&) = delete;
-				coro_pool &operator=(coro_pool &&) = delete;
+				base_coro_pool(const base_coro_pool &) = delete;
+				base_coro_pool &operator=(const base_coro_pool &) = delete;
+				base_coro_pool(base_coro_pool &&) = delete;
+				base_coro_pool &operator=(base_coro_pool &&) = delete;
 
 			private:
 				struct _task_info_t;
@@ -333,7 +334,7 @@ namespace rua {
 
 				class cond_var_c : public cp::cond_var_c {
 					public:
-						cond_var_c(coro_pool &cp) : _cp(cp), _tsk(cp.current()) {
+						cond_var_c(base_coro_pool &cp) : _cp(cp), _tsk(cp.current()) {
 							assert(cp.this_caller_in_task());
 						}
 
@@ -350,15 +351,15 @@ namespace rua {
 						}
 
 					private:
-						coro_pool &_cp;
-						coro_pool::task _tsk;
+						base_coro_pool &_cp;
+						base_coro_pool::task _tsk;
 				};
 
 				using cond_var = obj<cond_var_c>;
 
 				class scheduler_c : public cp::scheduler_c {
 					public:
-						scheduler_c(coro_pool &cp) : _cp(cp) {}
+						scheduler_c(base_coro_pool &cp) : _cp(cp) {}
 
 						virtual ~scheduler_c() = default;
 
@@ -375,7 +376,7 @@ namespace rua {
 						}
 
 					private:
-						coro_pool &_cp;
+						base_coro_pool &_cp;
 				};
 
 				using scheduler = obj<scheduler_c>;
@@ -390,10 +391,10 @@ namespace rua {
 				bool _life, _exit_on_empty, _running;
 
 				size_t _co_stk_sz;
-				std::list<coro> _cos;
+				std::list<Coro> _cos;
 
-				coro_joiner _main_cojo;
-				std::stack<coro_joiner> _idle_cos;
+				typename Coro::joiner_t _main_cojo;
+				std::stack<typename Coro::joiner_t> _idle_cos;
 
 				using _task_list_t = std::list<task>;
 
@@ -409,9 +410,9 @@ namespace rua {
 							std::chrono::steady_clock::time_point(std::move(std_tp))
 						{}
 
-						_time_point operator+(const coro_pool::duration &dur) {
+						_time_point operator+(const base_coro_pool::duration &dur) {
 							return
-								dur == coro_pool::duration(coro_pool::duration::forever) ?
+								dur == base_coro_pool::duration(base_coro_pool::duration::forever) ?
 								_time_point::max() :
 								static_cast<const std::chrono::steady_clock::time_point &>(*this) + dur
 							;
@@ -427,12 +428,12 @@ namespace rua {
 						_time_point wake_time;
 						std::mutex *cv_lock;
 						std::atomic<bool> cv_notified;
-						coro_joiner cojo;
+						typename Coro::joiner_t cojo;
 					} sleep_info;
 
 					bool sleeping;
 
-					_task_list_t::iterator it;
+					typename _task_list_t::iterator it;
 
 					enum class state_t : uint8_t {
 						deleted,
@@ -444,7 +445,7 @@ namespace rua {
 				};
 
 				_task_list_t _tasks;
-				_task_list_t::iterator _tasks_it;
+				typename _task_list_t::iterator _tasks_it;
 
 				_time_point _cur_time;
 
@@ -572,6 +573,8 @@ namespace rua {
 					}
 				}
 		};
+
+		using coro_pool = base_coro_pool<coro>;
 	}
 }
 

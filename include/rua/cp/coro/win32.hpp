@@ -110,6 +110,8 @@ namespace rua {
 
 		class coro : public coro_joiner {
 			public:
+				using joiner_t = coro_joiner;
+
 				static constexpr size_t default_stack_size = 0;
 
 				constexpr coro() : coro_joiner(), _func() {}
@@ -158,7 +160,7 @@ namespace rua {
 				return native_handle();
 			}
 
-			inline coro_joiner joiner() {
+			inline coro::joiner_t joiner() {
 				return native_handle();
 			}
 		};
