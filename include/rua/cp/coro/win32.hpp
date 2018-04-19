@@ -2,7 +2,7 @@
 #define _RUA_CP_CORO_WIN32_HPP
 
 #ifndef _WIN32
-	#error rua::coro: not supported this platform!
+	#error rua::cp::coro: not supported this platform!
 #endif
 
 #include <windows.h>

@@ -2,7 +2,7 @@
 #define _RUA_OS_PROCESS_WIN32_HPP
 
 #ifndef _WIN32
-	#error rua::process: not supported this platform!
+	#error rua::os::process: not supported this platform!
 #endif
 
 #include "../../io/data.hpp"
