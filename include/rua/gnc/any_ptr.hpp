@@ -21,10 +21,9 @@ namespace rua {
 			constexpr any_ptr(std::nullptr_t) : _val(0) {}
 
 			template <typename T>
-			explicit RUA_CONSTEXPR_14 any_ptr(T &&src) : _val(_in(std::forward<T>(src))) {}
-
-			template <typename T>
 			constexpr any_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
+
+			explicit constexpr any_ptr(uintptr_t src) : _val(src) {}
 
 			uintptr_t &value() {
 				return _val;
@@ -32,18 +31,6 @@ namespace rua {
 
 			uintptr_t value() const {
 				return _val;
-			}
-
-			intptr_t &signed_value() {
-				assert(_val <= static_cast<uintptr_t>(std::numeric_limits<intptr_t>::max()));
-
-				return *reinterpret_cast<intptr_t *>(&_val);
-			}
-
-			intptr_t signed_value() const {
-				assert(_val <= static_cast<uintptr_t>(std::numeric_limits<intptr_t>::max()));
-
-				return static_cast<intptr_t>(_val);
 			}
 
 			operator bool() const {
@@ -93,16 +80,16 @@ namespace rua {
 
 			template <typename T>
 			any_ptr operator+(T &&target) const {
-				return _ptr_plus(std::forward<T>(target));
+				return any_ptr(_val + static_cast<uintptr_t>(target));
 			}
 
 			ptrdiff_t operator-(const any_ptr &target) const {
-				return signed_value() - target.signed_value();
+				return static_cast<ptrdiff_t>(_val - target._val);
 			}
 
 			template <typename T>
 			any_ptr operator-(T &&target) const {
-				return _ptr_div(std::forward<T>(target));
+				return any_ptr(_val - static_cast<uintptr_t>(target));
 			}
 
 			bool operator>(const any_ptr &target) const {
@@ -128,54 +115,8 @@ namespace rua {
 		private:
 			uintptr_t _val;
 
-			struct _is_same {};
 			struct _is_num {};
 			struct _is_unum {};
-
-			template <typename T>
-			static constexpr uintptr_t _in(T &&src, _is_same &&) {
-				return src._val;
-			}
-
-			template <typename T>
-			static RUA_CONSTEXPR_14 uintptr_t _in(T &&src, _is_num &&) {
-				return src < 0 ? 0 : static_cast<uintptr_t>(src);
-			}
-
-			template <typename T>
-			static constexpr uintptr_t _in(T &&src, _is_unum &&) {
-				return static_cast<uintptr_t>(src);
-			}
-
-			static constexpr uintptr_t _in(uintptr_t src, tmp::default_t &&) {
-				return src;
-			}
-
-			template <typename T>
-			static constexpr uintptr_t _in(T *src, tmp::default_t &&) {
-				return reinterpret_cast<uintptr_t>(src);
-			}
-
-			template <typename T>
-			static RUA_CONSTEXPR_14 uintptr_t _in(T &&src) {
-				using TT = typename std::decay<T>::type;
-
-				return _in(
-					std::forward<T>(src),
-					tmp::switch_true_t<
-						std::is_base_of<any_ptr, TT>,
-						_is_same,
-						std::is_signed<TT>,
-						_is_num,
-						tmp::bool_constant<
-							std::is_integral<TT>::value ||
-							std::is_floating_point<TT>::value
-						>,
-						_is_unum
-					>{}
-				);
-			}
-
 			struct _is_ptr {};
 			struct _is_cvt_from_gp {};
 			struct _is_cst_from_gp {};
@@ -189,7 +130,7 @@ namespace rua {
 
 			template <typename T>
 			T _out(_is_num &&) const {
-				return static_cast<T>(signed_value());
+				return static_cast<T>(_val);
 			}
 
 			template <typename T>
@@ -253,42 +194,6 @@ namespace rua {
 						_is_cst
 					>
 				>{});
-			}
-
-			template <typename T>
-			any_ptr _ptr_plus(T &&target, std::false_type &&) const {
-				return any_ptr(_val + static_cast<uintptr_t>(std::forward<T>(target)));
-			}
-
-			template <typename T>
-			any_ptr _ptr_plus(T &&target, std::true_type &&) const {
-				if (target < 0) {
-					return any_ptr(_val - static_cast<uintptr_t>(0 - (std::forward<T>(target))));
-				}
-				return any_ptr(_val + static_cast<uintptr_t>(std::forward<T>(target)));
-			}
-
-			template <typename T>
-			any_ptr _ptr_plus(T &&src) const {
-				return _ptr_plus(std::forward<T>(src), std::is_signed<typename std::decay<T>::type>());
-			}
-
-			template <typename T>
-			any_ptr _ptr_div(T &&target, std::false_type &&) const {
-				return any_ptr(_val + static_cast<uintptr_t>(std::forward<T>(target)));
-			}
-
-			template <typename T>
-			any_ptr _ptr_div(T &&target, std::true_type &&) const {
-				if (target < 0) {
-					return any_ptr(_val + static_cast<uintptr_t>(0 - (std::forward<T>(target))));
-				}
-				return any_ptr(_val - static_cast<uintptr_t>(std::forward<T>(target)));
-			}
-
-			template <typename T>
-			any_ptr _ptr_div(T &&src) const {
-				return _ptr_div(std::forward<T>(src), std::is_signed<typename std::decay<T>::type>());
 			}
 	};
 }

@@ -27,7 +27,7 @@ namespace rua {
 				}
 			}
 
-			data(any_ptr base, size_t size = static_cast<size_t>(-1)) : data(base, size, nullptr) {}
+			constexpr data(any_ptr base, size_t size = static_cast<size_t>(-1)) : data(base, size, nullptr) {}
 
 			~data() {
 				free();
@@ -190,7 +190,7 @@ namespace rua {
 			struct _dont_init {};
 			data(_dont_init) {}
 
-			data(any_ptr base, size_t size, any_ptr alloced) : _base(base), _sz(size), _alloced(alloced) {}
+			constexpr data(any_ptr base, size_t size, any_ptr alloced) : _base(base), _sz(size), _alloced(alloced) {}
 
 			std::atomic<size_t> &_alloced_use_count() const {
 				return *_alloced.to<std::atomic<size_t> *>();

@@ -90,12 +90,12 @@ namespace rua {
 
 					if (_rwa) {
 						if (src._rwa) {
-							_rwa->write_at(_base.signed_value(), src._rwa->read_at(src._base.signed_value(), cp_sz));
+							_rwa->write_at(_base.value(), src._rwa->read_at(src._base.value(), cp_sz));
 						} else {
-							_rwa->write_at(base().signed_value(), static_cast<const rua::data &>(src));
+							_rwa->write_at(base().value(), static_cast<const rua::data &>(src));
 						}
 					} else if (src._rwa) {
-						auto cache = src._rwa->read_at(src._base.signed_value(), cp_sz);
+						auto cache = src._rwa->read_at(src._base.value(), cp_sz);
 						memcpy(_base, cache.base(), cp_sz);
 					} else {
 						memcpy(_base, src._base, cp_sz);
@@ -113,7 +113,7 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						return _rwa->read_at((_base + offset).signed_value(), sizeof(D)).get<D>();
+						return _rwa->read_at((_base + offset).value(), sizeof(D)).get<D>();
 					} else {
 						return rua::data::get<D>(offset);
 					}
@@ -129,7 +129,7 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						return _rwa->read_at((_base + ix * sizeof(D)).signed_value(), sizeof(D)).aligned_get<D>();
+						return _rwa->read_at((_base + ix * sizeof(D)).value(), sizeof(D)).aligned_get<D>();
 					} else {
 						return rua::data::aligned_get<D>(ix);
 					}
@@ -147,7 +147,7 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						_rwa->write_at((_base + offset).signed_value(), rua::data(&std::forward<V>(val), sizeof(VV)));
+						_rwa->write_at((_base + offset).value(), rua::data(&std::forward<V>(val), sizeof(VV)));
 					} else {
 						rua::data::get<VV>(offset) = std::forward<V>(val);
 					}
@@ -165,7 +165,7 @@ namespace rua {
 					#endif
 
 					if (_rwa) {
-						_rwa->write_at((_base + ix * sizeof(V)).signed_value(), rua::data(&std::forward<V>(val), sizeof(VV)));
+						_rwa->write_at((_base + ix * sizeof(V)).value(), rua::data(&std::forward<V>(val), sizeof(VV)));
 					} else {
 						rua::data::aligned_get<VV>(ix) = std::forward<V>(val);
 					}
@@ -230,7 +230,7 @@ namespace rua {
 
 				rua::data to_local() const {
 					if (_rwa) {
-						return _rwa->read_at(base().signed_value(), _sz);
+						return _rwa->read_at(base().value(), _sz);
 					} else if (_alr) {
 						return *static_cast<const rua::data *>(this);
 					} else {
