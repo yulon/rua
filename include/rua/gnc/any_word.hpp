@@ -41,19 +41,21 @@ namespace rua {
 		private:
 			uintptr_t _val;
 
-			struct _is_uint {};
+			struct _is_int {};
 			struct _is_sm {};
 
 			template <typename T>
-			static constexpr uintptr_t _in(T &&src, _is_uint &&) {
-				return src;
+			static constexpr uintptr_t _in(T &&src, _is_int &&) {
+				return static_cast<uintptr_t>(src);
 			}
 
 			template <typename T>
 			static RUA_CONSTEXPR_14 uintptr_t _in(T &&src, _is_sm &&) {
-				uintptr_t val;
-				*reinterpret_cast<typename std::decay<T>::type *>(&val) = src;
-				return val;
+				union val_u {
+					typename std::decay<T>::type src_v;
+					uintptr_t uint_v;
+				};
+				return val_u{std::forward<T>(src)}.uint_v;
 			}
 
 			template <typename T>
@@ -68,8 +70,8 @@ namespace rua {
 				return _in(
 					std::forward<T>(src),
 					tmp::switch_true_t<
-						std::is_unsigned<TT>,
-						_is_uint,
+						std::is_integral<TT>,
+						_is_int,
 						tmp::bool_constant<sizeof(TT) < sizeof(uintptr_t)>,
 						_is_sm
 					>{}
@@ -79,8 +81,8 @@ namespace rua {
 			struct _is_big {};
 
 			template <typename T>
-			T _out(_is_uint &&) const {
-				return _val;
+			T _out(_is_int &&) const {
+				return static_cast<T>(_val);
 			}
 
 			template <typename T>
@@ -92,7 +94,7 @@ namespace rua {
 
 			template <typename T>
 			T _out(tmp::default_t &&) const {
-				return *reinterpret_cast<const T *>(&_val);
+				return *reinterpret_cast<const T *>(this);
 			}
 
 			template <typename T>
@@ -100,8 +102,8 @@ namespace rua {
 				using TT = typename std::decay<T>::type;
 
 				return _out<TT>(tmp::switch_true_t<
-					std::is_unsigned<TT>,
-					_is_uint,
+					std::is_integral<TT>,
+					_is_int,
 					tmp::bool_constant<(sizeof(TT) > sizeof(uintptr_t))>,
 					_is_big
 				>{});
