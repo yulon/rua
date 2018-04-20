@@ -67,7 +67,6 @@ namespace rua {
 		};
 
 		struct default_t {};
-		struct disable_t {};
 
 		template <typename... Args>
 		struct type_switch;
@@ -80,14 +79,8 @@ namespace rua {
 
 			using type = typename std::conditional<
 				is_matched_v,
-				typename std::enable_if<
-					!is_matched_v || !std::is_convertible<Result, disable_t>::value,
-					Result
-				>::type,
-				typename std::enable_if<
-					is_matched_v || !std::is_convertible<DefaultResult, disable_t>::value,
-					DefaultResult
-				>::type
+				Result,
+				DefaultResult
 			>::type;
 
 			template <typename... Args>
