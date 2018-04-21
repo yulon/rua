@@ -13,25 +13,15 @@
 
 namespace rua {
 	namespace exec {
-		template <typename FnPtr>
-		class dyfn {
-			public:
-				dyfn(std::initializer_list<uint8_t> code) : _fptr(reinterpret_cast<FnPtr>(code.begin())) {
-					mem::protect(_fptr, code.size());
-				}
-
-				template <typename... A>
-				auto operator()(A&&... a) -> decltype(reinterpret_cast<FnPtr>(0)(std::forward<A>(a)...)) const {
-					return _fptr(std::forward<A>(a)...);
-				}
-
-			private:
-				FnPtr _fptr;
-		};
+		template <typename CodeBytes>
+		any_ptr code_init(CodeBytes &&cb) {
+			mem::protect(&cb, sizeof(cb), mem::protect_read | mem::protect_exec);
+			return &cb;
+		}
 
 		// Reference from https://github.com/skywind3000/collection/tree/master/context
 
-		static dyfn<bool (*)(any_ptr)> _cont_push({
+		static const uint8_t _cont_push_code[]{
 			#ifdef RUA_AMD64
 				#ifdef RUA_WIN64_FASTCALL
 					0x48, 0x89, 0x51, 0x18, 0x48, 0x89, 0x01, 0x48, 0x89, 0x59, 0x08, 0x48, 0x89, 0x49, 0x10,
@@ -54,9 +44,11 @@ namespace rua {
 				#endif
 			#elif defined(RUA_I386)
 			#endif
-		});
+		};
 
-		static dyfn<bool (*)(any_ptr)> _cont_pop({
+		static bool (*_cont_push)(any_ptr) = code_init(_cont_push_code);
+
+		static const uint8_t _cont_pop_code[]{
 			#ifdef RUA_AMD64
 				#ifdef RUA_WIN64_FASTCALL
 					0x48, 0x8B, 0x59, 0x08, 0x48, 0x8B, 0x71, 0x20, 0x48, 0x8B, 0x79, 0x28, 0x48, 0x8B, 0x61,
@@ -77,7 +69,9 @@ namespace rua {
 				#endif
 			#elif defined(RUA_I386)
 			#endif
-		});
+		};
+
+		static bool (*_cont_pop)(any_ptr) = code_init(_cont_pop_code);
 
 		class cont {
 			public:
@@ -95,13 +89,7 @@ namespace rua {
 					}
 				}
 
-				void pop_with_push(cont &pre_push) const {
-					if (pre_push.push()) {
-						pop();
-					}
-				}
-
-				void pop_with_push() {
+				void swap() {
 					auto old = *this;
 					if (push()) {
 						old.pop();
