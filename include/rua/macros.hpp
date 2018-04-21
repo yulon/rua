@@ -82,14 +82,6 @@
 	#define RUA_STATIC_ASSERT(cond) assert(cond)
 #endif
 
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
-	#define RUA_UNIX
-
-	#if defined(__APPLE__) && defined(__MACH__)
-		#define RUA_MAC
-	#endif
-#endif
-
 #if RUA_CPP >= RUA_CPP_17
 	#define RUA_FALLTHROUGH [[fallthrough]]
 #elif defined(__GNUC__)
@@ -100,6 +92,48 @@
 	#endif
 #else
 	#define RUA_FALLTHROUGH
+#endif
+
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+	#define RUA_UNIX
+
+	#if defined(__APPLE__) && defined(__MACH__)
+		#define RUA_MAC
+	#endif
+#endif
+
+#if \
+	defined(_AMD64_) || \
+	(defined(_M_AMD64_) && _M_AMD64_ == 100) || \
+	(defined(_M_X64_) && _M_X64_ == 100) || \
+	defined(__x86_64) || \
+	defined(__x86_64__) || \
+	defined(__amd64__) || \
+	defined(__amd64)|| \
+	defined(_WIN64)
+
+	#define RUA_AMD64
+
+#elif \
+	defined(_X86_) || \
+	(defined(_M_IX86) && _M_IX86 == 600) || \
+	defined(i386) || \
+	defined(__i386) || \
+	defined(__i386__) || \
+	defined(__i486__) || \
+	defined(__i586__) || \
+	defined(__i686__) || \
+	defined(__i686) || \
+	defined(__I86__) || \
+	defined(__THW_INTEL__) || \
+	defined(__INTEL__) || \
+	defined(_WIN32)
+
+	#define RUA_I386
+#endif
+
+#if defined(_WIN64) || (defined(RUA_AMD64) && defined(__CYGWIN__))
+	#define RUA_WIN64_FASTCALL
 #endif
 
 #endif
