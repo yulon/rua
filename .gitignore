@@ -3,3 +3,4 @@ lib
 build
 obj
 .vscode
+*.bin
