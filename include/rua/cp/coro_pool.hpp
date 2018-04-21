@@ -35,10 +35,10 @@ namespace rua {
 					_tasks_it = _tasks.end();
 				}
 
-				base_coro_pool(const base_coro_pool &) = delete;
-				base_coro_pool &operator=(const base_coro_pool &) = delete;
-				base_coro_pool(base_coro_pool &&) = delete;
-				base_coro_pool &operator=(base_coro_pool &&) = delete;
+				base_coro_pool(const base_coro_pool<Coro> &) = delete;
+				base_coro_pool &operator=(const base_coro_pool<Coro> &) = delete;
+				base_coro_pool(base_coro_pool<Coro> &&) = delete;
+				base_coro_pool &operator=(base_coro_pool<Coro> &&) = delete;
 
 			private:
 				struct _task_info_t;
@@ -46,21 +46,21 @@ namespace rua {
 			public:
 				using task = std::shared_ptr<_task_info_t>;
 
-				class duration : public std::chrono::milliseconds {
+				class dur_t : public std::chrono::milliseconds {
 					public:
 						static constexpr size_t forever = static_cast<size_t>(-1);
 						static constexpr size_t disposable = 0;
 
-						duration() = default;
+						dur_t() = default;
 
-						constexpr duration(size_t ms) : std::chrono::milliseconds(
+						constexpr dur_t(size_t ms) : std::chrono::milliseconds(
 							ms == static_cast<size_t>(-1) ?
 							std::chrono::milliseconds::max() :
 							(ms == 0 ? std::chrono::milliseconds::min() : std::chrono::milliseconds(ms))
 						) {}
 				};
 
-				task add(task pos, std::function<void()> handler, duration timeout = duration::forever) {
+				task add(task pos, std::function<void()> handler, dur_t timeout = dur_t::forever) {
 					auto tsk = std::make_shared<_task_info_t>();
 
 					tsk->handler = std::move(handler);
@@ -92,23 +92,23 @@ namespace rua {
 					return tsk;
 				}
 
-				task add(std::function<void()> handler, duration timeout = duration::forever) {
+				task add(std::function<void()> handler, dur_t timeout = dur_t::forever) {
 					return add(current(), std::move(handler), timeout);
 				}
 
 				task go(std::function<void()> handler) {
-					return add(std::move(handler), duration::disposable);
+					return add(std::move(handler), dur_t::disposable);
 				}
 
-				task add_front(std::function<void()> handler, duration timeout = duration::forever) {
+				task add_front(std::function<void()> handler, dur_t timeout = dur_t::forever) {
 					return add(nullptr, std::move(handler), timeout);
 				}
 
-				task add_back(std::function<void()> handler, duration timeout = duration::forever) {
+				task add_back(std::function<void()> handler, dur_t timeout = dur_t::forever) {
 					return add(back(), std::move(handler), timeout);
 				}
 
-				void sleep(task tsk, duration timeout) {
+				void sleep(task tsk, dur_t timeout) {
 					assert(this_thread_is_binded() && has(tsk));
 
 					tsk->sleep_info.wake_time = _cur_time + timeout;
@@ -116,7 +116,7 @@ namespace rua {
 					_sleep(tsk);
 				}
 
-				void sleep(duration timeout) {
+				void sleep(dur_t timeout) {
 					sleep(current(), timeout);
 				}
 
@@ -128,7 +128,7 @@ namespace rua {
 					yield(current());
 				}
 
-				void cond_wait(task tsk, std::mutex &lock, duration timeout = duration::forever) {
+				void cond_wait(task tsk, std::mutex &lock, dur_t timeout = dur_t::forever) {
 					assert(this_thread_is_binded() && has(tsk));
 
 					tsk->sleep_info.cv_notified = false;
@@ -141,11 +141,11 @@ namespace rua {
 					_sleep(tsk);
 				}
 
-				void cond_wait(std::mutex &lock, duration timeout = duration::forever) {
+				void cond_wait(std::mutex &lock, dur_t timeout = dur_t::forever) {
 					cond_wait(current(), lock, timeout);
 				}
 
-				void cond_wait(task tsk, std::mutex &lock, std::function<bool()> pred, duration timeout = duration::forever) {
+				void cond_wait(task tsk, std::mutex &lock, std::function<bool()> pred, dur_t timeout = dur_t::forever) {
 					assert(this_thread_is_binded() && has(tsk));
 
 					auto wake_time = _cur_time + timeout;
@@ -158,7 +158,7 @@ namespace rua {
 					}
 				}
 
-				void cond_wait(std::mutex &lock, std::function<bool()> pred, duration timeout = duration::forever) {
+				void cond_wait(std::mutex &lock, std::function<bool()> pred, dur_t timeout = dur_t::forever) {
 					cond_wait(current(), lock, std::move(pred), timeout);
 				}
 
@@ -184,14 +184,14 @@ namespace rua {
 					}
 				}
 
-				void reset_dol(task tsk, duration duration) {
+				void reset_dol(task tsk, dur_t timeout) {
 					assert(this_thread_is_binded() && has(tsk));
 
-					tsk->timeout = duration;
+					tsk->timeout = timeout;
 				}
 
-				void reset_dol(duration duration) {
-					reset_dol(current(), duration);
+				void reset_dol(dur_t timeout) {
+					reset_dol(current(), timeout);
 				}
 
 				void erase(task tsk) {
@@ -199,7 +199,7 @@ namespace rua {
 
 					if (tsk->state == _task_info_t::state_t::added) {
 						if (tsk.get() == _tasks_it->get()) {
-							reset_dol(tsk, duration::disposable);
+							reset_dol(tsk, dur_t::disposable);
 							return;
 						}
 
@@ -334,7 +334,7 @@ namespace rua {
 
 				class cond_var_c : public cp::cond_var_c {
 					public:
-						cond_var_c(base_coro_pool &cp) : _cp(cp), _tsk(cp.current()) {
+						cond_var_c(base_coro_pool<Coro> &cp) : _cp(cp), _tsk(cp.current()) {
 							assert(cp.this_caller_in_task());
 						}
 
@@ -351,15 +351,15 @@ namespace rua {
 						}
 
 					private:
-						base_coro_pool &_cp;
-						base_coro_pool::task _tsk;
+						base_coro_pool<Coro> &_cp;
+						typename base_coro_pool<Coro>::task _tsk;
 				};
 
 				using cond_var = obj<cond_var_c>;
 
 				class scheduler_c : public cp::scheduler_c {
 					public:
-						scheduler_c(base_coro_pool &cp) : _cp(cp) {}
+						scheduler_c(base_coro_pool<Coro> &cp) : _cp(cp) {}
 
 						virtual ~scheduler_c() = default;
 
@@ -376,7 +376,7 @@ namespace rua {
 						}
 
 					private:
-						base_coro_pool &_cp;
+						base_coro_pool<Coro> &_cp;
 				};
 
 				using scheduler = obj<scheduler_c>;
@@ -410,9 +410,9 @@ namespace rua {
 							std::chrono::steady_clock::time_point(std::move(std_tp))
 						{}
 
-						_time_point operator+(const base_coro_pool::duration &dur) {
+						_time_point operator+(const dur_t &dur) {
 							return
-								dur == base_coro_pool::duration(base_coro_pool::duration::forever) ?
+								dur == dur_t(dur_t::forever) ?
 								_time_point::max() :
 								static_cast<const std::chrono::steady_clock::time_point &>(*this) + dur
 							;
@@ -422,7 +422,7 @@ namespace rua {
 				struct _task_info_t {
 					std::function<void()> handler;
 					_time_point start_time;
-					duration timeout;
+					dur_t timeout;
 
 					struct {
 						_time_point wake_time;
