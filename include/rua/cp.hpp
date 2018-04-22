@@ -5,5 +5,6 @@
 #include "cp/chan.hpp"
 #include "cp/coro.hpp"
 #include "cp/coro_pool.hpp"
+#include "cp/tls.hpp"
 
 #endif
