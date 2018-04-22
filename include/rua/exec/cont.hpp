@@ -1,11 +1,15 @@
 #ifndef _RUA_EXEC_CONT_WIN32_HPP
 #define _RUA_EXEC_CONT_WIN32_HPP
 
+#include "../macros.hpp"
+
+#if !defined(RUA_AMD64) && !defined(RUA_I386)
+	#error rua::exec::cont: not supported this platform!
+#endif
+
 #include "../gnc/any_ptr.hpp"
 #include "../gnc/any_word.hpp"
 #include "../mem/protect.hpp"
-
-#include "../macros.hpp"
 
 #include <cstdint>
 #include <initializer_list>
@@ -43,6 +47,10 @@ namespace rua {
 					0x48, 0xC7, 0xC0, 0x01, 0x00, 0x00, 0x00, 0xC3
 				#endif
 			#elif defined(RUA_I386)
+				0x89, 0x44, 0x24, 0xFC, 0x8B, 0x44, 0x24, 0x04, 0x89, 0x58, 0x04, 0x8B, 0x5C, 0x24, 0xFC,
+				0x89, 0x18, 0x89, 0x48, 0x08, 0x89, 0x50, 0x0C, 0x89, 0x70, 0x10, 0x89, 0x78, 0x14, 0x89,
+				0x60, 0x18, 0x89, 0x68, 0x1C, 0x8B, 0x1C, 0x24, 0x89, 0x58, 0x20, 0x9C, 0x5B, 0x89, 0x58,
+				0x24, 0xD9, 0x70, 0x2C, 0x8B, 0x58, 0x04, 0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3
 			#endif
 		};
 
@@ -68,6 +76,9 @@ namespace rua {
 					0x48, 0xC7, 0xC0, 0x00, 0x00, 0x00, 0x00, 0xC3
 				#endif
 			#elif defined(RUA_I386)
+				0x8B, 0x44, 0x24, 0x04, 0x8B, 0x48, 0x08, 0x8B, 0x50, 0x0C, 0x8B, 0x70, 0x10, 0x8B, 0x78,
+				0x14, 0x8B, 0x60, 0x18, 0x8B, 0x68, 0x1C, 0x8B, 0x58, 0x20, 0x89, 0x1C, 0x24, 0x8B, 0x58,
+				0x24, 0x53, 0x9D, 0xD9, 0x60, 0x2C, 0x8B, 0x58, 0x04, 0xB8, 0x00, 0x00, 0x00, 0x00, 0xC3
 			#endif
 		};
 
@@ -75,6 +86,12 @@ namespace rua {
 
 		class cont {
 			public:
+				cont() = default;
+
+				cont(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
+					remake(func, func_param, stack, stack_size);
+				}
+
 				bool push() {
 					return _cont_push(this);
 				}
@@ -97,11 +114,11 @@ namespace rua {
 				}
 
 				#ifdef RUA_AMD64
-					void remake(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
+					void rebind(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
 						rsp = (stack + stack_size - 1).value();
-						rsp = rsp - (rsp % 8) - 8;
+						rsp = rsp - (rsp % sizeof(uintptr_t)) - sizeof(uintptr_t);
 
-						*reinterpret_cast<uint64_t *>(rsp) = 0;
+						*reinterpret_cast<uintptr_t *>(rsp) = 0;
 
 						#ifdef RUA_WIN64_FASTCALL
 							rcx = func_param;
@@ -109,56 +126,63 @@ namespace rua {
 							rdi = func_param;
 						#endif
 
-						rip = reinterpret_cast<uint64_t>(func);
+						caller_rip = reinterpret_cast<uintptr_t>(func);
 					}
 				#elif defined(RUA_I386)
-					void remake(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
+					void rebind(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
 						esp = (stack + stack_size - 1).value();
-						esp = esp - (esp % 8) - 8;
-						*reinterpret_cast<uint64_t *>(esp) = 0;
-						reinterpret_cast<uint64_t *>(esp)[1] = func_param;
-						eip = reinterpret_cast<uint64_t>(func);
+						esp = esp - (esp % (2 * sizeof(uintptr_t))) - 2 * sizeof(uintptr_t);
+
+						*reinterpret_cast<uintptr_t *>(esp) = 0;
+						reinterpret_cast<uintptr_t *>(esp)[1] = func_param;
+
+						caller_eip = reinterpret_cast<uintptr_t>(func);
 					}
 				#endif
+
+				void remake(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
+					push();
+					rebind(func, func_param, stack, stack_size);
+				}
 
 				////////////////////////////////////////////////////////////////
 
 				#ifdef RUA_AMD64
-					uint64_t rax;		// 0
-					uint64_t rbx;		// 8
-					uint64_t rcx;		// 16
-					uint64_t rdx;		// 24
-					uint64_t rsi;		// 32
-					uint64_t rdi;		// 40
-					uint64_t rsp;		// 48
-					uint64_t rbp;		// 56
-					uint64_t rip;		// 64
-					uint64_t rflags;	// 72
-					uint64_t r8;		// 80
-					uint64_t r9;		// 88
-					uint64_t r10;		// 96
-					uint64_t r11;		// 104
-					uint64_t r12;		// 112
-					uint64_t r13;		// 120
-					uint64_t r14;		// 128
-					uint64_t r15;		// 136
-					uint64_t mxcsr;		// 144
+					uintptr_t rax; // 0
+					uintptr_t rbx; // 8
+					uintptr_t rcx; // 16
+					uintptr_t rdx; // 24
+					uintptr_t rsi; // 32
+					uintptr_t rdi; // 40
+					uintptr_t rsp; // 48
+					uintptr_t rbp; // 56
+					uintptr_t caller_rip; // 64
+					uintptr_t rflags; // 72
+					uintptr_t r8; // 80
+					uintptr_t r9; // 88
+					uintptr_t r10; // 96
+					uintptr_t r11; // 104
+					uintptr_t r12; // 112
+					uintptr_t r13; // 120
+					uintptr_t r14; // 128
+					uintptr_t r15; // 136
+					uintptr_t mxcsr; // 144
 				#elif defined(RUA_I386)
-					uint32_t eax;		// 0
-					uint32_t ebx;		// 4
-					uint32_t ecx;		// 8
-					uint32_t edx;		// 12
-					uint32_t esi;		// 16
-					uint32_t edi;		// 20
-					uint32_t esp;		// 24
-					uint32_t ebp;		// 28
-					uint32_t eip;		// 32
-					uint32_t eflags;	// 36
-					uint32_t mxcsr;		// 40
+					uintptr_t eax; // 0
+					uintptr_t ebx; // 4
+					uintptr_t ecx; // 8
+					uintptr_t edx; // 12
+					uintptr_t esi; // 16
+					uintptr_t edi; // 20
+					uintptr_t esp; // 24
+					uintptr_t ebp; // 28
+					uintptr_t caller_eip; // 32
+					uintptr_t eflags; // 36
+					uintptr_t mxcsr; // 40
 				#endif
 
-				uint8_t fpregs[32];		// 44(32) / 152(64)
-				uint32_t reserved[18];	// 76(32) / 186(64)
+				uint8_t fpregs[32]; // 44(32) / 152(64)
+				uint32_t reserved[18]; // 76(32) / 186(64)
 		};
 	}
 }
