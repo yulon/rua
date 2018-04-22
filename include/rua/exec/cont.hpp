@@ -100,17 +100,21 @@ namespace rua {
 					_cont_pop(this);
 				}
 
-				void push_and_pop(const cont &pre_pop) {
+				bool push_and_pop(const cont &pre_pop) {
 					if (push()) {
 						pre_pop.pop();
+						return true;
 					}
+					return false;
 				}
 
-				void swap() {
+				bool swap() {
 					auto old = *this;
 					if (push()) {
 						old.pop();
+						return true;
 					}
+					return false;
 				}
 
 				#ifdef RUA_AMD64
