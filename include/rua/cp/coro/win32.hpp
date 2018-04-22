@@ -50,23 +50,27 @@ namespace rua {
 		class coro_joiner {
 			public:
 				using native_handle_t = _fiber_t;
-				using id_t = native_handle_t;
 
-				constexpr coro_joiner(native_handle_t fiber = nullptr) : _fiber(fiber) {}
+				constexpr coro_joiner(native_handle_t fiber = nullptr) : _fiber(fiber), _joinable(fiber ? true : false) {}
+
+				~coro_joiner() {
+					reset();
+				}
 
 				coro_joiner(const coro_joiner &) = default;
 
 				coro_joiner &operator=(const coro_joiner &) = default;
 
-				coro_joiner(coro_joiner &&src) : _fiber(src._fiber) {
-					if (src._fiber) {
+				coro_joiner(coro_joiner &&src) : _fiber(src._fiber), _joinable(src._joinable) {
+					if (src) {
 						src.reset();
 					}
 				}
 
 				coro_joiner &operator=(coro_joiner &&src) {
-					if (src._fiber) {
+					if (src) {
 						_fiber = src._fiber;
+						_joinable = true;
 						src.reset();
 					} else {
 						reset();
@@ -78,20 +82,26 @@ namespace rua {
 					return _fiber;
 				}
 
-				id_t id() const {
-					return _fiber;
+				bool joinable() const {
+					return _joinable;
 				}
 
 				operator bool() const {
-					return _fiber;
+					return _joinable;
 				}
 
-				void join() const {
+				void join() {
+					assert(_joinable);
+
+					_joinable = false;
 					_this_fiber();
 					SwitchToFiber(_fiber);
 				}
 
-				void join(coro_joiner &get_cur) const {
+				void join(coro_joiner &get_cur) {
+					assert(_joinable);
+
+					_joinable = false;
 					get_cur = _this_fiber();
 					SwitchToFiber(_fiber);
 				}
@@ -102,11 +112,16 @@ namespace rua {
 				}
 
 				void reset() {
+					if (!*this) {
+						return;
+					}
 					_fiber = nullptr;
+					_joinable = false;
 				}
 
 			private:
 				native_handle_t _fiber;
+				bool _joinable;
 		};
 
 		class coro : public coro_joiner {
@@ -125,6 +140,10 @@ namespace rua {
 					);
 				}
 
+				~coro() {
+					reset();
+				}
+
 				coro(const coro &) = delete;
 
 				coro &operator=(const coro &) = delete;
@@ -140,7 +159,13 @@ namespace rua {
 					return *this;
 				}
 
+				operator bool() const {
+					return _func.get();
+				}
+
 				void reset() {
+					DeleteFiber(native_handle());
+					coro_joiner::reset();
 					_func.reset();
 				}
 
@@ -149,6 +174,7 @@ namespace rua {
 
 				static void WINAPI _fiber_func(std::function<void()> *_func) {
 					(*_func)();
+					exit(0);
 				}
 		};
 	}
