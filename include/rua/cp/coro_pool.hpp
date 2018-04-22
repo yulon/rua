@@ -299,8 +299,7 @@ namespace rua {
 						if (_notify_all.exchange(false)) {
 							notify_all();
 						}
-						_main_cojo = this_coro::joiner();
-						_join_new_task_co();
+						_join_new_task_co(_main_cojo);
 					}
 				}
 
@@ -471,8 +470,7 @@ namespace rua {
 					if (is_running() && tsk.get() == _tasks_it->get()) {
 						tsk.reset();
 						_running = false;
-						(*_tasks_it++)->sleep_info.cojo = this_coro::joiner();
-						_join_new_task_co();
+						_join_new_task_co((*_tasks_it++)->sleep_info.cojo);
 					}
 				}
 
@@ -481,12 +479,12 @@ namespace rua {
 
 					if ((*_tasks_it)->sleep_info.cojo) {
 						_running = true;
-						_idle_cos.emplace(this_coro::joiner());
-						(*_tasks_it)->sleep_info.cojo.join();
+						_idle_cos.emplace();
+						(*_tasks_it)->sleep_info.cojo.join(_idle_cos.top());
 					}
 				}
 
-				void _join_new_task_co() {
+				void _join_new_task_co(typename Coro::joiner_t &get_cur_cojo) {
 					if (_idle_cos.empty()) {
 						_cos.emplace_back([this]() {
 							for (;;) {
@@ -561,15 +559,15 @@ namespace rua {
 										++_tasks_it;
 									}
 								}
-								_idle_cos.emplace(this_coro::joiner());
-								_main_cojo.join();
+								_idle_cos.emplace();
+								_main_cojo.join(_idle_cos.top());
 							}
 						}, _co_stk_sz);
-						_cos.back().join();
+						_cos.back().join(get_cur_cojo);
 					} else {
 						auto cojo = std::move(_idle_cos.top());
 						_idle_cos.pop();
-						cojo.join();
+						cojo.join(get_cur_cojo);
 					}
 				}
 		};

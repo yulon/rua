@@ -87,17 +87,18 @@ namespace rua {
 				}
 
 				void join() const {
-					#ifndef NDEBUG
-						auto this_fiber = GetCurrentFiber();
-					#endif
-					assert(this_fiber && reinterpret_cast<uintptr_t>(this_fiber) != 0x1E00);
-					assert(_fiber != this_fiber);
-
+					_this_fiber();
 					SwitchToFiber(_fiber);
 				}
 
-				void operator()() const {
-					return join();
+				void join(coro_joiner &get_cur) const {
+					get_cur = _this_fiber();
+					SwitchToFiber(_fiber);
+				}
+
+				template <typename... A>
+				void operator()(A&&... a) const {
+					return join(std::forward<A>(a)...);
 				}
 
 				void reset() {
@@ -149,20 +150,6 @@ namespace rua {
 				static void WINAPI _fiber_func(std::function<void()> *_func) {
 					(*_func)();
 				}
-		};
-
-		namespace this_coro {
-			inline coro::native_handle_t native_handle() {
-				return _this_fiber();
-			}
-
-			inline coro::id_t id() {
-				return native_handle();
-			}
-
-			inline coro::joiner_t joiner() {
-				return native_handle();
-			}
 		};
 	}
 }
