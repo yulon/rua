@@ -1,0 +1,9 @@
+language: cpp
+
+compiler:
+  - clang
+  - gcc
+
+install: make gtest
+
+script: g++ ./src/*.cpp -I./include -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d && ./bin/rua_tests_d
