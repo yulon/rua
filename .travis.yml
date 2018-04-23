@@ -1,9 +1,8 @@
 language: cpp
 
 compiler:
-  - clang
   - gcc
 
-install: make gtest
+install: g++ ./test/*.cpp -I./include -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d
 
-script: g++ ./src/*.cpp -I./include -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d && ./bin/rua_tests_d
+script: ./bin/rua_tests_d
