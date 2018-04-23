@@ -13,7 +13,8 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - libgtest-dev
-            - libgtest
+
+before_install: cmake /usr/src/gtest && make -C /usr/src/gtest && cp libgtest*.a /usr/local/lib
 
 install: mkdir ./bin/ && clang++ ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
 
