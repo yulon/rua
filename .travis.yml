@@ -13,7 +13,8 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - libgtest-dev
+            - g++-7
 
-install: g++ ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
+install: g++-7 ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
 
 script: ./bin/rua_tests_d.out

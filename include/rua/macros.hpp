@@ -85,10 +85,10 @@
 #if RUA_CPP >= RUA_CPP_17
 	#define RUA_FALLTHROUGH [[fallthrough]]
 #elif defined(__GNUC__)
-	#if __has_cpp_attribute(gnu::fallthrough)
+	#if RUA_CPP >= RUA_CPP_11
 		#define RUA_FALLTHROUGH [[gnu::fallthrough]]
 	#else
-		#define RUA_FALLTHROUGH __attribute__ ((fallthrough))
+		#define RUA_FALLTHROUGH __attribute__((fallthrough))
 	#endif
 #else
 	#define RUA_FALLTHROUGH
