@@ -11,9 +11,9 @@ namespace rua {
 			public:
 				using native_handle_t = pthread_key_t;
 
-				tls(std::nullptr_t) : _invalid(true) {}
+				constexpr tls(std::nullptr_t np = nullptr) : _key(0), _invalid(true) {}
 
-				tls(native_handle_t key) : _invalid(false), _key(index) {}
+				tls(native_handle_t key) : _key(key), _invalid(false) {}
 
 				tls() {
 					_invalid = pthread_key_create(&_key, nullptr);
@@ -83,8 +83,8 @@ namespace rua {
 				}
 
 			private:
-				bool _invalid;
 				native_handle_t _key;
+				bool _invalid;
 		};
 	}
 }

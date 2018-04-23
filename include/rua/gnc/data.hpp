@@ -10,6 +10,7 @@
 #include <string>
 #include <utility>
 #include <atomic>
+#include <cstring>
 #include <cassert>
 
 namespace rua {

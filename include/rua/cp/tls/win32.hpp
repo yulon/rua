@@ -15,7 +15,7 @@ namespace rua {
 			public:
 				using native_handle_t = DWORD;
 
-				tls(std::nullptr_t) : _ix(TLS_OUT_OF_INDEXES) {}
+				constexpr tls(std::nullptr_t np = nullptr) : _ix(TLS_OUT_OF_INDEXES) {}
 
 				tls(native_handle_t index) : _ix(index) {}
 
