@@ -119,27 +119,21 @@ namespace rua {
 
 				#ifdef RUA_AMD64
 					void rebind(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
-						rsp = (stack + stack_size - 1).value();
-						rsp = rsp - (rsp % sizeof(uintptr_t)) - sizeof(uintptr_t);
-
-						*reinterpret_cast<uintptr_t *>(rsp) = 0;
+						rsp = (stack + stack_size - 2 * sizeof(uintptr_t)).value();
 
 						#ifdef RUA_WIN64_FASTCALL
-							rcx = func_param;
+							rcx
 						#else
-							rdi = func_param;
+							rdi
 						#endif
+						= func_param;
 
 						caller_rip = reinterpret_cast<uintptr_t>(func);
 					}
 				#elif defined(RUA_I386)
 					void rebind(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
-						esp = (stack + stack_size - 1).value();
-						esp = esp - (esp % (2 * sizeof(uintptr_t))) - 2 * sizeof(uintptr_t);
-
-						*reinterpret_cast<uintptr_t *>(esp) = 0;
-						reinterpret_cast<uintptr_t *>(esp)[1] = func_param;
-
+						esp = (stack + stack_size - 4 * sizeof(uintptr_t)).value();
+						reinterpret_cast<uintptr_t *>(esp)[2] = func_param;
 						caller_eip = reinterpret_cast<uintptr_t>(func);
 					}
 				#endif
