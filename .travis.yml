@@ -11,10 +11,11 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
+            - codegear-release
           packages:
             - libgtest-dev
             - g++-7
 
-install: g++-7 ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
+install: mkdir ./bin/ && g++-7 ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
 
 script: ./bin/rua_tests_d.out
