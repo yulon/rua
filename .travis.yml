@@ -14,6 +14,6 @@ matrix:
           packages:
             - libgtest-dev
 
-install: g++ ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d
+install: g++ ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
 
-script: ./bin/rua_tests_d
+script: ./bin/rua_tests_d.out
