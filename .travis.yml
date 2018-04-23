@@ -1,8 +1,24 @@
 language: cpp
 
 compiler:
-  - gcc
+	- gcc
 
-install: g++ ./test/*.cpp -I./include -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d
+matrix:
+	include:
+		# works on Precise and Trusty
+		- os: linux
+			addons:
+				apt:
+					sources:
+						- ubuntu-toolchain-r-test
+					packages:
+						- g++-7
+			env:
+				- MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
+
+before_install:
+	- eval "${MATRIX_EVAL}"
+
+install: g++-7 ./test/*.cpp -I./include -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d
 
 script: ./bin/rua_tests_d
