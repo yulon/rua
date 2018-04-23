@@ -14,7 +14,10 @@ matrix:
           packages:
             - libgtest-dev
 
-before_install: cd /usr/src/gtest && cmake . && make && cp libgtest*.a /usr/local/lib
+dist: trusty
+sudo: false
+
+before_install: cd /usr/src/gtest && sudo cmake . && sudo make && sudo cp libgtest*.a /usr/local/lib
 
 install: mkdir ./bin/ && clang++ ./test/*.cpp -I./include -std=c++11 -lgtest -Wall -Wextra -DDEBUG -o ./bin/rua_tests_d.out
 
