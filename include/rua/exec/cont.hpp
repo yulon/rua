@@ -7,7 +7,6 @@
 	#error rua::exec::cont: not supported this platform!
 #endif
 
-#include "../gnc/any_ptr.hpp"
 #include "../gnc/any_word.hpp"
 #include "../mem/protect.hpp"
 
@@ -24,6 +23,8 @@ namespace rua {
 		}
 
 		// Reference from https://github.com/skywind3000/collection/tree/master/context
+
+		class cont;
 
 		static const uint8_t _cont_push_code[]{
 			#ifdef RUA_AMD64
@@ -54,7 +55,7 @@ namespace rua {
 			#endif
 		};
 
-		static bool (*_cont_push)(any_ptr) = code_init(_cont_push_code);
+		static bool (*_cont_push)(cont *) = code_init(_cont_push_code);
 
 		static const uint8_t _cont_pop_code[]{
 			#ifdef RUA_AMD64
@@ -82,7 +83,7 @@ namespace rua {
 			#endif
 		};
 
-		static bool (*_cont_pop)(any_ptr) = code_init(_cont_pop_code);
+		static bool (*_cont_pop)(const cont *) = code_init(_cont_pop_code);
 
 		class cont {
 			public:
