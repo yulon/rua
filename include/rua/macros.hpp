@@ -54,11 +54,18 @@
 #endif
 
 #if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
-	#define RUA_INLINE_VAR inline
 	#define RUA_MDABLE_VAR inline
+
+	#define RUA_INLINE_VAR(type, name, init_declarator) inline type name init_declarator
 #else
-	#define RUA_INLINE_VAR
 	#define RUA_MDABLE_VAR static
+
+	#define RUA_INLINE_VAR(type, name, init_declarator) \
+		inline type &_##name##_instance() { \
+			static type instance init_declarator; \
+			return instance; \
+		} \
+		static type &name = _##name##_instance();
 #endif
 
 #if defined(__cpp_static_assert) && __cpp_static_assert >= 201411
