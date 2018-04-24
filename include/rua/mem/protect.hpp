@@ -30,7 +30,7 @@ namespace rua {
 			static constexpr int protect_exec = 0x0100;
 		#endif
 
-		static inline bool protect(any_ptr ptr, size_t size, int flags = protect_read | protect_write | protect_exec) {
+		inline bool protect(any_ptr ptr, size_t size, int flags = protect_read | protect_write | protect_exec) {
 			#ifdef _WIN32
 				DWORD new_protect, old_protect;
 				switch (flags) {

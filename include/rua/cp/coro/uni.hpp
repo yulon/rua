@@ -108,16 +108,9 @@ namespace rua {
 
 				coro &operator=(const coro &) = delete;
 
-				coro(coro &&src) : _res(std::move(src._res)) {}
+				coro(coro &&src) = default;
 
-				coro &operator=(coro &&src) {
-					reset();
-					if (src) {
-						reinterpret_cast<coro_joiner &>(*this) = std::move(src);
-						_res = std::move(src._res);
-					}
-					return *this;
-				}
+				coro &operator=(coro &&src) = default;
 
 				operator bool() const {
 					return _res.get();
