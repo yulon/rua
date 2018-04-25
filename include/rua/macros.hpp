@@ -53,6 +53,13 @@
 	#define RUA_CONSTEXPR_17
 #endif
 
+#define RUA_INLINE_VAR_S(type, name, init_declarator) \
+	inline type &_##name##_instance() { \
+		static type instance init_declarator; \
+		return instance; \
+	} \
+	static type &name = _##name##_instance()
+
 #if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
 	#define RUA_MDABLE_VAR inline
 
@@ -60,12 +67,7 @@
 #else
 	#define RUA_MDABLE_VAR static
 
-	#define RUA_INLINE_VAR(type, name, init_declarator) \
-		inline type &_##name##_instance() { \
-			static type instance init_declarator; \
-			return instance; \
-		} \
-		static type &name = _##name##_instance();
+	#define RUA_INLINE_VAR(type, name, init_declarator) RUA_INLINE_VAR_S(type, name, init_declarator)
 #endif
 
 #if defined(__cpp_static_assert) && __cpp_static_assert >= 201411
