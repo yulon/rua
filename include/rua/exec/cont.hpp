@@ -99,21 +99,17 @@ namespace rua {
 					fn(this);
 				}
 
-				bool push_and_pop(const cont &pre_pop) {
+				void push_and_pop(const cont &pre_pop) {
 					if (push()) {
 						pre_pop.pop();
-						return true;
 					}
-					return false;
 				}
 
-				bool swap() {
+				void swap() {
 					auto old = *this;
 					if (push()) {
 						old.pop();
-						return true;
 					}
-					return false;
 				}
 
 				void rebind(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
