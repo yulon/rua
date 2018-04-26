@@ -5,12 +5,14 @@
 	#error rua::cp::coro: not supported this platform!
 #endif
 
+#include "../tls/win32.hpp"
+
 #include <windows.h>
 
 #include <functional>
 #include <atomic>
-#include <memory>
-#include <string>
+#include <queue>
+#include <mutex>
 #include <cassert>
 
 namespace rua {
@@ -47,96 +49,65 @@ namespace rua {
 			;
 		}
 
-		class coro_joiner {
+		class coro {
 			public:
-				using native_handle_t = _fiber_t;
-
-				constexpr coro_joiner(native_handle_t fiber = nullptr) : _fiber(fiber), _joinable(fiber ? true : false) {}
-
-				~coro_joiner() {
-					reset();
-				}
-
-				coro_joiner(const coro_joiner &) = default;
-
-				coro_joiner &operator=(const coro_joiner &) = default;
-
-				coro_joiner(coro_joiner &&src) : _fiber(src._fiber), _joinable(src._joinable) {
-					if (src) {
-						src.reset();
-					}
-				}
-
-				coro_joiner &operator=(coro_joiner &&src) {
-					if (src) {
-						_fiber = src._fiber;
-						_joinable = true;
-						src.reset();
+				static coro from_this_thread() {
+					_ctx_t *cur_ctx;
+					if (fls::valid()) {
+						cur_ctx = _fls_ctx().get().to<_ctx_t *>();
+						if (!cur_ctx) {
+							cur_ctx = new _ctx_t{
+								{2},
+								{true},
+								{false},
+								_this_fiber(),
+								nullptr,
+								nullptr
+							};
+							_fls_ctx().set(cur_ctx);
+						} else {
+							++cur_ctx->use_count;
+						}
 					} else {
-						reset();
+						cur_ctx = _tls_ctx().get().to<_ctx_t *>();
+						if (!cur_ctx) {
+							cur_ctx = new _ctx_t{
+								{2},
+								{true},
+								{false},
+								_this_fiber(),
+								nullptr,
+								nullptr
+							};
+							_tls_ctx().set(cur_ctx);
+						} else {
+							++cur_ctx->use_count;
+						}
 					}
-					return *this;
+					return cur_ctx;
 				}
 
-				native_handle_t native_handle() const {
-					return _fiber;
-				}
+				using native_handle_t = _fiber_t;
+				using id_t = void *;
 
-				bool joinable() const {
-					return _joinable;
-				}
-
-				operator bool() const {
-					return _joinable;
-				}
-
-				void join() {
-					assert(_joinable);
-
-					_joinable = false;
-					_this_fiber();
-					SwitchToFiber(_fiber);
-				}
-
-				void join(coro_joiner &get_cur) {
-					assert(_joinable);
-
-					_joinable = false;
-					get_cur = _this_fiber();
-					SwitchToFiber(_fiber);
-				}
-
-				template <typename... A>
-				void operator()(A&&... a) const {
-					return join(std::forward<A>(a)...);
-				}
-
-				void reset() {
-					if (!*this) {
-						return;
-					}
-					_fiber = nullptr;
-					_joinable = false;
-				}
-
-			private:
-				native_handle_t _fiber;
-				bool _joinable;
-		};
-
-		class coro : public coro_joiner {
-			public:
-				using joiner_t = coro_joiner;
+				constexpr coro() : _ctx(nullptr) {}
 
 				static constexpr size_t default_stack_size = 0;
 
-				constexpr coro() : coro_joiner(), _func() {}
-
-				coro(std::function<void()> func, size_t stack_size = default_stack_size) : _func(new decltype(func)(std::move(func))) {
-					reinterpret_cast<coro_joiner &>(*this) = _new_fiber(
+				coro(std::function<void()> start, size_t stack_size = default_stack_size) : _ctx(
+					new _ctx_t{
+						{1},
+						{true},
+						{false},
+						nullptr,
+						std::move(start),
+						nullptr
+					}
+				) {
+					_ctx->fiber = _new_fiber(
 						stack_size,
 						reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func),
-						reinterpret_cast<LPVOID>(_func.get())
+						reinterpret_cast<LPVOID>(_ctx)
 					);
 				}
 
@@ -144,30 +115,180 @@ namespace rua {
 					reset();
 				}
 
-				coro(const coro &) = delete;
+				coro(const coro &src) : _ctx(src._ctx) {
+					if (_ctx) {
+						++_ctx->use_count;
+					}
+				}
 
-				coro &operator=(const coro &) = delete;
+				coro &operator=(const coro &src) {
+					reset();
+					if (src._ctx) {
+						++src._ctx->use_count;
+						_ctx = src._ctx;
+					}
+					return *this;
+				}
 
-				coro(coro &&src) = default;
+				coro(coro &&src) : _ctx(src._ctx) {
+					if (src._ctx) {
+						src._ctx = nullptr;
+					}
+				}
 
-				coro &operator=(coro &&src) = default;
+				coro &operator=(coro &&src) {
+					reset();
+					if (src._ctx) {
+						_ctx = src._ctx;
+						src._ctx = nullptr;
+					}
+					return *this;
+				}
 
 				operator bool() const {
-					return _func.get();
+					return _ctx;
+				}
+
+				native_handle_t native_handle() const {
+					return _ctx->fiber;
+				}
+
+				id_t id() const {
+					return _ctx;
+				}
+
+				bool joinable() const {
+					return _ctx->joinable;
+				}
+
+				bool join() {
+					if (!_ctx->joinable.exchange(false)) {
+						return false;
+					}
+					++_ctx->use_count;
+					_join();
+					return true;
+				}
+
+				bool operator()() {
+					return join();
+				}
+
+				bool join_and_detach() {
+					if (!_ctx->joinable.exchange(false)) {
+						return false;
+					}
+					_join();
+					_ctx = nullptr;
+					return true;
 				}
 
 				void reset() {
-					DeleteFiber(native_handle());
-					coro_joiner::reset();
-					_func.reset();
+					if (!_ctx) {
+						return;
+					}
+					if (!--_ctx) {
+						if (!--_ctx->use_count) {
+							_del(_ctx);
+						}
+					}
+					_ctx = nullptr;
 				}
 
-			protected:
-				std::unique_ptr<std::function<void()>> _func;
+			private:
+				struct _ctx_t {
+					std::atomic<size_t> use_count;
+					std::atomic<bool> joinable, exited;
+					native_handle_t fiber;
+					std::function<void()> start;
+					_ctx_t *joiner;
 
-				static void WINAPI _fiber_func(std::function<void()> *_func) {
-					(*_func)();
-					exit(0);
+					void handle_joiner() {
+						if (!joiner) {
+							return;
+						}
+						if (!joiner->exited) {
+							joiner->joinable = true;
+						} else if (!--joiner->use_count) {
+							_del(joiner);
+							joiner = nullptr;
+						}
+					}
+				};
+
+				_ctx_t *_ctx;
+
+				coro(_ctx_t *ctx) : _ctx(ctx) {}
+
+				void _join() {
+					_ctx_t *cur_ctx;
+
+					if (fls::valid()) {
+						cur_ctx = _fls_ctx().get().to<_ctx_t *>();
+						if (!cur_ctx) {
+							cur_ctx = new _ctx_t{
+								{1},
+								{false},
+								{false},
+								_this_fiber(),
+								nullptr,
+								nullptr
+							};
+						}
+					} else {
+						cur_ctx = _tls_ctx().get().to<_ctx_t *>();
+						if (!cur_ctx) {
+							cur_ctx = new _ctx_t{
+								{1},
+								{false},
+								{false},
+								_this_fiber(),
+								nullptr,
+								nullptr
+							};
+						}
+						_tls_ctx().set(_ctx);
+					}
+
+					// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
+					_ctx->joiner = cur_ctx;
+					SwitchToFiber(_ctx->fiber);
+
+					// on back
+					cur_ctx->handle_joiner();
+				}
+
+				static void _del(_ctx_t *_ctx) {
+					DeleteFiber(_ctx->fiber);
+					delete _ctx;
+				}
+
+				static tls &_tls_ctx() {
+					static tls inst;
+					return inst;
+				}
+
+				static fls &_fls_ctx() {
+					static fls inst;
+					return inst;
+				}
+
+				static void WINAPI _fiber_func(_ctx_t *cur_ctx) {
+					if (fls::valid()) {
+						_fls_ctx().set(cur_ctx);
+					}
+					cur_ctx->handle_joiner();
+					cur_ctx->start();
+					cur_ctx->exited = true;
+					if (cur_ctx->joiner && cur_ctx->joinable.exchange(false)) {
+						// A cur_ctx->use_count ownership form cur_ctx move to cur_ctx->joiner->joiner.
+						cur_ctx->joiner->joiner = cur_ctx;
+						SwitchToFiber(cur_ctx->joiner);
+					}
+					if (!--cur_ctx->use_count) {
+						// DeleteFiber(cur_ctx->fiber) by OS
+						delete cur_ctx;
+					}
 				}
 		};
 	}

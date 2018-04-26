@@ -205,13 +205,8 @@ namespace rua {
 
 						tsk->state = _task_info_t::state_t::deleted;
 
-						if (tsk->sleeping && tsk->sleep_info.cojo) {
-							for (auto it = _cos.begin(); it != _cos.end(); ++it) {
-								if (tsk->sleep_info.cojo.id() == it->id()) {
-									_cos.erase(it);
-									break;
-								}
-							}
+						if (tsk->sleeping && tsk->sleep_info.co) {
+							tsk->sleep_info.co.reset();
 						}
 
 						_tasks.erase(tsk->it);
@@ -299,7 +294,8 @@ namespace rua {
 						if (_notify_all.exchange(false)) {
 							notify_all();
 						}
-						_join_new_task_co(_main_cojo);
+						_main_co = Coro::from_this_thread();
+						_join_new_task_co();
 					}
 				}
 
@@ -313,11 +309,11 @@ namespace rua {
 					return !size();
 				}
 
-				size_t coro_total() const {
+				/*size_t coro_total() const {
 					assert(this_thread_is_binded());
 
 					return _cos.size();
-				}
+				}*/
 
 				void exit() {
 					assert(this_thread_is_binded());
@@ -390,10 +386,9 @@ namespace rua {
 				bool _life, _exit_on_empty, _running;
 
 				size_t _co_stk_sz;
-				std::list<Coro> _cos;
 
-				typename Coro::joiner_t _main_cojo;
-				std::stack<typename Coro::joiner_t> _idle_cos;
+				Coro _main_co;
+				std::stack<Coro> _idle_cos;
 
 				using _task_list_t = std::list<task>;
 
@@ -427,7 +422,7 @@ namespace rua {
 						_time_point wake_time;
 						std::mutex *cv_lock;
 						std::atomic<bool> cv_notified;
-						typename Coro::joiner_t cojo;
+						Coro co;
 					} sleep_info;
 
 					bool sleeping;
@@ -470,23 +465,24 @@ namespace rua {
 					if (is_running() && tsk.get() == _tasks_it->get()) {
 						tsk.reset();
 						_running = false;
-						_join_new_task_co((*_tasks_it++)->sleep_info.cojo);
+						(*_tasks_it++)->sleep_info.co = Coro::from_this_thread();
+						_join_new_task_co();
 					}
 				}
 
 				void _wake() {
 					(*_tasks_it)->sleeping = false;
 
-					if ((*_tasks_it)->sleep_info.cojo) {
+					if ((*_tasks_it)->sleep_info.co) {
 						_running = true;
-						_idle_cos.emplace();
-						(*_tasks_it)->sleep_info.cojo.join(_idle_cos.top());
+						_idle_cos.emplace(Coro::from_this_thread());
+						(*_tasks_it)->sleep_info.co.join_and_detach();
 					}
 				}
 
-				void _join_new_task_co(typename Coro::joiner_t &get_cur_cojo) {
+				void _join_new_task_co() {
 					if (_idle_cos.empty()) {
-						_cos.emplace_back([this]() {
+						Coro([this]() {
 							for (;;) {
 								while (_life && (_exit_on_empty ? size() : true)) {
 									if (_tasks_it == _tasks.end()) {
@@ -559,15 +555,14 @@ namespace rua {
 										++_tasks_it;
 									}
 								}
-								_idle_cos.emplace();
-								_main_cojo.join(_idle_cos.top());
+								_idle_cos.emplace(Coro::from_this_thread());
+								_main_co.join();
 							}
-						}, _co_stk_sz);
-						_cos.back().join(get_cur_cojo);
+						}, _co_stk_sz).join_and_detach();
 					} else {
-						auto cojo = std::move(_idle_cos.top());
+						auto co = std::move(_idle_cos.top());
 						_idle_cos.pop();
-						cojo.join(get_cur_cojo);
+						co.join_and_detach();
 					}
 				}
 		};
