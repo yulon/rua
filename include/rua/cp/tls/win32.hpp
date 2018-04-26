@@ -127,9 +127,7 @@ namespace rua {
 
 				tls(native_handle_t index) : _ix(index) {}
 
-				tls() : _ix(TlsAlloc()) {
-					assert(!fls::valid());
-				}
+				tls() : _ix(TlsAlloc()) {}
 
 				~tls() {
 					free();
