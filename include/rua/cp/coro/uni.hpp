@@ -205,9 +205,10 @@ namespace rua {
 						cur_ctx->handle_joiner();
 						cur_ctx->start();
 						cur_ctx->exited = true;
-						if (cur_ctx->joiner && cur_ctx->joinable.exchange(false)) {
+						if (cur_ctx->joiner && cur_ctx->joiner->joinable.exchange(false)) {
 							// A cur_ctx->use_count ownership form cur_ctx move to cur_ctx->joiner->joiner.
 							cur_ctx->joiner->joiner = cur_ctx;
+							_tls_ctx().set(cur_ctx->joiner);
 							cur_ctx->joiner->cnt.pop();
 						}
 						assert(--cur_ctx->use_count); // There is no way to delete cur_ctx->stack.

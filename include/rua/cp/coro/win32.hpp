@@ -206,12 +206,7 @@ namespace rua {
 							if (!joiner) {
 								return;
 							}
-							if (!joiner->exited) {
-								joiner->joinable = true;
-							} else if (!--joiner->use_count) {
-								_del(joiner);
-								joiner = nullptr;
-							}
+							joiner->joinable = true;
 						}
 					};
 
@@ -279,10 +274,14 @@ namespace rua {
 						cur_ctx->handle_joiner();
 						cur_ctx->start();
 						cur_ctx->exited = true;
-						if (cur_ctx->joiner && cur_ctx->joinable.exchange(false)) {
+
+						if (cur_ctx->joiner && cur_ctx->joiner->joinable.exchange(false)) {
 							// A cur_ctx->use_count ownership form cur_ctx move to cur_ctx->joiner->joiner.
 							cur_ctx->joiner->joiner = cur_ctx;
-							SwitchToFiber(cur_ctx->joiner);
+							if (!fls::valid()) {
+								_tls_ctx().set(cur_ctx->joiner);
+							}
+							SwitchToFiber(cur_ctx->joiner->fiber);
 						}
 						if (!--cur_ctx->use_count) {
 							// DeleteFiber(cur_ctx->fiber) by OS
