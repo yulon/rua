@@ -21,24 +21,33 @@
 #ifdef __cpp_constexpr
 	#if __cpp_constexpr >= 200704
 		#define RUA_CONSTEXPR_SUPPORTED
-		#define RUA_CONSTEXPR constexpr
-	#else
-		#define RUA_CONSTEXPR
 	#endif
 
 	#if __cpp_constexpr >= 201304
 		#define RUA_CONSTEXPR_14_SUPPORTED
-		#define RUA_CONSTEXPR_14 constexpr
-	#else
-		#define RUA_CONSTEXPR_14
 	#endif
 
 	#if __cpp_constexpr >= 201603
 		#define RUA_CONSTEXPR_LM_SUPPORTED
-		#define RUA_CONSTEXPR_LM constexpr
-	#else
-		#define RUA_CONSTEXPR_LM
 	#endif
+#endif
+
+#ifdef RUA_CONSTEXPR_SUPPORTED
+	#define RUA_CONSTEXPR constexpr
+#else
+	#define RUA_CONSTEXPR
+#endif
+
+#ifdef RUA_CONSTEXPR_14_SUPPORTED
+	#define RUA_CONSTEXPR_14 constexpr
+#else
+	#define RUA_CONSTEXPR_14
+#endif
+
+#ifdef RUA_CONSTEXPR_LM_SUPPORTED
+	#define RUA_CONSTEXPR_LM constexpr
+#else
+	#define RUA_CONSTEXPR_LM
 #endif
 
 #ifdef __cpp_if_constexpr
