@@ -28,6 +28,8 @@ namespace rua {
 			public:
 				cont() = default;
 
+				cont(std::nullptr_t) : cont() {}
+
 				cont(void (*func)(any_word), any_word func_param, any_ptr stack, size_t stack_size) {
 					remake(func, func_param, stack, stack_size);
 				}
