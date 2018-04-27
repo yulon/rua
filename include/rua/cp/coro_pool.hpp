@@ -556,7 +556,7 @@ namespace rua {
 									}
 								}
 								_idle_cos.emplace(Coro::from_this_thread());
-								_main_co.join();
+								_main_co.join_and_detach();
 							}
 						}, _co_stk_sz).join_and_detach();
 					} else {

@@ -167,7 +167,7 @@ namespace rua {
 							return false;
 						}
 						++_ctx->use_count;
-						_join();
+						_join(_ctx);
 						return true;
 					}
 
@@ -181,8 +181,9 @@ namespace rua {
 						if (!_ctx->joinable.exchange(false)) {
 							return false;
 						}
-						_join();
+						auto ctx = _ctx;
 						_ctx = nullptr;
+						_join(ctx);
 						return true;
 					}
 
@@ -222,7 +223,7 @@ namespace rua {
 
 					coro(_ctx_t *ctx) : _ctx(ctx) {}
 
-					void _join() {
+					static void _join(_ctx_t *_ctx) {
 						_ctx_t *cur_ctx;
 
 						if (fls::valid()) {
@@ -236,6 +237,7 @@ namespace rua {
 									nullptr,
 									nullptr
 								};
+								_fls_ctx().set(cur_ctx);
 							}
 						} else {
 							cur_ctx = _tls_ctx().get().to<_ctx_t *>();
