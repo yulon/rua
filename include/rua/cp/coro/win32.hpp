@@ -161,6 +161,8 @@ namespace rua {
 					}
 
 					bool join() {
+						assert(_ctx);
+
 						if (!_ctx->joinable.exchange(false)) {
 							return false;
 						}
@@ -174,6 +176,8 @@ namespace rua {
 					}
 
 					bool join_and_detach() {
+						assert(_ctx);
+
 						if (!_ctx->joinable.exchange(false)) {
 							return false;
 						}
@@ -186,10 +190,9 @@ namespace rua {
 						if (!_ctx) {
 							return;
 						}
-						if (!--_ctx) {
-							if (!--_ctx->use_count) {
-								_del(_ctx);
-							}
+						assert(_ctx->use_count);
+						if (!--_ctx->use_count) {
+							_del(_ctx);
 						}
 						_ctx = nullptr;
 					}
@@ -206,7 +209,12 @@ namespace rua {
 							if (!joiner) {
 								return;
 							}
-							joiner->joinable = true;
+							if (!joiner->exited) {
+								joiner->joinable = true;
+							} else if (!--joiner->use_count) {
+								_del(joiner);
+								joiner = nullptr;
+							}
 						}
 					};
 
@@ -253,6 +261,8 @@ namespace rua {
 					}
 
 					static void _del(_ctx_t *_ctx) {
+						assert(!_ctx->use_count);
+
 						DeleteFiber(_ctx->fiber);
 						delete _ctx;
 					}

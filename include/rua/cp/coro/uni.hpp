@@ -106,6 +106,8 @@ namespace rua {
 					}
 
 					bool join() {
+						assert(_ctx);
+
 						if (!_ctx->joinable.exchange(false)) {
 							return false;
 						}
@@ -119,6 +121,8 @@ namespace rua {
 					}
 
 					bool join_and_detach() {
+						assert(_ctx);
+
 						if (!_ctx->joinable.exchange(false)) {
 							return false;
 						}
@@ -131,10 +135,9 @@ namespace rua {
 						if (!_ctx) {
 							return;
 						}
-						if (!--_ctx) {
-							if (!--_ctx->use_count) {
-								_del(_ctx);
-							}
+						assert(_ctx->use_count);
+						if (!--_ctx->use_count) {
+							_del(_ctx);
 						}
 						_ctx = nullptr;
 					}
@@ -189,6 +192,8 @@ namespace rua {
 					}
 
 					static void _del(_ctx_t *_ctx) {
+						assert(!_ctx->use_count);
+
 						if (_ctx->stack) {
 							delete _ctx->stack;
 						}
