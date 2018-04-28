@@ -89,16 +89,6 @@
 
 #if RUA_CPP >= RUA_CPP_17 || (defined(_MSC_VER) && _MSC_VER >= 1910)
 	#define RUA_FALLTHROUGH [[fallthrough]]
-#elif defined(__GNUC__)
-	#if RUA_CPP >= RUA_CPP_11
-		#ifdef __clang__
-			#define RUA_FALLTHROUGH [[clang::fallthrough]]
-		#else
-			#define RUA_FALLTHROUGH [[gnu::fallthrough]]
-		#endif
-	#else
-		#define RUA_FALLTHROUGH __attribute__((fallthrough))
-	#endif
 #else
 	#define RUA_FALLTHROUGH
 #endif
