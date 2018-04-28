@@ -31,7 +31,9 @@ workspace "nob"
 		language "C++"
 		cppdialect "C++11"
 		kind "ConsoleApp"
-		links { "gtest" }
 		files {
 			"test/*.cpp"
 		}
+		links { "gtest" }
+		configuration { "linux" }
+			links { "pthread" }
