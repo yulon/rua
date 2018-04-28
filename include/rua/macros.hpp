@@ -132,7 +132,7 @@
 #endif
 
 #if defined(_WIN64) || (defined(RUA_AMD64) && defined(__CYGWIN__))
-	#define RUA_WIN64_FASTCALL
+	#define RUA_MS64_FASTCALL
 #endif
 
 #endif
