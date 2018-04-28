@@ -30,5 +30,32 @@ mov [rcx+136], r15
 stmxcsr [rcx+144]
 fnstenv [rcx+148]
 
+; load NT_TIB
+; mov r10, [gs:030h] ; I'm using FASM was unable to output correct code.
+mov rax, 030h
+mov r10, [gs:rax]
+
+; fiber local storage
+mov rax, [r10+020h]
+mov [rcx+176], rax
+
+; deallocation stack
+mov rax, [r10+01478h]
+mov [rcx+184], rax
+
+; stack limit
+mov rax, [r10+010h]
+mov [rcx+192], rax
+
+; stack base
+mov rax, [r10+008h]
+mov [rcx+200], rax
+
+; exception list
+mov rax, [r10]
+mov [rcx+208], rax
+
+mov r10, [rcx+96]
+
 mov rax, 1
 ret
