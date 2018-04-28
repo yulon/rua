@@ -87,7 +87,17 @@
 	#define RUA_STATIC_ASSERT(cond) assert(cond)
 #endif
 
-#if RUA_CPP >= RUA_CPP_17 || (defined(_MSC_VER) && _MSC_VER >= 1910)
+#if defined(__has_cpp_attribute)
+	#if __has_cpp_attribute(fallthrough)
+		#define RUA_FALLTHROUGH [[fallthrough]]
+	#elif __has_cpp_attribute(gnu::fallthrough)
+		#define RUA_FALLTHROUGH [[gnu::fallthrough]]
+	#elif __has_cpp_attribute(clang::fallthrough)
+		#define RUA_FALLTHROUGH [[clang::fallthrough]]
+	#else
+		#define RUA_FALLTHROUGH
+	#endif
+#elif RUA_CPP >= RUA_CPP_17 || (defined(_MSC_VER) && _MSC_VER >= 1910)
 	#define RUA_FALLTHROUGH [[fallthrough]]
 #else
 	#define RUA_FALLTHROUGH
