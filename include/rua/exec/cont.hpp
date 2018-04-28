@@ -186,7 +186,7 @@ namespace rua {
 
 							uintptr_t &caller_param() {
 								return
-									#ifdef RUA_WIN64_FASTCALL
+									#ifdef RUA_MS64_FASTCALL
 										c
 									#else
 										di
@@ -196,7 +196,7 @@ namespace rua {
 
 							uintptr_t caller_param() const {
 								return
-									#ifdef RUA_WIN64_FASTCALL
+									#ifdef RUA_MS64_FASTCALL
 										c
 									#else
 										d
