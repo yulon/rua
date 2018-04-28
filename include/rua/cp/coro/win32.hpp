@@ -153,7 +153,7 @@ namespace rua {
 					}
 
 					native_handle_t native_handle() const {
-						return _ctx->fiber;
+						return _ctx ? _ctx->fiber : nullptr;
 					}
 
 					id_t id() const {
@@ -275,10 +275,12 @@ namespace rua {
 					}
 
 					static void WINAPI _fiber_start(_ctx_t *cur_ctx) {
+						assert(cur_ctx);
 						if (fls::valid()) {
 							_fls_ctx().set(cur_ctx);
 						}
 						cur_ctx->handle_joiner();
+						assert(cur_ctx->start);
 						cur_ctx->start();
 						cur_ctx->exited = true;
 						if (!--cur_ctx->use_count) {

@@ -1,8 +1,14 @@
-#ifndef _RUA_CP_CORO_UNI_HPP
-#define _RUA_CP_CORO_UNI_HPP
+#ifndef _RUA_CP_CORO_UC_HPP
+#define _RUA_CP_CORO_UC_HPP
 
-#include "../../exec/cont.hpp"
+#ifndef __unix__
+	#error rua::cp::uc::coro: not supported this platform!
+#endif
+
+#include "../../gnc/any_ptr.hpp"
 #include "../tls.hpp"
+
+#include <ucontext.h>
 
 #include <functional>
 #include <atomic>
@@ -11,7 +17,7 @@
 
 namespace rua {
 	namespace cp {
-		namespace uni {
+		namespace uc {
 			class coro {
 				public:
 					static coro from_this_thread() {
@@ -22,7 +28,7 @@ namespace rua {
 								{2},
 								{true},
 								{false},
-								nullptr,
+								{},
 								nullptr,
 								nullptr,
 								nullptr
@@ -34,7 +40,7 @@ namespace rua {
 						return cur_ctx;
 					}
 
-					using native_handle_t = void *;
+					using native_handle_t = ucontext_t *;
 					using id_t = void *;
 
 					constexpr coro() : _ctx(nullptr) {}
@@ -51,12 +57,17 @@ namespace rua {
 							{1},
 							{true},
 							{false},
-							nullptr,
+							{},
 							new uint8_t[stack_size],
 							std::move(start),
 							nullptr
 						};
-						_ctx->cnt.remake(&_cont_start, _ctx, _ctx->stack, stack_size);
+						getcontext(&_ctx->uc);
+						_ctx->uc.uc_stack.ss_sp = _ctx->stack;
+						_ctx->uc.uc_stack.ss_size = stack_size;
+						_ctx->uc.uc_stack.ss_flags = 0;
+						_ctx->uc.uc_link = nullptr;
+						makecontext(&_ctx->uc, any_ptr(&_cont_start), 1, _ctx);
 					}
 
 					~coro() {
@@ -98,7 +109,7 @@ namespace rua {
 					}
 
 					native_handle_t native_handle() const {
-						return nullptr;
+						return _ctx ? &_ctx->uc : nullptr;
 					}
 
 					id_t id() const {
@@ -151,7 +162,7 @@ namespace rua {
 					struct _ctx_t {
 						std::atomic<size_t> use_count;
 						std::atomic<bool> joinable, exited;
-						exec::cont cnt;
+						ucontext_t uc;
 						uint8_t *stack;
 						std::function<void()> start;
 						_ctx_t *joiner;
@@ -179,13 +190,13 @@ namespace rua {
 						_tls_ctx().set(_ctx);
 
 						if (!cur_ctx) {
-							_ctx->cnt.pop();
+							setcontext(&_ctx->uc);
 							return;
 						}
 
 						// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
 						_ctx->joiner = cur_ctx;
-						cur_ctx->cnt.push_and_pop(_ctx->cnt);
+						swapcontext(&cur_ctx->uc, &_ctx->uc);
 
 						// on back
 						cur_ctx->handle_joiner();

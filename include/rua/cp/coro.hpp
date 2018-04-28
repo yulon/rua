@@ -10,6 +10,13 @@
 			using coro = win32::coro;
 		}
 	}
+#elif defined(__unix__)
+	#include "coro/uc.hpp"
+	namespace rua {
+		namespace cp {
+			using coro = uc::coro;
+		}
+	}
 #else
 	namespace rua {
 		namespace cp {
