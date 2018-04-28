@@ -91,27 +91,31 @@ namespace rua {
 
 					constexpr coro() : _ctx(nullptr) {}
 
+					constexpr coro(std::nullptr_t) : coro() {}
+
 					static constexpr size_t default_stack_size = 0;
 
-					coro(std::function<void()> start, size_t stack_size = default_stack_size) : _ctx(
-						new _ctx_t{
+					coro(std::function<void()> start, size_t stack_size = default_stack_size) {
+						if (!start) {
+							return;
+						}
+						_ctx = new _ctx_t{
 							{1},
 							{true},
 							{false},
 							nullptr,
 							std::move(start),
 							nullptr
-						}
-					) {
+						};
 						_ctx->fiber = _new_fiber(
 							stack_size,
-							reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_func),
+							reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_start),
 							reinterpret_cast<LPVOID>(_ctx)
 						);
 					}
 
 					~coro() {
-						reset();
+						detach();
 					}
 
 					coro(const coro &src) : _ctx(src._ctx) {
@@ -121,7 +125,7 @@ namespace rua {
 					}
 
 					coro &operator=(const coro &src) {
-						reset();
+						detach();
 						if (src._ctx) {
 							++src._ctx->use_count;
 							_ctx = src._ctx;
@@ -136,7 +140,7 @@ namespace rua {
 					}
 
 					coro &operator=(coro &&src) {
-						reset();
+						detach();
 						if (src._ctx) {
 							_ctx = src._ctx;
 							src._ctx = nullptr;
@@ -187,7 +191,7 @@ namespace rua {
 						return true;
 					}
 
-					void reset() {
+					void detach() {
 						if (!_ctx) {
 							return;
 						}
@@ -210,12 +214,13 @@ namespace rua {
 							if (!joiner) {
 								return;
 							}
-							if (!joiner->exited) {
-								joiner->joinable = true;
-							} else if (!--joiner->use_count) {
+							assert(joiner->use_count);
+							if (!--joiner->use_count) {
 								_del(joiner);
-								joiner = nullptr;
+							} else {
+								joiner->joinable = true;
 							}
+							joiner = nullptr;
 						}
 					};
 
@@ -228,30 +233,20 @@ namespace rua {
 
 						if (fls::valid()) {
 							cur_ctx = _fls_ctx().get().to<_ctx_t *>();
-							if (!cur_ctx) {
-								cur_ctx = new _ctx_t{
-									{1},
-									{false},
-									{false},
-									_this_fiber(),
-									nullptr,
-									nullptr
-								};
-								_fls_ctx().set(cur_ctx);
-							}
 						} else {
 							cur_ctx = _tls_ctx().get().to<_ctx_t *>();
-							if (!cur_ctx) {
-								cur_ctx = new _ctx_t{
-									{1},
-									{false},
-									{false},
-									_this_fiber(),
-									nullptr,
-									nullptr
-								};
-							}
 							_tls_ctx().set(_ctx);
+						}
+
+						if (!cur_ctx) {
+							cur_ctx = new _ctx_t{
+								{1},
+								{false},
+								{false},
+								_this_fiber(),
+								nullptr,
+								nullptr
+							};
 						}
 
 						// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
@@ -279,22 +274,13 @@ namespace rua {
 						return inst;
 					}
 
-					static void WINAPI _fiber_func(_ctx_t *cur_ctx) {
+					static void WINAPI _fiber_start(_ctx_t *cur_ctx) {
 						if (fls::valid()) {
 							_fls_ctx().set(cur_ctx);
 						}
 						cur_ctx->handle_joiner();
 						cur_ctx->start();
 						cur_ctx->exited = true;
-
-						if (cur_ctx->joiner && cur_ctx->joiner->joinable.exchange(false)) {
-							// A cur_ctx->use_count ownership form cur_ctx move to cur_ctx->joiner->joiner.
-							cur_ctx->joiner->joiner = cur_ctx;
-							if (!fls::valid()) {
-								_tls_ctx().set(cur_ctx->joiner);
-							}
-							SwitchToFiber(cur_ctx->joiner->fiber);
-						}
 						if (!--cur_ctx->use_count) {
 							// DeleteFiber(cur_ctx->fiber) by OS
 							delete cur_ctx;

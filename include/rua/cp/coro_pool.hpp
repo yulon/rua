@@ -206,7 +206,7 @@ namespace rua {
 						tsk->state = _task_info_t::state_t::deleted;
 
 						if (tsk->sleeping && tsk->sleep_info.co) {
-							tsk->sleep_info.co.reset();
+							tsk->sleep_info.co.detach();
 						}
 
 						_tasks.erase(tsk->it);

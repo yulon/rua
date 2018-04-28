@@ -39,10 +39,15 @@ namespace rua {
 
 					constexpr coro() : _ctx(nullptr) {}
 
+					constexpr coro(std::nullptr_t) : coro() {}
+
 					static constexpr size_t default_stack_size = 0;
 
-					coro(std::function<void()> start, size_t stack_size = default_stack_size) : _ctx(
-						new _ctx_t{
+					coro(std::function<void()> start, size_t stack_size = default_stack_size) {
+						if (!start) {
+							return;
+						}
+						_ctx = new _ctx_t{
 							{1},
 							{true},
 							{false},
@@ -50,13 +55,12 @@ namespace rua {
 							new uint8_t[stack_size],
 							std::move(start),
 							nullptr
-						}
-					) {
-						_ctx->cnt.remake(&_cont_func, _ctx, _ctx->stack, stack_size);
+						};
+						_ctx->cnt.remake(&_cont_start, _ctx, _ctx->stack, stack_size);
 					}
 
 					~coro() {
-						reset();
+						detach();
 					}
 
 					coro(const coro &src) : _ctx(src._ctx) {
@@ -66,7 +70,7 @@ namespace rua {
 					}
 
 					coro &operator=(const coro &src) {
-						reset();
+						detach();
 						if (src._ctx) {
 							++src._ctx->use_count;
 							_ctx = src._ctx;
@@ -81,7 +85,7 @@ namespace rua {
 					}
 
 					coro &operator=(coro &&src) {
-						reset();
+						detach();
 						if (src._ctx) {
 							_ctx = src._ctx;
 							src._ctx = nullptr;
@@ -132,7 +136,7 @@ namespace rua {
 						return true;
 					}
 
-					void reset() {
+					void detach() {
 						if (!_ctx) {
 							return;
 						}
@@ -156,12 +160,13 @@ namespace rua {
 							if (!joiner) {
 								return;
 							}
-							if (!joiner->exited) {
-								joiner->joinable = true;
-							} else if (!--joiner->use_count) {
+							assert(joiner->use_count);
+							if (!--joiner->use_count) {
 								_del(joiner);
-								joiner = nullptr;
+							} else {
+								joiner->joinable = true;
 							}
+							joiner = nullptr;
 						}
 					};
 
@@ -171,21 +176,12 @@ namespace rua {
 
 					static void _join(_ctx_t *_ctx) {
 						_ctx_t *cur_ctx = _tls_ctx().get().to<_ctx_t *>();
-						if (!cur_ctx) {
-							cur_ctx = new _ctx_t{
-								{1},
-								{false},
-								{false},
-								nullptr,
-								nullptr,
-								nullptr,
-								nullptr
-							};
-						}
 						_tls_ctx().set(_ctx);
 
-						// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
-						_ctx->joiner = cur_ctx;
+						if (cur_ctx) {
+							// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
+							_ctx->joiner = cur_ctx;
+						}
 						cur_ctx->cnt.push_and_pop(_ctx->cnt);
 
 						// on back
@@ -206,18 +202,13 @@ namespace rua {
 						return inst;
 					}
 
-					static void _cont_func(any_word _cur_ctx) {
+					static void _cont_start(any_word _cur_ctx) {
 						auto cur_ctx = _cur_ctx.to<_ctx_t *>();
 						cur_ctx->handle_joiner();
 						cur_ctx->start();
 						cur_ctx->exited = true;
-						if (cur_ctx->joiner && cur_ctx->joiner->joinable.exchange(false)) {
-							// A cur_ctx->use_count ownership form cur_ctx move to cur_ctx->joiner->joiner.
-							cur_ctx->joiner->joiner = cur_ctx;
-							_tls_ctx().set(cur_ctx->joiner);
-							cur_ctx->joiner->cnt.pop();
-						}
-						assert(--cur_ctx->use_count); // There is no way to delete cur_ctx->stack.
+						assert(cur_ctx->use_count == 1); // There is no way to delete cur_ctx->stack.
+						--cur_ctx->use_count;
 					}
 			};
 		}
