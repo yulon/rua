@@ -3,7 +3,13 @@
 
 #include "coro/uni.hpp"
 
-#if defined(_WIN32) && !defined(RUA_CP_CORO_USING_UNI_IMPL)
+#ifdef RUA_CP_CORO_USING_UNI_IMPL
+	namespace rua {
+		namespace cp {
+			using coro = uni::coro;
+		}
+	}
+#elif defined(_WIN32)
 	#include "coro/win32.hpp"
 	namespace rua {
 		namespace cp {

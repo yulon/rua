@@ -55,14 +55,7 @@ namespace rua {
 						if (fls::valid()) {
 							cur_ctx = _fls_ctx().get().to<_ctx_t *>();
 							if (!cur_ctx) {
-								cur_ctx = new _ctx_t{
-									{2},
-									{true},
-									{false},
-									_this_fiber(),
-									nullptr,
-									nullptr
-								};
+								cur_ctx = new _ctx_t;
 								_fls_ctx().set(cur_ctx);
 							} else {
 								++cur_ctx->use_count;
@@ -70,14 +63,7 @@ namespace rua {
 						} else {
 							cur_ctx = _tls_ctx().get().to<_ctx_t *>();
 							if (!cur_ctx) {
-								cur_ctx = new _ctx_t{
-									{2},
-									{true},
-									{false},
-									_this_fiber(),
-									nullptr,
-									nullptr
-								};
+								cur_ctx = new _ctx_t;
 								_tls_ctx().set(cur_ctx);
 							} else {
 								++cur_ctx->use_count;
@@ -99,14 +85,7 @@ namespace rua {
 						if (!start) {
 							return;
 						}
-						_ctx = new _ctx_t{
-							{1},
-							{true},
-							{false},
-							nullptr,
-							std::move(start),
-							nullptr
-						};
+						_ctx = new _ctx_t(std::move(start));
 						_ctx->fiber = _new_fiber(
 							stack_size,
 							reinterpret_cast<LPFIBER_START_ROUTINE>(&_fiber_start),
@@ -210,6 +189,12 @@ namespace rua {
 						std::function<void()> start;
 						_ctx_t *joiner;
 
+						_ctx_t(size_t c = 2) : use_count(c), joinable(false), exited(false), fiber(_this_fiber()), joiner(nullptr) {}
+
+						_ctx_t(std::function<void()> &&st) :
+							use_count(1), joinable(true), exited(false), start(std::move(st)), joiner(nullptr)
+						{}
+
 						void handle_joiner() {
 							if (!joiner) {
 								return;
@@ -239,14 +224,7 @@ namespace rua {
 						}
 
 						if (!cur_ctx) {
-							cur_ctx = new _ctx_t{
-								{1},
-								{false},
-								{false},
-								_this_fiber(),
-								nullptr,
-								nullptr
-							};
+							cur_ctx = new _ctx_t(1);
 						}
 
 						// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.

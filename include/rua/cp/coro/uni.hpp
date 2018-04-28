@@ -18,15 +18,7 @@ namespace rua {
 						_ctx_t *cur_ctx;
 						cur_ctx = _tls_ctx().get().to<_ctx_t *>();
 						if (!cur_ctx) {
-							cur_ctx = new _ctx_t{
-								{2},
-								{true},
-								{false},
-								nullptr,
-								nullptr,
-								nullptr,
-								nullptr
-							};
+							cur_ctx = new _ctx_t;
 							_tls_ctx().set(cur_ctx);
 						} else {
 							++cur_ctx->use_count;
@@ -47,15 +39,7 @@ namespace rua {
 						if (!start) {
 							return;
 						}
-						_ctx = new _ctx_t{
-							{1},
-							{true},
-							{false},
-							nullptr,
-							new uint8_t[stack_size],
-							std::move(start),
-							nullptr
-						};
+						_ctx = new _ctx_t(new uint8_t[stack_size], std::move(start));
 						_ctx->cnt.remake(&_cont_start, _ctx, _ctx->stack, stack_size);
 					}
 
@@ -155,6 +139,12 @@ namespace rua {
 						uint8_t *stack;
 						std::function<void()> start;
 						_ctx_t *joiner;
+
+						_ctx_t() : use_count(2), joinable(false), exited(false), stack(nullptr), joiner(nullptr) {}
+
+						_ctx_t(uint8_t *sk, std::function<void()> &&st) :
+							use_count(1), joinable(true), exited(false), stack(sk), start(std::move(st)), joiner(nullptr)
+						{}
 
 						void handle_joiner() {
 							if (!joiner) {
