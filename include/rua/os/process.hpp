@@ -8,7 +8,7 @@
 //#elif defined(RUA_UNIX)
 	//#include "process/unix.hpp"
 #else
-	#error rua::process: not supported this platform!
+	#error rua::os::process: not supported this platform!
 #endif
 
 #endif
