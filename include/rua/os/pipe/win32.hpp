@@ -25,7 +25,7 @@ namespace rua {
 
 				basic_pipebuf(
 					const std::string &name,
-					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out,
+					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out | std::ios_base::trunc,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) {
 					_open(name, which, timeout);
@@ -37,23 +37,31 @@ namespace rua {
 
 				bool open(
 					const std::string &name,
-					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out,
+					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out | std::ios_base::trunc,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) {
 					close();
 					return _open(name, which, timeout);
 				}
 
-				bool create(
+				bool week_open(
 					const std::string &name,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) {
 					close();
-					return _open(name, std::ios_base::trunc | std::ios_base::in | std::ios_base::out, timeout);
+					return _open(name, std::ios_base::in | std::ios_base::out, timeout);
 				}
 
 				native_handle_t native_handle() const {
 					return _h;
+				}
+
+				bool is_open() const {
+					return _h;
+				}
+
+				operator bool() const {
+					return is_open();
 				}
 
 				void close() {
@@ -75,7 +83,11 @@ namespace rua {
 				virtual int uflow() {
 					CharT c;
 					DWORD w_sz;
-					return ReadFile(_h, &c, sizeof(CharT), &w_sz, nullptr) && w_sz == sizeof(CharT) ? c : Traits::eof();
+					if (!ReadFile(_h, &c, sizeof(CharT), &w_sz, nullptr) || w_sz != sizeof(CharT)) {
+						close();
+						return Traits::eof();
+					}
+					return c;
 				}
 
 				virtual std::streamsize xsgetn(CharT *s, std::streamsize size) {
@@ -83,6 +95,7 @@ namespace rua {
 					DWORD w_sz;
 					do {
 						if (!ReadFile(_h, s, size, &w_sz, nullptr)) {
+							close();
 							return size - need_sz;
 						}
 						need_sz -= w_sz;
@@ -91,9 +104,17 @@ namespace rua {
 				}
 
 				virtual int overflow(int ch = Traits::eof()) {
+					if (ch == Traits::eof()) {
+						close();
+						return Traits::eof();
+					}
 					CharT c = ch;
 					DWORD w_sz;
-					return WriteFile(_h, &c, sizeof(CharT), &w_sz, nullptr) && w_sz == sizeof(CharT) ? ch : Traits::eof();
+					if (!WriteFile(_h, &c, sizeof(CharT), &w_sz, nullptr) || w_sz != sizeof(CharT)) {
+						close();
+						return Traits::eof();
+					}
+					return c;
 				}
 
 				virtual std::streamsize xsputn(const CharT *s, std::streamsize size) {
@@ -101,6 +122,7 @@ namespace rua {
 					DWORD w_sz;
 					do {
 						if (!WriteFile(_h, s, size, &w_sz, nullptr)) {
+							close();
 							return size - need_sz;
 						}
 						need_sz -= w_sz;
@@ -120,11 +142,6 @@ namespace rua {
 					auto fmt_name = rua::u8_to_w("\\\\.\\pipe\\" + name);
 
 					if (WaitNamedPipeW(fmt_name.c_str(), timeout)) {
-						if ((which & std::ios_base::trunc) == std::ios_base::trunc) {
-							_h = nullptr;
-							return false;
-						}
-
 						DWORD om = 0;
 						if ((which & std::ios_base::in) == std::ios_base::in) {
 							om |= GENERIC_READ;
@@ -195,7 +212,7 @@ namespace rua {
 
 				basic_pipestream(
 					const std::string &name,
-					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out,
+					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out | std::ios_base::trunc,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) : _buf(name, which, timeout) {
 					this->init(&_buf);
@@ -205,21 +222,29 @@ namespace rua {
 
 				bool open(
 					const std::string &name,
-					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out,
+					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out | std::ios_base::trunc,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) {
 					return _buf.open(name, which, timeout);
 				}
 
-				bool create(
+				bool week_open(
 					const std::string &name,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
 				) {
-					return _buf.create(name, timeout);
+					return _buf.week_open(name, timeout);
 				}
 
 				native_handle_t native_handle() const {
 					return _buf.native_handle();
+				}
+
+				bool is_open() const {
+					return _buf.is_open();
+				}
+
+				operator bool() const {
+					return _buf;
 				}
 
 				void close() {
