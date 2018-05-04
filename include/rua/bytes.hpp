@@ -363,9 +363,21 @@ namespace rua {
 		template <typename Getter>
 		class operation {
 			public:
-				template <typename RelPtr>
+				template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 				any_ptr derel(ptrdiff_t pos = 0) const {
-					return _this()->base() + pos + _this()->template get<RelPtr>(pos) + sizeof(RelPtr);
+					return _this()->base() + pos + SlotSize + _this()->template get<RelPtr>(pos);
+				}
+
+				template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
+				RelPtr enrel(ptrdiff_t pos, any_ptr abs_ptr) {
+					auto rel_ptr = static_cast<RelPtr>(abs_ptr - (_this()->base() + pos + SlotSize));
+					_this()->template set<RelPtr>(pos, rel_ptr);
+					return rel_ptr;
+				}
+
+				template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
+				RelPtr enrel(any_ptr abs_ptr) {
+					return enrel<RelPtr, SlotSize>(0, abs_ptr);
 				}
 
 				static constexpr size_t npos = static_cast<size_t>(-1);

@@ -112,14 +112,27 @@ namespace rua {
 
 			template <typename D>
 			D &aligned_get(ptrdiff_t ix = 0) const {
-				#ifndef NDEBUG
-					if (_alloced) {
-						assert(_base + ix * sizeof(D) >= _alloced_base());
-						assert(sizeof(D) <= _alloced_size());
-					}
-				#endif
+				return get<D>(ix * sizeof(D));
+			}
 
-				return mem::aligned_get<D>(_base, ix);
+			template <typename D>
+			void set(ptrdiff_t offset, const D &val) {
+				get<D>(offset) = val;
+			}
+
+			template <typename D>
+			void set(const D &val) {
+				get<D>() = val;
+			}
+
+			template <typename D>
+			void aligned_set(ptrdiff_t ix, const D &val) {
+				aligned_get<D>(ix) = val;
+			}
+
+			template <typename D>
+			void aligned_set(const D &val) {
+				aligned_get<D>() = val;
 			}
 
 			data slice(ptrdiff_t begin, ptrdiff_t end) const {
