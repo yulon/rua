@@ -87,7 +87,7 @@ namespace rua {
 				return static_cast<ptrdiff_t>(_val - target._val);
 			}
 
-			template <typename T>
+			template <typename T, typename = typename std::enable_if<!std::is_convertible<typename std::decay<T>::type, any_ptr>::value>::type>
 			any_ptr operator-(T &&target) const {
 				return any_ptr(_val - static_cast<uintptr_t>(target));
 			}
