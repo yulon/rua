@@ -446,9 +446,13 @@ namespace rua {
 
 				using find_result_t = search_result_t;
 
-				template <typename Alignment = uintmax_t>
+				template <typename Alignment>
 				find_result_t find(const aligned<Alignment> &byts) const {
 					return search(byts);
+				}
+
+				find_result_t find(const aligned<uintmax_t> &byts) const {
+					return find<uintmax_t>(byts);
 				}
 
 				struct match_result_t {
@@ -466,13 +470,17 @@ namespace rua {
 					}
 				};
 
-				template <typename Alignment = uintmax_t>
+				template <typename Alignment>
 				match_result_t match(const pattern<Alignment> &pat) const {
 					auto sr = search(pat);
 					if (!sr) {
 						return match_result_t{ npos, {} };
 					}
 					return match_result_t{ sr.pos, pat.void_block_poss(sr.pos) };
+				}
+
+				match_result_t match(const pattern<uintmax_t> &pat) const {
+					return match<uintmax_t>(pat);
 				}
 
 			private:
