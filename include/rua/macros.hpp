@@ -145,4 +145,6 @@
 	#define RUA_MS64_FASTCALL
 #endif
 
+#define RUA_ONCE_FUNC(name, code_block) void name() { static std::once_flag flg; std::call_once(flg, []() code_block ); }
+
 #endif
