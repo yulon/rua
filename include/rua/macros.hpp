@@ -147,4 +147,6 @@
 
 #define RUA_ONCE_CODE(code_block) { static std::once_flag flg; std::call_once(flg, []() code_block ); }
 
+#define RUA_DLL_FUNC(dll_handle, name) reinterpret_cast<decltype(&name)>(GetProcAddress(dll_handle, #name))
+
 #endif
