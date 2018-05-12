@@ -206,17 +206,13 @@ namespace rua {
 			public:
 				using native_handle_t = typename basic_pipebuf<CharT, Traits>::native_handle_t;
 
-				basic_pipestream() {
-					this->init(&_buf);
-				}
+				basic_pipestream() : std::basic_iostream<CharT, Traits>(&_buf) {}
 
 				basic_pipestream(
 					const std::string &name,
 					std::ios_base::openmode which = std::ios_base::in | std::ios_base::out | std::ios_base::trunc,
 					DWORD timeout = NMPWAIT_WAIT_FOREVER
-				) : _buf(name, which, timeout) {
-					this->init(&_buf);
-				}
+				) : std::basic_iostream<CharT, Traits>(&_buf), _buf(name, which, timeout) {}
 
 				virtual ~basic_pipestream() = default;
 
