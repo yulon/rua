@@ -112,6 +112,18 @@ namespace rua {
 				return _val == target._val;
 			}
 
+			template <typename T>
+			any_ptr &operator+=(T &&target) {
+				_val += static_cast<uintptr_t>(target);
+				return *this;
+			}
+
+			template <typename T, typename = typename std::enable_if<!std::is_convertible<typename std::decay<T>::type, any_ptr>::value>::type>
+			any_ptr &operator-=(T &&target) {
+				_val -= static_cast<uintptr_t>(target);
+				return *this;
+			}
+
 		private:
 			uintptr_t _val;
 
