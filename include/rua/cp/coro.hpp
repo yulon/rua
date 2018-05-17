@@ -1,22 +1,16 @@
 #ifndef _RUA_CP_CORO_HPP
 #define _RUA_CP_CORO_HPP
 
-#include "coro/uni.hpp"
+#include "../macros.hpp"
 
-#ifdef RUA_CP_CORO_USING_UNI_IMPL
-	namespace rua {
-		namespace cp {
-			using coro = uni::coro;
-		}
-	}
-#elif defined(_WIN32)
+#ifdef _WIN32
 	#include "coro/win32.hpp"
 	namespace rua {
 		namespace cp {
 			using coro = win32::coro;
 		}
 	}
-#elif defined(__unix__)
+#elif defined(__unix__) || RUA_HAS_INC(<ucontext.h>) || defined(_UCONTEXT_H)
 	#include "coro/uc.hpp"
 	namespace rua {
 		namespace cp {
@@ -24,6 +18,7 @@
 		}
 	}
 #else
+	#include "coro/uni.hpp"
 	namespace rua {
 		namespace cp {
 			using coro = uni::coro;

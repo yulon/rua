@@ -149,4 +149,10 @@
 
 #define RUA_DLL_FUNC(dll_handle, name) reinterpret_cast<decltype(&name)>(GetProcAddress(dll_handle, #name))
 
+#ifdef __has_include
+	#define RUA_HAS_INC(header_name) __has_include(header_name)
+#else
+	#define RUA_HAS_INC(header_name) 0
+#endif
+
 #endif

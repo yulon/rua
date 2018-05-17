@@ -1,17 +1,9 @@
 #ifndef _RUA_CP_TLS_HPP
 #define _RUA_CP_TLS_HPP
 
-#include "tls/uni.hpp"
-
-#ifdef __has_include
-	#if __has_include(<pthread.h>)
-		#include "tls/posix.hpp"
-	#endif
-#endif
-
 #include "../macros.hpp"
 
-#if defined(_WIN32)
+#ifdef _WIN32
 	#include "tls/win32.hpp"
 	namespace rua {
 		namespace cp {
@@ -19,7 +11,7 @@
 			using fls = win32::fls;
 		}
 	}
-#elif defined(RUA_UNIX)
+#elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
 	#include "tls/posix.hpp"
 	namespace rua {
 		namespace cp {
@@ -27,6 +19,7 @@
 		}
 	}
 #else
+	#include "tls/uni.hpp"
 	namespace rua {
 		namespace cp {
 			using tls = uni::tls;
