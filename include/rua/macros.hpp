@@ -87,7 +87,7 @@
 	#define RUA_STATIC_ASSERT(cond) assert(cond)
 #endif
 
-#if defined(__has_cpp_attribute)
+#ifdef __has_cpp_attribute
 	#if __has_cpp_attribute(fallthrough)
 		#define RUA_FALLTHROUGH [[fallthrough]]
 	#elif __has_cpp_attribute(gnu::fallthrough)
