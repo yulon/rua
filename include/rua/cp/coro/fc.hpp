@@ -4,7 +4,7 @@
 #include "../../gnc/any_ptr.hpp"
 #include "../tls.hpp"
 
-#include <ucontext.h>
+#include <boost/context/detail/fcontext.hpp>
 
 #include <functional>
 #include <atomic>
@@ -13,7 +13,7 @@
 
 namespace rua {
 	namespace cp {
-		namespace uc {
+		namespace fc {
 			class coro {
 				public:
 					static coro from_this_thread() {
@@ -28,7 +28,7 @@ namespace rua {
 						return cur_ctx;
 					}
 
-					using native_handle_t = ucontext_t *;
+					using native_handle_t = boost::context::detail::fcontext_t *;
 					using id_t = void *;
 
 					constexpr coro() : _ctx(nullptr) {}
@@ -42,12 +42,7 @@ namespace rua {
 							return;
 						}
 						_ctx = new _ctx_t(new uint8_t[stack_size], std::move(start));
-						getcontext(&_ctx->uc);
-						_ctx->uc.uc_stack.ss_sp = _ctx->stack;
-						_ctx->uc.uc_stack.ss_size = stack_size;
-						_ctx->uc.uc_stack.ss_flags = 0;
-						_ctx->uc.uc_link = nullptr;
-						makecontext(&_ctx->uc, any_ptr(&_uc_start), 1, _ctx);
+						_ctx->fc = boost::context::detail::make_fcontext(_ctx->stack, stack_size, &_fc_start);
 					}
 
 					~coro() {
@@ -89,7 +84,7 @@ namespace rua {
 					}
 
 					native_handle_t native_handle() const {
-						return _ctx ? &_ctx->uc : nullptr;
+						return _ctx ? &_ctx->fc : nullptr;
 					}
 
 					id_t id() const {
@@ -142,7 +137,7 @@ namespace rua {
 					struct _ctx_t {
 						std::atomic<size_t> use_count;
 						std::atomic<bool> joinable, exited;
-						ucontext_t uc;
+						boost::context::detail::fcontext_t fc;
 						uint8_t *stack;
 						std::function<void()> start;
 						_ctx_t *joiner;
@@ -176,13 +171,14 @@ namespace rua {
 						_tls_ctx().set(_ctx);
 
 						if (!cur_ctx) {
-							setcontext(&_ctx->uc);
+							static boost::context::detail::fcontext_t nullfc;
+							boost::context::detail::jump_fcontext(_ctx->fc, &nullfc);
 							return;
 						}
 
 						// A cur_ctx->use_count ownership form cur_ctx move to _ctx->joiner.
 						_ctx->joiner = cur_ctx;
-						swapcontext(&cur_ctx->uc, &_ctx->uc);
+						boost::context::detail::jump_fcontext(_ctx->fc, &cur_ctx->fc);
 
 						// on back
 						cur_ctx->handle_joiner();
@@ -202,8 +198,8 @@ namespace rua {
 						return inst;
 					}
 
-					static void _uc_start(any_word _cur_ctx) {
-						auto cur_ctx = _cur_ctx.to<_ctx_t *>();
+					static void _fc_start(boost::context::detail::transfer_t) {
+						_ctx_t *cur_ctx = _tls_ctx().get().to<_ctx_t *>();
 						assert(cur_ctx);
 						cur_ctx->handle_joiner();
 						assert(cur_ctx->start);
