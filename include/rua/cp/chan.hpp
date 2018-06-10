@@ -110,12 +110,16 @@ namespace rua {
 				}
 
 				typename chan<T>::scoped_stream_t operator<<(T value) {
-					return std::move(scoped_stream() << value);
+					scoped_stream_t ss(*this);
+					ss << value;
+					return ss;
 				}
 
 				template <typename R>
 				typename chan<T>::scoped_stream_t operator>>(R &receiver) {
-					return std::move(scoped_stream() >> receiver);
+					scoped_stream_t ss(*this);
+					ss >> receiver;
+					return ss;
 				}
 
 				T get() {
