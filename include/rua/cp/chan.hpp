@@ -62,13 +62,10 @@ namespace rua {
 							return *this;
 						}
 
-						template <typename R>
-						scoped_stream_t &operator>>(R &receiver) {
-							RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
+						void wait_inputs() {
 							assert(_res);
 
 							auto res = _res;
-
 							auto cv = _scdlr->make_cond_var();
 							cv->cond_wait(res->mtx, [res, cv]()->bool {
 								if (res->buffer.size()) {
@@ -77,6 +74,13 @@ namespace rua {
 								res->reqs.emplace(cv);
 								return false;
 							});
+						}
+
+						template <typename R>
+						scoped_stream_t &operator>>(R &receiver) {
+							RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
+
+							wait_inputs();
 
 							receiver = std::move(res->buffer.front());
 							res->buffer.pop();
@@ -91,13 +95,8 @@ namespace rua {
 						}
 
 						std::queue<T> get_all() {
-							std::queue<T> r;
-							r.push(get());
-							while (_res->buffer.size()) {
-								r.push(std::move(_res->buffer.front()));
-								_res->buffer.pop();
-							}
-							return r;
+							wait_inputs();
+							return std::move(_res->buffer);
 						}
 
 					private:
@@ -112,6 +111,12 @@ namespace rua {
 				typename chan<T>::scoped_stream_t operator<<(T value) {
 					scoped_stream_t ss(*this);
 					ss << value;
+					return ss;
+				}
+
+				typename chan<T>::scoped_stream_t wait_inputs() {
+					scoped_stream_t ss(*this);
+					ss.wait_inputs();
 					return ss;
 				}
 
