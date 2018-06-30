@@ -28,36 +28,37 @@ namespace rua {
 				struct _res_t;
 
 			public:
-				class scoped_stream_t {
+				class ioer_t {
 					public:
-						scoped_stream_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
+						ioer_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
 
-						~scoped_stream_t() {
-							if (!_res) {
-								return;
-							}
-							if (_res->buffer.size() && _res->reqs.size()) {
-								auto cv = _res->reqs.front();
-								_res->reqs.pop();
-								_res->mtx.unlock();
-								cv->notify();
-								return;
-							}
-							_res->mtx.unlock();
+						~ioer_t() {
+							unlock();
 						}
 
-						scoped_stream_t(const scoped_stream_t &) = delete;
+						ioer_t(const ioer_t &) = delete;
 
-						scoped_stream_t &operator=(const scoped_stream_t &) = delete;
+						ioer_t &operator=(const ioer_t &) = delete;
 
-						scoped_stream_t(scoped_stream_t &&) = default;
+						ioer_t(ioer_t &&) = default;
 
-						scoped_stream_t &operator=(scoped_stream_t &&) = default;
+						ioer_t &operator=(ioer_t &&) = default;
 
-						scoped_stream_t &operator<<(T value) {
+						ioer_t &operator<<(T value) {
 							assert(_res);
 
 							_res->buffer.emplace(std::move(value));
+
+							return *this;
+						}
+
+						ioer_t &operator<<(std::queue<T> values) {
+							assert(_res);
+
+							while (values.size()) {
+								_res->buffer.emplace(std::move(values.front()));
+								values.pop();
+							}
 
 							return *this;
 						}
@@ -77,13 +78,13 @@ namespace rua {
 						}
 
 						template <typename R>
-						scoped_stream_t &operator>>(R &receiver) {
+						ioer_t &operator>>(R &receiver) {
 							RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
 
 							wait_inputs();
 
-							receiver = std::move(res->buffer.front());
-							res->buffer.pop();
+							receiver = std::move(_res->buffer.front());
+							_res->buffer.pop();
 
 							return *this;
 						}
@@ -99,40 +100,67 @@ namespace rua {
 							return std::move(_res->buffer);
 						}
 
+						void unlock() {
+							if (!_res) {
+								return;
+							}
+							if (_res->buffer.size() && _res->reqs.size()) {
+								auto cv = _res->reqs.front();
+								_res->reqs.pop();
+								_res->mtx.unlock();
+								cv->notify();
+								return;
+							}
+							_res->mtx.unlock();
+						}
+
 					private:
 						std::shared_ptr<_res_t> _res;
 						scheduler _scdlr;
 				};
 
-				typename chan<T>::scoped_stream_t scoped_stream() const {
-					return scoped_stream_t(*this);
+				typename chan<T>::ioer_t lock() const {
+					return ioer_t(*this);
 				}
 
-				typename chan<T>::scoped_stream_t operator<<(T value) {
-					scoped_stream_t ss(*this);
-					ss << value;
-					return ss;
+				typename chan<T>::ioer_t try_lock() const {
+					return ioer_t(*this);
 				}
 
-				typename chan<T>::scoped_stream_t wait_inputs() {
-					scoped_stream_t ss(*this);
-					ss.wait_inputs();
-					return ss;
+				template <typename V>
+				typename chan<T>::ioer_t operator<<(V &&value) {
+					auto ioer = lock();
+					ioer << std::forward<V>(value);
+					return ioer;
+				}
+
+				typename chan<T>::ioer_t wait_inputs() {
+					auto ioer = lock();
+					ioer.wait_inputs();
+					return ioer;
 				}
 
 				template <typename R>
-				typename chan<T>::scoped_stream_t operator>>(R &receiver) {
-					scoped_stream_t ss(*this);
-					ss >> receiver;
-					return ss;
+				typename chan<T>::ioer_t operator>>(R &receiver) {
+					auto ioer = lock();
+					ioer >> receiver;
+					return ioer;
 				}
 
 				T get() {
-					return scoped_stream().get();
+					return lock().get();
 				}
 
 				std::queue<T> get_all() {
-					return scoped_stream().get_all();
+					return lock().get_all();
+				}
+
+				std::queue<T> try_get_all() {
+					auto ioer = try_lock();
+					if (ioer) {
+						return ioer.get_all();
+					}
+					return nullptr;
 				}
 
 			private:
