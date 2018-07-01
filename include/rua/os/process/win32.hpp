@@ -241,12 +241,9 @@ namespace rua {
 					return mdu;
 				}
 
-				std::string file_path(HMODULE mdu = nullptr) {
-					if (!mdu) {
-						mdu = native_module_handle();
-					}
+				std::string file_path(const std::string &module_name = "") {
 					WCHAR path[MAX_PATH];
-					GetModuleFileNameExW(_ntv_hdl, mdu, path, MAX_PATH);
+					GetModuleFileNameExW(_ntv_hdl, module_name.empty() ? nullptr : native_module_handle(module_name), path, MAX_PATH);
 					return w_to_u8(path);
 				}
 
