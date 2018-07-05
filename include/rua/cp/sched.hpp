@@ -101,6 +101,14 @@ namespace rua {
 					}
 					return scdlr;
 				}
+
+				template <typename L>
+				scheduler try_lock(L &lock) {
+					if (!lock.try_lock()) {
+						return nullptr;
+					}
+					return get();
+				}
 		};
 	}
 }

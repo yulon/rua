@@ -30,7 +30,20 @@ namespace rua {
 			public:
 				class ioer_t {
 					public:
-						ioer_t(const chan<T> &ch) : _res(ch._res), _scdlr(ch._res->mscdlr.lock(ch._res->mtx)) {}
+						ioer_t(const chan<T> &ch, bool try_lock = false) {
+							if (!ch._res) {
+								return;
+							}
+							if (try_lock) {
+								_scdlr = ch._res->mscdlr.try_lock(ch._res->mtx);
+								if (_scdlr) {
+									_res = ch._res;
+								}
+							} else {
+								_res = ch._res;
+								_scdlr = ch._res->mscdlr.lock(ch._res->mtx);
+							}
+						}
 
 						~ioer_t() {
 							unlock();
@@ -100,6 +113,19 @@ namespace rua {
 							return std::move(_res->buffer);
 						}
 
+						T try_get() {
+							T r;
+							if (_res->buffer.size()) {
+								r = std::move(_res->buffer.front());
+								_res->buffer.pop();
+							}
+							return r;
+						}
+
+						std::queue<T> try_get_all() {
+							return std::move(_res->buffer);
+						}
+
 						void unlock() {
 							if (!_res) {
 								return;
@@ -114,6 +140,10 @@ namespace rua {
 							_res->mtx.unlock();
 						}
 
+						operator bool() const {
+							return _res.get();
+						}
+
 					private:
 						std::shared_ptr<_res_t> _res;
 						scheduler _scdlr;
@@ -124,7 +154,7 @@ namespace rua {
 				}
 
 				typename chan<T>::ioer_t try_lock() const {
-					return ioer_t(*this);
+					return ioer_t(*this, true);
 				}
 
 				template <typename V>
@@ -155,12 +185,20 @@ namespace rua {
 					return lock().get_all();
 				}
 
+				T try_get() {
+					auto ioer = try_lock();
+					if (ioer) {
+						return ioer.try_get_all();
+					}
+					return T();
+				}
+
 				std::queue<T> try_get_all() {
 					auto ioer = try_lock();
 					if (ioer) {
-						return ioer.get_all();
+						return ioer.try_get_all();
 					}
-					return nullptr;
+					return std::queue<T>();
 				}
 
 			private:
