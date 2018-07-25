@@ -77,7 +77,7 @@ namespace rua {
 			}
 
 			operator bool() const {
-				return _base;
+				return _sz;
 			}
 
 			any_ptr base() const {
