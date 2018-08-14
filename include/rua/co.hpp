@@ -242,6 +242,7 @@ namespace rua {
 			void _wake_cur_tsk() {
 				_idle_stks.push_back(std::move(_cur_stk));
 				_cur_stk = std::move(_cur_tsk_it->stack_data);
+				_tsks_ct.bind(&_tsks_handler, this, _cur_stk);
 				_cur_tsk_it->ct.restore();
 
 				/*auto tsks_stk_end = _cur_stk.base() + _cur_stk.size();
@@ -343,8 +344,15 @@ namespace rua {
 			}
 
 			void _new_tsks_handler_co(cont &cur_cont_saver) {
-				_cur_stk.reset(16 * 1024 * 1024);
-				_tsks_ct.bind(&_tsks_handler, this, _cur_stk);
+				if (!_cur_stk) {
+					if (_idle_stks.empty()) {
+						_cur_stk.reset(8 * 1024 * 1024);
+					} else {
+						_cur_stk = std::move(_idle_stks.back());
+						_idle_stks.pop_back();
+					}
+					_tsks_ct.bind(&_tsks_handler, this, _cur_stk);
+				}
 				_tsks_ct.restore(cur_cont_saver);
 			}
 
@@ -407,7 +415,9 @@ namespace rua {
 						}*/
 
 						_cp->_cur_tsk_it->stack_data = std::move(_cp->_cur_stk);
-						_cp->_new_tsks_handler_co(_cp->_cur_tsk_it->ct);
+						auto it = _cp->_cur_tsk_it;
+						_cp->_cur_tsk_it_inc();
+						_cp->_new_tsks_handler_co(it->ct);
 					}
 
 					class cond_var : public scheduler::cond_var {
