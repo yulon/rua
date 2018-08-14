@@ -1,11 +1,13 @@
 #include <rua/bin.hpp>
 
-#include <gtest/gtest.h>
+#include <rua/test.hpp>
 
 #include <iostream>
 #include <chrono>
 
-TEST(bin, find) {
+namespace {
+
+rua::test _t("bin", "find", []() {
 	size_t dat_sz = 1024 * 1024 *
 		#ifdef NDEBUG
 			256
@@ -32,8 +34,8 @@ TEST(bin, find) {
 
 	auto data_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	ASSERT_EQ(fr, true);
-	ASSERT_EQ(fr.pos, pat_pos);
+	RUA_RASSERT(fr == true);
+	RUA_RASSERT(fr.pos == pat_pos);
 
 	// bin_base::match
 
@@ -43,9 +45,9 @@ TEST(bin, find) {
 
 	auto data_match_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	ASSERT_EQ(mr, true);
-	ASSERT_EQ(mr.pos, pat_pos);
-	ASSERT_EQ(mr[0], pat_pos + 1);
+	RUA_RASSERT(mr == true);
+	RUA_RASSERT(mr.pos == pat_pos);
+	RUA_RASSERT(mr[0] == pat_pos + 1);
 
 	// std::string::find
 
@@ -55,12 +57,14 @@ TEST(bin, find) {
 
 	auto str_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	ASSERT_EQ(fp != std::string::npos, true);
-	ASSERT_EQ(fp, pat_pos);
+	RUA_RASSERT(fp != std::string::npos);
+	RUA_RASSERT(fp == pat_pos);
 
 	std::cout <<
 		"bin_base::find: " << data_find_dur << " ms" << std::endl <<
 		"bin_base::match: " << data_match_dur << " ms" << std::endl <<
 		"std::string::find: " << str_find_dur << " ms" << std::endl
 	;
+});
+
 }

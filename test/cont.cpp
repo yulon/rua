@@ -1,8 +1,10 @@
 #include <rua/cont.hpp>
 
-#include <gtest/gtest.h>
+#include <rua/test.hpp>
 
 #include <iostream>
+
+namespace {
 
 size_t
 	main_ct_looping_count,
@@ -14,13 +16,13 @@ size_t
 	sub_ct_2_looping_count
 ;
 
-static rua::cont
+rua::cont
 	main_ct,
 	sub_ct_1,
 	sub_ct_2
 ;
 
-TEST(cont, restore) {
+rua::test _t("cont", "restore", []() {
 	rua::bin stack(8 * 1024 * 1024);
 
 	main_ct_looping_count = 0;
@@ -28,7 +30,7 @@ TEST(cont, restore) {
 	sub_ct_1_running_count = 0;
 
 	sub_ct_1.make([](rua::any_word param) {
-		ASSERT_EQ(param.value(), 111);
+		RUA_RASSERT(param.value() == 111);
 
 		++sub_ct_1_running_count;
 
@@ -45,16 +47,16 @@ TEST(cont, restore) {
 		++main_ct_looping_count;
 		++sub_ct_1_restore_count;
 		sub_ct_1.restore(main_ct);
-		ASSERT_EQ(sub_ct_1_running_count, sub_ct_1_restore_count);
-		ASSERT_EQ(sub_ct_1_looping_count, 1);
+		RUA_RASSERT(sub_ct_1_running_count == sub_ct_1_restore_count);
+		RUA_RASSERT(sub_ct_1_looping_count == 1);
 	}
 
-	ASSERT_EQ(main_ct_looping_count, 3);
+	RUA_RASSERT(main_ct_looping_count == 3);
 
 	sub_ct_2_running_count = 0;
 
 	sub_ct_2.make([](rua::any_word param) {
-		ASSERT_EQ(param.value(), 222);
+		RUA_RASSERT(param.value() == 222);
 
 		++sub_ct_2_running_count;
 
@@ -71,9 +73,11 @@ TEST(cont, restore) {
 		++main_ct_looping_count;
 		++sub_ct_2_restore_count;
 		sub_ct_2.restore(main_ct);
-		ASSERT_EQ(sub_ct_2_running_count, 1);
-		ASSERT_EQ(sub_ct_2_looping_count, sub_ct_2_restore_count);
+		RUA_RASSERT(sub_ct_2_running_count == 1);
+		RUA_RASSERT(sub_ct_2_looping_count == sub_ct_2_restore_count);
 	}
 
-	ASSERT_EQ(main_ct_looping_count, 6);
+	RUA_RASSERT(main_ct_looping_count == 6);
+});
+
 }

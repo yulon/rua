@@ -1,12 +1,14 @@
 #include <rua/co.hpp>
 
-#include <gtest/gtest.h>
+#include <rua/test.hpp>
 
 #include <iostream>
 
+namespace {
+
 rua::co_pool cp;
 
-TEST(co, co_pool) {
+rua::test _t("co", "co_pool", []() {
 	cp.add([]() {
 		std::cout << "sleep 1" << std::endl;
 		rua::sleep(300);
@@ -23,4 +25,6 @@ TEST(co, co_pool) {
 		std::cout << "wakeup 3" << std::endl;
 	});
 	cp.run();
+});
+
 }

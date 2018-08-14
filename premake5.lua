@@ -34,6 +34,5 @@ workspace "rua"
 		files {
 			"test/*.cpp"
 		}
-		links { "gtest" }
 		configuration { "linux" }
 			links { "pthread" }
