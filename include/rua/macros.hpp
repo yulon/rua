@@ -97,7 +97,7 @@
 	#else
 		#define RUA_FALLTHROUGH
 	#endif
-#elif RUA_CPP >= RUA_CPP_17 || (defined(_MSC_VER) && _MSC_VER >= 1910)
+#elif RUA_CPP >= RUA_CPP_17
 	#define RUA_FALLTHROUGH [[fallthrough]]
 #else
 	#define RUA_FALLTHROUGH

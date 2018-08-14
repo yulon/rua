@@ -1,7 +1,7 @@
 #ifndef _RUA_MEM_PROTECT_HPP
 #define _RUA_MEM_PROTECT_HPP
 
-#include "../gnc/any_ptr.hpp"
+#include "../any_ptr.hpp"
 
 #include "../macros.hpp"
 

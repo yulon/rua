@@ -1,75 +1,79 @@
 #ifndef _RUA_IO_ITFS_HPP
 #define _RUA_IO_ITFS_HPP
 
-#include "../gnc/data.hpp"
-#include "../gnc/any_ptr.hpp"
-
-#include "../poly.hpp"
+#include "../bin.hpp"
+#include "../any_ptr.hpp"
+#include "../limits.hpp"
 
 #include <cstddef>
 
 namespace rua {
 	namespace io {
-		class reader_c {
+		class reader {
 			public:
-				virtual ~reader_c() = default;
+				virtual ~reader() = default;
 
-				virtual data read(size_t size = static_cast<size_t>(-1)) const = 0;
+				virtual intmax_t read(bin_ref) = 0;
+
+				inline intmax_t read_full(bin_ref p);
+
+				inline bin read_all(size_t buf_sz = 1024);
 		};
 
-		using reader = itf<reader_c>;
-
-		class writer_c {
+		class writer {
 			public:
-				virtual ~writer_c() = default;
+				virtual ~writer() = default;
 
-				virtual size_t write(const data &) = 0;
+				virtual intmax_t write(bin_view) = 0;
+
+				inline bool write_all(bin_view p);
 		};
 
-		using writer = itf<writer_c>;
-
-		class read_writer_c : public virtual reader_c, public virtual writer_c {
+		class read_writer : public virtual reader, public virtual writer {
 			public:
-				virtual ~read_writer_c() = default;
+				virtual ~read_writer() = default;
 		};
 
-		using read_writer = itf<read_writer_c>;
-
-		class reader_at_c {
+		class seeker {
 			public:
-				virtual ~reader_at_c() = default;
+				virtual ~seeker() = default;
 
-				virtual data read_at(ptrdiff_t pos, size_t size = static_cast<size_t>(-1)) const = 0;
+				virtual intmax_t seek(intmax_t offset, int whence) = 0;
 		};
 
-		using reader_at = itf<reader_at_c>;
-
-		class writer_at_c {
+		class read_seeker : public virtual reader, public virtual seeker {
 			public:
-				virtual ~writer_at_c() = default;
-
-				virtual size_t write_at(ptrdiff_t pos, const data &) = 0;
+				virtual ~read_seeker() = default;
 		};
 
-		using writer_at = itf<writer_at_c>;
-
-		class read_writer_at_c : public virtual reader_at_c, public virtual writer_at_c {
+		class write_seeker : public virtual writer, public virtual seeker {
 			public:
-				virtual ~read_writer_at_c() = default;
+				virtual ~write_seeker() = default;
 		};
 
-		using read_writer_at = itf<read_writer_at_c>;
-
-		class allocator_c {
+		class read_write_seeker : public virtual reader, public virtual writer, public virtual seeker {
 			public:
-				virtual ~allocator_c() = default;
-
-				virtual any_ptr alloc(size_t) = 0;
-
-				virtual void free(any_ptr) = 0;
+				virtual ~read_write_seeker() = default;
 		};
 
-		using allocator = itf<allocator_c>;
+		class reader_at {
+			public:
+				virtual ~reader_at() = default;
+
+				virtual intmax_t read_at(ptrdiff_t pos, bin_ref) = 0;
+		};
+
+		class writer_at {
+			public:
+				virtual ~writer_at() = default;
+
+				virtual intmax_t write_at(ptrdiff_t pos, bin_view) = 0;
+		};
+
+		class read_writer_at : public virtual reader_at, public virtual writer_at {
+			public:
+				virtual ~read_writer_at() = default;
+		};
 	}
 }
 

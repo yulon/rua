@@ -1,4 +1,4 @@
-workspace "nob"
+workspace "rua"
 	location ( "build" )
 	objdir("build/obj")
 
