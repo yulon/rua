@@ -2,29 +2,30 @@
 
 #include <rua/test.hpp>
 
-#include <iostream>
-
 namespace {
 
-rua::co_pool cp;
-
 rua::test _t("co", "co_pool", []() {
+	static rua::co_pool cp;
+	static std::string r;
+
 	cp.add([]() {
-		std::cout << "sleep 1" << std::endl;
+		r += "1";
 		rua::sleep(300);
-		std::cout << "wakeup 1" << std::endl;
+		r += "1";
 	});
 	cp.add([]() {
-		std::cout << "sleep 2" << std::endl;
+		r += "2";
 		rua::sleep(200);
-		std::cout << "wakeup 2" << std::endl;
+		r += "2";
 	});
 	cp.add([]() {
-		std::cout << "sleep 3" << std::endl;
+		r += "3";
 		rua::sleep(100);
-		std::cout << "wakeup 3" << std::endl;
+		r += "3";
 	});
 	cp.run();
+
+	RUA_RASSERT(r == "123321");
 });
 
 }
