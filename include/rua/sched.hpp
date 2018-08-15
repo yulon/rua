@@ -44,6 +44,8 @@ namespace rua {
 
 			class cond_var {
 				public:
+					virtual ~cond_var() = default;
+
 					virtual void notify() {}
 			};
 
@@ -108,11 +110,7 @@ namespace rua {
 
 			class cond_var : public scheduler::cond_var {
 				public:
-					using native_handle_t = std::condition_variable_any;
-
-					native_handle_t &native_handle() {
-						return _cv;
-					}
+					virtual ~cond_var() = default;
 
 					virtual void notify() {
 						_cv.notify_one();
@@ -120,6 +118,7 @@ namespace rua {
 
 				private:
 					std::condition_variable_any _cv;
+					friend default_scheduler;
 			};
 
 			virtual std::shared_ptr<scheduler::cond_var> make_cond_var() {
@@ -127,7 +126,7 @@ namespace rua {
 			}
 
 			virtual std::cv_status cond_wait(std::shared_ptr<scheduler::cond_var> cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
-				return static_cast<cond_var &>(*cv).native_handle().wait_for(lck, std::chrono::milliseconds(timeout));
+				return static_cast<cond_var &>(*cv)._cv.wait_for(lck, std::chrono::milliseconds(timeout));
 			}
 	};
 

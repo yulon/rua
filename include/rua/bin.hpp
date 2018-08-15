@@ -71,6 +71,14 @@ namespace rua {
 
 						size_t eq(const Getter &gtr, size_t gtr_off, size_t sz) const {
 							switch (sz) {
+								case 8:
+									if (mem::get<uint64_t>(&value) == gtr.template get<uint64_t>(gtr_off)) {
+										return sz;
+									}
+									return 0;
+
+								////////////////////////////////////////////////////////////
+
 								case 7:
 									if (mem::get<uint8_t>(&value, 6) != gtr.template get<uint8_t>(gtr_off + 6)) {
 										return 0;
@@ -117,7 +125,7 @@ namespace rua {
 
 								default:
 									for (size_t i = 0; i < sz; ++i) {
-										if (mem::get<uint8_t>(&value, i) == gtr.template get<uint8_t>(gtr_off + i)) {
+										if (mem::get<uint8_t>(&value, i) != gtr.template get<uint8_t>(gtr_off + i)) {
 											return 0;
 										}
 									}
@@ -207,6 +215,17 @@ namespace rua {
 							}
 
 							switch (sz) {
+								case 8:
+									return
+										mem::get<uint64_t>(&value) ==
+										(
+											gtr.template get<uint64_t>(gtr_off) &
+											mem::get<uint64_t>(&mask)
+										)
+									;
+
+								////////////////////////////////////////////////////////////
+
 								case 7:
 									if (
 										mem::get<uint8_t>(&value, 6) !=

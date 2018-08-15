@@ -34,7 +34,7 @@ rua::test _t("bin", "find", []() {
 
 	auto data_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	RUA_RASSERT(fr == true);
+	RUA_RASSERT(fr);
 	RUA_RASSERT(fr.pos == pat_pos);
 
 	// bin_base::match
@@ -45,7 +45,7 @@ rua::test _t("bin", "find", []() {
 
 	auto data_match_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	RUA_RASSERT(mr == true);
+	RUA_RASSERT(mr);
 	RUA_RASSERT(mr.pos == pat_pos);
 	RUA_RASSERT(mr[0] == pat_pos + 1);
 
