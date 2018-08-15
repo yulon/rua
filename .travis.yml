@@ -13,3 +13,5 @@ script:
   - mkdir ./bin
   - g++-6 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
   - ./bin/rua_tests_d
+  - g++-6 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
+  - ./bin/rua_tests
