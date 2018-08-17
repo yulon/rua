@@ -32,16 +32,25 @@ namespace rua {
 					0,
 					false,
 					nullptr,
-					std::cv_status::no_timeout
+					std::cv_status::no_timeout,
+					false
 				});
 				if (!timeout) {
 					return;
 				}
-				if (timeout >= nmax<size_t>() - _cur_ti()) {
+				if (timeout >= nmax<size_t>() - _now()) {
 					it->rept_end_ti = nmax<size_t>();
 					return;
 				}
-				it->rept_end_ti = _cur_ti() + timeout;
+				it->rept_end_ti = _now() + timeout;
+			}
+
+			void enable_add_from_other_thread() {
+				assert(false);
+			}
+
+			void add_from_other_thread(std::function<void()> task, size_t timeout = 0) {
+				assert(false);
 			}
 
 			void run() {
@@ -51,7 +60,7 @@ namespace rua {
 
 				while (_tsks.size()) {
 					if (_need_ll_sleep) {
-						auto cur_ti = _cur_ti();
+						auto cur_ti = _now();
 						if (_ll_wake_ti <= cur_ti) {
 							ll_sch.yield();
 						} else if (_need_ll_cw) {
@@ -73,7 +82,7 @@ namespace rua {
 									break;
 								}
 								ll_sch.yield();
-								cur_ti = _cur_ti();
+								cur_ti = _now();
 								if (_ll_wake_ti <= cur_ti) {
 									break;
 								}
@@ -96,19 +105,8 @@ namespace rua {
 				}
 
 				if (_need_ll_sleep) {
-					if (_ll_wake_ti > _cur_ti()) {
-						if (_need_ll_cw) {
-							if (!_ll_cv_mtx.try_lock()) {
-								return;
-							}
-							if (!_ll_cv_changed) {
-								_ll_cv_mtx.unlock();
-								return;
-							}
-							_ll_cv_mtx.unlock();
-						} else {
-							return;
-						}
+					if (_ll_wake_ti > _now() && !_need_ll_cw) {
+						return;
 					}
 					_need_ll_sleep = false;
 				}
@@ -137,11 +135,11 @@ namespace rua {
 				bool is_sleeping() const {
 					return stk;
 				}
-
 				size_t wake_ti;
 				bool is_cw;
 				std::shared_ptr<std::atomic<bool>> is_cv_notified;
 				std::cv_status cv_st;
+				bool is_slept;
 			};
 
 			std::list<_tsk_ctx_t> _tsks, _adding_befores, _adding_afters;
@@ -190,6 +188,8 @@ namespace rua {
 
 			static void _tskr(any_word p) {
 				auto &cp = *p.to<co_pool *>();
+				auto now = _now();
+
 				while (cp._cur_tsk_it != cp._tsks.end()) {
 					if (cp._cur_tsk_it->is_sleeping()) {
 						if (cp._cur_tsk_it->is_cw) {
@@ -198,14 +198,14 @@ namespace rua {
 								cp._cur_tsk_it->cv_st = std::cv_status::no_timeout;
 								cp._wake_cur_tsk();
 							}
-							if (cp._cur_tsk_it->wake_ti <= _cur_ti()) {
+							if (cp._cur_tsk_it->wake_ti <= now) {
 								cp._cur_tsk_it->cv_st = std::cv_status::timeout;
 								cp._wake_cur_tsk();
 							}
 							cp._cur_tsk_it_inc();
 							continue;
 						}
-						if (cp._cur_tsk_it->wake_ti <= _cur_ti()) {
+						if (cp._cur_tsk_it->wake_ti <= now) {
 							cp._wake_cur_tsk();
 						}
 						cp._cur_tsk_it_inc();
@@ -218,14 +218,25 @@ namespace rua {
 						continue;
 					}
 
-					if (cp._cur_tsk_it->rept_end_ti <= _cur_ti()) {
-						cp._del_cur_tsk_and_it_inc();
-						continue;
-					}
+					for (;;) {
+						if (cp._cur_tsk_it->rept_end_ti <= now) {
+							cp._del_cur_tsk_and_it_inc();
+							break;
+						}
 
-					cp._cur_tsk_it->fn();
-					cp._cur_tsk_it_inc();
+						cp._cur_tsk_it->fn();
+
+						now = _now();
+
+						if (!cp._cur_tsk_it->is_slept) {
+							cp._cur_tsk_it_inc();
+							break;
+						}
+
+						cp._cur_tsk_it->is_slept = false;
+					}
 				}
+
 				cp._orig_ct.restore();
 			}
 
@@ -242,7 +253,7 @@ namespace rua {
 				_cur_tskr_ct.restore(cur_cont_saver);
 			}
 
-			static size_t _cur_ti() {
+			static size_t _now() {
 				return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock().now().time_since_epoch()).count();
 			}
 
@@ -275,7 +286,8 @@ namespace rua {
 					virtual ~_scheduler() = default;
 
 					virtual void sleep(size_t timeout) {
-						_cp->_cur_tsk_it->wake_ti = timeout ? co_pool::_cur_ti() + timeout : 0;
+						_cp->_cur_tsk_it->wake_ti = timeout ? co_pool::_now() + timeout : 0;
+						_cp->_cur_tsk_it->is_slept = true;
 
 						_cp->_need_ll_sleep = true;
 						if (timeout < _cp->_ll_wake_ti) {
