@@ -5,13 +5,13 @@ language: cpp
 addons:
   apt:
     sources:
-      - ubuntu-toolchain-r-test
+      - llvm-toolchain-trusty-5.0
     packages:
-      - g++-6
+      - clang-5.0
 
 script:
   - mkdir ./bin
-  - g++-6 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
+  - clang++-5.0 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
   - ./bin/rua_tests_d
-  - g++-6 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
+  - clang++-5.0 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
   - ./bin/rua_tests
