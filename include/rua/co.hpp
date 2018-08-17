@@ -188,10 +188,11 @@ namespace rua {
 
 			static void _tskr(any_word p) {
 				auto &cp = *p.to<co_pool *>();
-				auto now = _now();
 
 				while (cp._cur_tsk_it != cp._tsks.end()) {
 					if (cp._cur_tsk_it->is_sleeping()) {
+						auto now = _now();
+
 						if (cp._cur_tsk_it->is_cw) {
 							if (cp._cur_tsk_it->is_cv_notified->exchange(false)) {
 								cp._cur_tsk_it->is_cw = false;
@@ -205,9 +206,11 @@ namespace rua {
 							cp._cur_tsk_it_inc();
 							continue;
 						}
+
 						if (cp._cur_tsk_it->wake_ti <= now) {
 							cp._wake_cur_tsk();
 						}
+
 						cp._cur_tsk_it_inc();
 						continue;
 					}
@@ -219,20 +222,17 @@ namespace rua {
 					}
 
 					for (;;) {
-						if (cp._cur_tsk_it->rept_end_ti <= now) {
+						if (cp._cur_tsk_it->rept_end_ti <= _now()) {
 							cp._del_cur_tsk_and_it_inc();
 							break;
 						}
 
 						cp._cur_tsk_it->fn();
 
-						now = _now();
-
 						if (!cp._cur_tsk_it->is_slept) {
 							cp._cur_tsk_it_inc();
 							break;
 						}
-
 						cp._cur_tsk_it->is_slept = false;
 					}
 				}
