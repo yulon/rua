@@ -22,31 +22,91 @@ namespace rua {
 				_tskr_ct_base.save();
 			}
 
-			void add(std::function<void()> task, size_t timeout = 0) {
+			class task;
+
+		private:
+			friend task;
+
+			struct _tsk_t {
+				std::function<void()> fn;
+
+				bool is_stoped;
+				size_t end_ti;
+
+				void reset_duration(size_t duration = 0) {
+					if (!duration) {
+						end_ti = 0;
+					}
+					auto now = _now();
+					if (duration >= nmax<size_t>() - now) {
+						end_ti = nmax<size_t>();
+						return;
+					}
+					end_ti = now + duration;
+				}
+
+				cont ct;
+				bin stk;
+
+				std::shared_ptr<std::atomic<bool>> is_cv_notified;
+				std::cv_status cv_st;
+
+				bool is_slept;
+			};
+
+			using _tsk_ptr_t = std::shared_ptr<_tsk_t>;
+
+		public:
+			class task {
+				public:
+					void stop() {
+						if (!_ctx) {
+							return;
+						}
+						_ctx->is_stoped = true;
+						_ctx.reset();
+					}
+
+					void reset_duration(size_t duration = 0) {
+						if (!_ctx) {
+							return;
+						}
+						if (!_ctx->is_stoped) {
+							_ctx.reset();
+							return;
+						}
+						_ctx->reset_duration(duration);
+					}
+
+					operator bool() const {
+						return _ctx && !_ctx->is_stoped;
+					}
+
+				private:
+					friend co_pool;
+
+					_tsk_ptr_t _ctx;
+
+					task(_tsk_ptr_t &&ctx) : _ctx(std::move(ctx)) {}
+					task(const _tsk_ptr_t &ctx) : _ctx(ctx) {}
+			};
+
+			task add(std::function<void()> func, size_t duration = 0) {
 				auto tsk = std::make_shared<_tsk_t>();
 
-				tsk->fn = std::move(task);
+				tsk->fn = std::move(func);
+				tsk->is_stoped = false;
+				tsk->reset_duration(duration);
 
 				_tsks.emplace(tsk);
-
-				if (!timeout) {
-					tsk->is_rept = false;
-					return;
-				}
-				tsk->is_rept = true;
-
-				if (timeout >= nmax<size_t>() - _now()) {
-					tsk->rept_end_ti = nmax<size_t>();
-					return;
-				}
-				tsk->rept_end_ti = _now() + timeout;
+				return std::move(tsk);
 			}
 
 			void enable_add_from_other_thread() {
 				assert(false);
 			}
 
-			void add_from_other_thread(std::function<void()> task, size_t timeout = 0) {
+			void add_from_other_thread(std::function<void()> func, size_t duration = 0) {
 				assert(false);
 			}
 
@@ -97,10 +157,10 @@ namespace rua {
 						if (_cws.size()) {
 
 							size_t wake_ti;
-							if (_cws.begin()->second->wake_ti < _slps.begin()->second->wake_ti) {
-								wake_ti = _cws.begin()->second->wake_ti;
+							if (_cws.begin()->first < _slps.begin()->first) {
+								wake_ti = _cws.begin()->first;
 							} else {
-								wake_ti = _slps.begin()->second->wake_ti;
+								wake_ti = _slps.begin()->first;
 							}
 
 							bool need_check_slps = true;
@@ -110,7 +170,7 @@ namespace rua {
 										_ll_cv_changed = false;
 										need_check_slps = false;
 									} else {
-										auto wake_ti = _cws.begin()->second->wake_ti;
+										auto wake_ti = _cws.begin()->first;
 										_ll_cv = ll_cv;
 										ll_sch.cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
 											return _ll_cv_changed;
@@ -137,7 +197,7 @@ namespace rua {
 							continue;
 						}
 
-						auto wake_ti = _slps.begin()->second->wake_ti;
+						auto wake_ti = _slps.begin()->first;
 						if (wake_ti > now) {
 							ll_sch.sleep(wake_ti - now);
 						} else {
@@ -156,7 +216,7 @@ namespace rua {
 						if (_ll_cv_changed) {
 							_ll_cv_changed = false;
 						} else {
-							auto wake_ti = _cws.begin()->second->wake_ti;
+							auto wake_ti = _cws.begin()->first;
 							_ll_cv = ll_cv;
 							ll_sch.cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
 								return _ll_cv_changed;
@@ -198,24 +258,6 @@ namespace rua {
 			}
 
 		private:
-			struct _tsk_t {
-				std::function<void()> fn;
-
-				bool is_rept;
-				size_t rept_end_ti;
-
-				cont ct;
-				bin stk;
-
-				size_t wake_ti;
-				std::shared_ptr<std::atomic<bool>> is_cv_notified;
-				std::cv_status cv_st;
-
-				bool is_slept;
-			};
-
-			using _tsk_ptr_t = std::shared_ptr<_tsk_t>;
-
 			std::queue<_tsk_ptr_t> _tsks;
 			_tsk_ptr_t _cur_tsk;
 
@@ -224,7 +266,7 @@ namespace rua {
 
 			void _check_slps(size_t now) {
 				for (auto it = _slps.begin(); it != _slps.end(); it = _slps.erase(it)) {
-					if (now < it->second->wake_ti) {
+					if (now < it->first) {
 						break;
 					}
 					_tsks.emplace(std::move(it->second));
@@ -239,7 +281,7 @@ namespace rua {
 						it = _cws.erase(it);
 						continue;
 					}
-					if (now >= it->second->wake_ti) {
+					if (now >= it->first) {
 						it->second->cv_st = std::cv_status::timeout;
 						_tsks.emplace(std::move(it->second));
 						it = _cws.erase(it);
@@ -284,19 +326,27 @@ namespace rua {
 						continue;
 					}
 
-					if (!cp._cur_tsk->is_rept) {
-						cp._cur_tsk->fn();
-						continue;
+					if (cp._cur_tsk->is_stoped) {
+						break;
 					}
 
 					for (;;) {
-						if (cp._cur_tsk->rept_end_ti <= _now()) {
+						cp._cur_tsk->fn();
+
+						if (cp._cur_tsk->is_stoped) {
 							break;
 						}
 
-						cp._cur_tsk->fn();
+						if (cp._cur_tsk->end_ti <= _now()) {
+							cp._cur_tsk->is_stoped = false;
+							break;
+						}
 
 						if (!cp._cur_tsk->is_slept) {
+							cp._slps.emplace(
+								0,
+								std::move(cp._cur_tsk)
+							);
 							break;
 						}
 						cp._cur_tsk->is_slept = false;
@@ -359,18 +409,19 @@ namespace rua {
 
 					template <typename SlpMap>
 					void _sleep(SlpMap &&slp_map, size_t timeout) {
+						size_t wake_ti;
+						if (!timeout) {
+							wake_ti = 0;
+						} else if (timeout >= nmax<size_t>() - _now()) {
+							wake_ti = nmax<size_t>();
+						} else {
+							wake_ti = co_pool::_now() + timeout;
+						}
+
 						auto &tsk = *slp_map.emplace(
-							timeout ? co_pool::_now() + timeout : 0,
+							wake_ti,
 							std::move(_cp->_cur_tsk)
 						)->second;
-
-						if (!timeout) {
-							tsk.wake_ti = 0;
-						} else if (timeout >= nmax<size_t>() - _now()) {
-							tsk.wake_ti = nmax<size_t>();
-						} else {
-							tsk.wake_ti = co_pool::_now() + timeout;
-						}
 
 						tsk.is_slept = true;
 
