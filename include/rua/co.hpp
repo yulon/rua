@@ -255,7 +255,9 @@ namespace rua {
 			std::vector<bin> _idle_tskr_stks;
 
 			void _restore_cur_tsk_stk() {
-				_idle_tskr_stks.push_back(std::move(_cur_tskr_stk));
+				if (_cur_tskr_stk) {
+					_idle_tskr_stks.emplace_back(std::move(_cur_tskr_stk));
+				}
 				_cur_tskr_stk = std::move(_cur_tsk->stk);
 				_tskr_ct_base.bind(&_tskr, this, _cur_tskr_stk);
 			}
@@ -373,7 +375,12 @@ namespace rua {
 						tsk.is_slept = true;
 
 						tsk.stk = std::move(_cp->_cur_tskr_stk);
-						_cp->_new_tskr_co(tsk.ct);
+
+						if (_cp->_tsks.size()) {
+							_cp->_new_tskr_co(tsk.ct);
+							return;
+						}
+						_cp->_orig_ct.restore(tsk.ct);
 					}
 
 					virtual void sleep(size_t timeout) {
