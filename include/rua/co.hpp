@@ -60,35 +60,35 @@ namespace rua {
 			class task {
 				public:
 					void stop() {
-						if (!_ctx) {
+						if (!_tsk) {
 							return;
 						}
-						_ctx->is_stoped = true;
-						_ctx.reset();
+						_tsk->is_stoped = true;
+						_tsk.reset();
 					}
 
 					void reset_duration(size_t duration = 0) {
-						if (!_ctx) {
+						if (!_tsk) {
 							return;
 						}
-						if (!_ctx->is_stoped) {
-							_ctx.reset();
+						if (!_tsk->is_stoped) {
+							_tsk.reset();
 							return;
 						}
-						_ctx->reset_duration(duration);
+						_tsk->reset_duration(duration);
 					}
 
 					operator bool() const {
-						return _ctx && !_ctx->is_stoped;
+						return _tsk && !_tsk->is_stoped;
 					}
 
 				private:
 					friend co_pool;
 
-					_tsk_ptr_t _ctx;
+					_tsk_ptr_t _tsk;
 
-					task(_tsk_ptr_t &&ctx) : _ctx(std::move(ctx)) {}
-					task(const _tsk_ptr_t &ctx) : _ctx(ctx) {}
+					task(_tsk_ptr_t &&tsk) : _tsk(std::move(tsk)) {}
+					task(const _tsk_ptr_t &tsk) : _tsk(tsk) {}
 			};
 
 			task add(std::function<void()> func, size_t duration = 0) {
