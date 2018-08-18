@@ -126,6 +126,10 @@ namespace rua {
 			}
 
 			virtual std::cv_status cond_wait(std::shared_ptr<scheduler::cond_var> cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
+				if (timeout == nmax<size_t>()) {
+					static_cast<cond_var &>(*cv)._cv.wait(lck);
+					return std::cv_status::no_timeout;
+				}
 				return static_cast<cond_var &>(*cv)._cv.wait_for(lck, std::chrono::milliseconds(timeout));
 			}
 	};
@@ -170,11 +174,11 @@ namespace rua {
 			scheduler &_previous;
 	};
 
-	void yield() {
+	inline void yield() {
 		get_scheduler().yield();
 	}
 
-	void sleep(size_t timeout) {
+	inline void sleep(size_t timeout) {
 		get_scheduler().sleep(timeout);
 	}
 }
