@@ -59,6 +59,8 @@ namespace rua {
 		public:
 			class task {
 				public:
+					task() = default;
+
 					void stop() {
 						if (!_tsk) {
 							return;
@@ -102,12 +104,16 @@ namespace rua {
 				return std::move(tsk);
 			}
 
-			void enable_add_from_other_thread() {
+			/*void enable_add_from_other_thread() {
 				assert(false);
 			}
 
 			void add_from_other_thread(std::function<void()> func, size_t duration = 0) {
 				assert(false);
+			}*/
+
+			task current() const {
+				return _cur_tsk;
 			}
 
 			void step() {
