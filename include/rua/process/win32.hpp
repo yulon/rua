@@ -9,6 +9,7 @@
 #include "../any_word.hpp"
 #include "../strenc.hpp"
 #include "../limits.hpp"
+#include "../bin.hpp"
 
 #include <windows.h>
 #include <tlhelp32.h>
@@ -243,15 +244,13 @@ namespace rua {
 
 			////////////////////////////////////////////////////////////////
 
-			class mem_ref_t : public virtual io::read_writer_at {
+			class mem_view_t : public virtual io::reader_at {
 				public:
-					mem_ref_t(process &proc, any_ptr p, size_t n) : _proc(&proc), _ptr(p), _sz(n) {}
+					mem_view_t() : _proc(nullptr), _ptr(nullptr), _sz(0) {}
 
-					virtual ~mem_ref_t() {}
+					mem_view_t(const process &proc, any_ptr p, size_t n) : _proc(&proc), _ptr(p), _sz(n) {}
 
-					process &owner() {
-						return *_proc;
-					}
+					virtual ~mem_view_t() {}
 
 					const process &owner() const {
 						return *_proc;
@@ -261,6 +260,10 @@ namespace rua {
 						return _ptr;
 					}
 
+					size_t size() const {
+						return _sz;
+					}
+
 					virtual intmax_t read_at(ptrdiff_t pos, bin_ref data) {
 						SIZE_T sz;
 						ReadProcessMemory(_proc->native_handle(), _ptr + pos, data.base(), data.size(), &sz);
@@ -268,11 +271,11 @@ namespace rua {
 						return static_cast<intmax_t>(sz);
 					}
 
-					virtual intmax_t write_at(ptrdiff_t pos, bin_view data) {
-						SIZE_T sz;
-						WriteProcessMemory(_proc->native_handle(), _ptr + pos, data.base(), data.size(), &sz);
-						assert(sz <= static_cast<SIZE_T>(nmax<intmax_t>()));
-						return static_cast<intmax_t>(sz);
+					bin_view try_to_local() const {
+						if (*_proc != process::current()) {
+							return nullptr;
+						}
+						return bin_view(_ptr, _sz);
 					}
 
 					void reset(process *proc = nullptr, any_ptr p = nullptr) {
@@ -281,16 +284,38 @@ namespace rua {
 					}
 
 				private:
-					process *_proc;
+					const process *_proc;
 					any_ptr _ptr;
 					size_t _sz;
+			};
 
-				protected:
-					mem_ref_t() = default;
+			class mem_ref_t : public mem_view_t, public virtual io::read_writer_at {
+				public:
+					mem_ref_t() : mem_view_t() {}
+
+					mem_ref_t(process &proc, any_ptr p, size_t n) : mem_view_t(proc, p, n) {}
+
+					virtual ~mem_ref_t() {}
+
+					virtual intmax_t write_at(ptrdiff_t pos, bin_view data) {
+						SIZE_T sz;
+						WriteProcessMemory(owner().native_handle(), ptr() + pos, data.base(), data.size(), &sz);
+						assert(sz <= static_cast<SIZE_T>(nmax<intmax_t>()));
+						return static_cast<intmax_t>(sz);
+					}
+
+					bin_ref try_to_local() {
+						if (owner() != process::current()) {
+							return nullptr;
+						}
+						return bin_ref(ptr(), size());
+					}
 			};
 
 			class mem_t : public mem_ref_t {
 				public:
+					mem_t() : mem_ref_t() {}
+
 					mem_t(process &proc, size_t n) {
 						mem_ref_t::reset(&proc, VirtualAllocEx(proc.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE));
 					}
@@ -305,14 +330,32 @@ namespace rua {
 					}
 			};
 
+			mem_view_t mem_view(any_ptr p, size_t n) const {
+				return mem_view_t(*this, p, n);
+			}
+
 			mem_ref_t mem_ref(any_ptr p, size_t n) {
 				return mem_ref_t(*this, p, n);
 			}
 
+			mem_view_t mem_image() const {
+				if (*this == current()) {
+					MODULEINFO mi;
+					GetModuleInformation(_ntv_hdl, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+					return mem_view_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
+				}
+				assert(false);
+				return mem_view_t();
+			}
+
 			mem_ref_t mem_image() {
-				MODULEINFO mi;
-				GetModuleInformation(_ntv_hdl, nullptr, &mi, sizeof(MODULEINFO));
-				return mem_ref_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
+				if (*this == current()) {
+					MODULEINFO mi;
+					GetModuleInformation(_ntv_hdl, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+					return mem_ref_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
+				}
+				assert(false);
+				return mem_ref_t();
 			}
 
 			mem_t mem_alloc(size_t size) {
@@ -345,26 +388,6 @@ namespace rua {
 				GetExitCodeThread(td, &result);
 				CloseHandle(td);
 				return result;
-			}
-
-			any_word syscall(any_ptr func, std::nullptr_t) {
-				return syscall(func);
-			}
-
-			any_word syscall(any_ptr func, const std::string &param) {
-				return syscall(func, any_word(mem_alloc(param).ptr()));
-			}
-
-			any_word syscall(any_ptr func, const std::wstring &param) {
-				return syscall(func, any_word(mem_alloc(param).ptr()));
-			}
-
-			any_word syscall(any_ptr func, const char *param) {
-				return syscall(func, std::string(param));
-			}
-
-			any_word syscall(any_ptr func, const wchar_t *param) {
-				return syscall(func, std::wstring(param));
 			}
 
 		private:
