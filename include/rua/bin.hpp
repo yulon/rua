@@ -873,17 +873,8 @@ namespace rua {
 			}
 	};
 
-	template <size_t Sz>
-	class bin_block : public bin_base<bin_block<Sz>> {
+	class bin_getter {
 		public:
-			any_ptr base() {
-				return this;
-			}
-
-			static constexpr size_t size() {
-				return Sz;
-			}
-
 			template <typename T>
 			T &get(ptrdiff_t offset = 0) {
 				return mem::get<T>(this, offset);
@@ -902,6 +893,18 @@ namespace rua {
 			template <typename T>
 			const T &aligned_get(ptrdiff_t ix = 0) const {
 				return get<T>(ix * sizeof(T));
+			}
+	};
+
+	template <size_t Sz>
+	class bin_block : public bin_getter, public bin_base<bin_block<Sz>> {
+		public:
+			any_ptr base() {
+				return this;
+			}
+
+			static constexpr size_t size() {
+				return Sz;
 			}
 
 		private:
