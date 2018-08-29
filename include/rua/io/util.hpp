@@ -10,7 +10,7 @@ namespace rua {
 		inline intmax_t reader::read_full(bin_ref p) {
 			size_t tsz = 0;
 			while (tsz < p.size()) {
-				auto sz = read(p);
+				auto sz = read(p(tsz));
 				if (sz < 0) {
 					return sz;
 				}
@@ -23,14 +23,13 @@ namespace rua {
 			bin buf(buf_sz);
 			size_t tsz = 0;
 			for (;;) {
-				auto sz = read(buf);
+				auto sz = read(buf(tsz));
 				if (sz < 0) {
 					break;
 				}
+				tsz += static_cast<size_t>(sz);
 				if (buf.size() - tsz < buf_sz / 2) {
-					bin new_buf(buf.size() + buf_sz);
-					new_buf.copy(buf);
-					buf = std::move(new_buf);
+					buf.resize(buf.size() + buf_sz);
 				}
 			}
 			buf.resize(tsz);
@@ -40,7 +39,7 @@ namespace rua {
 		inline bool writer::write_all(bin_view p) {
 			size_t tsz = 0;
 			while (tsz < p.size()) {
-				auto sz = write(p);
+				auto sz = write(p(tsz));
 				if (sz < 0) {
 					return false;
 				}
