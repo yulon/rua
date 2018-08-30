@@ -36,14 +36,17 @@ namespace rua {
 				return enrel<RelPtr, SlotSize>(0, abs_ptr);
 			}
 
-			template<typename T>
-			typename std::decay<T>::type byte_reverse() {
-				std::vector<uint8_t> r(_this()->size());
-				auto p = reinterpret_cast<uint8_t *>(_this()->base());
-				for (size_t i = 0; i < sizeof(T); ++i) {
-					r[i] = p[sizeof(T) - 1 - i];
+			template <typename T = uint8_t>
+			void reverse() {
+				auto n = _this()->size() / sizeof(T);
+				std::vector<T> r(n);
+				T *p = _this()->base();
+				for (size_t i = 0; i < n; ++i) {
+					r[i] = p[n - 1 - i];
 				}
-				return r;
+				for (size_t i = 0; i < n; ++i) {
+					p[i] = r[n - 1 - i];
+				}
 			}
 
 			template <typename Alignment = uintmax_t>
@@ -187,6 +190,39 @@ namespace rua {
 					}
 
 					pattern(std::initializer_list<uint16_t> byt_vals) {
+						_input(byt_vals);
+					}
+
+					pattern(std::initializer_list<std::initializer_list<uint8_t>> byt_val_spls) {
+						std::vector<uint16_t> byt_vals;
+
+						auto sz = rua::nmax<size_t>();
+						for (auto it = byt_val_spls.begin(); it != byt_val_spls.end(); ++it) {
+							if (it->size() < sz) {
+								sz = it->size();
+							}
+						}
+
+						for (size_t i = 0; i < sz; ++i) {
+							const uint8_t *b = nullptr;
+							bool same = true;
+							for (auto it = byt_val_spls.begin(); it != byt_val_spls.end(); ++it) {
+								if (!b) {
+									b = &it->begin()[i];
+									continue;
+								}
+								if (*b != it->begin()[i]) {
+									same = false;
+									break;
+								}
+							}
+							if (same) {
+								byt_vals.emplace_back(*b);
+							} else {
+								byt_vals.emplace_back(1111);
+							}
+						}
+
 						_input(byt_vals);
 					}
 
