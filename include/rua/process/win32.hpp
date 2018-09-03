@@ -92,7 +92,7 @@ namespace rua {
 				}
 
 				if (!CreateProcessW(
-					file_w.c_str(),
+					nullptr,
 					args.size() ? const_cast<wchar_t *>(cmd.str().c_str()) : nullptr,
 					nullptr,
 					nullptr,
@@ -208,12 +208,16 @@ namespace rua {
 				}
 			}
 
-			void wait_for_exit() {
+			int wait_for_exit() {
 				if (_ntv_hdl) {
 					resume_main_thread();
 					WaitForSingleObject(_ntv_hdl, INFINITE);
+					DWORD exit_code;
+					GetExitCodeProcess(_ntv_hdl, &exit_code);
 					reset();
+					return exit_code;
 				}
+				return -1;
 			}
 
 			void exit(int code = 1) {
