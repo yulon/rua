@@ -6,8 +6,12 @@
 #include "macros.hpp"
 #include "limits.hpp"
 
-#include <cstdint>
+#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+	#include <string_view>
+#endif
+
 #include <string>
+#include <cstdint>
 #include <utility>
 #include <atomic>
 #include <cstring>
@@ -560,6 +564,14 @@ namespace rua {
 			bin_base() = default;
 	};
 
+	inline RUA_CONSTEXPR_14 size_t _strlen(const char *c_str) {
+		size_t i = 0;
+		while (c_str[i] != 0) {
+			++i;
+		}
+		return i;
+	}
+
 	class bin_view : public bin_base<bin_view> {
 		public:
 			constexpr bin_view() : _base(nullptr), _sz(0) {}
@@ -570,6 +582,14 @@ namespace rua {
 
 			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
 			constexpr bin_view(const T *ptr, size_t sz = sizeof(T)) : bin_view(reinterpret_cast<const void *>(ptr), sz) {}
+
+			RUA_CONSTEXPR_14 bin_view(const char *c_str) : _base(c_str), _sz(_strlen(c_str)) {}
+
+			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+				constexpr bin_view(std::string_view sv) : _base(sv.data()), _sz(sv.length()) {}
+			#else
+				bin_view(const std::string &str) : _base(str.c_str()), _sz(str.length()) {}
+			#endif
 
 			operator bool() const {
 				return _base;
@@ -679,8 +699,18 @@ namespace rua {
 
 			constexpr bin_ref(void *ptr, size_t sz = nmax<size_t>()) : bin_view(ptr, sz) {}
 
-			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_same<T, void>::value &&
+					!std::is_const<T>::value
+				>::type
+			>
 			constexpr bin_ref(T *ptr, size_t sz = sizeof(T)) : bin_ref(reinterpret_cast<void *>(ptr), sz) {}
+
+			RUA_CONSTEXPR_14 bin_ref(char *c_str) : bin_view(c_str) {}
+
+			bin_ref(std::string &str) : bin_view(str.data(), str.length()) {}
 
 			size_t copy(const bin_view &src) {
 				auto cp_sz = size() < src.size() ? size() : src.size();
@@ -796,6 +826,17 @@ namespace rua {
 				*this = static_cast<const bin_view &>(src);
 				return *this;
 			}
+
+			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
+			bin(const T *ptr, size_t sz = sizeof(T)) : bin(bin_view(reinterpret_cast<const void *>(ptr), sz)) {}
+
+			bin(const char *c_str) : bin(bin_view(c_str)) {}
+
+			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+				bin(std::string_view sv) : bin(bin_view(sv.data(), sv.length())) {}
+			#else
+				bin(const std::string &str) : bin(bin_view(str.data(), str.length())) {}
+			#endif
 
 			bin(bin &&src) : bin_ref(static_cast<bin_ref &&>(std::move(src))), _alloced(src._alloced) {
 				if (src) {

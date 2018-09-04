@@ -18,7 +18,7 @@ rua::test _t("bin", "find", []() {
 
 	std::string dat_str(dat_sz, -1);
 
-	rua::bin_ref dat(const_cast<char *>(dat_str.data()), dat_str.length());
+	rua::bin_ref dat(dat_str);
 
 	char pat[]{ -1, -1, -1, -1, -1, 6, 7, -1, 0 };
 
