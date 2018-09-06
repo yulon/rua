@@ -7,74 +7,74 @@
 
 #include <cstddef>
 
-namespace rua {
-	namespace io {
-		class reader {
-			public:
-				virtual ~reader() = default;
+namespace rua { namespace io {
+	class reader {
+		public:
+			virtual ~reader() = default;
 
-				virtual intmax_t read(bin_ref) = 0;
+			virtual size_t read(bin_ref) = 0;
 
-				inline intmax_t read_full(bin_ref p);
+			inline size_t read_full(bin_ref);
 
-				inline bin read_all(size_t buf_sz = 1024);
-		};
+			inline bin read_all(size_t buf_sz = 1024);
+	};
 
-		class writer {
-			public:
-				virtual ~writer() = default;
+	class writer {
+		public:
+			virtual ~writer() = default;
 
-				virtual intmax_t write(bin_view) = 0;
+			virtual size_t write(bin_view) = 0;
 
-				inline bool write_all(bin_view p);
-		};
+			inline bool write_all(bin_view);
 
-		class read_writer : public virtual reader, public virtual writer {
-			public:
-				virtual ~read_writer() = default;
-		};
+			inline bool copy(reader &r, size_t buf_sz = 1024);
+	};
 
-		class seeker {
-			public:
-				virtual ~seeker() = default;
+	class read_writer : public virtual reader, public virtual writer {
+		public:
+			virtual ~read_writer() = default;
+	};
 
-				virtual intmax_t seek(intmax_t offset, int whence) = 0;
-		};
+	class seeker {
+		public:
+			virtual ~seeker() = default;
 
-		class read_seeker : public virtual reader, public virtual seeker {
-			public:
-				virtual ~read_seeker() = default;
-		};
+			virtual size_t seek(size_t offset, int whence) = 0;
+	};
 
-		class write_seeker : public virtual writer, public virtual seeker {
-			public:
-				virtual ~write_seeker() = default;
-		};
+	class read_seeker : public virtual reader, public virtual seeker {
+		public:
+			virtual ~read_seeker() = default;
+	};
 
-		class read_write_seeker : public virtual reader, public virtual writer, public virtual seeker {
-			public:
-				virtual ~read_write_seeker() = default;
-		};
+	class write_seeker : public virtual writer, public virtual seeker {
+		public:
+			virtual ~write_seeker() = default;
+	};
 
-		class reader_at {
-			public:
-				virtual ~reader_at() = default;
+	class read_write_seeker : public virtual reader, public virtual writer, public virtual seeker {
+		public:
+			virtual ~read_write_seeker() = default;
+	};
 
-				virtual intmax_t read_at(ptrdiff_t pos, bin_ref) = 0;
-		};
+	class reader_at {
+		public:
+			virtual ~reader_at() = default;
 
-		class writer_at {
-			public:
-				virtual ~writer_at() = default;
+			virtual size_t read_at(ptrdiff_t pos, bin_ref) = 0;
+	};
 
-				virtual intmax_t write_at(ptrdiff_t pos, bin_view) = 0;
-		};
+	class writer_at {
+		public:
+			virtual ~writer_at() = default;
 
-		class read_writer_at : public virtual reader_at, public virtual writer_at {
-			public:
-				virtual ~read_writer_at() = default;
-		};
-	}
-}
+			virtual size_t write_at(ptrdiff_t pos, bin_view) = 0;
+	};
+
+	class read_writer_at : public virtual reader_at, public virtual writer_at {
+		public:
+			virtual ~read_writer_at() = default;
+	};
+}}
 
 #endif

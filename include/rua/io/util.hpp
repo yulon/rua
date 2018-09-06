@@ -5,49 +5,61 @@
 
 #include <cstddef>
 
-namespace rua {
-	namespace io {
-		inline intmax_t reader::read_full(bin_ref p) {
-			size_t tsz = 0;
-			while (tsz < p.size()) {
-				auto sz = read(p(tsz));
-				if (sz < 0) {
-					return sz;
-				}
-				tsz += static_cast<size_t>(sz);
+namespace rua { namespace io {
+	inline size_t reader::read_full(bin_ref p) {
+		size_t tsz = 0;
+		while (tsz < p.size()) {
+			auto sz = read(p(tsz));
+			if (!sz) {
+				return tsz;
 			}
-			return static_cast<intmax_t>(p.size());
+			tsz += static_cast<size_t>(sz);
 		}
-
-		inline bin reader::read_all(size_t buf_sz) {
-			bin buf(buf_sz);
-			size_t tsz = 0;
-			for (;;) {
-				auto sz = read(buf(tsz));
-				if (sz < 0) {
-					break;
-				}
-				tsz += static_cast<size_t>(sz);
-				if (buf.size() - tsz < buf_sz / 2) {
-					buf.resize(buf.size() + buf_sz);
-				}
-			}
-			buf.resize(tsz);
-			return buf;
-		}
-
-		inline bool writer::write_all(bin_view p) {
-			size_t tsz = 0;
-			while (tsz < p.size()) {
-				auto sz = write(p(tsz));
-				if (sz < 0) {
-					return false;
-				}
-				tsz += static_cast<size_t>(sz);
-			}
-			return true;
-		}
+		return tsz;
 	}
-}
+
+	inline bin reader::read_all(size_t buf_sz) {
+		bin buf(buf_sz);
+		size_t tsz = 0;
+		for (;;) {
+			auto sz = read(buf(tsz));
+			if (!sz) {
+				break;
+			}
+			tsz += static_cast<size_t>(sz);
+			if (buf.size() - tsz < buf_sz / 2) {
+				buf.resize(buf.size() + buf_sz);
+			}
+		}
+		buf.resize(tsz);
+		return buf;
+	}
+
+	inline bool writer::write_all(bin_view p) {
+		size_t tsz = 0;
+		while (tsz < p.size()) {
+			auto sz = write(p(tsz));
+			if (!sz) {
+				return false;
+			}
+			tsz += static_cast<size_t>(sz);
+		}
+		return true;
+	}
+
+	inline bool writer::copy(reader &r, size_t buf_sz) {
+		bin buf(buf_sz);
+		for (;;) {
+			auto sz = r.read(buf);
+			if (!sz) {
+				return true;
+			}
+			if (!write_all(buf(0, sz))) {
+				return false;
+			}
+		}
+		return false;
+	}
+}}
 
 #endif

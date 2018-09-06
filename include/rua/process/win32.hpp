@@ -22,7 +22,7 @@
 #include <cstring>
 #include <cassert>
 
-namespace rua {
+namespace rua { namespace win32 {
 	class process {
 		public:
 			static process find(const std::string &name) {
@@ -75,7 +75,7 @@ namespace rua {
 				const std::vector<std::string> &args,
 				const std::string &pwd,
 				bool pause_main_thread = false
-			) : _need_close(false) {
+			) {
 				STARTUPINFOW si;
 				PROCESS_INFORMATION pi;
 				memset(&si, 0, sizeof(si));
@@ -103,16 +103,21 @@ namespace rua {
 					&si,
 					&pi
 				)) {
+					CloseHandle(pi.hProcess);
+					CloseHandle(pi.hThread);
 					_ntv_hdl = nullptr;
 					_main_td = nullptr;
+					_need_close = false;
 					return;
 				}
 
 				_ntv_hdl = pi.hProcess;
+				_need_close = true;
 
 				if (pause_main_thread) {
 					_main_td = pi.hThread;
 				} else {
+					CloseHandle(pi.hThread);
 					_main_td = nullptr;
 				}
 			}
@@ -204,6 +209,7 @@ namespace rua {
 			void resume_main_thread() {
 				if (_main_td) {
 					ResumeThread(_main_td);
+					CloseHandle(_main_td);
 					_main_td = nullptr;
 				}
 			}
@@ -268,11 +274,11 @@ namespace rua {
 						return _sz;
 					}
 
-					virtual intmax_t read_at(ptrdiff_t pos, bin_ref data) {
+					virtual size_t read_at(ptrdiff_t pos, bin_ref data) {
 						SIZE_T sz;
 						ReadProcessMemory(_proc->native_handle(), _ptr + pos, data.base(), data.size(), &sz);
-						assert(sz <= static_cast<SIZE_T>(nmax<intmax_t>()));
-						return static_cast<intmax_t>(sz);
+						assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
+						return static_cast<size_t>(sz);
 					}
 
 					bin_view try_to_local() const {
@@ -301,11 +307,11 @@ namespace rua {
 
 					virtual ~mem_ref_t() {}
 
-					virtual intmax_t write_at(ptrdiff_t pos, bin_view data) {
+					virtual size_t write_at(ptrdiff_t pos, bin_view data) {
 						SIZE_T sz;
 						WriteProcessMemory(owner().native_handle(), ptr() + pos, data.base(), data.size(), &sz);
-						assert(sz <= static_cast<SIZE_T>(nmax<intmax_t>()));
-						return static_cast<intmax_t>(sz);
+						assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
+						return static_cast<size_t>(sz);
 					}
 
 					bin_ref try_to_local() {
@@ -398,6 +404,6 @@ namespace rua {
 			HANDLE _ntv_hdl, _main_td;
 			bool _need_close;
 	};
-}
+}}
 
 #endif
