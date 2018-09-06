@@ -1,5 +1,4 @@
 #include <rua/bin.hpp>
-
 #include <rua/test.hpp>
 
 #include <iostream>
@@ -20,11 +19,13 @@ rua::test _t("bin", "find", []() {
 
 	rua::bin_ref dat(dat_str);
 
+	RUA_RASSERT(dat.size() == dat_sz);
+
 	char pat[]{ -1, -1, -1, -1, -1, 6, 7, -1, 0 };
 
 	auto pat_pos = dat_str.length() - 100;
 
-	dat(pat_pos).copy(rua::bin_view(&pat, sizeof(pat) - 1));
+	dat(pat_pos).copy(&pat[0]);
 
 	// bin_base::find
 
@@ -41,7 +42,7 @@ rua::test _t("bin", "find", []() {
 
 	tp = std::chrono::steady_clock::now();
 
-	auto mr = dat.match({ 255, 1111, 255, 255, 255, 6, 7, 255, 255 });
+	auto mr = dat.match({ 255, 1111, 255, 255, 255, 6, 7, 255 });
 
 	auto data_match_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 

@@ -580,15 +580,30 @@ namespace rua {
 
 			constexpr bin_view(const void *ptr, size_t sz = nmax<size_t>()) : _base(ptr), _sz(ptr ? sz : 0) {}
 
-			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_same<typename std::decay<T>::type, void>::value
+				>::type
+			>
 			constexpr bin_view(const T *ptr, size_t sz = sizeof(T)) : bin_view(reinterpret_cast<const void *>(ptr), sz) {}
+
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, std::string>::value &&
+					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
+				>::type
+			>
+			constexpr bin_view(const T &ref, size_t sz = sizeof(T)) : bin_view(&ref, sz) {}
 
 			RUA_CONSTEXPR_14 bin_view(const char *c_str) : _base(c_str), _sz(_strlen(c_str)) {}
 
 			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
 				constexpr bin_view(std::string_view sv) : _base(sv.data()), _sz(sv.length()) {}
 			#else
-				bin_view(const std::string &str) : _base(str.c_str()), _sz(str.length()) {}
+				bin_view(const std::string &str) : _base(str.data()), _sz(str.length()) {}
 			#endif
 
 			operator bool() const {
@@ -660,6 +675,16 @@ namespace rua {
 				return std::move(slice_self(begin, end));
 			}
 
+			bin_view &slice_self(ptrdiff_t begin) & {
+				_base += begin;
+				_sz = static_cast<size_t>(_sz - begin);
+				return *this;
+			}
+
+			bin_view &&slice_self(ptrdiff_t begin) && {
+				return std::move(slice_self(begin));
+			}
+
 			void rebase(any_ptr ptr) {
 				_base = ptr;
 				if (!ptr) {
@@ -671,24 +696,15 @@ namespace rua {
 				_sz = sz;
 			}
 
-			void reset(void *ptr, size_t sz = 0) {
-				_base = ptr;
-				_sz = ptr ? sz : 0;
-			}
-
-			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
-			void reset(T *ptr, size_t sz = sizeof(T)) {
-				reset(reinterpret_cast<void *>(ptr), sz);
-			}
-
-			void reset() {
-				_base = nullptr;
-				_sz = 0;
-			}
-
 		private:
 			any_ptr _base;
 			size_t _sz;
+
+		protected:
+			void _reset(void *ptr = nullptr, size_t sz = 0) {
+				_base = ptr;
+				_sz = ptr ? sz : 0;
+			}
 	};
 
 	class bin_ref : public bin_view {
@@ -702,17 +718,28 @@ namespace rua {
 			template <
 				typename T,
 				typename = typename std::enable_if<
-					!std::is_same<T, void>::value &&
-					!std::is_const<T>::value
+					!std::is_const<T>::value &&
+					!std::is_same<typename std::decay<T>::type, void>::value
 				>::type
 			>
 			constexpr bin_ref(T *ptr, size_t sz = sizeof(T)) : bin_ref(reinterpret_cast<void *>(ptr), sz) {}
+
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_const<T>::value &&
+					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, std::string>::value &&
+					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
+				>::type
+			>
+			constexpr bin_ref(T &ref, size_t sz = sizeof(T)) : bin_ref(&ref, sz) {}
 
 			RUA_CONSTEXPR_14 bin_ref(char *c_str) : bin_view(c_str) {}
 
 			bin_ref(std::string &str) : bin_view(str.data(), str.length()) {}
 
-			size_t copy(const bin_view &src) {
+			size_t copy(bin_view src) {
 				auto cp_sz = size() < src.size() ? size() : src.size();
 				if (!cp_sz) {
 					return 0;
@@ -786,6 +813,24 @@ namespace rua {
 			bin_view operator()(ptrdiff_t begin) const {
 				return bin_view::slice(begin);
 			}
+
+			bin_ref &slice_self(ptrdiff_t begin, ptrdiff_t end) & {
+				bin_view::slice_self(begin, end);
+				return *this;
+			}
+
+			bin_ref &&slice_self(ptrdiff_t begin, ptrdiff_t end) && {
+				return std::move(slice_self(begin, end));
+			}
+
+			bin_ref &slice_self(ptrdiff_t begin) & {
+				bin_view::slice_self(begin);
+				return *this;
+			}
+
+			bin_ref &&slice_self(ptrdiff_t begin) && {
+				return std::move(slice_self(begin));
+			}
 	};
 
 	class bin : public bin_ref {
@@ -799,7 +844,7 @@ namespace rua {
 					return;
 				}
 				_alloc(sz);
-				bin_view::reset(_alloced_base(), sz);
+				_reset(_alloced_base(), sz);
 			}
 
 			~bin() {
@@ -827,8 +872,24 @@ namespace rua {
 				return *this;
 			}
 
-			template <typename T, typename = typename std::enable_if<!std::is_same<T, void>::value>::type>
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_same<typename std::decay<T>::type, void>::value
+				>::type
+			>
 			bin(const T *ptr, size_t sz = sizeof(T)) : bin(bin_view(reinterpret_cast<const void *>(ptr), sz)) {}
+
+			template <
+				typename T,
+				typename = typename std::enable_if<
+					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, std::string>::value &&
+					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
+				>::type
+			>
+			bin(T &ref, size_t sz = sizeof(T)) : bin(&ref, sz) {}
 
 			bin(const char *c_str) : bin(bin_view(c_str)) {}
 
@@ -840,10 +901,10 @@ namespace rua {
 
 			bin(bin &&src) : bin_ref(static_cast<bin_ref &&>(std::move(src))), _alloced(src._alloced) {
 				if (src) {
-					static_cast<bin_view &&>(src).reset();
+					src._reset();
 					src._alloced = nullptr;
 				} else {
-					bin_view::reset();
+					_reset();
 				}
 			}
 
@@ -852,8 +913,8 @@ namespace rua {
 					if (*this) {
 						free(base());
 					}
-					bin_view::reset(src.base(), src.size());
-					static_cast<bin_view &&>(src).reset();
+					_reset(src.base(), src.size());
+					src._reset();
 					src._alloced = nullptr;
 				} else {
 					reset();
@@ -866,17 +927,31 @@ namespace rua {
 
 				bin_view::slice_self(begin, end);
 
-				#ifndef NDEBUG
-					assert(base() >= _alloced_base());
-					assert(base() < _alloced_base() + _alloced_size());
-					assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
-				#endif
+				assert(base() >= _alloced_base());
+				assert(base() < _alloced_base() + _alloced_size());
+				assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
 
 				return *this;
 			}
 
 			bin &&slice_self(ptrdiff_t begin, ptrdiff_t end) && {
 				return std::move(slice_self(begin, end));
+			}
+
+			bin &slice_self(ptrdiff_t begin) & {
+				assert(_alloced);
+
+				bin_view::slice_self(begin);
+
+				assert(base() >= _alloced_base());
+				assert(base() < _alloced_base() + _alloced_size());
+				assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
+
+				return *this;
+			}
+
+			bin &&slice_self(ptrdiff_t begin) && {
+				return std::move(slice_self(begin));
 			}
 
 			bool resize(size_t sz) {
@@ -910,7 +985,7 @@ namespace rua {
 				}
 				if (_alloced) {
 					if (sz <= _alloced_size()) {
-						bin_view::reset(_alloced_base(), sz);
+						_reset(_alloced_base(), sz);
 						return;
 					}
 					free(_alloced);
@@ -924,7 +999,7 @@ namespace rua {
 					_alloced = nullptr;
 				}
 				if (*this) {
-					bin_view::reset();
+					_reset();
 				}
 			}
 
@@ -946,7 +1021,7 @@ namespace rua {
 			void _alloc(size_t sz) {
 				_alloced = malloc(sizeof(size_t) + sz);
 				_alloced_size() = sz;
-				bin_view::reset(_alloced_base(), sz);
+				_reset(_alloced_base(), sz);
 			}
 	};
 
