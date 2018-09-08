@@ -18,8 +18,8 @@ namespace rua { namespace io {
 		return tsz;
 	}
 
-	inline bin reader::read_all(size_t buf_sz) {
-		bin buf(buf_sz);
+	inline bin reader::read_all(size_t buf_grain_sz) {
+		bin buf(buf_grain_sz);
 		size_t tsz = 0;
 		for (;;) {
 			auto sz = read(buf(tsz));
@@ -27,8 +27,8 @@ namespace rua { namespace io {
 				break;
 			}
 			tsz += static_cast<size_t>(sz);
-			if (buf.size() - tsz < buf_sz / 2) {
-				buf.resize(buf.size() + buf_sz);
+			if (buf.size() - tsz < buf_grain_sz / 2) {
+				buf.resize(buf.size() + buf_grain_sz);
 			}
 		}
 		buf.resize(tsz);
@@ -47,8 +47,12 @@ namespace rua { namespace io {
 		return true;
 	}
 
-	inline bool writer::copy(reader &r, size_t buf_sz) {
-		bin buf(buf_sz);
+	inline bool writer::copy(reader &r, bin_ref buf) {
+		bin inner_buf;
+		if (!buf) {
+			inner_buf.reset(1024);
+			buf = inner_buf;
+		}
 		for (;;) {
 			auto sz = r.read(buf);
 			if (!sz) {

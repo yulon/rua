@@ -16,7 +16,7 @@ namespace rua { namespace io {
 
 			inline size_t read_full(bin_ref);
 
-			inline bin read_all(size_t buf_sz = 1024);
+			inline bin read_all(size_t buf_grain_sz = 1024);
 	};
 
 	class writer {
@@ -27,7 +27,7 @@ namespace rua { namespace io {
 
 			inline bool write_all(bin_view);
 
-			inline bool copy(reader &r, size_t buf_sz = 1024);
+			inline bool copy(reader &r, bin_ref buf = nullptr);
 	};
 
 	class read_writer : public virtual reader, public virtual writer {
