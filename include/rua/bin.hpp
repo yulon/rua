@@ -591,7 +591,7 @@ namespace rua {
 			template <
 				typename T,
 				typename = typename std::enable_if<
-					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, any_ptr>::value &&
 					!std::is_convertible<T, std::string>::value &&
 					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
 				>::type
@@ -634,13 +634,13 @@ namespace rua {
 
 			bin_view slice(ptrdiff_t begin, ptrdiff_t end) const {
 				assert(end > begin);
-				assert(_sz <= static_cast<size_t>(nmax<ptrdiff_t>()));
+				assert(size() <= static_cast<size_t>(nmax<ptrdiff_t>()));
 
-				auto _szi = static_cast<ptrdiff_t>(_sz);
+				auto _szi = static_cast<ptrdiff_t>(size());
 				if (end > _szi) {
 					end = _szi;
 				}
-				return bin_view(_base + begin, static_cast<size_t>(end - begin));
+				return bin_view(base() + begin, static_cast<size_t>(end - begin));
 			}
 
 			bin_view slice(ptrdiff_t begin) const {
@@ -728,7 +728,7 @@ namespace rua {
 				typename T,
 				typename = typename std::enable_if<
 					!std::is_const<T>::value &&
-					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, any_ptr>::value &&
 					!std::is_convertible<T, std::string>::value &&
 					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
 				>::type
@@ -883,9 +883,8 @@ namespace rua {
 			template <
 				typename T,
 				typename = typename std::enable_if<
-					!std::is_pointer<typename std::decay<T>::type>::value &&
+					!std::is_convertible<T, any_ptr>::value &&
 					!std::is_convertible<T, std::string>::value &&
-					!std::is_pointer<typename std::decay<T>::type>::value &&
 					!std::is_base_of<bin_view, typename std::decay<T>::type>::value
 				>::type
 			>

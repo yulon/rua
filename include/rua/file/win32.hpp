@@ -26,12 +26,12 @@ namespace rua { namespace win32 {
 
 			virtual size_t read(bin_ref p) {
 				DWORD rsz;
-				return ReadFile(_f, p.base(), p.size(), &rsz, nullptr) ? static_cast<size_t>(0) : static_cast<size_t>(rsz);
+				return ReadFile(_f, p.base(), p.size(), &rsz, nullptr) ? static_cast<size_t>(rsz) : static_cast<size_t>(0);
 			}
 
 			virtual size_t write(bin_view p) {
 				DWORD wsz;
-				return WriteFile(_f, p.base(), p.size(), &wsz, nullptr) ? static_cast<size_t>(0) : static_cast<size_t>(wsz);
+				return WriteFile(_f, p.base(), p.size(), &wsz, nullptr) ? static_cast<size_t>(wsz) : static_cast<size_t>(0);
 			}
 
 		private:
