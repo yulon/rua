@@ -81,9 +81,17 @@ namespace rua { namespace win32 {
 				std::wstring file_w(u8_to_w(file));
 				std::wstringstream cmd;
 				if (args.size()) {
-					cmd << "\"" << file_w << "\"";
+					if (file.find(" ") == std::string::npos) {
+						cmd << file_w;
+					} else {
+						cmd << L"\"" << file_w << L"\"";
+					}
 					for (auto &arg : args) {
-						cmd << " \"" << u8_to_w(arg) << "\"";
+						if (arg.find(" ") == std::string::npos) {
+							cmd << L" " << u8_to_w(arg);
+						} else {
+							cmd << L" \"" << u8_to_w(arg) << L"\"";
+						}
 					}
 				}
 
