@@ -1,8 +1,8 @@
-#ifndef _RUA_PROCESS_WIN32_HPP
-#define _RUA_PROCESS_WIN32_HPP
+#ifndef _RUA_PROC_WIN32_HPP
+#define _RUA_PROC_WIN32_HPP
 
 #ifndef _WIN32
-	#error rua::os::process: not supported this platform!
+	#error rua::os::proc: not supported this platform!
 #endif
 
 #include "../io.hpp"
@@ -10,6 +10,8 @@
 #include "../strenc.hpp"
 #include "../limits.hpp"
 #include "../bin.hpp"
+#include "../file/win32.hpp"
+#include "../sched.hpp"
 
 #include <windows.h>
 #include <tlhelp32.h>
@@ -23,9 +25,9 @@
 #include <cassert>
 
 namespace rua { namespace win32 {
-	class process {
+	class proc {
 		public:
-			static process find(const std::string &name) {
+			static proc find(const std::string &name) {
 				std::wstring wname(u8_to_w(name));
 				HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 				if (snapshot != INVALID_HANDLE_VALUE) {
@@ -44,44 +46,38 @@ namespace rua { namespace win32 {
 				return nullptr;
 			}
 
-			static process loop_find(const std::string &name) {
-				process p;
+			static proc loop_find(const std::string &name) {
+				proc p;
 				for (;;) {
 					p = find(name);
 					if (p) {
 						break;
 					}
-					Sleep(10);
+					sleep(10);
 				}
 				return p;
 			}
 
-			static process current() {
-				process tp;
-				tp._ntv_hdl = GetCurrentProcess();
+			static proc current() {
+				proc tp;
+				tp._h = GetCurrentProcess();
 				return tp;
 			}
 
 			////////////////////////////////////////////////////////////////
 
-			process() : _ntv_hdl(nullptr), _main_td(nullptr), _need_close(false) {}
+			proc() : _h(nullptr), _main_td(nullptr), _need_close(false) {}
 
-			process(std::nullptr_t) : process() {}
+			proc(std::nullptr_t) : proc() {}
 
-			process(HANDLE proc) : _ntv_hdl(proc), _main_td(nullptr), _need_close(false) {}
+			proc(HANDLE proc) : _h(proc), _main_td(nullptr), _need_close(false) {}
 
-			process(
+			proc(
 				const std::string &file,
 				const std::vector<std::string> &args,
 				const std::string &pwd,
 				bool pause_main_thread = false
 			) {
-				STARTUPINFOW si;
-				PROCESS_INFORMATION pi;
-				memset(&si, 0, sizeof(si));
-				memset(&pi, 0, sizeof(pi));
-				si.cb = sizeof(si);
-
 				std::wstring file_w(u8_to_w(file));
 				std::wstringstream cmd;
 				if (args.size()) {
@@ -90,6 +86,49 @@ namespace rua { namespace win32 {
 						cmd << " \"" << u8_to_w(arg) << "\"";
 					}
 				}
+
+				SECURITY_ATTRIBUTES pipe_sa;
+				pipe_sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+				pipe_sa.lpSecurityDescriptor = NULL;
+				pipe_sa.bInheritHandle = TRUE;
+
+				win32::file stdo_w, stde_w;
+
+				if (!CreatePipe(&_stdo_r.native_handle(), &stdo_w.native_handle(), &pipe_sa, 0)) {
+					_reset();
+					return;
+				}
+				if (!SetHandleInformation(_stdo_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
+					_stdo_r.close();
+					stdo_w.close();
+					_reset();
+					return;
+				}
+
+				if (!CreatePipe(&_stde_r.native_handle(), &stde_w.native_handle(), &pipe_sa, 0)) {
+					_stdo_r.close();
+					stdo_w.close();
+					_reset();
+					return;
+				}
+				if (!SetHandleInformation(_stde_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
+					_stdo_r.close();
+					stdo_w.close();
+					_stde_r.close();
+					stde_w.close();
+					_reset();
+					return;
+				}
+
+				STARTUPINFOW si;
+				PROCESS_INFORMATION pi;
+				memset(&si, 0, sizeof(si));
+				memset(&pi, 0, sizeof(pi));
+				si.cb = sizeof(si);
+				si.hStdOutput = stdo_w.native_handle();
+				si.hStdError = stde_w.native_handle();
+				si.dwFlags |= STARTF_USESTDHANDLES;
+				si.wShowWindow = SW_HIDE;
 
 				if (!CreateProcessW(
 					nullptr,
@@ -105,13 +144,14 @@ namespace rua { namespace win32 {
 				)) {
 					CloseHandle(pi.hProcess);
 					CloseHandle(pi.hThread);
-					_ntv_hdl = nullptr;
-					_main_td = nullptr;
-					_need_close = false;
+					_reset();
 					return;
 				}
 
-				_ntv_hdl = pi.hProcess;
+				stdo_w.close();
+				stde_w.close();
+
+				_h = pi.hProcess;
 				_need_close = true;
 
 				if (pause_main_thread) {
@@ -122,45 +162,49 @@ namespace rua { namespace win32 {
 				}
 			}
 
-			process(
+			proc(
 				const std::string &file,
 				const std::vector<std::string> &args,
 				bool pause_main_thread = false
-			) : process(file, args, "", pause_main_thread) {}
+			) : proc(file, args, "", pause_main_thread) {}
 
-			process(
+			proc(
 				const std::string &file,
 				std::initializer_list<std::string> args,
 				bool pause_main_thread = false
-			) : process(file, args, "", pause_main_thread) {}
+			) : proc(file, args, "", pause_main_thread) {}
 
-			process(
+			proc(
 				const std::string &file,
 				const std::string &pwd,
 				bool pause_main_thread = false
-			) : process(file, {}, pwd, pause_main_thread) {}
+			) : proc(file, {}, pwd, pause_main_thread) {}
 
-			process(
+			proc(
 				const std::string &file,
 				bool pause_main_thread = false
-			) : process(file, {}, "", pause_main_thread) {}
+			) : proc(file, {}, "", pause_main_thread) {}
 
-			process(DWORD pid) : _main_td(nullptr) {
+			proc(DWORD pid) : _main_td(nullptr) {
 				if (!pid) {
-					_ntv_hdl = nullptr;
+					_h = nullptr;
 					_need_close = false;
 					return;
 				}
-				_ntv_hdl = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
+				if (pid == GetCurrentProcessId()) {
+					_h = GetCurrentProcess();
+					return;
+				}
+				_h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 				_need_close = true;
 			}
 
-			~process() {
+			~proc() {
 				reset();
 			}
 
 			HANDLE native_handle() const {
-				return _ntv_hdl;
+				return _h;
 			}
 
 			operator HANDLE() const {
@@ -171,36 +215,38 @@ namespace rua { namespace win32 {
 				return native_handle();
 			}
 
-			bool operator==(const process &target) const {
-				return _ntv_hdl == target._ntv_hdl;
+			bool operator==(const proc &target) const {
+				return _h == target._h;
 			}
 
-			bool operator!=(const process &target) const {
-				return _ntv_hdl != target._ntv_hdl;
+			bool operator!=(const proc &target) const {
+				return _h != target._h;
 			}
 
-			process(const process &) = delete;
+			proc(const proc &) = delete;
 
-			process &operator=(const process &) = delete;
+			proc &operator=(const proc &) = delete;
 
-			process(process &&src) : _ntv_hdl(src._ntv_hdl), _main_td(src._main_td), _need_close(src._need_close) {
+			proc(proc &&src) :
+				_h(src._h), _main_td(src._main_td), _need_close(src._need_close),
+				_stdo_r(src._stdo_r), _stde_r(src._stde_r), _stdi_w(src._stdi_w)
+			{
 				if (src) {
-					src._ntv_hdl = nullptr;
-					src._main_td = nullptr;
-					src._need_close = false;
+					src._reset();
 				}
 			}
 
-			process &operator=(process &&src) {
+			proc &operator=(proc &&src) {
 				reset();
 
 				if (src) {
-					_ntv_hdl = src._ntv_hdl;
+					_h = src._h;
 					_main_td = src._main_td;
 					_need_close = src._need_close;
-					src._ntv_hdl = nullptr;
-					src._main_td = nullptr;
-					src._need_close = false;
+					_stdo_r = src._stdo_r;
+					_stde_r = src._stde_r;
+					_stdi_w = src._stdi_w;
+					src._reset();
 				}
 
 				return *this;
@@ -214,12 +260,24 @@ namespace rua { namespace win32 {
 				}
 			}
 
+			io::reader &get_stdout() {
+				return _stdo_r;
+			}
+
+			io::reader &get_stderr() {
+				return _stde_r;
+			}
+
+			io::writer &get_stdin() {
+				return _stdi_w;
+			}
+
 			int wait_for_exit() {
-				if (_ntv_hdl) {
+				if (_h) {
 					resume_main_thread();
-					WaitForSingleObject(_ntv_hdl, INFINITE);
+					WaitForSingleObject(_h, INFINITE);
 					DWORD exit_code;
-					GetExitCodeProcess(_ntv_hdl, &exit_code);
+					GetExitCodeProcess(_h, &exit_code);
 					reset();
 					return exit_code;
 				}
@@ -227,8 +285,8 @@ namespace rua { namespace win32 {
 			}
 
 			void exit(int code = 1) {
-				if (_ntv_hdl) {
-					TerminateProcess(_ntv_hdl, code);
+				if (_h) {
+					TerminateProcess(_h, code);
 					_main_td = nullptr;
 					reset();
 				}
@@ -236,19 +294,28 @@ namespace rua { namespace win32 {
 
 			std::string file_path() {
 				WCHAR path[MAX_PATH];
-				GetModuleFileNameExW(_ntv_hdl, nullptr, path, MAX_PATH);
+				GetModuleFileNameExW(_h, nullptr, path, MAX_PATH);
 				return w_to_u8(path);
 			}
 
 			void reset() {
 				resume_main_thread();
 
-				if (_ntv_hdl) {
+				if (_h) {
 					if (_need_close) {
-						CloseHandle(_ntv_hdl);
+						CloseHandle(_h);
 						_need_close = false;
 					}
-					_ntv_hdl = nullptr;
+					if (_stdo_r) {
+						_stdo_r.close();
+					}
+					if (_stde_r) {
+						_stde_r.close();
+					}
+					if (_stdi_w) {
+						_stdi_w.close();
+					}
+					_h = nullptr;
 				}
 			}
 
@@ -258,11 +325,11 @@ namespace rua { namespace win32 {
 				public:
 					mem_view_t() : _proc(nullptr), _ptr(nullptr), _sz(0) {}
 
-					mem_view_t(const process &proc, any_ptr p, size_t n) : _proc(&proc), _ptr(p), _sz(n) {}
+					mem_view_t(const proc &proc, any_ptr p, size_t n) : _proc(&proc), _ptr(p), _sz(n) {}
 
 					virtual ~mem_view_t() {}
 
-					const process &owner() const {
+					const proc &owner() const {
 						return *_proc;
 					}
 
@@ -282,19 +349,19 @@ namespace rua { namespace win32 {
 					}
 
 					bin_view try_to_local() const {
-						if (*_proc != process::current()) {
+						if (*_proc != proc::current()) {
 							return nullptr;
 						}
 						return bin_view(_ptr, _sz);
 					}
 
-					void reset(process *proc = nullptr, any_ptr p = nullptr) {
+					void reset(proc *proc = nullptr, any_ptr p = nullptr) {
 						_proc = proc;
 						_ptr = p;
 					}
 
 				private:
-					const process *_proc;
+					const proc *_proc;
 					any_ptr _ptr;
 					size_t _sz;
 			};
@@ -303,7 +370,7 @@ namespace rua { namespace win32 {
 				public:
 					mem_ref_t() : mem_view_t() {}
 
-					mem_ref_t(process &proc, any_ptr p, size_t n) : mem_view_t(proc, p, n) {}
+					mem_ref_t(proc &proc, any_ptr p, size_t n) : mem_view_t(proc, p, n) {}
 
 					virtual ~mem_ref_t() {}
 
@@ -315,7 +382,7 @@ namespace rua { namespace win32 {
 					}
 
 					bin_ref try_to_local() {
-						if (owner() != process::current()) {
+						if (owner() != proc::current()) {
 							return nullptr;
 						}
 						return bin_ref(ptr(), size());
@@ -326,7 +393,7 @@ namespace rua { namespace win32 {
 				public:
 					mem_t() : mem_ref_t() {}
 
-					mem_t(process &proc, size_t n) {
+					mem_t(proc &proc, size_t n) {
 						mem_ref_t::reset(&proc, VirtualAllocEx(proc.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE));
 					}
 
@@ -351,7 +418,7 @@ namespace rua { namespace win32 {
 			mem_view_t mem_image() const {
 				if (*this == current()) {
 					MODULEINFO mi;
-					GetModuleInformation(_ntv_hdl, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+					GetModuleInformation(_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
 					return mem_view_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
 				}
 				assert(false);
@@ -361,7 +428,7 @@ namespace rua { namespace win32 {
 			mem_ref_t mem_image() {
 				if (*this == current()) {
 					MODULEINFO mi;
-					GetModuleInformation(_ntv_hdl, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+					GetModuleInformation(_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
 					return mem_ref_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
 				}
 				assert(false);
@@ -389,7 +456,7 @@ namespace rua { namespace win32 {
 			any_word syscall(any_ptr func, any_word param = nullptr) {
 				HANDLE td;
 				DWORD tid;
-				td = CreateRemoteThread(_ntv_hdl, NULL, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
+				td = CreateRemoteThread(_h, NULL, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
 				if (!td) {
 					return 0;
 				}
@@ -401,8 +468,18 @@ namespace rua { namespace win32 {
 			}
 
 		private:
-			HANDLE _ntv_hdl, _main_td;
+			HANDLE _h, _main_td;
 			bool _need_close;
+			file _stdo_r, _stde_r, _stdi_w;
+
+			void _reset() {
+				_h = nullptr;
+				_main_td = nullptr;
+				_need_close = false;
+				_stdo_r = nullptr;
+				_stde_r = nullptr;
+				_stdi_w = nullptr;
+			}
 	};
 }}
 
