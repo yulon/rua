@@ -578,7 +578,7 @@ namespace rua {
 
 			constexpr bin_view(std::nullptr_t) : bin_view() {}
 
-			constexpr bin_view(const void *ptr, size_t sz = nmax<size_t>()) : _base(ptr), _sz(ptr ? sz : 0) {}
+			constexpr bin_view(const void *ptr, size_t sz = nmax<size_t>()) : _base(sz ? ptr : nullptr), _sz(ptr ? sz : 0) {}
 
 			template <
 				typename T,
@@ -636,9 +636,13 @@ namespace rua {
 				assert(end > begin);
 				assert(size() <= static_cast<size_t>(nmax<ptrdiff_t>()));
 
-				auto _szi = static_cast<ptrdiff_t>(size());
-				if (end > _szi) {
-					end = _szi;
+				auto szi = static_cast<ptrdiff_t>(size());
+				if (end > szi) {
+					end = szi;
+				}
+				auto new_sz = static_cast<size_t>(end - begin);
+				if (!new_sz) {
+					return nullptr;
 				}
 				return bin_view(base() + begin, static_cast<size_t>(end - begin));
 			}
@@ -646,7 +650,11 @@ namespace rua {
 			bin_view slice(ptrdiff_t begin) const {
 				assert(begin < static_cast<ptrdiff_t>(_sz));
 
-				return bin_view(_base + begin, static_cast<size_t>(_sz - begin));
+				auto new_sz = static_cast<size_t>(_sz - begin);
+				if (!new_sz) {
+					return nullptr;
+				}
+				return bin_view(_base + begin, new_sz);
 			}
 
 			bin_view operator()(ptrdiff_t begin, ptrdiff_t end) const {
@@ -660,13 +668,17 @@ namespace rua {
 			bin_view &slice_self(ptrdiff_t begin, ptrdiff_t end) & {
 				assert(end > begin);
 
-				auto _szi = static_cast<ptrdiff_t>(_sz);
-				if (end > _szi) {
-					end = _szi;
+				auto szi = static_cast<ptrdiff_t>(_sz);
+				if (end > szi) {
+					end = szi;
 				}
 
-				_base += begin;
 				_sz = static_cast<size_t>(end - begin);
+				if (_sz) {
+					_base += begin;
+				} else {
+					_base = nullptr;
+				}
 
 				return *this;
 			}
@@ -774,14 +786,8 @@ namespace rua {
 			}
 
 			bin_ref slice(ptrdiff_t begin, ptrdiff_t end) {
-				assert(end > begin);
-				assert(size() <= static_cast<size_t>(nmax<ptrdiff_t>()));
-
-				auto _szi = static_cast<ptrdiff_t>(size());
-				if (end > _szi) {
-					end = _szi;
-				}
-				return bin_ref(base() + begin, static_cast<size_t>(end - begin));
+				auto v = bin_view::slice(begin, end);
+				return bin_ref(v.base(), v.size());
 			}
 
 			bin_view slice(ptrdiff_t begin, ptrdiff_t end) const {
@@ -789,9 +795,8 @@ namespace rua {
 			}
 
 			bin_ref slice(ptrdiff_t begin) {
-				assert(size() <= static_cast<size_t>(nmax<ptrdiff_t>()));
-
-				return bin_ref(base() + begin, static_cast<size_t>(static_cast<ptrdiff_t>(size()) - begin));
+				auto v = bin_view::slice(begin);
+				return bin_ref(v.base(), v.size());
 			}
 
 			bin_view slice(ptrdiff_t begin) const {
@@ -926,6 +931,11 @@ namespace rua {
 
 				bin_view::slice_self(begin, end);
 
+				if (!*this) {
+					_free_alloced();
+					return *this;
+				}
+
 				assert(base() >= _alloced_base());
 				assert(base() < _alloced_base() + _alloced_size());
 				assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
@@ -941,6 +951,11 @@ namespace rua {
 				assert(_alloced);
 
 				bin_view::slice_self(begin);
+
+				if (!*this) {
+					_free_alloced();
+					return *this;
+				}
 
 				assert(base() >= _alloced_base());
 				assert(base() < _alloced_base() + _alloced_size());
@@ -993,10 +1008,7 @@ namespace rua {
 			}
 
 			void reset() {
-				if (_alloced) {
-					free(_alloced);
-					_alloced = nullptr;
-				}
+				_free_alloced();
 				if (*this) {
 					_reset();
 				}
@@ -1021,6 +1033,13 @@ namespace rua {
 				_alloced = malloc(sizeof(size_t) + sz);
 				_alloced_size() = sz;
 				_reset(_alloced_base(), sz);
+			}
+
+			void _free_alloced() {
+				if (_alloced) {
+					free(_alloced);
+					_alloced = nullptr;
+				}
 			}
 	};
 
