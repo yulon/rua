@@ -20,8 +20,16 @@ namespace rua { namespace win32 {
 
 			virtual ~file() = default;
 
+			native_handle_t &native_handle() {
+				return _f;
+			}
+
 			native_handle_t native_handle() const {
 				return _f;
+			}
+
+			operator bool() const {
+				return native_handle();
 			}
 
 			virtual size_t read(bin_ref p) {
@@ -32,6 +40,13 @@ namespace rua { namespace win32 {
 			virtual size_t write(bin_view p) {
 				DWORD wsz;
 				return WriteFile(_f, p.base(), p.size(), &wsz, nullptr) ? static_cast<size_t>(wsz) : static_cast<size_t>(0);
+			}
+
+			void close() {
+				if (_f) {
+					CloseHandle(_f);
+					_f = nullptr;
+				}
 			}
 
 		private:

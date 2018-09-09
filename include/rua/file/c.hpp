@@ -15,8 +15,16 @@ namespace rua { namespace c {
 
 			virtual ~file() = default;
 
+			native_handle_t &native_handle() {
+				return _f;
+			}
+
 			native_handle_t native_handle() const {
 				return _f;
+			}
+
+			operator bool() const {
+				return native_handle();
 			}
 
 			virtual size_t read(bin_ref p) {
@@ -25,6 +33,13 @@ namespace rua { namespace c {
 
 			virtual size_t write(bin_view p) {
 				return static_cast<size_t>(fwrite(p.base(), 1, p.size(), native_handle()));
+			}
+
+			void close() {
+				if (_f) {
+					fclose(_f);
+					_f = nullptr;
+				}
 			}
 
 		private:
