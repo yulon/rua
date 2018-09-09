@@ -2,8 +2,11 @@
 #define _RUA_IO_UTIL_HPP
 
 #include "itfs.hpp"
+#include "../chan.hpp"
 
 #include <cstddef>
+#include <thread>
+#include <atomic>
 
 namespace rua { namespace io {
 	inline size_t reader::read_full(bin_ref p) {
@@ -64,6 +67,46 @@ namespace rua { namespace io {
 		}
 		return false;
 	}
+
+	class read_group : public virtual reader {
+		public:
+			read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
+
+			void add(reader &r) {
+				++_c;
+				std::thread([this, &r]() {
+					bin buf(_buf_sz);
+					for (;;) {
+						auto sz = r.read(buf);
+						if (!sz) {
+							_ch << nullptr;
+							return;
+						}
+						_ch << bin(buf(0, sz));
+					}
+				}).detach();
+			}
+
+			virtual size_t read(bin_ref p) {
+				while (!_buf) {
+					_ch >> _buf;
+					if (!_buf) {
+						if (--_c) {
+							continue;
+						}
+						return 0;
+					}
+				}
+				auto csz = p.copy(_buf);
+				_buf.slice_self(csz);
+				return csz;
+			}
+
+		private:
+			std::atomic<size_t> _c, _buf_sz;
+			chan<bin> _ch;
+			bin _buf;
+	};
 }}
 
 #endif
