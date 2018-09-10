@@ -72,11 +72,17 @@ namespace rua { namespace win32 {
 
 			proc(HANDLE proc) : _h(proc), _main_td(nullptr), _need_close(false) {}
 
+			static constexpr size_t
+				postponed_execution = 0x00000001,
+				stdio_pipe = 0x00000010,
+				combined_stdout = 0x00000020
+			;
+
 			proc(
 				const std::string &file,
 				const std::vector<std::string> &args,
-				const std::string &pwd,
-				bool pause_main_thread = false
+				const std::string &work_dir,
+				uint32_t flags = 0
 			) {
 				std::wstring file_w(u8_to_w(file));
 				std::wstringstream cmd;
@@ -95,48 +101,57 @@ namespace rua { namespace win32 {
 					}
 				}
 
-				SECURITY_ATTRIBUTES pipe_sa;
-				pipe_sa.nLength = sizeof(SECURITY_ATTRIBUTES);
-				pipe_sa.lpSecurityDescriptor = NULL;
-				pipe_sa.bInheritHandle = TRUE;
-
-				win32::file stdo_w, stde_w;
-
-				if (!CreatePipe(&_stdo_r.native_handle(), &stdo_w.native_handle(), &pipe_sa, 0)) {
-					_reset();
-					return;
-				}
-				if (!SetHandleInformation(_stdo_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
-					_stdo_r.close();
-					stdo_w.close();
-					_reset();
-					return;
-				}
-
-				if (!CreatePipe(&_stde_r.native_handle(), &stde_w.native_handle(), &pipe_sa, 0)) {
-					_stdo_r.close();
-					stdo_w.close();
-					_reset();
-					return;
-				}
-				if (!SetHandleInformation(_stde_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
-					_stdo_r.close();
-					stdo_w.close();
-					_stde_r.close();
-					stde_w.close();
-					_reset();
-					return;
-				}
-
 				STARTUPINFOW si;
 				PROCESS_INFORMATION pi;
 				memset(&si, 0, sizeof(si));
 				memset(&pi, 0, sizeof(pi));
 				si.cb = sizeof(si);
-				si.hStdOutput = stdo_w.native_handle();
-				si.hStdError = stde_w.native_handle();
-				si.dwFlags |= STARTF_USESTDHANDLES;
 				si.wShowWindow = SW_HIDE;
+
+				win32::file stdo_w, stde_w;
+
+				auto is_capture_stdio = flags & 0x000000F0;
+				if (is_capture_stdio) {
+					si.dwFlags |= STARTF_USESTDHANDLES;
+
+					SECURITY_ATTRIBUTES pipe_sa;
+					pipe_sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+					pipe_sa.lpSecurityDescriptor = NULL;
+					pipe_sa.bInheritHandle = TRUE;
+
+					if (!CreatePipe(&_stdo_r.native_handle(), &stdo_w.native_handle(), &pipe_sa, 0)) {
+						_reset();
+						return;
+					}
+					if (!SetHandleInformation(_stdo_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
+						_stdo_r.close();
+						stdo_w.close();
+						_reset();
+						return;
+					}
+
+					si.hStdOutput = stdo_w.native_handle();
+
+					if (is_capture_stdio < combined_stdout) {
+						si.hStdError = stdo_w.native_handle();
+					} else {
+						if (!CreatePipe(&_stde_r.native_handle(), &stde_w.native_handle(), &pipe_sa, 0)) {
+							_stdo_r.close();
+							stdo_w.close();
+							_reset();
+							return;
+						}
+						if (!SetHandleInformation(_stde_r.native_handle(), HANDLE_FLAG_INHERIT, 0)) {
+							_stdo_r.close();
+							stdo_w.close();
+							_stde_r.close();
+							stde_w.close();
+							_reset();
+							return;
+						}
+						si.hStdError = stde_w.native_handle();
+					}
+				}
 
 				if (!CreateProcessW(
 					nullptr,
@@ -144,9 +159,9 @@ namespace rua { namespace win32 {
 					nullptr,
 					nullptr,
 					true,
-					pause_main_thread ? CREATE_SUSPENDED : 0,
+					(flags & 0x0000000F) ? CREATE_SUSPENDED : 0,
 					nullptr,
-					pwd.empty() ? nullptr : u8_to_w(pwd).c_str(),
+					work_dir.empty() ? nullptr : u8_to_w(work_dir).c_str(),
 					&si,
 					&pi
 				)) {
@@ -156,13 +171,17 @@ namespace rua { namespace win32 {
 					return;
 				}
 
-				stdo_w.close();
-				stde_w.close();
+				if (stdo_w) {
+					stdo_w.close();
+				}
+				if (stde_w) {
+					stde_w.close();
+				}
 
 				_h = pi.hProcess;
 				_need_close = true;
 
-				if (pause_main_thread) {
+				if (flags & 0x0000000F) {
 					_main_td = pi.hThread;
 				} else {
 					CloseHandle(pi.hThread);
@@ -173,25 +192,25 @@ namespace rua { namespace win32 {
 			proc(
 				const std::string &file,
 				const std::vector<std::string> &args,
-				bool pause_main_thread = false
-			) : proc(file, args, "", pause_main_thread) {}
+				uint32_t flags = 0
+			) : proc(file, args, "", flags) {}
 
 			proc(
 				const std::string &file,
 				std::initializer_list<std::string> args,
-				bool pause_main_thread = false
-			) : proc(file, args, "", pause_main_thread) {}
+				uint32_t flags = 0
+			) : proc(file, args, "", flags) {}
 
 			proc(
 				const std::string &file,
-				const std::string &pwd,
-				bool pause_main_thread = false
-			) : proc(file, {}, pwd, pause_main_thread) {}
+				const std::string &work_dir,
+				uint32_t flags = 0
+			) : proc(file, {}, work_dir, flags) {}
 
 			proc(
 				const std::string &file,
-				bool pause_main_thread = false
-			) : proc(file, {}, "", pause_main_thread) {}
+				uint32_t flags = 0
+			) : proc(file, {}, "", flags) {}
 
 			proc(DWORD pid) : _main_td(nullptr) {
 				if (!pid) {
@@ -260,7 +279,7 @@ namespace rua { namespace win32 {
 				return *this;
 			}
 
-			void resume_main_thread() {
+			void start() {
 				if (_main_td) {
 					ResumeThread(_main_td);
 					CloseHandle(_main_td);
@@ -268,21 +287,21 @@ namespace rua { namespace win32 {
 				}
 			}
 
-			io::reader &get_stdout() {
+			io::reader &stdout_pipe() {
 				return _stdo_r;
 			}
 
-			io::reader &get_stderr() {
+			io::reader &stderr_pipe() {
 				return _stde_r;
 			}
 
-			io::writer &get_stdin() {
+			io::writer &stdin_pipe() {
 				return _stdi_w;
 			}
 
 			int wait_for_exit() {
 				if (_h) {
-					resume_main_thread();
+					start();
 					WaitForSingleObject(_h, INFINITE);
 					DWORD exit_code;
 					GetExitCodeProcess(_h, &exit_code);
@@ -307,7 +326,7 @@ namespace rua { namespace win32 {
 			}
 
 			void reset() {
-				resume_main_thread();
+				start();
 
 				if (_h) {
 					if (_need_close) {
