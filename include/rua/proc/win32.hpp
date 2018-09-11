@@ -84,14 +84,13 @@ namespace rua { namespace win32 {
 				const std::string &work_dir,
 				uint32_t flags = 0
 			) {
-				std::wstring file_w(u8_to_w(file));
 				std::wstringstream cmd;
+				if (file.find(" ") == std::string::npos) {
+					cmd << u8_to_w(file);
+				} else {
+					cmd << L"\"" << u8_to_w(file) << L"\"";
+				}
 				if (args.size()) {
-					if (file.find(" ") == std::string::npos) {
-						cmd << file_w;
-					} else {
-						cmd << L"\"" << file_w << L"\"";
-					}
 					for (auto &arg : args) {
 						if (arg.find(" ") == std::string::npos) {
 							cmd << L" " << u8_to_w(arg);
@@ -110,7 +109,7 @@ namespace rua { namespace win32 {
 
 				win32::file stdo_w, stde_w;
 
-				auto is_capture_stdio = flags & 0x000000F0;
+				bool is_capture_stdio = flags & 0x000000F0;
 				if (is_capture_stdio) {
 					si.dwFlags |= STARTF_USESTDHANDLES;
 
@@ -300,6 +299,7 @@ namespace rua { namespace win32 {
 			}
 
 			int wait_for_exit() {
+				assert(_h);
 				if (_h) {
 					start();
 					WaitForSingleObject(_h, INFINITE);
