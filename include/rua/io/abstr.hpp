@@ -1,5 +1,5 @@
-#ifndef _RUA_IO_ITFS_HPP
-#define _RUA_IO_ITFS_HPP
+#ifndef _RUA_IO_ABSTR_HPP
+#define _RUA_IO_ABSTR_HPP
 
 #include "../bin.hpp"
 #include "../any_ptr.hpp"
@@ -30,10 +30,20 @@ namespace rua { namespace io {
 			inline bool copy(reader &r, bin_ref buf = nullptr);
 	};
 
-	class read_writer : public virtual reader, public virtual writer {
+	class read_writer : public virtual reader, public virtual writer {};
+
+	class closer {
 		public:
-			virtual ~read_writer() = default;
+			virtual ~closer() = default;
+
+			virtual void close() = 0;
 	};
+
+	class read_closer : public virtual reader, public virtual closer {};
+
+	class write_closer : public virtual writer, public virtual closer {};
+
+	class read_write_closer : public virtual read_writer, public virtual closer {};
 
 	class seeker {
 		public:
@@ -42,20 +52,11 @@ namespace rua { namespace io {
 			virtual size_t seek(size_t offset, int whence) = 0;
 	};
 
-	class read_seeker : public virtual reader, public virtual seeker {
-		public:
-			virtual ~read_seeker() = default;
-	};
+	class read_seeker : public virtual reader, public virtual seeker {};
 
-	class write_seeker : public virtual writer, public virtual seeker {
-		public:
-			virtual ~write_seeker() = default;
-	};
+	class write_seeker : public virtual writer, public virtual seeker {};
 
-	class read_write_seeker : public virtual reader, public virtual writer, public virtual seeker {
-		public:
-			virtual ~read_write_seeker() = default;
-	};
+	class read_write_seeker : public virtual reader, public virtual writer, public virtual seeker {};
 
 	class reader_at {
 		public:
@@ -71,10 +72,7 @@ namespace rua { namespace io {
 			virtual size_t write_at(ptrdiff_t pos, bin_view) = 0;
 	};
 
-	class read_writer_at : public virtual reader_at, public virtual writer_at {
-		public:
-			virtual ~read_writer_at() = default;
-	};
+	class read_writer_at : public virtual reader_at, public virtual writer_at {};
 }}
 
 #endif
