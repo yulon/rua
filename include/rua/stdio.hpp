@@ -7,15 +7,15 @@
 	#include "windows.h"
 
 	namespace rua {
-		inline io::sys::writer get_stdout() {
+		inline io::sys::writer stdout_writer() {
 			return GetStdHandle(STD_OUTPUT_HANDLE);
 		}
 
-		inline io::sys::writer get_stderr() {
+		inline io::sys::writer stderr_writer() {
 			return GetStdHandle(STD_ERROR_HANDLE);
 		}
 
-		inline io::sys::reader get_stdin() {
+		inline io::sys::reader stdin_reader() {
 			return GetStdHandle(STD_INPUT_HANDLE);
 		}
 	}
@@ -23,15 +23,15 @@
 	#include <cstdio>
 
 	namespace rua {
-		inline io::sys::writer get_stdout() {
+		inline io::sys::writer stdout_writer() {
 			return stdout;
 		}
 
-		inline io::sys::writer get_stderr() {
+		inline io::sys::writer stderr_writer() {
 			return stderr;
 		}
 
-		inline io::sys::reader get_stdin() {
+		inline io::sys::reader stdin_reader() {
 			return stdin;
 		}
 	}

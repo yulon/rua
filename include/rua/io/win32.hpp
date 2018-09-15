@@ -18,34 +18,7 @@ namespace rua { namespace io { namespace win32 {
 
 			handle(native_handle_t h = nullptr) : _h(h) {}
 
-			virtual ~handle() {
-				if (_h) {
-					_h = nullptr;
-				}
-			}
-
-			handle(const handle &src) : _h(src._h) {}
-
-			handle &operator=(const handle &src) {
-				this->~handle();
-				_h = src._h;
-				return *this;
-			}
-
-			handle(handle &&src) : _h(src._h) {
-				if (src) {
-					src._h = nullptr;
-				}
-			}
-
-			handle &operator=(handle &&src) {
-				this->~handle();
-				if (src) {
-					_h = src._h;
-					src._h = nullptr;
-				}
-				return *this;
-			}
+			virtual ~handle() = default;
 
 			native_handle_t &native_handle() {
 				return _h;
@@ -88,19 +61,41 @@ namespace rua { namespace io { namespace win32 {
 			closer(native_handle_t h = nullptr) : handle(h) {}
 
 			virtual ~closer() {
-				if (_h) {
-					CloseHandle(_h);
+				close();
+			}
+
+			closer(const closer &src) : handle(src._h) {}
+
+			closer &operator=(const closer &src) {
+				close();
+				_h = src._h;
+				return *this;
+			}
+
+			closer(closer &&src) : handle(src._h) {
+				if (src) {
+					src._h = nullptr;
 				}
+			}
+
+			closer &operator=(closer &&src) {
+				close();
+				if (src) {
+					_h = src._h;
+					src._h = nullptr;
+				}
+				return *this;
 			}
 
 			virtual void close() {
-				this->~closer();
+				if (_h) {
+					CloseHandle(_h);
+					_h = nullptr;
+				}
 			}
 
 			void detach() {
-				if (_h) {
-					_h = nullptr;
-				}
+				_h = nullptr;
 			}
 	};
 

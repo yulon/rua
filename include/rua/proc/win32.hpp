@@ -120,7 +120,7 @@ namespace rua { namespace win32 {
 					if (!stdout_writer) {
 						DuplicateHandle(
 							cph,
-							get_stdout().native_handle(),
+							rua::stdout_writer().native_handle(),
 							cph,
 							&stdo_w.native_handle(),
 							0,
@@ -165,7 +165,7 @@ namespace rua { namespace win32 {
 						if (!stderr_writer) {
 							DuplicateHandle(
 								cph,
-								get_stderr().native_handle(),
+								rua::stderr_writer().native_handle(),
 								cph,
 								&stde_w.native_handle(),
 								0,
@@ -196,7 +196,7 @@ namespace rua { namespace win32 {
 					if (!stdin_reader) {
 						DuplicateHandle(
 							cph,
-							get_stdin().native_handle(),
+							rua::stdin_reader().native_handle(),
 							cph,
 							&stdi_r.native_handle(),
 							0,

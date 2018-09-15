@@ -13,25 +13,7 @@ namespace rua { namespace io { namespace c {
 
 			handle(native_handle_t c_file = nullptr) : _f(c_file) {}
 
-			virtual ~handle() {
-				if (_f) {
-					_f = nullptr;
-				}
-			}
-
-			handle(handle &&src) : _f(src._f) {
-				if (src) {
-					src._f = nullptr;
-				}
-			}
-
-			handle &operator=(handle &&src) {
-				this->~handle();
-				if (src) {
-					src._f = nullptr;
-				}
-				return *this;
-			}
+			virtual ~handle() = default;
 
 			native_handle_t &native_handle() {
 				return _f;
@@ -72,13 +54,41 @@ namespace rua { namespace io { namespace c {
 			closer(native_handle_t c_file = nullptr) : handle(c_file) {}
 
 			virtual ~closer() {
-				if (_f) {
-					CloseHandle(_f);
+				close();
+			}
+
+			closer(const closer &src) : handle(src._f) {}
+
+			closer &operator=(const closer &src) {
+				close();
+				_f = src._f;
+				return *this;
+			}
+
+			closer(closer &&src) : handle(src._f) {
+				if (src) {
+					src._f = nullptr;
 				}
 			}
 
+			closer &operator=(closer &&src) {
+				close();
+				if (src) {
+					_f = src._f;
+					src._f = nullptr;
+				}
+				return *this;
+			}
+
 			virtual void close() {
-				this->~closer();
+				if (_f) {
+					CloseHandle(_f);
+					_f = nullptr;
+				}
+			}
+
+			void detach() {
+				_f = nullptr;
 			}
 	};
 
