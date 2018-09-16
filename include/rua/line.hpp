@@ -1,23 +1,17 @@
 #include "macros.hpp"
 
 namespace rua {
-	namespace unix {
-		static constexpr const char *line_end = "\n";
-	}
+	static constexpr const char *lf = "\n";
 
-	namespace win32 {
-		static constexpr const char *line_end = "\r\n";
-	}
+	static constexpr const char *crlf = "\r\n";
 
-	namespace darwin {
-		static constexpr const char *line_end = "\r";
-	}
+	static constexpr const char *cr = "\r";
 
 	#ifdef _WIN32
-		static constexpr const char *line_end = win32::line_end;
+		static constexpr const char *line_end = crlf;
 	#elif RUA_DARWIN
-		static constexpr const char *line_end = darwin::line_end;
+		static constexpr const char *line_end = cr;
 	#else
-		static constexpr const char *line_end = unix::line_end;
+		static constexpr const char *line_end = lf;
 	#endif
 }
