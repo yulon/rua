@@ -8,6 +8,7 @@
 #include "../io.hpp"
 #include "../pipe.hpp"
 #include "../stdio.hpp"
+#include "../rval.hpp"
 #include "../any_word.hpp"
 #include "../strenc.hpp"
 #include "../limits.hpp"
@@ -104,8 +105,8 @@ namespace rua { namespace win32 {
 				si.cb = sizeof(si);
 				si.wShowWindow = SW_HIDE;
 
-				io::win32::read_closer stdo_r, stde_r;
-				io::win32::write_closer stdi_w;
+				rval<io::win32::read_closer> stdo_r, stde_r;
+				rval<io::win32::write_closer> stdi_w;
 
 				io::win32::write_closer stdo_w, stde_w;
 				io::win32::read_closer stdi_r;
@@ -249,20 +250,20 @@ namespace rua { namespace win32 {
 					return;
 				}
 
-				if (stdo_r) {
-					std::thread(std::bind([&stdout_writer](decltype(stdo_r) stdo_r) {
+				if (stdo_r.value) {
+					std::thread([&stdout_writer, stdo_r]() mutable {
 						stdout_writer->copy(stdo_r);
-					}, std::move(stdo_r))).detach();
+					}).detach();
 				}
-				if (stde_r) {
-					std::thread(std::bind([&stderr_writer](decltype(stde_r) stde_r) {
+				if (stde_r.value) {
+					std::thread([&stderr_writer, stde_r]() mutable {
 						stderr_writer->copy(stde_r);
-					}, std::move(stde_r)));
+					});
 				}
-				if (stdi_w) {
-					std::thread(std::bind([&stdin_reader](decltype(stdi_w) stdi_w) {
-						stdi_w.copy(*stdin_reader);
-					}, std::move(stdi_w)));
+				if (stdi_w.value) {
+					std::thread([stdi_w, &stdin_reader]() mutable {
+						stdi_w->copy(*stdin_reader);
+					});
 				}
 
 				_h = pi.hProcess;
