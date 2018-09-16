@@ -1,6 +1,9 @@
 #ifndef _RUA_STRENC_HPP
 #define _RUA_STRENC_HPP
 
+#include "bin.hpp"
+#include "io/util.hpp"
+
 #ifdef _WIN32
 	#include <windows.h>
 #endif
@@ -74,6 +77,65 @@ namespace rua {
 
 		#define RUA_L_TO_U8(str) ::rua::l_to_u8(str)
 		#define RUA_U8_TO_L(u8_str) ::rua::u8_to_l(u8_str)
+
+		class l_to_u8_reader : public virtual io::reader {
+			public:
+				l_to_u8_reader(io::reader &l_reader) : _lr(&l_reader) {}
+
+				virtual ~l_to_u8_reader() = default;
+
+				virtual size_t read(bin_ref p) {
+					while (_cache.empty()) {
+						_buf.resize(_data_sz + p.size());
+
+						auto rsz = _lr->read(_buf);
+						if (!rsz) {
+							if (_data_sz) {
+								_cache = l_to_u8(std::string(_buf.base().to<const char *>(), _data_sz));
+							}
+							break;
+						}
+						_data_sz += rsz;
+
+						for (int i = _data_sz - 1; i >= 0; ++i) {
+							if (static_cast<char>(_buf[static_cast<size_t>(i)]) >= 0) {
+								auto valid_sz = static_cast<size_t>(i + 1);
+
+								_cache = l_to_u8(std::string(_buf.base().to<const char *>(), valid_sz));
+
+								_data_sz -= valid_sz;
+								_buf.slice_self(valid_sz);
+								break;
+							}
+						}
+					};
+					auto sz = p.copy(_cache);
+					_cache = _cache.substr(sz, _cache.size() - sz);
+					return sz;
+				}
+
+			private:
+				io::reader *_lr;
+				std::string _cache;
+				bin _buf;
+				size_t _data_sz;
+		};
+
+		class u8_to_l_writer : public virtual io::writer {
+			public:
+				u8_to_l_writer(io::writer &l_writer) : _lw(&l_writer) {}
+
+				virtual ~u8_to_l_writer() = default;
+
+				virtual size_t write(bin_view p) {
+					_lw->write_all(u8_to_l(std::string(p.base().to<const char *>(), p.size())));
+					return p.size();
+				}
+
+			private:
+				io::writer *_lw;
+		};
+
 	#else
 		inline std::string l_to_u8(const std::string &str) {
 			return str;

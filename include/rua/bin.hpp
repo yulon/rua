@@ -600,10 +600,10 @@ namespace rua {
 
 			RUA_CONSTEXPR_14 bin_view(const char *c_str) : _base(c_str), _sz(_strlen(c_str)) {}
 
+			bin_view(const std::string &str) : _base(str.data()), _sz(str.length()) {}
+
 			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
 				constexpr bin_view(std::string_view sv) : _base(sv.data()), _sz(sv.length()) {}
-			#else
-				bin_view(const std::string &str) : _base(str.data()), _sz(str.length()) {}
 			#endif
 
 			operator bool() const {
@@ -897,10 +897,10 @@ namespace rua {
 
 			bin(const char *c_str) : bin(bin_view(c_str)) {}
 
+			bin(const std::string &str) : bin(bin_view(str.data(), str.length())) {}
+
 			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
 				bin(std::string_view sv) : bin(bin_view(sv.data(), sv.length())) {}
-			#else
-				bin(const std::string &str) : bin(bin_view(str.data(), str.length())) {}
 			#endif
 
 			bin(bin &&src) : bin_ref(static_cast<bin_ref &&>(std::move(src))), _alloced(src._alloced) {
