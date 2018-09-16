@@ -107,7 +107,13 @@
 	#define RUA_UNIX
 
 	#if defined(__APPLE__) && defined(__MACH__)
-		#define RUA_MAC
+		#define RUA_DARWIN
+
+		#ifdef __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__
+			#define RUA_IOS
+		#else
+			#define RUA_MACOS
+		#endif
 	#endif
 #endif
 
