@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require("fs")
 const cp = require("child_process")
 const path = require("path")
@@ -10,21 +12,22 @@ if (argv.length > 0 && argv[0] === "-v") {
 	log = () => {}
 }
 
-const files = fs.readdirSync(__dirname)
-
-function mkDir(dir) {
+function mkdir(dir) {
 	if (fs.existsSync(dir)) {
 		return
 	}
-	mkDir(path.dirname(dir))
+	mkdir(path.dirname(dir))
 	fs.mkdirSync(dir)
 }
 
-const binDir = path.join(__dirname, "..", "..", "build", "cont_bin")
-const incDir = path.join(__dirname, "..", "..", "include", "rua", "cont")
+const repoDir = path.dirname(path.dirname(__dirname))
+const binDir = path.join(repoDir, "build", "cont_bin")
+const incDir = path.join(repoDir, "include", "rua", "cont")
 
-mkDir(binDir)
-mkDir(incDir)
+mkdir(binDir)
+mkdir(incDir)
+
+const files = fs.readdirSync(__dirname)
 
 files.forEach(srcPath => {
 	if (path.extname(srcPath) !== ".s") {
