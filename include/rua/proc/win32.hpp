@@ -8,7 +8,7 @@
 #include "../io.hpp"
 #include "../pipe.hpp"
 #include "../stdio.hpp"
-#include "../rval.hpp"
+#include "../always_move.hpp"
 #include "../any_word.hpp"
 #include "../strenc.hpp"
 #include "../limits.hpp"
@@ -105,8 +105,8 @@ namespace rua { namespace win32 {
 				si.cb = sizeof(si);
 				si.wShowWindow = SW_HIDE;
 
-				rval<io::win32::read_closer> stdo_r, stde_r;
-				rval<io::win32::write_closer> stdi_w;
+				always_move<io::win32::read_closer> stdo_r, stde_r;
+				always_move<io::win32::write_closer> stdi_w;
 
 				io::win32::write_closer stdo_w, stde_w;
 				io::win32::read_closer stdi_r;
