@@ -73,16 +73,17 @@ namespace rua {
 
 					struct word {
 						typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
+						uint8_t size = 0;
 
 						size_t eq(const Getter &gtr, size_t gtr_off = 0) const {
-							return mem::get<Alignment>(&value) == gtr.template get<Alignment>(gtr_off) ? sizeof(Alignment) : 0;
-						}
+							if (!size) {
+								return mem::get<Alignment>(&value) == gtr.template get<Alignment>(gtr_off) ? sizeof(Alignment) : 0;
+							}
 
-						size_t eq(const Getter &gtr, size_t gtr_off, size_t sz) const {
-							switch (sz) {
+							switch (size) {
 								case 8:
 									if (mem::get<uint64_t>(&value) == gtr.template get<uint64_t>(gtr_off)) {
-										return sz;
+										return size;
 									}
 									return 0;
 
@@ -99,7 +100,7 @@ namespace rua {
 										mem::get<uint32_t>(&value) == gtr.template get<uint32_t>(gtr_off) &&
 										mem::get<uint16_t>(&value, 4) == gtr.template get<uint16_t>(gtr_off + 4)
 									) {
-										return sz;
+										return size;
 									}
 									return 0;
 
@@ -133,14 +134,14 @@ namespace rua {
 								////////////////////////////////////////////////////////////
 
 								default:
-									for (size_t i = 0; i < sz; ++i) {
+									for (size_t i = 0; i < size; ++i) {
 										if (mem::get<uint8_t>(&value, i) != gtr.template get<uint8_t>(gtr_off + i)) {
 											return 0;
 										}
 									}
 							}
 
-							return sz;
+							return size;
 						}
 					};
 
@@ -152,10 +153,15 @@ namespace rua {
 						return _sz_rmdr;
 					}
 
+					size_t hash() const {
+						return _h;
+					}
+
 				private:
 					size_t _sz;
 					size_t _sz_rmdr;
 					std::vector<word> _words;
+					size_t _h;
 
 					template <typename Container>
 					void _input(const Container &byt_vals) {
@@ -175,6 +181,7 @@ namespace rua {
 
 						size_t wi = 0;
 						size_t last_sz = 0;
+						_h = 0;
 
 						for (size_t i = 0; i < _sz; ++i) {
 							if (last_sz == sizeof(Alignment)) {
@@ -183,6 +190,12 @@ namespace rua {
 							}
 							mem::get<uint8_t>(&_words[wi].value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
 							++last_sz;
+
+							_h += static_cast<uint8_t>(byt_vals.begin()[i]);
+						}
+
+						if (_sz_rmdr) {
+							_words.back().size = _sz_rmdr;
 						}
 					}
 			};
@@ -239,24 +252,25 @@ namespace rua {
 					struct word {
 						Alignment mask;
 						typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
+						uint8_t size = 0;
 
 						bool is_void() const {
 							return !mask;
 						}
 
-						size_t eq(const Getter &gtr, size_t gtr_off = 0) const {
-							if (is_void()) {
-								return static_cast<size_t>(value);
-							}
-							return mem::get<Alignment>(&value) == (gtr.template get<Alignment>(gtr_off) & mask) ? sizeof(Alignment) : 0;
-						}
-
-						size_t eq(const Getter &gtr, size_t gtr_off, size_t sz) const {
-							if (is_void()) {
-								return value ? static_cast<size_t>(value) : sz;
+						size_t eq(const Getter &gtr, size_t gtr_off) const {
+							if (!size) {
+								if (is_void()) {
+									return static_cast<size_t>(value);
+								}
+								return mem::get<Alignment>(&value) == (gtr.template get<Alignment>(gtr_off) & mask) ? sizeof(Alignment) : 0;
 							}
 
-							switch (sz) {
+							if (is_void()) {
+								return value ? static_cast<size_t>(value) : size;
+							}
+
+							switch (size) {
 								case 8:
 									return
 										mem::get<uint64_t>(&value) ==
@@ -293,7 +307,7 @@ namespace rua {
 											mem::get<uint16_t>(&mask, 4)
 										)
 									) {
-										return sz;
+										return size;
 									}
 									return 0;
 
@@ -357,7 +371,7 @@ namespace rua {
 								////////////////////////////////////////////////////////////
 
 								default:
-									for (size_t i = 0; i < sz; ++i) {
+									for (size_t i = 0; i < size; ++i) {
 										if (
 											mem::get<uint8_t>(&value, i) !=
 											(
@@ -370,7 +384,7 @@ namespace rua {
 									}
 							}
 
-							return sz;
+							return size;
 						}
 					};
 
@@ -408,7 +422,7 @@ namespace rua {
 
 						_sz_rmdr = byt_vals.size() % sizeof(Alignment);
 
-						_words.emplace_back(word{0, 0});
+						_words.emplace_back();
 
 						bool in_void = false;
 						size_t last_sz = 0;
@@ -420,7 +434,7 @@ namespace rua {
 								}
 								if (last_sz == sizeof(Alignment)) {
 									last_sz = 0;
-									_words.emplace_back(word{0, 0});
+									_words.emplace_back();
 								}
 								mem::get<uint8_t>(&_words.back().mask, last_sz) = 255;
 								mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
@@ -440,19 +454,23 @@ namespace rua {
 										continue;
 									}
 									last_sz = 0;
-									_words.emplace_back(word{0, 0});
+									_words.emplace_back();
 								}
 								mem::get<uint8_t>(&_words.back().mask, last_sz) = 0;
 								mem::get<uint8_t>(&_words.back().value, last_sz) = 0;
 							}
 							++last_sz;
 						}
+
+						if (_sz_rmdr) {
+							_words.back().size = _sz_rmdr;
+						}
 					}
 			};
 
 			static constexpr size_t npos = static_cast<size_t>(-1);
 
-			struct search_result_t {
+			struct find_result_t {
 				size_t pos;
 
 				operator bool() const {
@@ -460,45 +478,27 @@ namespace rua {
 				}
 			};
 
-			template <typename Formatted>
-			search_result_t search(const Formatted &byts) const {
+			template <typename Alignment>
+			find_result_t find(const aligned<Alignment> &byts) const {
 				if (!byts.size() || _this()->size() < byts.size()) {
-					return search_result_t{ npos };
+					return find_result_t{ npos };
 				}
 
 				size_t end = _this()->size() + 1 - byts.size();
 				size_t sm_sz = 0;
 
-				if (byts.size_remainder()) {
-					if (byts.words().size() > 1) {
-						auto ful_wd_c = byts.words().size() - 1;
-						for (size_t i = 0; i < end || !end; ++i) {
-							for (size_t j = 0; j < ful_wd_c; ++j) {
-								auto sz = byts.words()[j].eq(*_this(), i + sm_sz);
-								if (!sz) {
-									sm_sz = 0;
-									break;
-								}
-								sm_sz += sz;
-							}
-							if (sm_sz) {
-								if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
-									return search_result_t{ i };
-								}
-								sm_sz = 0;
-							}
-						}
-					} else {
-						for (size_t i = 0; i < end || !end; ++i) {
-							if (byts.words().back().eq(*_this(), i + sm_sz, byts.size_remainder())) {
-								return search_result_t{ i };
-							}
-						}
-					}
-				} else {
-					for (size_t i = 0; i < end || !end; ++i) {
+				size_t h = 0;
+
+				for (int i = 0; i < static_cast<int>(byts.size()) - 1; ++i) {
+					h += _this()->template get<uint8_t>(i);
+				}
+
+				for (size_t i = 0; i < end || !end; ++i) {
+					h += _this()->template get<uint8_t>(i + byts.size() - 1);
+
+					if (h == byts.hash()) {
 						for (auto &wd : byts.words()) {
-							auto sz = wd.eq(*_this(), i + sm_sz);
+							size_t sz = wd.eq(*_this(), i + sm_sz);
 							if (!sz) {
 								sm_sz = 0;
 								break;
@@ -506,19 +506,14 @@ namespace rua {
 							sm_sz += sz;
 						}
 						if (sm_sz) {
-							return search_result_t{ i };
+							return find_result_t{ i };
 						}
 					}
+
+					h -= _this()->template get<uint8_t>(i);
 				}
 
-				return search_result_t{ npos };
-			}
-
-			using find_result_t = search_result_t;
-
-			template <typename Alignment>
-			find_result_t find(const aligned<Alignment> &byts) const {
-				return search(byts);
+				return find_result_t{ npos };
 			}
 
 			find_result_t find(const aligned<uintmax_t> &byts) const {
@@ -542,11 +537,28 @@ namespace rua {
 
 			template <typename Alignment>
 			match_result_t match(const pattern<Alignment> &pat) const {
-				auto sr = search(pat);
-				if (!sr) {
+				if (!pat.size() || _this()->size() < pat.size()) {
 					return match_result_t{ npos, {} };
 				}
-				return match_result_t{ sr.pos, pat.void_block_poss(sr.pos) };
+
+				size_t end = _this()->size() + 1 - pat.size();
+				size_t sm_sz = 0;
+
+				for (size_t i = 0; i < end || !end; ++i) {
+					for (auto &wd : pat.words()) {
+						auto sz = wd.eq(*_this(), i + sm_sz);
+						if (!sz) {
+							sm_sz = 0;
+							break;
+						}
+						sm_sz += sz;
+					}
+					if (sm_sz) {
+						return match_result_t{ i, pat.void_block_poss(i) };
+					}
+				}
+
+				return match_result_t{ npos, {} };
 			}
 
 			match_result_t match(const pattern<uintmax_t> &pat) const {
