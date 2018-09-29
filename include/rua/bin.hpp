@@ -564,7 +564,7 @@ namespace rua {
 			bin_base() = default;
 	};
 
-	inline RUA_CONSTEXPR_14 size_t _strlen(const char *c_str) {
+	inline RUA_CONSTEXPR_14 size_t strlen(const char *c_str) {
 		size_t i = 0;
 		while (c_str[i] != 0) {
 			++i;
@@ -598,7 +598,7 @@ namespace rua {
 			>
 			constexpr bin_view(const T &ref, size_t sz = sizeof(T)) : bin_view(&ref, sz) {}
 
-			RUA_CONSTEXPR_14 bin_view(const char *c_str) : _base(c_str), _sz(_strlen(c_str)) {}
+			RUA_CONSTEXPR_14 bin_view(const char *c_str) : _base(c_str), _sz(strlen(c_str)) {}
 
 			bin_view(const std::string &str) : _base(str.data()), _sz(str.length()) {}
 

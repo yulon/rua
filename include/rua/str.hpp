@@ -3,12 +3,19 @@
 
 #include "bin.hpp"
 #include "io/util.hpp"
+#include "stldata.hpp"
 
 #ifdef _WIN32
 	#include <windows.h>
 #endif
 
 #include <string>
+
+#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+	#include <string_view>
+#endif
+
+#include <cstring>
 
 namespace rua {
 	#ifdef _WIN32
@@ -220,12 +227,102 @@ namespace rua {
 				return "";
 			}
 
+			void reset(io::reader &r) {
+				_r = &r;
+				_1st_chr_is_cr = false;
+				_cache = "";
+			}
+
+			void reset() {
+				if (!_r) {
+					return;
+				}
+				_r = nullptr;
+				_1st_chr_is_cr = false;
+				_cache = "";
+			}
+
 		private:
 			io::reader *_r;
 			bool _1st_chr_is_cr;
 			bin _buf;
 			std::string _cache;
 	};
+
+	////////////////////////////////////////////////////////////////////////////
+
+	template <typename T>
+	struct to_str;
+
+	template <typename T>
+	struct to_str {
+		static std::string get(T &&src) {
+			return std::to_string(std::forward<T>(src));
+		}
+	};
+
+	template <>
+	struct to_str<char *> {
+		static std::string get(const char *c_str) {
+			return c_str;
+		}
+	};
+
+	template <>
+	struct to_str<const char *> : to_str<char *> {};
+
+	template <>
+	struct to_str<std::string> {
+		static std::string get(const std::string &str) {
+			return str;
+		}
+	};
+
+	#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+		template <>
+		struct to_str<std::string_view> {
+			static std::string get(std::string_view str_v) {
+				return str_v.data();
+			}
+		};
+	#endif
+
+	////////////////////////////////////////////////////////////////////////////
+
+	inline std::string join(
+		const std::vector<std::string> &strs,
+		const std::string &sep,
+		size_t reserved_size = 0,
+		bool ignore_empty = false
+	) {
+		size_t len = 0;
+		for (auto &str : strs) {
+			if (ignore_empty && !str.length()) {
+				continue;
+			}
+			len += str.length() + sep.length();
+		}
+
+		std::string r;
+		if (!len) {
+			return r;
+		}
+		len -= sep.length();
+		r.reserve(len + reserved_size);
+		r.resize(len);
+
+		size_t pos = 0;
+		for (auto &str : strs) {
+			if (ignore_empty && !str.length()) {
+				continue;
+			}
+			str.copy(stldata(r) + pos, str.length());
+			pos += str.length();
+			sep.copy(stldata(r) + pos, sep.length());
+			pos += sep.length();
+		}
+		return r;
+	}
 }
 
 #endif

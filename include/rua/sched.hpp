@@ -181,6 +181,30 @@ namespace rua {
 	inline void sleep(size_t timeout) {
 		get_scheduler().sleep(timeout);
 	}
+
+	template <typename Lockable>
+	class lock_guard {
+		public:
+			lock_guard() : _owner(nullptr) {}
+
+			lock_guard(Lockable &lck) : _owner(&lck) {
+				get_scheduler().lock(lck);
+			}
+
+			~lock_guard() {
+				unlock();
+			}
+
+			void unlock() {
+				if (_owner) {
+					_owner->unlock();
+					_owner = nullptr;
+				}
+			}
+
+		private:
+			Lockable *_owner;
+	};
 }
 
 #endif
