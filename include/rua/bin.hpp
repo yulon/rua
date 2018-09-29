@@ -1,6 +1,7 @@
 #ifndef _RUA_BIN_HPP
 #define _RUA_BIN_HPP
 
+#include "any_ptr.hpp"
 #include "mem/get.hpp"
 
 #include "macros.hpp"
@@ -12,6 +13,7 @@
 
 #include <string>
 #include <cstdint>
+#include <cstddef>
 #include <utility>
 #include <atomic>
 #include <cstring>
@@ -620,12 +622,12 @@ namespace rua {
 
 			template <typename D>
 			const D &get(ptrdiff_t offset = 0) const {
-				return mem::get<D>(_base, offset);
+				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
 			const D &aligned_get(ptrdiff_t ix = 0) const {
-				return get<D>(ix * sizeof(D));
+				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
 			const uint8_t &operator[](ptrdiff_t offset) const {
@@ -644,7 +646,7 @@ namespace rua {
 				if (!new_sz) {
 					return nullptr;
 				}
-				return bin_view(base() + begin, static_cast<size_t>(end - begin));
+				return bin_view(_base + begin, static_cast<size_t>(end - begin));
 			}
 
 			bin_view slice(ptrdiff_t begin) const {
@@ -708,11 +710,10 @@ namespace rua {
 				_sz = sz;
 			}
 
-		private:
+		protected:
 			any_ptr _base;
 			size_t _sz;
 
-		protected:
 			void _reset(void *ptr = nullptr, size_t sz = 0) {
 				_base = ptr;
 				_sz = ptr ? sz : 0;
@@ -757,28 +758,28 @@ namespace rua {
 					return 0;
 				}
 
-				memcpy(base(), src.base(), cp_sz);
+				memcpy(_base, src.base(), cp_sz);
 				return cp_sz;
 			}
 
 			template <typename D>
 			D &get(ptrdiff_t offset = 0) {
-				return mem::get<D>(base(), offset);
+				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
 			const D &get(ptrdiff_t offset = 0) const {
-				return bin_view::template get<D>(offset);
+				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
 			D &aligned_get(ptrdiff_t ix = 0) {
-				return get<D>(ix * sizeof(D));
+				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
 			template <typename D>
 			const D &aligned_get(ptrdiff_t ix = 0) const {
-				return bin_view::template aligned_get<D>(ix);
+				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
 			uint8_t &operator[](ptrdiff_t offset) {
@@ -915,9 +916,9 @@ namespace rua {
 			bin &operator=(bin &&src) {
 				if (src) {
 					if (*this) {
-						free(base());
+						free(_base);
 					}
-					_reset(src.base(), src.size());
+					_reset(src._base, src.size());
 					src._reset();
 					src._alloced = nullptr;
 				} else {
@@ -936,9 +937,9 @@ namespace rua {
 					return *this;
 				}
 
-				assert(base() >= _alloced_base());
-				assert(base() < _alloced_base() + _alloced_size());
-				assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
+				assert(_base >= _alloced_base());
+				assert(_base < _alloced_base() + _alloced_size());
+				assert(size() <= _alloced_size() - static_cast<size_t>(_base - _alloced_base()));
 
 				return *this;
 			}
@@ -957,9 +958,9 @@ namespace rua {
 					return *this;
 				}
 
-				assert(base() >= _alloced_base());
-				assert(base() < _alloced_base() + _alloced_size());
-				assert(size() <= _alloced_size() - static_cast<size_t>(base() - _alloced_base()));
+				assert(_base >= _alloced_base());
+				assert(_base < _alloced_base() + _alloced_size());
+				assert(size() <= _alloced_size() - static_cast<size_t>(_base - _alloced_base()));
 
 				return *this;
 			}
@@ -974,7 +975,7 @@ namespace rua {
 					return true;
 				}
 				if (_alloced) {
-					if (sz < _alloced_size() - static_cast<size_t>(base() - _alloced_base())) {
+					if (sz < _alloced_size() - static_cast<size_t>(_base - _alloced_base())) {
 						bin_view::resize(sz);
 						return false;
 					}
@@ -983,7 +984,7 @@ namespace rua {
 					auto old_alloced = _alloced;
 
 					_alloc(sz);
-					memcpy(base(), old_view.base(), old_view.size());
+					memcpy(_base, old_view.base(), old_view.size());
 
 					free(old_alloced);
 					return true;
