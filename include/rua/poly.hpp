@@ -6,6 +6,7 @@
 #include <memory>
 #include <typeindex>
 #include <type_traits>
+#include <initializer_list>
 #include <cassert>
 
 namespace rua {
@@ -36,19 +37,11 @@ namespace rua {
 
 			constexpr obj(std::nullptr_t) : _sp(nullptr) {}
 
-			template <typename A>
-			obj(A &&a) : _sp(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::decay<A>::type>())) {}
-
-			template <typename... A>
+			template <typename... A, typename = typename std::enable_if<std::is_constructible<T, A...>::value>::type>
 			obj(A&&... a) : _sp(std::make_shared<T>(std::forward<A>(a)...)) {}
 
-			obj(const obj &) = default;
-
-			obj &operator=(const obj &) = default;
-
-			obj(obj &&) = default;
-
-			obj &operator=(obj &&) = default;
+			template <typename U, typename... A, typename = typename std::enable_if<std::is_constructible<T, std::initializer_list<U>, A...>::value>::type>
+			obj(std::initializer_list<U> il, A&&... a) : _sp(std::make_shared<T>(il, std::forward<A>(a)...)) {}
 
 			void reset() {
 				_sp.reset();
@@ -131,14 +124,6 @@ namespace rua {
 				obj<T>(_get_shared(std::forward<A>(a), std::is_base_of<obj<T>, typename std::decay<A>::type>())),
 				_t(_obj_type<is_itf<A>()>::fn(std::forward<A>(a)))
 			{}
-
-			itf(const itf &) = default;
-
-			itf &operator=(const itf &) = default;
-
-			itf(itf &&) = default;
-
-			itf &operator=(itf &&) = default;
 
 			void reset() {
 				_t = typeid(nullptr);
