@@ -15,10 +15,10 @@
 namespace rua {
 	class test {
 		public:
-			test(std::string group_name, std::string case_name, std::function<void()> proc) {
-				_map()[group_name].push_back(_info_t{
+			test(std::string group_name, std::string case_name, std::function<void()> case_sample) {
+				_map()[group_name].push_back(_case_t{
 					std::move(case_name),
-					std::move(proc)
+					std::move(case_sample)
 				});
 			}
 
@@ -28,28 +28,28 @@ namespace rua {
 				auto &map = _map();
 				for (auto &pr : map) {
 					auto &gn = pr.first;
-					auto &li = pr.second;
+					auto &cases = pr.second;
 
 					std::cout << _bar(gn, '=', 4) << std::endl;
 					auto tp = std::chrono::steady_clock::now();
 
-					for (auto &info : li) {
-						std::cout << _bar(info.case_name, '-', 2) << std::endl;
+					for (auto &cas : cases) {
+						std::cout << _bar(cas.name, '-', 2) << std::endl;
 						auto tp2 = std::chrono::steady_clock::now();
 
-						info.proc();
+						cas.sample();
 
 						auto dur = std::chrono::steady_clock::now() - tp2;
 						std::cout
 							<< _bar(
-								info.case_name + ": "
+								cas.name + ": "
 								+ std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(dur).count())
 								+ " ms"
 								, '-', 2)
 							<< std::endl
 						;
 
-						if (&info != &li.back()) {
+						if (&cas != &cases.back()) {
 							std::cout << std::endl;
 						}
 					}
@@ -64,19 +64,19 @@ namespace rua {
 						<< std::endl
 					;
 
-					if (&li != &(--map.end())->second) {
+					if (&cases != &(--map.end())->second) {
 						std::cout << std::endl;
 					}
 				}
 			}
 
 		private:
-			struct _info_t {
-				std::string case_name;
-				std::function<void()> proc;
+			struct _case_t {
+				std::string name;
+				std::function<void()> sample;
 			};
 
-			using _map_t = std::map<std::string, std::list<_info_t>>;
+			using _map_t = std::map<std::string, std::list<_case_t>>;
 
 			static _map_t &_map() {
 				static _map_t map;
