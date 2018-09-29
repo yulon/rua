@@ -27,6 +27,9 @@ workspace "rua"
 		targetprefix "lib"
 		targetextension ".a"
 
+	configuration { "vs*" }
+		buildoptions { "/utf-8" }
+
 	project "rua_tests"
 		language "C++"
 		cppdialect "C++11"
