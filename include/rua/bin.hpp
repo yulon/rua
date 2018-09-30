@@ -75,14 +75,14 @@ namespace rua {
 						typename std::conditional<sizeof(Alignment) >= sizeof(size_t), Alignment, size_t>::type value;
 						uint8_t size = 0;
 
-						size_t eq(const Getter &gtr, size_t gtr_off = 0) const {
+						size_t eq(const uint8_t *begin) const {
 							if (!size) {
-								return mem::get<Alignment>(&value) == gtr.template get<Alignment>(gtr_off) ? sizeof(Alignment) : 0;
+								return mem::get<Alignment>(&value) == mem::get<Alignment>(begin) ? sizeof(Alignment) : 0;
 							}
 
 							switch (size) {
 								case 8:
-									if (mem::get<uint64_t>(&value) == gtr.template get<uint64_t>(gtr_off)) {
+									if (mem::get<uint64_t>(&value) == mem::get<uint64_t>(begin)) {
 										return size;
 									}
 									return 0;
@@ -90,15 +90,15 @@ namespace rua {
 								////////////////////////////////////////////////////////////
 
 								case 7:
-									if (mem::get<uint8_t>(&value, 6) != gtr.template get<uint8_t>(gtr_off + 6)) {
+									if (mem::get<uint8_t>(&value, 6) != mem::get<uint8_t>(begin, 6)) {
 										return 0;
 									}
 									RUA_FALLTHROUGH;
 
 								case 6:
 									if (
-										mem::get<uint32_t>(&value) == gtr.template get<uint32_t>(gtr_off) &&
-										mem::get<uint16_t>(&value, 4) == gtr.template get<uint16_t>(gtr_off + 4)
+										mem::get<uint32_t>(&value) == mem::get<uint32_t>(begin) &&
+										mem::get<uint16_t>(&value, 4) == mem::get<uint16_t>(begin, 4)
 									) {
 										return size;
 									}
@@ -107,35 +107,35 @@ namespace rua {
 								////////////////////////////////////////////////////////////
 
 								case 5:
-									if (mem::get<uint8_t>(&value, 4) != gtr.template get<uint8_t>(gtr_off + 4)) {
+									if (mem::get<uint8_t>(&value, 4) != mem::get<uint8_t>(begin, 4)) {
 										return 0;
 									}
 									RUA_FALLTHROUGH;
 
 								case 4:
-									return mem::get<uint32_t>(&value) == gtr.template get<uint32_t>(gtr_off);
+									return mem::get<uint32_t>(&value) == mem::get<uint32_t>(begin);
 
 								////////////////////////////////////////////////////////////
 
 								case 3:
-									if (mem::get<uint8_t>(&value, 2) != gtr.template get<uint8_t>(gtr_off + 2)) {
+									if (mem::get<uint8_t>(&value, 2) != mem::get<uint8_t>(begin, 2)) {
 										return 0;
 									}
 									RUA_FALLTHROUGH;
 
 								case 2:
-									return mem::get<uint16_t>(&value) == gtr.template get<uint16_t>(gtr_off);
+									return mem::get<uint16_t>(&value) == mem::get<uint16_t>(begin);
 
 								////////////////////////////////////////////////////////////
 
 								case 1:
-									return mem::get<uint8_t>(&value) == gtr.template get<uint8_t>(gtr_off);
+									return mem::get<uint8_t>(&value) == mem::get<uint8_t>(begin);
 
 								////////////////////////////////////////////////////////////
 
 								default:
 									for (size_t i = 0; i < size; ++i) {
-										if (mem::get<uint8_t>(&value, i) != gtr.template get<uint8_t>(gtr_off + i)) {
+										if (mem::get<uint8_t>(&value, i) != mem::get<uint8_t>(begin, i)) {
 											return 0;
 										}
 									}
@@ -155,6 +155,18 @@ namespace rua {
 
 					size_t hash() const {
 						return _h;
+					}
+
+					static void calc_hash(size_t &h, const uint8_t *begin, const uint8_t *end, bool is_update = false) {
+						if (is_update) {
+							h -= *(--begin);
+							h += *(--end);
+							return;
+						}
+						h = 0;
+						for (auto it = begin; it != end; ++it) {
+							h += *it;
+						}
 					}
 
 				private:
@@ -191,7 +203,7 @@ namespace rua {
 							mem::get<uint8_t>(&_words[wi].value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
 							++last_sz;
 
-							_h += static_cast<uint8_t>(byt_vals.begin()[i]);
+							_h += static_cast<size_t>(static_cast<uint8_t>(byt_vals.begin()[i]));
 						}
 
 						if (_sz_rmdr) {
@@ -484,33 +496,33 @@ namespace rua {
 					return find_result_t{ npos };
 				}
 
-				size_t end = _this()->size() + 1 - byts.size();
-				size_t sm_sz = 0;
+				auto begin = &_this()->template get<uint8_t>();
+				const uint8_t *end = begin + _this()->size() - byts.size();
 
 				size_t h = 0;
+				const uint8_t *cmp_ptr = nullptr;
 
-				for (int i = 0; i < static_cast<int>(byts.size()) - 1; ++i) {
-					h += _this()->template get<uint8_t>(i);
-				}
-
-				for (size_t i = 0; i < end || !end; ++i) {
-					h += _this()->template get<uint8_t>(i + byts.size() - 1);
-
+				for (auto it = begin; it != end; ++it) {
+					byts.calc_hash(
+						h,
+						it,
+						it + byts.size(),
+						it != begin
+					);
 					if (h == byts.hash()) {
 						for (auto &wd : byts.words()) {
-							size_t sz = wd.eq(*_this(), i + sm_sz);
+							cmp_ptr = it;
+							size_t sz = wd.eq(cmp_ptr);
 							if (!sz) {
-								sm_sz = 0;
+								cmp_ptr = nullptr;
 								break;
 							}
-							sm_sz += sz;
+							cmp_ptr += sz;
 						}
-						if (sm_sz) {
-							return find_result_t{ i };
+						if (cmp_ptr) {
+							return find_result_t{ static_cast<size_t>(it - begin) };
 						}
 					}
-
-					h -= _this()->template get<uint8_t>(i);
 				}
 
 				return find_result_t{ npos };
