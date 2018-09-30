@@ -6,12 +6,22 @@
 namespace rua {
 	namespace mem {
 		template <typename T>
-		inline T &get(const void *ptr, ptrdiff_t offset = 0) {
+		inline const T &get(const void *ptr, ptrdiff_t offset = 0) {
+			return *reinterpret_cast<const T *>(reinterpret_cast<uintptr_t>(ptr) + offset);
+		}
+
+		template <typename T>
+		inline T &get(void *ptr, ptrdiff_t offset = 0) {
 			return *reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr) + offset);
 		}
 
 		template <typename T>
-		inline T &aligned_get(const void *ptr, ptrdiff_t ix = 0) {
+		inline const T &aligned_get(const void *ptr, ptrdiff_t ix = 0) {
+			return *reinterpret_cast<const T *>(reinterpret_cast<uintptr_t>(ptr) + ix * sizeof(T));
+		}
+
+		template <typename T>
+		inline T &aligned_get(void *ptr, ptrdiff_t ix = 0) {
 			return *reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(ptr) + ix * sizeof(T));
 		}
 	}
