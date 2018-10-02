@@ -238,6 +238,10 @@ namespace rua {
 				return "";
 			}
 
+			operator bool() const {
+				return _r;
+			}
+
 			void reset(io::reader &r) {
 				_r = &r;
 				_1st_chr_is_cr = false;

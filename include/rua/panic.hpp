@@ -1,14 +1,14 @@
 #ifndef _RUA_PANIC_HPP
 #define _RUA_PANIC_HPP
 
-#include "log.hpp"
+#include "console.hpp"
 #include "str.hpp"
 
 #include <cstdlib>
 
 #define RUA_PANIC(_exp) { \
 	if (!(_exp)) { \
-		rua::loge( \
+		rua::cerr( \
 			"Panic!", \
 			rua::eol, \
 			"File:", std::string(__FILE__) + ":" + std::to_string(__LINE__), \
