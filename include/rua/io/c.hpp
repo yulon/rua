@@ -82,7 +82,7 @@ namespace rua { namespace io { namespace c {
 
 			virtual void close() {
 				if (_f) {
-					CloseHandle(_f);
+					fclose(_f);
 					_f = nullptr;
 				}
 			}

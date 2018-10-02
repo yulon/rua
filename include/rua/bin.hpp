@@ -403,7 +403,7 @@ namespace rua {
 						return 0;
 					}
 
-					static constexpr void calc_hash(size_t &, const uint8_t *, const uint8_t *, bool = false) {}
+					static void calc_hash(size_t &, const uint8_t *, const uint8_t *, bool = false) {}
 
 					std::vector<size_t> void_block_poss(size_t base = 0) const {
 						std::vector<size_t> vbposs(_void_block_poss);
