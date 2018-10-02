@@ -6,38 +6,61 @@
 #include "sched.hpp"
 #include "stdio.hpp"
 
+#ifdef _WIN32
+	#include <windows.h>
+#endif
+
 #include <mutex>
 #include <vector>
 #include <type_traits>
-#include <sstream>
+#include <functional>
 
 namespace rua {
 	class logger {
 		public:
-			logger() : _lw(nullptr), _ew(nullptr), _oe(line_end) {}
-
-			logger(io::writer &lw, const char *w_end = line_end) : _lw(&lw), _ew(&lw), _oe(w_end) {}
-
-			logger(io::writer &lw, io::writer &ew, const char *w_end = line_end) : _lw(&lw), _ew(&ew), _oe(w_end) {}
+			logger(std::function<void(logger &)> init = nullptr) : _lw(nullptr), _ew(nullptr), _oe(line_end) {
+				if (init) {
+					init(*this);
+				}
+			}
 
 			template <typename... V>
 			void log(V&&... v) {
-				_write(*_lw, std::forward<V>(v)...);
+				_write(_lw, on_log, log_prefix, std::forward<V>(v)...);
 			}
+
+			std::string log_prefix;
+			std::function<void(const std::string &)> on_log;
 
 			template <typename... V>
 			void logi(V&&... v) {
-				_write(*_lw, std::forward<V>(v)...);
+				_write(_lw, on_logi, logi_prefix, std::forward<V>(v)...);
 			}
+
+			std::string logi_prefix;
+			std::function<void(const std::string &)> on_logi;
 
 			template <typename... V>
 			void logw(V&&... v) {
-				_write(*_lw, std::forward<V>(v)...);
+				_write(_lw, on_logw, logw_prefix, std::forward<V>(v)...);
 			}
+
+			std::string logw_prefix;
+			std::function<void(const std::string &)> on_logw;
 
 			template <typename... V>
 			void loge(V&&... v) {
-				_write(*_ew, std::forward<V>(v)...);
+				_write(_ew, on_loge, loge_prefix, std::forward<V>(v)...);
+			}
+
+			std::string loge_prefix;
+			std::function<void(const std::string &)> on_loge;
+
+			void set_writer(io::writer &w) {
+				lock_guard<std::mutex> lg(_mtx);
+
+				_lw = &w;
+				_ew = &w;
 			}
 
 			void set_log_writer(io::writer &lw) {
@@ -46,13 +69,13 @@ namespace rua {
 				_lw = &lw;
 			}
 
-			void set_error_writer(io::writer &ew) {
+			void set_loge_writer(io::writer &ew) {
 				lock_guard<std::mutex> lg(_mtx);
 
 				_ew = &ew;
 			}
 
-			void set_output_end(const char *str = line_end) {
+			void set_over_mark(const char *str = line_end) {
 				lock_guard<std::mutex> lg(_mtx);
 
 				_oe = str;
@@ -71,19 +94,32 @@ namespace rua {
 			const char *_oe;
 
 			template <typename... V>
-			void _write(io::writer &w, V&&... v) {
-				std::vector<std::string> strs({ to_str<typename std::decay<V>::type>::get(v)... });
+			void _write(io::writer *w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
+				std::vector<std::string> strs;
+				if (prefix.length()) {
+					strs = { prefix, to_str<typename std::decay<V>::type>::get(v)... };
+				} else {
+					strs = { to_str<typename std::decay<V>::type>::get(v)... };
+				}
+
 				for (auto &str : strs) {
 					if (str.empty()) {
 						str = "<null>";
 					}
 				}
 
-				auto line = join(strs, " ", strlen(_oe));
-				line += _oe;
+				auto cont = join(strs, " ", strlen(_oe));
+				cont += _oe;
 
+				if (on) {
+					on(cont);
+				}
+
+				if (!w) {
+					return;
+				}
 				lock_guard<std::mutex> lg(_mtx);
-				w.write_all(line);
+				w->write_all(cont);
 			}
 	};
 
@@ -99,22 +135,28 @@ namespace rua {
 		private:
 			default_logger() : _ow(stdout_writer()), _ew(stderr_writer()) {
 				#ifdef _WIN32
-					/*if (!_ow || !_ew) {
-						AllocConsole();
-						if (!_ow) {
-							_ow = stdout_writer();
-						}
-						if (!_ew) {
-							_ew = stderr_writer();
-						}
-					}*/
+					if (!_ow) {
+						on_log = [](const std::string &cont) {
+							MessageBoxW(0, u8_to_w(cont).c_str(), L"LOG", MB_OK);
+						};
+						on_logi = [](const std::string &cont) {
+							MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
+						};
+						on_logw = [](const std::string &cont) {
+							MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
+						};
+						on_loge = [](const std::string &cont) {
+							MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
+						};
+						return;
+					}
 					_ow_tr = _ow;
-					_ew_tr = _ew;
 					set_log_writer(_ow_tr);
-					set_error_writer(_ew_tr);
+					_ew_tr = _ew;
+					set_loge_writer(_ew_tr);
 				#else
 					set_log_writer(_ow);
-					set_error_writer(_ew);
+					set_loge_writer(_ew);
 				#endif
 			}
 
