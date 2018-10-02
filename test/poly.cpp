@@ -26,28 +26,28 @@ rua::test _t2("poly", "itf", []() {
 	a->y = 321;
 
 	rua::obj<bar> b(a);
-	RUA_RASSERT(b->x == a->x);
-	RUA_RASSERT(b->y == a->y);
+	RUA_PANIC(b->x == a->x);
+	RUA_PANIC(b->y == a->y);
 
 	rua::itf<foo> c(b);
-	RUA_RASSERT(c->x == a->x);
-	RUA_RASSERT(c->y == a->y);
+	RUA_PANIC(c->x == a->x);
+	RUA_PANIC(c->y == a->y);
 
 	rua::itf<foo> d(b);
-	RUA_RASSERT(d->x == a->x);
-	RUA_RASSERT(d->y == a->y);
+	RUA_PANIC(d->x == a->x);
+	RUA_PANIC(d->y == a->y);
 
 	a->x = 222;
 	a->y = 333;
 
-	RUA_RASSERT(b->x == a->x);
-	RUA_RASSERT(b->y == a->y);
+	RUA_PANIC(b->x == a->x);
+	RUA_PANIC(b->y == a->y);
 
-	RUA_RASSERT(c->x == a->x);
-	RUA_RASSERT(c->y == a->y);
+	RUA_PANIC(c->x == a->x);
+	RUA_PANIC(c->y == a->y);
 
-	RUA_RASSERT(d->x == a->x);
-	RUA_RASSERT(d->y == a->y);
+	RUA_PANIC(d->x == a->x);
+	RUA_PANIC(d->y == a->y);
 });
 
 }

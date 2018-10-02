@@ -29,7 +29,7 @@ rua::test _t("co", "co_pool", []() {
 	});
 	cp.run();
 
-	RUA_RASSERT(r == "123321");
+	RUA_PANIC(r == "123321");
 });
 
 rua::test _t2("co", "use_chan", []() {
@@ -43,7 +43,7 @@ rua::test _t2("co", "use_chan", []() {
 			ch << "ok";
 		}).detach();
 
-		RUA_RASSERT(ch.get() == "ok");
+		RUA_PANIC(ch.get() == "ok");
 	});
 	cp.run();
 });

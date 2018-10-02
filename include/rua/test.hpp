@@ -2,7 +2,7 @@
 #define _RUA_TEST_HPP
 
 #include "macros.hpp"
-#include "rassert.hpp"
+#include "panic.hpp"
 
 #include <map>
 #include <list>

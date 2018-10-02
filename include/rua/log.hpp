@@ -18,7 +18,7 @@
 namespace rua {
 	class logger {
 		public:
-			logger(std::function<void(logger &)> init = nullptr) : _lw(nullptr), _ew(nullptr), _oe(line_end) {
+			logger(std::function<void(logger &)> init = nullptr) : _lw(nullptr), _ew(nullptr), _oe(eol) {
 				if (init) {
 					init(*this);
 				}
@@ -75,7 +75,7 @@ namespace rua {
 				_ew = &ew;
 			}
 
-			void set_over_mark(const char *str = line_end) {
+			void set_over_mark(const char *str = eol) {
 				lock_guard<std::mutex> lg(_mtx);
 
 				_oe = str;
@@ -97,9 +97,9 @@ namespace rua {
 			void _write(io::writer *w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
 				std::vector<std::string> strs;
 				if (prefix.length()) {
-					strs = { prefix, to_str<typename std::decay<V>::type>::get(v)... };
+					strs = { prefix, to_str<typename std::decay<V>::type>::get(v)..., eol };
 				} else {
-					strs = { to_str<typename std::decay<V>::type>::get(v)... };
+					strs = { to_str<typename std::decay<V>::type>::get(v)..., eol };
 				}
 
 				for (auto &str : strs) {
@@ -108,8 +108,7 @@ namespace rua {
 					}
 				}
 
-				auto cont = join(strs, " ", strlen(_oe));
-				cont += _oe;
+				auto cont = strjoin(strs, " ", strjoin_multi_line);
 
 				if (on) {
 					on(cont);

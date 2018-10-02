@@ -169,12 +169,23 @@ namespace rua {
 	static constexpr const char *cr = "\r";
 
 	#ifdef _WIN32
-		static constexpr const char *line_end = crlf;
+		static constexpr const char *eol = crlf;
 	#elif RUA_DARWIN
-		static constexpr const char *line_end = cr;
+		static constexpr const char *eol = cr;
 	#else
-		static constexpr const char *line_end = lf;
+		static constexpr const char *eol = lf;
 	#endif
+
+	inline bool is_eol(const std::string &str) {
+		for (auto &chr : str) {
+			if (chr != lf[0] && chr != cr[0]) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	////////////////////////////////////////////////////////////////////////////
 
 	class line_reader {
 		public:
@@ -289,37 +300,59 @@ namespace rua {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	inline std::string join(
+	static constexpr uint32_t strjoin_ignore_empty = 0x0000000F;
+	static constexpr uint32_t strjoin_multi_line = 0x000000F0;
+
+	inline std::string strjoin(
 		const std::vector<std::string> &strs,
 		const std::string &sep,
-		size_t reserved_size = 0,
-		bool ignore_empty = false
+		uint32_t flags = 0,
+		size_t reserved_size = 0
 	) {
+		bool is_ignore_empty = flags & strjoin_ignore_empty;
+		bool is_multi_line = flags & strjoin_multi_line;
+
 		size_t len = 0;
+		bool bf_is_eol = true;
 		for (auto &str : strs) {
-			if (ignore_empty && !str.length()) {
+			if (!str.length() && is_ignore_empty) {
 				continue;
 			}
-			len += str.length() + sep.length();
+			if (bf_is_eol) {
+				bf_is_eol = false;
+			} else {
+				len += sep.length();
+			}
+			len += str.length();
+			if (is_multi_line && is_eol(str)) {
+				bf_is_eol = true;
+			}
 		}
 
 		std::string r;
 		if (!len) {
 			return r;
 		}
-		len -= sep.length();
 		r.reserve(len + reserved_size);
 		r.resize(len);
 
 		size_t pos = 0;
+		bf_is_eol = true;
 		for (auto &str : strs) {
-			if (ignore_empty && !str.length()) {
+			if (!str.length() && is_ignore_empty) {
 				continue;
+			}
+			if (bf_is_eol) {
+				bf_is_eol = false;
+			} else {
+				sep.copy(stldata(r) + pos, sep.length());
+				pos += sep.length();
 			}
 			str.copy(stldata(r) + pos, str.length());
 			pos += str.length();
-			sep.copy(stldata(r) + pos, sep.length());
-			pos += sep.length();
+			if (is_multi_line && is_eol(str)) {
+				bf_is_eol = true;
+			}
 		}
 		return r;
 	}
