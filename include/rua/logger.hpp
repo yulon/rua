@@ -104,9 +104,9 @@ namespace rua {
 			void _write(io::writer *w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
 				std::vector<std::string> strs;
 				if (prefix.length()) {
-					strs = { prefix, to_str<typename std::decay<V>::type>::get(v)..., eol };
+					strs = { prefix, to_str(v)..., eol };
 				} else {
-					strs = { to_str<typename std::decay<V>::type>::get(v)..., eol };
+					strs = { to_str(v)..., eol };
 				}
 
 				for (auto &str : strs) {

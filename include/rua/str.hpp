@@ -266,40 +266,19 @@ namespace rua {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	template <typename T>
-	struct to_str;
+	template <typename T, typename = decltype(std::to_string(std::declval<T>()))>
+	inline std::string to_str(T &&src) {
+		return std::to_string(std::forward<T>(src));
+	}
 
-	template <typename T>
-	struct to_str {
-		static std::string get(T &&src) {
-			return std::to_string(std::forward<T>(src));
-		}
-	};
-
-	template <>
-	struct to_str<char *> {
-		static std::string get(const char *c_str) {
-			return c_str;
-		}
-	};
-
-	template <>
-	struct to_str<const char *> : to_str<char *> {};
-
-	template <>
-	struct to_str<std::string> {
-		static std::string get(const std::string &str) {
-			return str;
-		}
-	};
+	inline std::string to_str(std::string src) {
+		return src;
+	}
 
 	#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
-		template <>
-		struct to_str<std::string_view> {
-			static std::string get(std::string_view str_v) {
-				return str_v.data();
-			}
-		};
+		inline std::string to_str(std::string_view src) {
+			return std::string(src.data(), src.length());
+		}
 	#endif
 
 	////////////////////////////////////////////////////////////////////////////
