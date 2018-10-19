@@ -7,7 +7,7 @@
 #include "macros.hpp"
 #include "limits.hpp"
 
-#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+#ifdef __cpp_lib_string_view
 	#include <string_view>
 #endif
 
@@ -153,7 +153,8 @@ namespace rua {
 						return _h;
 					}
 
-					static void calc_hash(size_t &h, const uint8_t *begin, const uint8_t *end, bool is_update = false) {
+					void calc_hash(size_t &h, const uint8_t *begin, bool is_update = false) const {
+						auto end = begin + _sz;
 						if (is_update) {
 							h -= *(--begin);
 							h += *(--end);
@@ -403,7 +404,9 @@ namespace rua {
 						return 0;
 					}
 
-					static void calc_hash(size_t &, const uint8_t *, const uint8_t *, bool = false) {}
+					static void calc_hash(size_t &h, const uint8_t *begin, bool is_update = false) {
+
+					}
 
 					std::vector<size_t> void_block_poss(size_t base = 0) const {
 						std::vector<size_t> vbposs(_void_block_poss);
@@ -502,7 +505,6 @@ namespace rua {
 					byts.calc_hash(
 						h,
 						it,
-						it + byts.size(),
 						it != begin
 					);
 					if (h == byts.hash()) {
@@ -614,7 +616,7 @@ namespace rua {
 
 			bin_view(const std::string &str) : _base(str.data()), _sz(str.length()) {}
 
-			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+			#ifdef __cpp_lib_string_view
 				constexpr bin_view(std::string_view sv) : _base(sv.data()), _sz(sv.length()) {}
 			#endif
 
@@ -910,7 +912,7 @@ namespace rua {
 
 			bin(const std::string &str) : bin(bin_view(str.data(), str.length())) {}
 
-			#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+			#ifdef __cpp_lib_string_view
 				bin(std::string_view sv) : bin(bin_view(sv.data(), sv.length())) {}
 			#endif
 

@@ -11,7 +11,7 @@
 
 #include <string>
 
-#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+#ifdef __cpp_lib_string_view
 	#include <string_view>
 #endif
 
@@ -275,7 +275,7 @@ namespace rua {
 		return src;
 	}
 
-	#if RUA_CPP >= RUA_CPP_17 && RUA_HAS_INC(<string_view>)
+	#ifdef __cpp_lib_string_view
 		inline std::string to_str(std::string_view src) {
 			return std::string(src.data(), src.length());
 		}
