@@ -271,13 +271,29 @@ namespace rua {
 		return std::to_string(std::forward<T>(src));
 	}
 
+	inline std::string to_str(const char *src) {
+		return src;
+	}
+
 	inline std::string to_str(std::string src) {
 		return src;
 	}
 
+	inline std::string to_str(const wchar_t *src) {
+		return w_to_u8(src);
+	}
+
+	inline std::string to_str(std::wstring src) {
+		return w_to_u8(src);
+	}
+
 	#ifdef __cpp_lib_string_view
 		inline std::string to_str(std::string_view src) {
-			return std::string(src.data(), src.length());
+			return src.data();
+		}
+
+		inline std::string to_str(std::wstring_view src) {
+			return w_to_u8(src.data());
 		}
 	#endif
 
