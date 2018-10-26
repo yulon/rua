@@ -2,7 +2,7 @@
 #define _RUA_PIPE_HPP
 
 #include "io/sys.hpp"
-#include "strenc.hpp"
+#include "str.hpp"
 #include "limits.hpp"
 
 #ifdef _WIN32

@@ -10,7 +10,7 @@
 #include "../stdio.hpp"
 #include "../always_move.hpp"
 #include "../any_word.hpp"
-#include "../strenc.hpp"
+#include "../str.hpp"
 #include "../limits.hpp"
 #include "../bin.hpp"
 #include "../sched.hpp"
