@@ -4,7 +4,6 @@
 #include "bin.hpp"
 #include "io/util.hpp"
 #include "stldata.hpp"
-#include "panic.hpp"
 
 #ifdef _WIN32
 	#include <windows.h>
@@ -158,12 +157,12 @@ namespace rua {
 		}
 
 		inline std::wstring u8_to_w(const std::string &u8_str) {
-			RUA_PANIC(false);
+			//TODO
 			return L"";
 		}
 
 		inline std::string w_to_u8(const std::wstring &w_str) {
-			RUA_PANIC(false);
+			//TODO
 			return "";
 		}
 
