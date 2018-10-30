@@ -73,10 +73,10 @@ namespace rua {
 
 					struct word {
 						typename std::conditional<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>::type value;
-						uint8_t size = 0;
+						uint8_t size = sizeof(CmpUnit);
 
 						size_t eq(const uint8_t *begin) const {
-							if (!size) {
+							if (size == sizeof(CmpUnit)) {
 								return mem::get<CmpUnit>(&value) == mem::get<CmpUnit>(begin) ? sizeof(CmpUnit) : 0;
 							}
 
@@ -258,24 +258,24 @@ namespace rua {
 					}
 
 					struct word {
-						CmpUnit mask;
-						typename std::conditional<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>::type value;
-						uint8_t size = 0;
+						CmpUnit mask = 0;
+						typename std::conditional<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>::type value = 0;
+						uint8_t size = sizeof(CmpUnit);
 
 						bool is_void() const {
 							return !mask;
 						}
 
 						size_t eq(const uint8_t *target) const {
-							if (!size) {
+							if (size == sizeof(CmpUnit)) {
 								if (is_void()) {
-									return static_cast<size_t>(value);
+									return size;
 								}
 								return mem::get<CmpUnit>(&value) == (mem::get<CmpUnit>(target) & mask) ? sizeof(CmpUnit) : 0;
 							}
 
 							if (is_void()) {
-								return value ? static_cast<size_t>(value) : size;
+								return size;
 							}
 
 							switch (size) {
@@ -432,19 +432,17 @@ namespace rua {
 							return;
 						}
 
-						_words.emplace_back();
-
 						bool in_void = false;
-						size_t last_sz = 0;
+						size_t last_sz = sizeof(CmpUnit);
 
 						for (size_t i = 0; i < _sz; ++i) {
+							if (last_sz == sizeof(CmpUnit)) {
+								last_sz = 0;
+								_words.emplace_back();
+							}
 							if (byt_vals.begin()[i] < 256) {
 								if (in_void) {
 									in_void = false;
-								}
-								if (last_sz == sizeof(CmpUnit)) {
-									last_sz = 0;
-									_words.emplace_back();
 								}
 								mem::get<uint8_t>(&_words.back().mask, last_sz) = 255;
 								mem::get<uint8_t>(&_words.back().value, last_sz) = static_cast<uint8_t>(byt_vals.begin()[i]);
@@ -453,21 +451,6 @@ namespace rua {
 									in_void = true;
 									_void_block_poss.emplace_back(i);
 								}
-								if (last_sz == sizeof(CmpUnit)) {
-									if (_words.back().is_void()) {
-										if (_words.back().value) {
-											++_words.back().value;
-										} else {
-											_words.back().value = sizeof(CmpUnit) + 1;
-										}
-										++last_sz;
-										continue;
-									}
-									last_sz = 0;
-									_words.emplace_back();
-								}
-								mem::get<uint8_t>(&_words.back().mask, last_sz) = 0;
-								mem::get<uint8_t>(&_words.back().value, last_sz) = 0;
 							}
 							++last_sz;
 						}
@@ -508,8 +491,8 @@ namespace rua {
 						it != begin
 					);
 					if (h == byts.hash()) {
+						cmp_ptr = it;
 						for (auto &wd : byts.words()) {
-							cmp_ptr = it;
 							size_t sz = wd.eq(cmp_ptr);
 							if (!sz) {
 								cmp_ptr = nullptr;
