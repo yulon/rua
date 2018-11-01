@@ -16,6 +16,10 @@
 #endif
 
 #include <cstring>
+#include <sstream>
+#include <iomanip>
+#include <type_traits>
+#include <cstdint>
 
 namespace rua {
 	#ifdef _WIN32
@@ -180,7 +184,7 @@ namespace rua {
 
 	#ifdef _WIN32
 		static constexpr const char *eol = crlf;
-	#elif RUA_DARWIN
+	#elif defined(RUA_DARWIN)
 		static constexpr const char *eol = cr;
 	#else
 		static constexpr const char *eol = lf;
@@ -276,36 +280,75 @@ namespace rua {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	template <typename T, typename = decltype(std::to_string(std::declval<T>()))>
-	inline std::string to_str(T &&src) {
-		return std::to_string(std::forward<T>(src));
+	template <
+		typename T,
+		typename = decltype(std::to_string(std::declval<T>())),
+		typename = typename std::enable_if<!std::is_unsigned<T>::value>::type
+	>
+	inline std::string to_str(T &&val) {
+		return std::to_string(std::forward<T>(val));
 	}
 
-	inline std::string to_str(const char *src) {
-		return src;
+	inline std::string to_str(std::nullptr_t) {
+		return "null";
 	}
 
-	inline std::string to_str(std::string src) {
-		return src;
+	inline std::string to_str(const char *val) {
+		return val ? val : to_str(nullptr);
 	}
 
-	inline std::string to_str(const wchar_t *src) {
-		return w_to_u8(src);
+	inline std::string to_str(std::string val) {
+		return val;
 	}
 
-	inline std::string to_str(std::wstring src) {
-		return w_to_u8(src);
+	inline std::string to_str(const wchar_t *val) {
+		return val ? w_to_u8(val) : to_str(nullptr);
+	}
+
+	inline std::string to_str(std::wstring val) {
+		return w_to_u8(val);
 	}
 
 	#ifdef __cpp_lib_string_view
-		inline std::string to_str(std::string_view src) {
-			return src.data();
+		inline std::string to_str(std::string_view val) {
+			return val.data();
 		}
 
-		inline std::string to_str(std::wstring_view src) {
-			return w_to_u8(src.data());
+		inline std::string to_str(std::wstring_view val) {
+			return w_to_u8(val.data());
 		}
 	#endif
+
+	template<typename T>
+	inline std::string to_hex(T val) {
+		std::stringstream ss;
+		ss << "0x" << std::hex << std::uppercase << std::setw(sizeof(T) * 2) << std::setfill('0') << val;
+		return ss.str();
+	}
+
+	inline std::string to_str(uint64_t val) {
+		return to_hex(val);
+	}
+
+	inline std::string to_str(uint32_t val) {
+		return to_hex(val);
+	}
+
+	inline std::string to_str(uint16_t val) {
+		return to_hex(val);
+	}
+
+	inline std::string to_str(uint8_t val) {
+		return to_hex(val);
+	}
+
+	inline std::string to_str(const void *val) {
+		return val ? to_str(reinterpret_cast<uintptr_t>(val)) : to_str(nullptr);
+	}
+
+	inline std::string to_str(bool val) {
+		return val ? "true" : "false";
+	}
 
 	////////////////////////////////////////////////////////////////////////////
 
