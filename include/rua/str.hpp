@@ -280,12 +280,12 @@ namespace rua {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	template <
-		typename T,
-		typename = decltype(std::to_string(std::declval<T>())),
-		typename = typename std::enable_if<!std::is_unsigned<T>::value>::type
-	>
-	inline std::string to_str(T &&val) {
+	template <typename T>
+	inline std::string to_str(
+		T &&val,
+		decltype(std::to_string(std::declval<typename std::decay<T>::type>())) * = nullptr,
+		typename std::enable_if<!std::is_unsigned<typename std::decay<T>::type>::value>::type * = nullptr
+	) {
 		return std::to_string(std::forward<T>(val));
 	}
 
@@ -326,20 +326,15 @@ namespace rua {
 		return ss.str();
 	}
 
-	inline std::string to_str(uint64_t val) {
-		return to_hex(val);
-	}
-
-	inline std::string to_str(uint32_t val) {
-		return to_hex(val);
-	}
-
-	inline std::string to_str(uint16_t val) {
-		return to_hex(val);
-	}
-
-	inline std::string to_str(uint8_t val) {
-		return to_hex(val);
+	template<typename T>
+	inline std::string to_str(
+		T &&val,
+		typename std::enable_if<
+			std::is_unsigned<typename std::decay<T>::type>::value &&
+			!std::is_same<typename std::decay<T>::type, bool>::value
+		>::type * = nullptr
+	) {
+		return to_hex(std::forward<T>(val));
 	}
 
 	inline std::string to_str(const void *val) {
