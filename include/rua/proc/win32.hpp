@@ -295,7 +295,9 @@ namespace rua { namespace win32 {
 				reset();
 			}
 
-			HANDLE native_handle() const {
+			using native_handle_t = HANDLE;
+
+			native_handle_t native_handle() const {
 				return _h;
 			}
 
@@ -389,16 +391,18 @@ namespace rua { namespace win32 {
 
 			////////////////////////////////////////////////////////////////
 
-			class mem_view_t : public virtual io::reader_at {
+			class mem_t {
 				public:
-					mem_view_t() : _proc(nullptr), _ptr(nullptr), _sz(0) {}
+					mem_t() {}
 
-					mem_view_t(const proc &proc, any_ptr p, size_t n) : _proc(&proc), _ptr(p), _sz(n) {}
+					mem_t(proc &proc, size_t n) :
+						_owner(&proc),
+						_ptr(VirtualAllocEx(proc.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE)),
+						_sz(n)
+					{}
 
-					virtual ~mem_view_t() {}
-
-					const proc &owner() const {
-						return *_proc;
+					~mem_t() {
+						reset();
 					}
 
 					any_ptr ptr() const {
@@ -409,98 +413,34 @@ namespace rua { namespace win32 {
 						return _sz;
 					}
 
-					virtual size_t read_at(ptrdiff_t pos, bin_ref data) {
+					size_t write_at(ptrdiff_t pos, bin_view data) {
 						SIZE_T sz;
-						ReadProcessMemory(_proc->native_handle(), _ptr + pos, data.base(), data.size(), &sz);
+						WriteProcessMemory(_owner->native_handle(), ptr() + pos, data.base(), data.size(), &sz);
 						assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
 						return static_cast<size_t>(sz);
 					}
 
-					bin_view try_to_local() const {
-						if (*_proc != proc::current()) {
-							return nullptr;
+					void reset() {
+						if (!_owner) {
+							return;
 						}
-						return bin_view(_ptr, _sz);
-					}
-
-					void reset(proc *proc = nullptr, any_ptr p = nullptr) {
-						_proc = proc;
-						_ptr = p;
+						VirtualFreeEx(_owner->native_handle(), _ptr, _sz, MEM_RELEASE);
+						_owner = nullptr;
+						_ptr = nullptr;
+						_sz = 0;
 					}
 
 				private:
-					const proc *_proc;
+					const proc *_owner;
 					any_ptr _ptr;
 					size_t _sz;
 			};
 
-			class mem_ref_t : public mem_view_t, public virtual io::read_writer_at {
-				public:
-					mem_ref_t() : mem_view_t() {}
-
-					mem_ref_t(proc &proc, any_ptr p, size_t n) : mem_view_t(proc, p, n) {}
-
-					virtual ~mem_ref_t() {}
-
-					virtual size_t write_at(ptrdiff_t pos, bin_view data) {
-						SIZE_T sz;
-						WriteProcessMemory(owner().native_handle(), ptr() + pos, data.base(), data.size(), &sz);
-						assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
-						return static_cast<size_t>(sz);
-					}
-
-					bin_ref try_to_local() {
-						if (owner() != proc::current()) {
-							return nullptr;
-						}
-						return bin_ref(ptr(), size());
-					}
-			};
-
-			class mem_t : public mem_ref_t {
-				public:
-					mem_t() : mem_ref_t() {}
-
-					mem_t(proc &proc, size_t n) {
-						mem_ref_t::reset(&proc, VirtualAllocEx(proc.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE));
-					}
-
-					virtual ~mem_t() {
-						reset();
-					}
-
-					virtual void reset() {
-						VirtualFreeEx(owner().native_handle(), ptr(), 0, MEM_RELEASE);
-						mem_ref_t::reset();
-					}
-			};
-
-			mem_view_t mem_view(any_ptr p, size_t n) const {
-				return mem_view_t(*this, p, n);
-			}
-
-			mem_ref_t mem_ref(any_ptr p, size_t n) {
-				return mem_ref_t(*this, p, n);
-			}
-
-			mem_view_t mem_image() const {
-				if (*this == current()) {
-					MODULEINFO mi;
-					GetModuleInformation(_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
-					return mem_view_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
-				}
-				assert(false);
-				return mem_view_t();
-			}
-
-			mem_ref_t mem_image() {
-				if (*this == current()) {
-					MODULEINFO mi;
-					GetModuleInformation(_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
-					return mem_ref_t(*this, mi.lpBaseOfDll, mi.SizeOfImage);
-				}
-				assert(false);
-				return mem_ref_t();
+			bin_view mem_image() const {
+				assert(*this == current());
+				MODULEINFO mi;
+				GetModuleInformation(_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+				return bin_view(mi.lpBaseOfDll, mi.SizeOfImage);
 			}
 
 			mem_t mem_alloc(size_t size) {
@@ -524,7 +464,7 @@ namespace rua { namespace win32 {
 			any_word syscall(any_ptr func, any_word param = nullptr) {
 				HANDLE td;
 				DWORD tid;
-				td = CreateRemoteThread(_h, NULL, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
+				td = CreateRemoteThread(_h, nullptr, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
 				if (!td) {
 					return 0;
 				}
