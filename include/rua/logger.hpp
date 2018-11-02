@@ -109,16 +109,11 @@ namespace rua {
 					strs = { to_str(v)..., eol };
 				}
 
-				for (auto &str : strs) {
-					if (str.empty()) {
-						str = "<null>";
-					}
-				}
-
 				auto cont = strjoin(strs, " ", strjoin_multi_line);
 
 				if (on) {
 					on(cont);
+					return;
 				}
 
 				lock_guard<std::mutex> lg(_mtx);

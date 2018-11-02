@@ -2,7 +2,7 @@
 #define _RUA_ANY_PTR_HPP
 
 #include "macros.hpp"
-#include "tmp.hpp"
+#include "type_traits.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -171,25 +171,25 @@ namespace rua {
 			T _out() const {
 				using TT = typename std::decay<T>::type;
 
-				return _out<TT>(tmp::switch_true_t<
-					tmp::bool_constant<
+				return _out<TT>(switch_true_t<
+					bool_constant<
 						std::is_pointer<TT>::value ||
 						std::is_member_pointer<TT>::value
 					>,
 					_is_ptr,
 
-					tmp::bool_constant<
+					bool_constant<
 						std::is_integral<TT>::value ||
 						std::is_floating_point<TT>::value
 					>,
-					tmp::switch_true_t<
+					switch_true_t<
 						std::is_signed<TT>,
 						_is_num,
 						_is_unum
 					>,
 
 					std::is_class<TT>,
-					tmp::switch_true_t<
+					switch_true_t<
 						std::is_convertible<void *, TT>,
 						_is_cvt_from_gp,
 

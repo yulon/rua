@@ -2,7 +2,7 @@
 #define _RUA_ANY_WORD_HPP
 
 #include "macros.hpp"
-#include "tmp.hpp"
+#include "type_traits.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -59,7 +59,7 @@ namespace rua {
 			}
 
 			template <typename T>
-			static constexpr uintptr_t _in(T &&src, tmp::default_t &&) {
+			static constexpr uintptr_t _in(T &&src, default_t &&) {
 				return *reinterpret_cast<uintptr_t *>(&src);
 			}
 
@@ -69,10 +69,10 @@ namespace rua {
 
 				return _in(
 					std::forward<T>(src),
-					tmp::switch_true_t<
+					switch_true_t<
 						std::is_integral<TT>,
 						_is_int,
-						tmp::bool_constant<sizeof(TT) < sizeof(uintptr_t)>,
+						bool_constant<sizeof(TT) < sizeof(uintptr_t)>,
 						_is_sm
 					>{}
 				);
@@ -93,7 +93,7 @@ namespace rua {
 			}
 
 			template <typename T>
-			T _out(tmp::default_t &&) const {
+			T _out(default_t &&) const {
 				return *reinterpret_cast<const T *>(this);
 			}
 
@@ -101,10 +101,10 @@ namespace rua {
 			T _out() const {
 				using TT = typename std::decay<T>::type;
 
-				return _out<TT>(tmp::switch_true_t<
+				return _out<TT>(switch_true_t<
 					std::is_integral<TT>,
 					_is_int,
-					tmp::bool_constant<(sizeof(TT) > sizeof(uintptr_t))>,
+					bool_constant<(sizeof(TT) > sizeof(uintptr_t))>,
 					_is_big
 				>{});
 			}
