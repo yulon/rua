@@ -133,8 +133,10 @@ namespace rua {
 		#endif
 	> {};
 
-	template <typename T>
-	RUA_MDABLE_VAR constexpr bool is_string_v = is_string<T>::value;
+	#ifdef __cpp_lib_type_trait_variable_templates
+		template <typename T>
+		inline constexpr bool is_string_v = is_string<T>::value;
+	#endif
 }
 
 #endif
