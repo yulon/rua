@@ -75,7 +75,7 @@ namespace rua {
 						typename std::conditional<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>::type value;
 						uint8_t size = sizeof(CmpUnit);
 
-						size_t eq(const uint8_t *begin) const {
+						RUA_FORCE_INLINE size_t eq(const uint8_t *begin) const {
 							if (size == sizeof(CmpUnit)) {
 								return mem::get<CmpUnit>(&value) == mem::get<CmpUnit>(begin) ? sizeof(CmpUnit) : 0;
 							}
@@ -145,15 +145,15 @@ namespace rua {
 						}
 					};
 
-					const std::vector<word> &words() const {
+					RUA_FORCE_INLINE const std::vector<word> &words() const {
 						return _words;
 					}
 
-					size_t hash() const {
+					RUA_FORCE_INLINE size_t hash() const {
 						return _h;
 					}
 
-					void calc_hash(size_t &h, const uint8_t *begin, bool is_update = false) const {
+					RUA_FORCE_INLINE void calc_hash(size_t &h, const uint8_t *begin, bool is_update = false) const {
 						auto end = begin + _sz;
 						if (is_update) {
 							h -= *(--begin);
@@ -266,7 +266,7 @@ namespace rua {
 							return !mask;
 						}
 
-						size_t eq(const uint8_t *target) const {
+						RUA_FORCE_INLINE size_t eq(const uint8_t *target) const {
 							if (size == sizeof(CmpUnit)) {
 								if (is_void()) {
 									return size;
@@ -396,15 +396,15 @@ namespace rua {
 						}
 					};
 
-					const std::vector<word> &words() const {
+					RUA_FORCE_INLINE const std::vector<word> &words() const {
 						return _words;
 					}
 
-					static constexpr size_t hash() {
+					static RUA_FORCE_INLINE constexpr size_t hash() {
 						return 0;
 					}
 
-					static void calc_hash(size_t &h, const uint8_t *begin, bool is_update = false) {
+					static RUA_FORCE_INLINE void calc_hash(size_t &, const uint8_t *, bool = false) {
 
 					}
 
@@ -616,16 +616,16 @@ namespace rua {
 			}
 
 			template <typename D>
-			const D &get(ptrdiff_t offset = 0) const {
+			RUA_FORCE_INLINE const D &get(ptrdiff_t offset = 0) const {
 				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
-			const D &aligned_get(ptrdiff_t ix = 0) const {
+			RUA_FORCE_INLINE const D &aligned_get(ptrdiff_t ix = 0) const {
 				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
-			const uint8_t &operator[](ptrdiff_t offset) const {
+			RUA_FORCE_INLINE const uint8_t &operator[](ptrdiff_t offset) const {
 				return get<uint8_t>(offset);
 			}
 
@@ -758,26 +758,26 @@ namespace rua {
 			}
 
 			template <typename D>
-			D &get(ptrdiff_t offset = 0) {
+			RUA_FORCE_INLINE D &get(ptrdiff_t offset = 0) {
 				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
-			const D &get(ptrdiff_t offset = 0) const {
+			RUA_FORCE_INLINE const D &get(ptrdiff_t offset = 0) const {
 				return *reinterpret_cast<D *>(_base.value() + offset);
 			}
 
 			template <typename D>
-			D &aligned_get(ptrdiff_t ix = 0) {
+			RUA_FORCE_INLINE D &aligned_get(ptrdiff_t ix = 0) {
 				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
 			template <typename D>
-			const D &aligned_get(ptrdiff_t ix = 0) const {
+			RUA_FORCE_INLINE const D &aligned_get(ptrdiff_t ix = 0) const {
 				return *reinterpret_cast<D *>(_base.value() + ix * sizeof(D));
 			}
 
-			uint8_t &operator[](ptrdiff_t offset) {
+			RUA_FORCE_INLINE uint8_t &operator[](ptrdiff_t offset) {
 				return get<uint8_t>(offset);
 			}
 
