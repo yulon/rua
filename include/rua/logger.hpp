@@ -109,10 +109,15 @@ namespace rua {
 					strs = { to_str(v)..., eol };
 				}
 
-				auto cont = strjoin(strs, " ", strjoin_multi_line);
-
 				if (on) {
+					auto cont = strjoin(strs, " ", strjoin_multi_line);
 					on(cont);
+
+					lock_guard<std::mutex> lg(_mtx);
+					if (!w) {
+						return;
+					}
+					w->write_all(cont);
 					return;
 				}
 
@@ -120,7 +125,12 @@ namespace rua {
 				if (!w) {
 					return;
 				}
-				w->write_all(cont);
+				for (auto &str : strs) {
+					w->write_all(str);
+					if (&str != &strs.back()) {
+						w->write_all(" ");
+					}
+				}
 			}
 	};
 }
