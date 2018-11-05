@@ -37,19 +37,16 @@ namespace rua {
 
 			default_console() : _ow(stdout_writer()), _ew(stderr_writer()), _ir(stdin_reader()) {
 				#ifdef _WIN32
+					on_info = [](const std::string &cont) {
+						MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
+					};
+					on_warn = [](const std::string &cont) {
+						MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
+					};
+					on_err = [](const std::string &cont) {
+						MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
+					};
 					if (!_ow) {
-						on_log = [](const std::string &cont) {
-							MessageBoxW(0, u8_to_w(cont).c_str(), L"LOG", MB_OK);
-						};
-						on_info = [](const std::string &cont) {
-							MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
-						};
-						on_warn = [](const std::string &cont) {
-							MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
-						};
-						on_err = [](const std::string &cont) {
-							MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
-						};
 						return;
 					}
 					_ow_tr = _ow;

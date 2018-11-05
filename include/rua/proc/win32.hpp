@@ -372,9 +372,9 @@ namespace rua { namespace win32 {
 			}
 
 			std::string file_path() {
-				WCHAR path[MAX_PATH];
-				GetModuleFileNameExW(_h, nullptr, path, MAX_PATH);
-				return w_to_u8(path);
+				WCHAR path[MAX_PATH + 1];
+				auto path_sz = GetModuleFileNameExW(_h, nullptr, path, MAX_PATH);
+				return w_to_u8(std::wstring(path, path_sz));
 			}
 
 			void reset() {
