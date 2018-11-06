@@ -1,6 +1,8 @@
 #ifndef _RUA_ALWAYS_MOVE_HPP
 #define _RUA_ALWAYS_MOVE_HPP
 
+#include <utility>
+
 namespace rua {
 	template <typename T>
 	class always_move {
