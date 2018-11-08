@@ -319,11 +319,20 @@ namespace rua {
 		}
 	#endif
 
-	template<typename T>
-	inline std::string to_hex(T val) {
+	template<
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_same<typename std::decay<T>::type, unsigned char>::value
+		>::type
+	>
+	inline std::string to_hex(T val, size_t width = sizeof(T) * 2) {
 		std::stringstream ss;
-		ss << "0x" << std::hex << std::uppercase << std::setw(sizeof(T) * 2) << std::setfill('0') << val;
+		ss << "0x" << std::hex << std::uppercase << std::setw(width) << std::setfill('0') << val;
 		return ss.str();
+	}
+
+	inline std::string to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
+		return to_hex(static_cast<uintptr_t>(val), width);
 	}
 
 	template<typename T>
