@@ -371,9 +371,11 @@ namespace rua { namespace win32 {
 				}
 			}
 
-			std::string file_path() {
+			using native_module_handle_t = HMODULE;
+
+			std::string file_path(native_module_handle_t mdu = nullptr) {
 				WCHAR path[MAX_PATH + 1];
-				auto path_sz = GetModuleFileNameExW(_h, nullptr, path, MAX_PATH);
+				auto path_sz = GetModuleFileNameExW(_h, mdu, path, MAX_PATH);
 				return w_to_u8(std::wstring(path, path_sz));
 			}
 
@@ -461,7 +463,7 @@ namespace rua { namespace win32 {
 				return data;
 			}
 
-			any_word syscall(any_ptr func, any_word param = nullptr) {
+			any_word call(any_ptr func, any_word param = nullptr) {
 				HANDLE td;
 				DWORD tid;
 				td = CreateRemoteThread(_h, nullptr, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
