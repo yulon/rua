@@ -13,36 +13,29 @@ namespace rua {
 
 #define _RUA_INTERFACE_CONCEPT(_T) template < \
 	typename _T, \
-	typename = typename std::enable_if<std::is_base_of<Base, _T>::value>::type \
+	typename = typename std::enable_if<std::is_base_of<Base, typename std::remove_reference<_T>::type>::value>::type \
 >
 #define _RUA_INTERFACE_CONCEPT_2(_T, _cond) template < \
 	typename _T, \
-	typename = typename std::enable_if<std::is_base_of<Base, _T>::value && _cond>::type \
+	typename = typename std::enable_if<std::is_base_of<Base, typename std::remove_reference<_T>::type>::value && _cond>::type \
 >
 
 template <typename Base>
 class interface_ptr {
 public:
-	enum class base_ptr_type_t : uint8_t {
-		null_ptr = 0,
-		raw_ptr,
-		shared_ptr
-	};
-
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
-		_base_ptr_type(base_ptr_type_t::null_ptr), _base_ptr(), _impl_type(&typeid(std::nullptr_t))
+		_base_raw_ptr(nullptr), _base_shared_ptr(), _impl_type(&typeid(std::nullptr_t))
 	{}
 
 	_RUA_INTERFACE_CONCEPT(Impl)
 	interface_ptr(Impl *impl_ptr) {
 		if (!impl_ptr) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
+			_base_raw_ptr = nullptr;
 			_impl_type = &typeid(std::nullptr_t);
 			return;
 		}
 		_impl_type = &typeid(Impl);
-		_base_ptr_type = base_ptr_type_t::raw_ptr;
-		_get() = static_cast<Base *>(impl_ptr);
+		_base_raw_ptr = static_cast<Base *>(impl_ptr);
 	}
 
 	_RUA_INTERFACE_CONCEPT(Impl)
@@ -51,34 +44,34 @@ public:
 	_RUA_INTERFACE_CONCEPT(Impl)
 	interface_ptr(Impl &&impl) {
 		_impl_type = &typeid(Impl);
-		_base_ptr_type = base_ptr_type_t::shared_ptr;
-		new (&_get_shared()) std::shared_ptr<Base>(
+		new (&_base_shared_ptr) std::shared_ptr<Base>(
 			std::static_pointer_cast<Base>(
 				std::make_shared<Impl>(std::move(impl))
 			)
 		);
+		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
 	interface_ptr(const std::shared_ptr<Base> &impl_shared_ptr) {
 		if (!impl_shared_ptr) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
+			_base_raw_ptr = nullptr;
 			_impl_type = &typeid(std::nullptr_t);
 			return;
 		}
 		_impl_type = &typeid(Base);
-		_base_ptr_type = base_ptr_type_t::shared_ptr;
-		new (&_get_shared()) std::shared_ptr<Base>(impl_shared_ptr);
+		new (&_base_shared_ptr) std::shared_ptr<Base>(impl_shared_ptr);
+		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
 	interface_ptr(std::shared_ptr<Base> &&impl_shared_ptr) {
 		if (!impl_shared_ptr) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
+			_base_raw_ptr = nullptr;
 			_impl_type = &typeid(std::nullptr_t);
 			return;
 		}
 		_impl_type = &typeid(Base);
-		_base_ptr_type = base_ptr_type_t::shared_ptr;
-		new (&_get_shared()) std::shared_ptr<Base>(std::move(impl_shared_ptr));
+		new (&_base_shared_ptr) std::shared_ptr<Base>(std::move(impl_shared_ptr));
+		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
 	_RUA_INTERFACE_CONCEPT_2(Impl, (!std::is_same<Impl, Base>::value))
@@ -95,106 +88,103 @@ public:
 
 	_RUA_INTERFACE_CONCEPT_2(OthrAbst, (!std::is_same<OthrAbst, Base>::value))
 	interface_ptr(const interface_ptr<OthrAbst> &src) {
+		_impl_type = src.type();
+
 		if (!src) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
-			_impl_type = &typeid(std::nullptr_t);
+			_base_raw_ptr = nullptr;
 			return;
 		}
-		_impl_type = src.type();
 
 		auto src_base_ptr_shared_ptr = src.get_shared();
 		if (src_base_ptr_shared_ptr) {
-			_base_ptr_type = base_ptr_type_t::shared_ptr;
-			new (&_get_shared()) std::shared_ptr<Base>(
+			new (&_base_shared_ptr) std::shared_ptr<Base>(
 				std::static_pointer_cast<Base>(std::move(src_base_ptr_shared_ptr))
 			);
+			_base_raw_ptr = _base_shared_ptr.get();
 			return;
 		}
 
-		_base_ptr_type = base_ptr_type_t::raw_ptr;
-		_get() = static_cast<Base *>(src.get());
+		_base_raw_ptr = static_cast<Base *>(src.get());
 	}
 
 	_RUA_INTERFACE_CONCEPT_2(OthrAbst, (!std::is_same<OthrAbst, Base>::value))
 	interface_ptr(interface_ptr<OthrAbst> &&src) {
+		_impl_type = src.type();
+
 		if (!src) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
-			_impl_type = &typeid(std::nullptr_t);
+			_base_raw_ptr = nullptr;
 			return;
 		}
-		_impl_type = src.type();
 
 		auto src_base_ptr_shared_ptr = src.release_shared();
 		if (src_base_ptr_shared_ptr) {
-			_base_ptr_type = base_ptr_type_t::shared_ptr;
-			new (&_get_shared()) std::shared_ptr<Base>(
+			new (&_base_shared_ptr) std::shared_ptr<Base>(
 				std::static_pointer_cast<Base>(std::move(src_base_ptr_shared_ptr))
 			);
+			_base_raw_ptr = _base_shared_ptr.get();
 			return;
 		}
 
-		_base_ptr_type = base_ptr_type_t::raw_ptr;
-		_get() = static_cast<Base *>(src.get());
+		_base_raw_ptr = static_cast<Base *>(src.release());
 	}
 
 	interface_ptr(const interface_ptr<Base> &src) {
-		_base_ptr_type = src._base_ptr_type;
+		_base_raw_ptr = src._base_raw_ptr;
 		_impl_type = src._impl_type;
-		switch (_base_ptr_type) {
-		case base_ptr_type_t::null_ptr:
-			return;
-		case base_ptr_type_t::raw_ptr:
-			_get() = src._get();
-			return;
-		case base_ptr_type_t::shared_ptr:
-			new (&_get_shared()) std::shared_ptr<Base>(src._get_shared());
+
+		if (!_base_raw_ptr || !src._base_shared_ptr) {
 			return;
 		}
+
+		_base_shared_ptr = src._base_shared_ptr;
 	}
 
 	interface_ptr<Base> &operator=(const interface_ptr<Base> &src) {
-		~interface_ptr();
+		reset();
 		new (this) interface_ptr<Base>(src);
 		return *this;
 	}
 
 	interface_ptr(interface_ptr<Base> &&src) {
-		_base_ptr_type = src._base_ptr_type;
 		_impl_type = src._impl_type;
-		switch (_base_ptr_type) {
-		case base_ptr_type_t::null_ptr:
-			return;
-		case base_ptr_type_t::raw_ptr:
-			src._base_ptr_type = base_ptr_type_t::null_ptr;
-			_get() = src._get();
-			return;
-		case base_ptr_type_t::shared_ptr:
-			src._base_ptr_type = base_ptr_type_t::null_ptr;
-			new (&_get_shared()) std::shared_ptr<Base>(std::move(src._get_shared()));
+
+		_base_raw_ptr = src.release();
+		if (_base_raw_ptr || !src) {
 			return;
 		}
+
+		_base_shared_ptr = src.release_shared();
+		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
 	interface_ptr<Base> &operator=(interface_ptr<Base> &&src) {
-		~interface_ptr();
-		new (this) interface_ptr<Base>(src);
+		reset();
+		new (this) interface_ptr<Base>(std::move(src));
 		return *this;
 	}
 
 	~interface_ptr() {
-		if (_base_ptr_type == base_ptr_type_t::shared_ptr) {
-			_get_shared().~shared_ptr();
-		}
-		_base_ptr_type = base_ptr_type_t::null_ptr;
-		_impl_type = &typeid(std::nullptr_t);
+		reset();
 	}
 
 	operator bool() const {
-		return _base_ptr_type != base_ptr_type_t::null_ptr;
+		return _base_raw_ptr;
+	}
+
+	bool operator==(const interface_ptr<Base> &src) const {
+		return _base_raw_ptr == src._base_raw_ptr;
+	}
+
+	bool operator!=(const interface_ptr<Base> &src) const {
+		return _base_raw_ptr != src._base_raw_ptr;
 	}
 
 	Base *operator->() const {
-		return get();
+		return _base_raw_ptr;
+	}
+
+	Base &operator*() const {
+		return *_base_raw_ptr;
 	}
 
 	const std::type_info &type() const {
@@ -207,30 +197,33 @@ public:
 	}
 
 	Base *get() const {
-		switch (_base_ptr_type) {
-		case base_ptr_type_t::null_ptr:
+		return _base_raw_ptr;
+	}
+
+	Base *release() {
+		if (_base_shared_ptr) {
 			return nullptr;
-		case base_ptr_type_t::raw_ptr:
-			return _get();
-		case base_ptr_type_t::shared_ptr:
-			return _get_shared().get();
 		}
-		return nullptr;
+		auto base_raw_ptr = _base_raw_ptr;
+		_base_raw_ptr = nullptr;
+		_impl_type = &typeid(_base_shared_ptr);
+		return base_raw_ptr;
 	}
 
 	std::shared_ptr<Base> get_shared() const & {
-		if (_base_ptr_type == base_ptr_type_t::shared_ptr) {
-			return _get_shared();
+		if (_base_shared_ptr) {
+			return _base_shared_ptr;
 		}
 		return nullptr;
 	}
 
 	std::shared_ptr<Base> release_shared() {
-		if (_base_ptr_type == base_ptr_type_t::shared_ptr) {
-			_base_ptr_type = base_ptr_type_t::null_ptr;
-			return std::move(_get_shared());
+		if (!_base_shared_ptr) {
+			return nullptr;
 		}
-		return nullptr;
+		_base_raw_ptr = nullptr;
+		_impl_type = &typeid(_base_shared_ptr);
+		return std::move(_base_shared_ptr);
 	}
 
 	std::shared_ptr<Base> get_shared() && {
@@ -254,35 +247,17 @@ public:
 	}
 
 	void reset() {
-		~interface_ptr();
+		if (_base_shared_ptr) {
+			_base_shared_ptr.reset();
+		}
+		_base_raw_ptr = nullptr;
+		_impl_type = &typeid(std::nullptr_t);
 	}
 
 private:
-	base_ptr_type_t _base_ptr_type;
-
-	struct _base_ptr_t {
-		uint8_t data[sizeof(std::shared_ptr<Base>)];
-
-		_base_ptr_t() = default;
-	} _base_ptr;
-
+	Base *_base_raw_ptr;
+	std::shared_ptr<Base> _base_shared_ptr;
 	const std::type_info *_impl_type;
-
-	Base *&_get() {
-		return *reinterpret_cast<Base **>(&_base_ptr);
-	}
-
-	Base *const &_get() const {
-		return *reinterpret_cast<Base *const *>(&_base_ptr);
-	}
-
-	std::shared_ptr<Base> &_get_shared() {
-		return *reinterpret_cast<std::shared_ptr<Base> *>(&_base_ptr);
-	}
-
-	const std::shared_ptr<Base> &_get_shared() const {
-		return *reinterpret_cast<const std::shared_ptr<Base> *>(&_base_ptr);
-	}
 };
 
 #undef _RUA_INTERFACE_CONCEPT
