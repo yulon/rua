@@ -8,32 +8,32 @@
 	#include "windows.h"
 
 	namespace rua {
-		inline io::sys::writer stdout_writer() {
-			return GetStdHandle(STD_OUTPUT_HANDLE);
+		inline io::writer_i stdout_writer() {
+			return io::os_stream(GetStdHandle(STD_OUTPUT_HANDLE), false);
 		}
 
-		inline io::sys::writer stderr_writer() {
-			return GetStdHandle(STD_ERROR_HANDLE);
+		inline io::writer_i stderr_writer() {
+			return io::os_stream(GetStdHandle(STD_ERROR_HANDLE), false);
 		}
 
-		inline io::sys::reader stdin_reader() {
-			return GetStdHandle(STD_INPUT_HANDLE);
+		inline io::reader_i stdin_reader() {
+			return io::os_stream(GetStdHandle(STD_INPUT_HANDLE), false);
 		}
 	}
 #else
 	#include <cstdio>
 
 	namespace rua {
-		inline io::sys::writer stdout_writer() {
-			return stdout;
+		inline io::writer_i stdout_writer() {
+			return io::os_stream(stdout, false);
 		}
 
-		inline io::sys::writer stderr_writer() {
-			return stderr;
+		inline io::writer_i stderr_writer() {
+			return io::os_stream(stderr, false);
 		}
 
-		inline io::sys::reader stdin_reader() {
-			return stdin;
+		inline io::reader_i stdin_reader() {
+			return io::os_stream(stdin, false);
 		}
 	}
 #endif

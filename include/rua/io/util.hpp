@@ -1,7 +1,7 @@
 #ifndef _RUA_IO_UTIL_HPP
 #define _RUA_IO_UTIL_HPP
 
-#include "abstr.hpp"
+#include "abstract.hpp"
 #include "../chan.hpp"
 
 #include <cstddef>
@@ -50,14 +50,14 @@ namespace rua { namespace io {
 		return true;
 	}
 
-	inline bool writer::copy(reader &r, bin_ref buf) {
+	inline bool writer::copy(const reader_i &r, bin_ref buf) {
 		bin inner_buf;
 		if (!buf) {
 			inner_buf.reset(1024);
 			buf = inner_buf;
 		}
 		for (;;) {
-			auto sz = r.read(buf);
+			auto sz = r->read(buf);
 			if (!sz) {
 				return true;
 			}

@@ -4,96 +4,95 @@
 #include "logger.hpp"
 #include "stdio.hpp"
 #include "str.hpp"
+#include "interface_ptr.hpp"
+
+#include <mutex>
 
 namespace rua {
-	class console : public logger {
-		public:
-			console() = default;
 
-			std::string recv() {
-				lock_guard<std::mutex> lg(_mtx);
-				if (!_lr) {
-					return "";
-				}
-				return _lr.read_line();
+class console : public logger {
+public:
+	console() = default;
+
+	std::string recv() {
+		lock_guard<std::mutex> lg(get_mutex());
+		if (!_lr) {
+			return "";
+		}
+		return _lr.read_line();
+	}
+
+	void set_recv_reader(io::reader_i rr) {
+		lock_guard<std::mutex> lg(get_mutex());
+
+		_lr.reset(std::move(rr));
+	}
+
+private:
+	line_reader _lr;
+};
+
+using console_i = interface_ptr<console>;
+
+inline console_i &default_console() {
+	static console_i inst = ([]()->console_i {
+		console con;
+
+		auto ow = stdout_writer();
+		auto ew = stderr_writer();
+		auto ir = stdin_reader();
+
+		#ifdef _WIN32
+			con.on_info = [](const std::string &cont) {
+				MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
+			};
+			con.on_warn = [](const std::string &cont) {
+				MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
+			};
+			con.on_err = [](const std::string &cont) {
+				MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
+			};
+			if (!ow) {
+				return console_i(std::move(con));
 			}
+			ow = u8_to_l_writer(ow);
+			ew = u8_to_l_writer(ew);
+			ir = l_to_u8_reader(ir);
+		#endif
 
-			void set_recv_reader(io::reader &rr) {
-				lock_guard<std::mutex> lg(_mtx);
+		con.set_log_writer(ow);
+		con.set_err_writer(ew);
+		con.set_recv_reader(ir);
 
-				_lr.reset(rr);
-			}
+		return console_i(std::move(con));
+	})();
+	return inst;
+}
 
-		private:
-			line_reader _lr;
-	};
+template <typename... V>
+inline void clog(V&&... v) {
+	default_console()->log(std::forward<V>(v)...);
+}
 
-	class default_console : public rua::console {
-		public:
-			static default_console &instance() {
-				static default_console inst;
-				return inst;
-			}
+template <typename... V>
+inline void cinfo(V&&... v) {
+	default_console()->info(std::forward<V>(v)...);
+}
 
-			default_console() : _ow(stdout_writer()), _ew(stderr_writer()), _ir(stdin_reader()) {
-				#ifdef _WIN32
-					on_info = [](const std::string &cont) {
-						MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
-					};
-					on_warn = [](const std::string &cont) {
-						MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
-					};
-					on_err = [](const std::string &cont) {
-						MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
-					};
-					if (!_ow) {
-						return;
-					}
-					_ow_tr = _ow;
-					set_log_writer(_ow_tr);
-					_ew_tr = _ew;
-					set_err_writer(_ew_tr);
-					_ir_tr = _ir;
-					set_recv_reader(_ir_tr);
-				#else
-					set_log_writer(_ow);
-					set_err_writer(_ew);
-				#endif
-			}
+template <typename... V>
+inline void cwarn(V&&... v) {
+	default_console()->warn(std::forward<V>(v)...);
+}
 
-		private:
-			io::sys::writer _ow, _ew;
-			io::sys::reader _ir;
+template <typename... V>
+inline void cerr(V&&... v) {
+	default_console()->err(std::forward<V>(v)...);
+}
 
-			#ifdef _WIN32
-				u8_to_l_writer _ow_tr, _ew_tr;
-				l_to_u8_reader _ir_tr;
-			#endif
-	};
+inline std::string crecv() {
+	return default_console()->recv();
+}
 
-	template <typename... V>
-	inline void clog(V&&... v) {
-		default_console::instance().log(std::forward<V>(v)...);
-	}
-
-	template <typename... V>
-	inline void cinfo(V&&... v) {
-		default_console::instance().info(std::forward<V>(v)...);
-	}
-
-	template <typename... V>
-	inline void cwarn(V&&... v) {
-		default_console::instance().warn(std::forward<V>(v)...);
-	}
-
-	template <typename... V>
-	inline void cerr(V&&... v) {
-		default_console::instance().err(std::forward<V>(v)...);
-	}
-
-	inline std::string crecv() {
-		return default_console::instance().recv();
-	}
 }
 
 #endif

@@ -4,14 +4,14 @@
 #include "macros.hpp"
 
 #if defined(_WIN32)
-	#include "proc/win32.hpp"
+	#include "process/win32.hpp"
 	namespace rua {
-		using proc = win32::proc;
+		using process = win32::process;
 	}
 //#elif defined(RUA_UNIX)
-	//#include "proc/unix.hpp"
+	//#include "process/unix.hpp"
 #else
-	#error rua::proc: not supported this platform!
+	#error rua::process: not supported this platform!
 #endif
 
 #endif
