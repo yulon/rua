@@ -2,11 +2,11 @@
 #define _RUA_INTERFACE_HPP
 
 #include "macros.hpp"
+#include "type_traits.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <typeindex>
-#include <type_traits>
 #include <cassert>
 
 namespace rua {
@@ -24,71 +24,71 @@ template <typename Base>
 class interface_ptr {
 public:
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
-		_base_raw_ptr(nullptr), _base_shared_ptr(), _impl_type(&typeid(std::nullptr_t))
+		_base_raw_ptr(nullptr), _base_shared_ptr(), _derived_type(type_id<std::nullptr_t>())
 	{}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	interface_ptr(Impl *impl_ptr) {
-		if (!impl_ptr) {
+	_RUA_INTERFACE_CONCEPT(Derived)
+	interface_ptr(Derived *derived_ptr) {
+		if (!derived_ptr) {
 			_base_raw_ptr = nullptr;
-			_impl_type = &typeid(std::nullptr_t);
+			_derived_type = type_id<std::nullptr_t>();
 			return;
 		}
-		_impl_type = &typeid(Impl);
-		_base_raw_ptr = static_cast<Base *>(impl_ptr);
+		_derived_type = type_id<Derived>();
+		_base_raw_ptr = static_cast<Base *>(derived_ptr);
 	}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	interface_ptr(Impl &impl) : interface_ptr(&impl) {}
+	_RUA_INTERFACE_CONCEPT(Derived)
+	interface_ptr(Derived &derived) : interface_ptr(&derived) {}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	interface_ptr(Impl &&impl) {
-		_impl_type = &typeid(Impl);
+	_RUA_INTERFACE_CONCEPT(Derived)
+	interface_ptr(Derived &&derived) {
+		_derived_type = type_id<Derived>();
 		new (&_base_shared_ptr) std::shared_ptr<Base>(
 			std::static_pointer_cast<Base>(
-				std::make_shared<Impl>(std::move(impl))
+				std::make_shared<Derived>(std::move(derived))
 			)
 		);
 		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
-	interface_ptr(const std::shared_ptr<Base> &impl_shared_ptr) {
-		if (!impl_shared_ptr) {
+	interface_ptr(const std::shared_ptr<Base> &derived_shared_ptr) {
+		if (!derived_shared_ptr) {
 			_base_raw_ptr = nullptr;
-			_impl_type = &typeid(std::nullptr_t);
+			_derived_type = type_id<std::nullptr_t>();
 			return;
 		}
-		_impl_type = &typeid(Base);
-		new (&_base_shared_ptr) std::shared_ptr<Base>(impl_shared_ptr);
+		_derived_type = type_id<Base>();
+		new (&_base_shared_ptr) std::shared_ptr<Base>(derived_shared_ptr);
 		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
-	interface_ptr(std::shared_ptr<Base> &&impl_shared_ptr) {
-		if (!impl_shared_ptr) {
+	interface_ptr(std::shared_ptr<Base> &&derived_shared_ptr) {
+		if (!derived_shared_ptr) {
 			_base_raw_ptr = nullptr;
-			_impl_type = &typeid(std::nullptr_t);
+			_derived_type = type_id<std::nullptr_t>();
 			return;
 		}
-		_impl_type = &typeid(Base);
-		new (&_base_shared_ptr) std::shared_ptr<Base>(std::move(impl_shared_ptr));
+		_derived_type = type_id<Base>();
+		new (&_base_shared_ptr) std::shared_ptr<Base>(std::move(derived_shared_ptr));
 		_base_raw_ptr = _base_shared_ptr.get();
 	}
 
-	_RUA_INTERFACE_CONCEPT_2(Impl, (!std::is_same<Impl, Base>::value))
-	interface_ptr(const std::shared_ptr<Impl> &impl_shared_ptr) : interface_ptr(impl_shared_ptr ? std::static_pointer_cast<Base>(impl_shared_ptr) : std::shared_ptr<Base>()) {}
+	_RUA_INTERFACE_CONCEPT_2(Derived, (!std::is_same<Derived, Base>::value))
+	interface_ptr(const std::shared_ptr<Derived> &derived_shared_ptr) : interface_ptr(derived_shared_ptr ? std::static_pointer_cast<Base>(derived_shared_ptr) : std::shared_ptr<Base>()) {}
 
-	_RUA_INTERFACE_CONCEPT_2(Impl, (!std::is_same<Impl, Base>::value))
-	interface_ptr(std::shared_ptr<Impl> &&impl_shared_ptr) : interface_ptr(impl_shared_ptr ? std::static_pointer_cast<Base>(std::move(impl_shared_ptr)) : std::shared_ptr<Base>()) {}
+	_RUA_INTERFACE_CONCEPT_2(Derived, (!std::is_same<Derived, Base>::value))
+	interface_ptr(std::shared_ptr<Derived> &&derived_shared_ptr) : interface_ptr(derived_shared_ptr ? std::static_pointer_cast<Base>(std::move(derived_shared_ptr)) : std::shared_ptr<Base>()) {}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	interface_ptr(const std::unique_ptr<Impl> &impl_unique_ptr) : interface_ptr(impl_unique_ptr.get()) {}
+	_RUA_INTERFACE_CONCEPT(Derived)
+	interface_ptr(const std::unique_ptr<Derived> &derived_unique_ptr) : interface_ptr(derived_unique_ptr.get()) {}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	interface_ptr(std::unique_ptr<Impl> &&impl_unique_ptr) : interface_ptr(impl_unique_ptr ? std::shared_ptr<Base>(static_cast<Base *>(impl_unique_ptr.release())) : std::shared_ptr<Base>()) {}
+	_RUA_INTERFACE_CONCEPT(Derived)
+	interface_ptr(std::unique_ptr<Derived> &&derived_unique_ptr) : interface_ptr(derived_unique_ptr ? std::shared_ptr<Base>(static_cast<Base *>(derived_unique_ptr.release())) : std::shared_ptr<Base>()) {}
 
 	_RUA_INTERFACE_CONCEPT_2(OthrAbst, (!std::is_same<OthrAbst, Base>::value))
 	interface_ptr(const interface_ptr<OthrAbst> &src) {
-		_impl_type = src.type();
+		_derived_type = src.type();
 
 		if (!src) {
 			_base_raw_ptr = nullptr;
@@ -109,7 +109,7 @@ public:
 
 	_RUA_INTERFACE_CONCEPT_2(OthrAbst, (!std::is_same<OthrAbst, Base>::value))
 	interface_ptr(interface_ptr<OthrAbst> &&src) {
-		_impl_type = src.type();
+		_derived_type = src.type();
 
 		if (!src) {
 			_base_raw_ptr = nullptr;
@@ -130,7 +130,7 @@ public:
 
 	interface_ptr(const interface_ptr<Base> &src) {
 		_base_raw_ptr = src._base_raw_ptr;
-		_impl_type = src._impl_type;
+		_derived_type = src._derived_type;
 
 		if (!_base_raw_ptr || !src._base_shared_ptr) {
 			return;
@@ -146,7 +146,7 @@ public:
 	}
 
 	interface_ptr(interface_ptr<Base> &&src) {
-		_impl_type = src._impl_type;
+		_derived_type = src._derived_type;
 
 		_base_raw_ptr = src.release();
 		if (_base_raw_ptr || !src) {
@@ -187,13 +187,13 @@ public:
 		return *_base_raw_ptr;
 	}
 
-	const std::type_info &type() const {
-		return *_impl_type;
+	uintptr_t type() const {
+		return _derived_type;
 	}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
+	_RUA_INTERFACE_CONCEPT(Derived)
 	bool type_is() const {
-		return type() == typeid(Impl);
+		return type() == type_id<Derived>();
 	}
 
 	Base *get() const {
@@ -206,7 +206,7 @@ public:
 		}
 		auto base_raw_ptr = _base_raw_ptr;
 		_base_raw_ptr = nullptr;
-		_impl_type = &typeid(_base_shared_ptr);
+		_derived_type = type_id<std::nullptr_t>();
 		return base_raw_ptr;
 	}
 
@@ -222,7 +222,7 @@ public:
 			return nullptr;
 		}
 		_base_raw_ptr = nullptr;
-		_impl_type = &typeid(_base_shared_ptr);
+		_derived_type = type_id<std::nullptr_t>();
 		return std::move(_base_shared_ptr);
 	}
 
@@ -230,20 +230,20 @@ public:
 		return release_shared();
 	}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	Impl *to() const {
-		assert(type_is<Impl>());
+	_RUA_INTERFACE_CONCEPT(Derived)
+	Derived *to() const {
+		assert(type_is<Derived>());
 
 		auto base_ptr = get();
-		return base_ptr ? dynamic_cast<Impl *>(base_ptr) : nullptr;
+		return base_ptr ? static_cast<Derived *>(base_ptr) : nullptr;
 	}
 
-	_RUA_INTERFACE_CONCEPT(Impl)
-	std::shared_ptr<Impl> to_shared() const {
-		assert(type_is<Impl>());
+	_RUA_INTERFACE_CONCEPT(Derived)
+	std::shared_ptr<Derived> to_shared() const {
+		assert(type_is<Derived>());
 
 		auto base_ptr = get_shared();
-		return base_ptr ? std::dynamic_pointer_cast<Impl>(base_ptr) : std::shared_ptr<Impl>();
+		return base_ptr ? std::static_pointer_cast<Derived>(base_ptr) : std::shared_ptr<Derived>();
 	}
 
 	void reset() {
@@ -251,13 +251,13 @@ public:
 			_base_shared_ptr.reset();
 		}
 		_base_raw_ptr = nullptr;
-		_impl_type = &typeid(std::nullptr_t);
+		_derived_type = type_id<std::nullptr_t>();
 	}
 
 private:
 	Base *_base_raw_ptr;
 	std::shared_ptr<Base> _base_shared_ptr;
-	const std::type_info *_impl_type;
+	uintptr_t _derived_type;
 };
 
 #undef _RUA_INTERFACE_CONCEPT

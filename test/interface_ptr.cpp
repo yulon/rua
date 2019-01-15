@@ -14,7 +14,7 @@ rua::test _t("interface_ptr", "basic", []() {
 
 	using animal_i = rua::interface_ptr<animal>;
 
-	struct dog : virtual animal {
+	struct dog : animal {
 		virtual ~dog() = default;
 		virtual size_t age() const {
 			return 123;
