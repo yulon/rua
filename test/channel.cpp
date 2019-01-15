@@ -1,4 +1,4 @@
-#include <rua/chan.hpp>
+#include <rua/channel.hpp>
 
 #include <rua/test.hpp>
 
@@ -7,8 +7,8 @@
 
 namespace {
 
-rua::test _t("chan", "basic", []() {
-	rua::chan<std::string> ch;
+rua::test _t("channel", "basic", []() {
+	rua::channel<std::string> ch;
 
 	std::thread([ch]() mutable {
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));

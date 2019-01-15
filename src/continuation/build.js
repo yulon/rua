@@ -21,8 +21,8 @@ function mkdir(dir) {
 }
 
 const repoDir = path.dirname(path.dirname(__dirname))
-const binDir = path.join(repoDir, "build", "cont_bin")
-const incDir = path.join(repoDir, "include", "rua", "cont")
+const binDir = path.join(repoDir, "build", "continuation_bin")
+const incDir = path.join(repoDir, "include", "rua", "continuation")
 
 mkdir(binDir)
 mkdir(incDir)

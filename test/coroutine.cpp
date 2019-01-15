@@ -1,5 +1,5 @@
-#include <rua/co.hpp>
-#include <rua/chan.hpp>
+#include <rua/coroutine.hpp>
+#include <rua/channel.hpp>
 
 #include <rua/test.hpp>
 
@@ -8,8 +8,8 @@
 
 namespace {
 
-rua::test _t("co", "co_pool", []() {
-	static rua::co_pool cp;
+rua::test _t("coroutine", "coroutine_pool", []() {
+	static rua::coroutine_pool cp;
 	static std::string r;
 
 	cp.add([]() {
@@ -32,11 +32,11 @@ rua::test _t("co", "co_pool", []() {
 	RUA_PANIC(r == "123321");
 });
 
-rua::test _t2("co", "use_chan", []() {
-	static rua::co_pool cp;
+rua::test _t2("coroutine", "use channel", []() {
+	static rua::coroutine_pool cp;
 
 	cp.add([]() {
-		rua::chan<std::string> ch;
+		rua::channel<std::string> ch;
 
 		std::thread([ch]() mutable {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));

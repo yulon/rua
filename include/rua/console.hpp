@@ -43,14 +43,14 @@ inline console_i &default_console() {
 		auto ir = stdin_reader();
 
 		#ifdef _WIN32
-			con.on_info = [](const std::string &cont) {
-				MessageBoxW(0, u8_to_w(cont).c_str(), L"INFORMATION", MB_ICONINFORMATION);
+			con.on_info = [](const std::string &continuation) {
+				MessageBoxW(0, u8_to_w(continuation).c_str(), L"INFORMATION", MB_ICONINFORMATION);
 			};
-			con.on_warn = [](const std::string &cont) {
-				MessageBoxW(0, u8_to_w(cont).c_str(), L"WARNING", MB_ICONWARNING);
+			con.on_warn = [](const std::string &continuation) {
+				MessageBoxW(0, u8_to_w(continuation).c_str(), L"WARNING", MB_ICONWARNING);
 			};
-			con.on_err = [](const std::string &cont) {
-				MessageBoxW(0, u8_to_w(cont).c_str(), L"ERROR", MB_ICONERROR);
+			con.on_err = [](const std::string &continuation) {
+				MessageBoxW(0, u8_to_w(continuation).c_str(), L"ERROR", MB_ICONERROR);
 			};
 			if (!ow) {
 				return console_i(std::move(con));

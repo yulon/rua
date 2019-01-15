@@ -1,10 +1,10 @@
-#include <rua/cont.hpp>
+#include <rua/continuation.hpp>
 
 #include <rua/test.hpp>
 
 namespace {
 
-rua::test _t("cont", "restore", []() {
+rua::test _t("continuation", "restore", []() {
 	static size_t
 		main_ct_looping_count = 0,
 		sub_ct_1_restore_count = 0,
@@ -14,7 +14,7 @@ rua::test _t("cont", "restore", []() {
 		sub_ct_2_running_count = 0,
 		sub_ct_2_looping_count
 	;
-	static rua::cont
+	static rua::continuation
 		main_ct,
 		sub_ct_1,
 		sub_ct_2
