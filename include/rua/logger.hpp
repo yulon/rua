@@ -124,14 +124,14 @@ private:
 		}
 
 		if (on) {
-			auto continuation = strjoin(strs, " ", strjoin_multi_line);
-			on(continuation);
+			auto cont = strjoin(strs, " ", strjoin_multi_line);
+			on(cont);
 
 			lock_guard<std::mutex> lg(*_mtx);
 			if (!w) {
 				return;
 			}
-			w->write_all(continuation);
+			w->write_all(cont);
 			return;
 		}
 
