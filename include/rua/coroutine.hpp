@@ -59,39 +59,39 @@ private:
 
 public:
 	class task {
-		public:
-			task() = default;
+	public:
+		task() = default;
 
-			void stop() {
-				if (!_tsk) {
-					return;
-				}
-				_tsk->is_stoped = true;
+		void stop() {
+			if (!_tsk) {
+				return;
+			}
+			_tsk->is_stoped = true;
+			_tsk.reset();
+		}
+
+		void reset_duration(size_t duration = 0) {
+			if (!_tsk) {
+				return;
+			}
+			if (!_tsk->is_stoped) {
 				_tsk.reset();
+				return;
 			}
+			_tsk->reset_duration(duration);
+		}
 
-			void reset_duration(size_t duration = 0) {
-				if (!_tsk) {
-					return;
-				}
-				if (!_tsk->is_stoped) {
-					_tsk.reset();
-					return;
-				}
-				_tsk->reset_duration(duration);
-			}
+		operator bool() const {
+			return _tsk && !_tsk->is_stoped;
+		}
 
-			operator bool() const {
-				return _tsk && !_tsk->is_stoped;
-			}
+	private:
+		friend coroutine_pool;
 
-		private:
-			friend coroutine_pool;
+		_tsk_ptr_t _tsk;
 
-			_tsk_ptr_t _tsk;
-
-			task(_tsk_ptr_t &&tsk) : _tsk(std::move(tsk)) {}
-			task(const _tsk_ptr_t &tsk) : _tsk(tsk) {}
+		task(_tsk_ptr_t &&tsk) : _tsk(std::move(tsk)) {}
+		task(const _tsk_ptr_t &tsk) : _tsk(tsk) {}
 	};
 
 	task add(std::function<void()> func, size_t duration = 0) {
@@ -407,92 +407,113 @@ private:
 	}
 
 	class _scheduler : public scheduler {
-		public:
-			_scheduler() = default;
+	public:
+		_scheduler() = default;
 
-			_scheduler(coroutine_pool &cp) : _cp(&cp) {}
+		_scheduler(coroutine_pool &cp) : _cp(&cp) {}
 
-			virtual ~_scheduler() = default;
+		virtual ~_scheduler() = default;
 
-			template <typename SlpMap>
-			void _sleep(SlpMap &&slp_map, size_t timeout) {
-				size_t wake_ti;
-				if (!timeout) {
-					wake_ti = 0;
-				} else if (timeout >= nmax<size_t>() - _now()) {
-					wake_ti = nmax<size_t>();
-				} else {
-					wake_ti = coroutine_pool::_now() + timeout;
+		template <typename SlpMap>
+		void _sleep(SlpMap &&slp_map, size_t timeout) {
+			size_t wake_ti;
+			if (!timeout) {
+				wake_ti = 0;
+			} else if (timeout >= nmax<size_t>() - _now()) {
+				wake_ti = nmax<size_t>();
+			} else {
+				wake_ti = coroutine_pool::_now() + timeout;
+			}
+
+			auto &tsk = *slp_map.emplace(
+				wake_ti,
+				std::move(_cp->_cur_tsk)
+			)->second;
+
+			tsk.is_slept = true;
+
+			tsk.stk = std::move(_cp->_cur_tskr_stk);
+
+			if (_cp->_tsks.size()) {
+				_cp->_new_tskr_co(tsk.ct);
+				return;
+			}
+			_cp->_orig_ct.restore(tsk.ct);
+		}
+
+		virtual void sleep(size_t timeout) {
+			_sleep(_cp->_slps, timeout);
+		}
+
+		virtual void yield() {
+			sleep(0);
+		}
+
+		virtual void lock(typeless_lock_ref &lck) {
+			while (!lck.try_lock()) {
+				yield();
+			}
+		}
+
+		class cond_var : public scheduler::cond_var {
+			public:
+				cond_var(coroutine_pool &cp) : _cp(&cp), _n(std::make_shared<std::atomic<bool>>(false)) {}
+
+				virtual void notify() {
+					_n->store(true);
+					_cp->_ll_cv_notify();
 				}
 
-				auto &tsk = *slp_map.emplace(
-					wake_ti,
-					std::move(_cp->_cur_tsk)
-				)->second;
+			private:
+				coroutine_pool *_cp;
+				std::shared_ptr<std::atomic<bool>> _n;
+				friend _scheduler;
+		};
 
-				tsk.is_slept = true;
+		virtual std::shared_ptr<scheduler::cond_var> make_cond_var() {
+			return std::static_pointer_cast<scheduler::cond_var>(std::make_shared<cond_var>(*_cp));
+		}
 
-				tsk.stk = std::move(_cp->_cur_tskr_stk);
+		virtual std::cv_status cond_wait(std::shared_ptr<scheduler::cond_var> cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
+			auto ncv = std::static_pointer_cast<cond_var>(cv);
+			assert(ncv->_cp == _cp);
 
-				if (_cp->_tsks.size()) {
-					_cp->_new_tskr_co(tsk.ct);
-					return;
-				}
-				_cp->_orig_ct.restore(tsk.ct);
-			}
+			_cp->_cur_tsk->is_cv_notified = ncv->_n;
 
-			virtual void sleep(size_t timeout) {
-				_sleep(_cp->_slps, timeout);
-			}
+			lck.unlock();
+			_sleep(_cp->_cws, timeout);
 
-			virtual void yield() {
-				sleep(0);
-			}
+			lock(lck);
+			return _cp->_cur_tsk->cv_st;
+		}
 
-			virtual void lock(typeless_lock_ref &lck) {
-				while (!lck.try_lock()) {
-					yield();
-				}
-			}
-
-			class cond_var : public scheduler::cond_var {
-				public:
-					cond_var(coroutine_pool &cp) : _cp(&cp), _n(std::make_shared<std::atomic<bool>>(false)) {}
-
-					virtual void notify() {
-						_n->store(true);
-						_cp->_ll_cv_notify();
-					}
-
-				private:
-					coroutine_pool *_cp;
-					std::shared_ptr<std::atomic<bool>> _n;
-					friend _scheduler;
-			};
-
-			virtual std::shared_ptr<scheduler::cond_var> make_cond_var() {
-				return std::static_pointer_cast<scheduler::cond_var>(std::make_shared<cond_var>(*_cp));
-			}
-
-			virtual std::cv_status cond_wait(std::shared_ptr<scheduler::cond_var> cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
-				auto ncv = std::static_pointer_cast<cond_var>(cv);
-				assert(ncv->_cp == _cp);
-
-				_cp->_cur_tsk->is_cv_notified = ncv->_n;
-
-				lck.unlock();
-				_sleep(_cp->_cws, timeout);
-
-				lock(lck);
-				return _cp->_cur_tsk->cv_st;
-			}
-
-		private:
-			coroutine_pool *_cp;
+	private:
+		coroutine_pool *_cp;
 	} _sch;
 
 	friend _scheduler;
 };
+
+////////////////////////////////////////////////////////////////////////////
+
+inline void co(std::function<void()> func, size_t duration = 0) {
+	static tls cps;
+
+	auto cp_ptr = cps.get().to<coroutine_pool *>();
+	if (cp_ptr) {
+		cp_ptr->add(std::move(func), duration);
+		return;
+	}
+
+	cp_ptr = new coroutine_pool;
+	std::unique_ptr<coroutine_pool> cp_uptr(cp_ptr);
+	cps.set(cp_ptr);
+
+	cp_ptr->add(std::move(func), duration);
+	cp_ptr->run();
+
+	cps.set(nullptr);
+}
 
 }
 
