@@ -82,7 +82,7 @@ struct mcontext_t {
 };
 #ifdef RUA_AMD64
 	RUA_SASSERT(sizeof(mcontext_t) == 152);
-#elif RUA_I386
+#elif defined(RUA_I386)
 	RUA_SASSERT(sizeof(mcontext_t) == 48);
 #endif
 
