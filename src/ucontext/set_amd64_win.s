@@ -49,5 +49,6 @@ mov [r10], rax
 ; mov [r10+020h], rax
 
 mov rcx, [rcx+16]
+mov rdx, [rcx+24]
 mov rax, 0
 ret

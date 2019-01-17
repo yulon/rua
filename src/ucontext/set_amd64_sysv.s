@@ -22,5 +22,6 @@ ldmxcsr [rdi+144]
 fldcw [rdi+148]
 
 mov rdi, [rdi+40]
+mov rsi, [rdi+32]
 mov rax, 0
 ret

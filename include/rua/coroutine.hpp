@@ -2,7 +2,7 @@
 #define _RUA_COROTINE_HPP
 
 #include "bin.hpp"
-#include "continuation.hpp"
+#include "ucontext.hpp"
 #include "sched.hpp"
 #include "limits.hpp"
 
@@ -20,7 +20,7 @@ namespace rua {
 class coroutine_pool {
 public:
 	coroutine_pool() : _sch(_scheduler(*this)) {
-		_tskr_ct_base.save();
+		get_ucontext(&_tskr_uc_base);
 	}
 
 	class task;
@@ -46,7 +46,7 @@ private:
 			end_ti = now + duration;
 		}
 
-		continuation ct;
+		ucontext_t uc;
 		bin stk;
 
 		std::shared_ptr<std::atomic<bool>> is_cv_notified;
@@ -298,7 +298,7 @@ private:
 		}
 	}
 
-	continuation _orig_ct, _tskr_ct_base;
+	ucontext_t _orig_uc, _tskr_uc_base;
 
 	bin _cur_tskr_stk;
 	std::vector<bin> _idle_tskr_stks;
@@ -308,17 +308,17 @@ private:
 			_idle_tskr_stks.emplace_back(std::move(_cur_tskr_stk));
 		}
 		_cur_tskr_stk = std::move(_cur_tsk->stk);
-		_tskr_ct_base.bind(&_tskr, this, _cur_tskr_stk);
+		make_ucontext(&_tskr_uc_base, &_tskr, this, _cur_tskr_stk);
 	}
 
 	void _resume_cur_tsk() {
 		_restore_cur_tsk_stk();
-		_cur_tsk->ct.restore();
+		set_ucontext(&_cur_tsk->uc);
 	}
 
-	void _resume_cur_tsk(continuation &ct) {
+	void _resume_cur_tsk(ucontext_t &uc) {
 		_restore_cur_tsk_stk();
-		_cur_tsk->ct.restore(ct);
+		swap_ucontext(&uc, &_cur_tsk->uc);
 	}
 
 	static void _tskr(any_word p) {
@@ -360,10 +360,10 @@ private:
 			}
 		}
 
-		cp._orig_ct.restore();
+		set_ucontext(&cp._orig_uc);
 	}
 
-	void _new_tskr_co(continuation &cur_cont_saver) {
+	void _new_tskr_co(ucontext_t &cur_cont_saver) {
 		if (!_cur_tskr_stk) {
 			if (_idle_tskr_stks.empty()) {
 				_cur_tskr_stk.reset(8 * 1024 * 1024);
@@ -371,19 +371,19 @@ private:
 				_cur_tskr_stk = std::move(_idle_tskr_stks.back());
 				_idle_tskr_stks.pop_back();
 			}
-			_tskr_ct_base.bind(&_tskr, this, _cur_tskr_stk);
+			make_ucontext(&_tskr_uc_base, &_tskr, this, _cur_tskr_stk);
 		}
-		_tskr_ct_base.restore(cur_cont_saver);
+		swap_ucontext(&cur_cont_saver, &_tskr_uc_base);
 	}
 
 	void _handle_tsks() {
 		if (_tsks.front()->stk) {
 			_cur_tsk = std::move(_tsks.front());
 			_tsks.pop();
-			_resume_cur_tsk(_orig_ct);
+			_resume_cur_tsk(_orig_uc);
 			return;
 		}
-		_new_tskr_co(_orig_ct);
+		_new_tskr_co(_orig_uc);
 	}
 
 	static size_t _now() {
@@ -435,10 +435,10 @@ private:
 			tsk.stk = std::move(_cp->_cur_tskr_stk);
 
 			if (_cp->_tsks.size()) {
-				_cp->_new_tskr_co(tsk.ct);
+				_cp->_new_tskr_co(tsk.uc);
 				return;
 			}
-			_cp->_orig_ct.restore(tsk.ct);
+			swap_ucontext(&tsk.uc, &_cp->_orig_uc);
 		}
 
 		virtual void sleep(size_t timeout) {
