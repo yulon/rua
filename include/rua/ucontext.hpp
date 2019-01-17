@@ -3,9 +3,7 @@
 
 #include "macros.hpp"
 
-#if !defined(RUA_AMD64) && !defined(RUA_I386)
-	#error rua::ucontext: not supported this platform!
-#endif
+#if defined(RUA_AMD64) || defined(RUA_I386)
 
 #include "any_word.hpp"
 #include "mem/protect.hpp"
@@ -194,5 +192,36 @@ inline void make_ucontext(ucontext_t *ucp, void (*func)(any_word), any_word func
 }
 
 }
+
+#else
+
+#include <ucontext.h>
+
+namespace rua {
+
+using ucontext_t = ::ucontext_t;
+
+inline bool get_ucontext(ucontext_t *ucp) {
+	return !getcontext(ucp);
+}
+
+inline void set_ucontext(const ucontext_t *ucp) {
+	setcontext(ucp);
+}
+
+inline void swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
+	swapcontext(oucp, ucp);
+}
+
+inline void make_ucontext(ucontext_t *ucp, void (*func)(any_word), any_word func_param, bin_ref stack) {
+	ucp->uc_link = nullptr;
+	ucp->uc_stack.ss_sp = stack.base();
+	ucp->uc_stack.ss_size = stack.size();
+	makecontext(ucp, func, 1, func_param);
+}
+
+}
+
+#endif
 
 #endif
