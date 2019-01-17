@@ -24,127 +24,127 @@ private:
 
 public:
 	class locked_t {
-		public:
-			locked_t(channel<T> ch, bool try_lock = false, scheduler *sch = nullptr) {
-				if (!ch._ctx) {
+	public:
+		locked_t(channel<T> ch, bool try_lock = false, scheduler *sch = nullptr) {
+			if (!ch._ctx) {
+				return;
+			}
+			if (try_lock) {
+				if (!ch._ctx->mtx.try_lock()) {
+					_sch = nullptr;
 					return;
 				}
-				if (try_lock) {
-					if (!ch._ctx->mtx.try_lock()) {
-						_sch = nullptr;
-						return;
-					}
-					_sch = sch ? sch : &get_scheduler();
-					_ctx = std::move(ch._ctx);
-				} else {
-					_sch = sch ? sch : &get_scheduler();
-					_ctx = std::move(ch._ctx);
-					_sch->lock(_ctx->mtx);
+				_sch = sch ? sch : &get_scheduler();
+				_ctx = std::move(ch._ctx);
+			} else {
+				_sch = sch ? sch : &get_scheduler();
+				_ctx = std::move(ch._ctx);
+				_sch->lock(_ctx->mtx);
+			}
+		}
+
+		~locked_t() {
+			unlock();
+		}
+
+		locked_t(const locked_t &) = delete;
+
+		locked_t &operator=(const locked_t &) = delete;
+
+		locked_t(locked_t &&) = default;
+
+		locked_t &operator=(locked_t &&) = default;
+
+		locked_t &operator<<(T value) {
+			assert(_ctx);
+
+			_ctx->buffer.emplace(std::move(value));
+
+			return *this;
+		}
+
+		locked_t &operator<<(std::queue<T> values) {
+			assert(_ctx);
+
+			while (values.size()) {
+				_ctx->buffer.emplace(std::move(values.front()));
+				values.pop();
+			}
+
+			return *this;
+		}
+
+		void wait_inputs() {
+			assert(_ctx);
+
+			auto ctx = _ctx;
+			auto cv = _sch->make_cond_var();
+			_sch->cond_wait(cv, ctx->mtx, [ctx, cv]()->bool {
+				if (ctx->buffer.size()) {
+					return true;
 				}
-			}
+				ctx->reqs.emplace(cv);
+				return false;
+			});
+		}
 
-			~locked_t() {
-				unlock();
-			}
+		template <typename R>
+		locked_t &operator>>(R &receiver) {
+			RUA_SPASSERT((std::is_convertible<T, R>::value));
 
-			locked_t(const locked_t &) = delete;
+			wait_inputs();
 
-			locked_t &operator=(const locked_t &) = delete;
+			receiver = std::move(_ctx->buffer.front());
+			_ctx->buffer.pop();
 
-			locked_t(locked_t &&) = default;
+			return *this;
+		}
 
-			locked_t &operator=(locked_t &&) = default;
+		T get() {
+			T r;
+			*this >> r;
+			return r;
+		}
 
-			locked_t &operator<<(T value) {
-				assert(_ctx);
+		std::queue<T> get_all() {
+			wait_inputs();
+			return std::move(_ctx->buffer);
+		}
 
-				_ctx->buffer.emplace(std::move(value));
-
-				return *this;
-			}
-
-			locked_t &operator<<(std::queue<T> values) {
-				assert(_ctx);
-
-				while (values.size()) {
-					_ctx->buffer.emplace(std::move(values.front()));
-					values.pop();
-				}
-
-				return *this;
-			}
-
-			void wait_inputs() {
-				assert(_ctx);
-
-				auto ctx = _ctx;
-				auto cv = _sch->make_cond_var();
-				_sch->cond_wait(cv, ctx->mtx, [ctx, cv]()->bool {
-					if (ctx->buffer.size()) {
-						return true;
-					}
-					ctx->reqs.emplace(cv);
-					return false;
-				});
-			}
-
-			template <typename R>
-			locked_t &operator>>(R &receiver) {
-				RUA_STATIC_ASSERT((std::is_convertible<T, R>::value));
-
-				wait_inputs();
-
-				receiver = std::move(_ctx->buffer.front());
+		T try_get() {
+			T r;
+			if (_ctx->buffer.size()) {
+				r = std::move(_ctx->buffer.front());
 				_ctx->buffer.pop();
-
-				return *this;
 			}
+			return r;
+		}
 
-			T get() {
-				T r;
-				*this >> r;
-				return r;
+		std::queue<T> try_get_all() {
+			return std::move(_ctx->buffer);
+		}
+
+		void unlock() {
+			if (!_ctx) {
+				return;
 			}
-
-			std::queue<T> get_all() {
-				wait_inputs();
-				return std::move(_ctx->buffer);
-			}
-
-			T try_get() {
-				T r;
-				if (_ctx->buffer.size()) {
-					r = std::move(_ctx->buffer.front());
-					_ctx->buffer.pop();
-				}
-				return r;
-			}
-
-			std::queue<T> try_get_all() {
-				return std::move(_ctx->buffer);
-			}
-
-			void unlock() {
-				if (!_ctx) {
-					return;
-				}
-				if (_ctx->buffer.size() && _ctx->reqs.size()) {
-					auto cv = _ctx->reqs.front();
-					_ctx->reqs.pop();
-					_ctx->mtx.unlock();
-					cv->notify();
-					return;
-				}
+			if (_ctx->buffer.size() && _ctx->reqs.size()) {
+				auto cv = _ctx->reqs.front();
+				_ctx->reqs.pop();
 				_ctx->mtx.unlock();
+				cv->notify();
+				return;
 			}
+			_ctx->mtx.unlock();
+		}
 
-			operator bool() const {
-				return _ctx.get();
-			}
+		operator bool() const {
+			return _ctx.get();
+		}
 
-		private:
-			std::shared_ptr<_ctx_t> _ctx;
-			scheduler *_sch;
+	private:
+		std::shared_ptr<_ctx_t> _ctx;
+		scheduler *_sch;
 	};
 
 	typename channel<T>::locked_t lock(scheduler *sch = nullptr) const {

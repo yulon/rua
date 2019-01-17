@@ -80,11 +80,14 @@
 #endif
 
 #if defined(__cpp_static_assert) && __cpp_static_assert >= 201411
-	#define RUA_STATIC_ASSERT(cond) static_assert(cond)
+	#define RUA_SASSERT(cond) static_assert(cond)
+	#define RUA_SPASSERT(cond) RUA_SASSERT(cond)
 #elif RUA_CPP >= RUA_CPP_11
-	#define RUA_STATIC_ASSERT(cond) static_assert(cond, #cond)
+	#define RUA_SASSERT(cond) static_assert(cond, #cond)
+	#define RUA_SPASSERT(cond) RUA_SASSERT(cond)
 #else
-	#define RUA_STATIC_ASSERT(cond) assert(cond)
+	#define RUA_SASSERT(cond)
+	#define RUA_SPASSERT(cond) assert(cond)
 #endif
 
 #ifdef __has_cpp_attribute

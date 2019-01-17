@@ -22,7 +22,7 @@ rua::test _t("continuation", "restore", []() {
 	rua::bin stack(8 * 1024 * 1024);
 
 	sub_ct_1.make([](rua::any_word param) {
-		RUA_PANIC(param.value() == 111);
+		RUA_RASSERT(param.value() == 111);
 
 		++sub_ct_1_running_count;
 
@@ -37,14 +37,14 @@ rua::test _t("continuation", "restore", []() {
 		++main_ct_looping_count;
 		++sub_ct_1_restore_count;
 		sub_ct_1.restore(main_ct);
-		RUA_PANIC(sub_ct_1_running_count == sub_ct_1_restore_count);
-		RUA_PANIC(sub_ct_1_looping_count == 1);
+		RUA_RASSERT(sub_ct_1_running_count == sub_ct_1_restore_count);
+		RUA_RASSERT(sub_ct_1_looping_count == 1);
 	}
 
-	RUA_PANIC(main_ct_looping_count == 3);
+	RUA_RASSERT(main_ct_looping_count == 3);
 
 	sub_ct_2.make([](rua::any_word param) {
-		RUA_PANIC(param.value() == 222);
+		RUA_RASSERT(param.value() == 222);
 
 		++sub_ct_2_running_count;
 
@@ -59,11 +59,11 @@ rua::test _t("continuation", "restore", []() {
 		++main_ct_looping_count;
 		++sub_ct_2_restore_count;
 		sub_ct_2.restore(main_ct);
-		RUA_PANIC(sub_ct_2_running_count == 1);
-		RUA_PANIC(sub_ct_2_looping_count == sub_ct_2_restore_count);
+		RUA_RASSERT(sub_ct_2_running_count == 1);
+		RUA_RASSERT(sub_ct_2_looping_count == sub_ct_2_restore_count);
 	}
 
-	RUA_PANIC(main_ct_looping_count == 6);
+	RUA_RASSERT(main_ct_looping_count == 6);
 });
 
 }

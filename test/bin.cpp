@@ -19,7 +19,7 @@ rua::test _t("bin", "find", []() {
 
 	rua::bin_ref dat(dat_str);
 
-	RUA_PANIC(dat.size() == dat_sz);
+	RUA_RASSERT(dat.size() == dat_sz);
 
 	char pat[]{ -1, -1, -1, -1, -1, 6, 7, -1, 0 };
 
@@ -35,8 +35,8 @@ rua::test _t("bin", "find", []() {
 
 	auto data_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	RUA_PANIC(fr);
-	RUA_PANIC(fr.pos == pat_pos);
+	RUA_RASSERT(fr);
+	RUA_RASSERT(fr.pos == pat_pos);
 
 	// bin_base::match
 
@@ -46,9 +46,9 @@ rua::test _t("bin", "find", []() {
 
 	auto data_match_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	RUA_PANIC(mr);
-	RUA_PANIC(mr.pos == pat_pos);
-	RUA_PANIC(mr[0] == pat_pos + 1);
+	RUA_RASSERT(mr);
+	RUA_RASSERT(mr.pos == pat_pos);
+	RUA_RASSERT(mr[0] == pat_pos + 1);
 
 	// std::string::find
 
@@ -58,8 +58,8 @@ rua::test _t("bin", "find", []() {
 
 	auto str_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tp).count();
 
-	RUA_PANIC(fp != std::string::npos);
-	RUA_PANIC(fp == pat_pos);
+	RUA_RASSERT(fp != std::string::npos);
+	RUA_RASSERT(fp == pat_pos);
 
 	std::cout <<
 		"bin_base::find: " << data_find_dur << " ms" << std::endl <<

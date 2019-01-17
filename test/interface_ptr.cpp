@@ -48,16 +48,16 @@ rua::test _t("interface_ptr", "basic", []() {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	RUA_PANIC(aml1->age() == dog_lval.age());
-	RUA_PANIC(aml1.to<dog>()->age() == dog_lval.age());
-	RUA_PANIC(aml2->age() == dog_lval.age());
-	RUA_PANIC(aml3->age() == dog_lval.age());
-	RUA_PANIC(aml4->age() == dog_lval.age());
-	RUA_PANIC(aml5->age() == dog_lval.age());
-	RUA_PANIC(aml6->age() == dog_lval.age());
-	RUA_PANIC(aml7->age() == dog_lval.age());
-	RUA_PANIC(!aml8);
-	RUA_PANIC(!aml9);
+	RUA_RASSERT(aml1->age() == dog_lval.age());
+	RUA_RASSERT(aml1.to<dog>()->age() == dog_lval.age());
+	RUA_RASSERT(aml2->age() == dog_lval.age());
+	RUA_RASSERT(aml3->age() == dog_lval.age());
+	RUA_RASSERT(aml4->age() == dog_lval.age());
+	RUA_RASSERT(aml5->age() == dog_lval.age());
+	RUA_RASSERT(aml6->age() == dog_lval.age());
+	RUA_RASSERT(aml7->age() == dog_lval.age());
+	RUA_RASSERT(!aml8);
+	RUA_RASSERT(!aml9);
 });
 
 }

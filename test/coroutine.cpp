@@ -29,7 +29,7 @@ rua::test _t("coroutine", "coroutine_pool", []() {
 	});
 	cp.run();
 
-	RUA_PANIC(r == "123321");
+	RUA_RASSERT(r == "123321");
 });
 
 rua::test _t2("coroutine", "co", []() {
@@ -53,7 +53,7 @@ rua::test _t2("coroutine", "co", []() {
 		});
 	});
 
-	RUA_PANIC(r == "123321");
+	RUA_RASSERT(r == "123321");
 });
 
 rua::test _t3("coroutine", "use channel", []() {
@@ -65,7 +65,7 @@ rua::test _t3("coroutine", "use channel", []() {
 			ch << "ok";
 		}).detach();
 
-		RUA_PANIC(ch.get() == "ok");
+		RUA_RASSERT(ch.get() == "ok");
 	});
 });
 

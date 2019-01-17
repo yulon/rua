@@ -15,7 +15,7 @@ rua::test _t("channel", "basic", []() {
 		ch << "ok";
 	}).detach();
 
-	RUA_PANIC(ch.get() == "ok");
+	RUA_RASSERT(ch.get() == "ok");
 });
 
 }

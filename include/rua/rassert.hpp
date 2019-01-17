@@ -1,12 +1,12 @@
-#ifndef _RUA_PANIC_HPP
-#define _RUA_PANIC_HPP
+#ifndef _RUA_ASSERT_HPP
+#define _RUA_ASSERT_HPP
 
 #include "console.hpp"
 #include "str.hpp"
 
 #include <cstdlib>
 
-#define RUA_PANIC(_exp) { \
+#define RUA_RASSERT(_exp) { \
 	if (!(_exp)) { \
 		rua::cerr( \
 			"Panic!", \
@@ -15,7 +15,7 @@
 			rua::eol, \
 			"Expression:", #_exp \
 		); \
-		exit(EXIT_FAILURE); \
+		abort(); \
 	} \
 }
 

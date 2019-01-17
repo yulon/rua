@@ -12,8 +12,6 @@
 #include "bin.hpp"
 
 #include <cstdint>
-#include <initializer_list>
-#include <cassert>
 
 namespace rua {
 
@@ -208,11 +206,11 @@ private:
 
 #ifdef _WIN32
 	#ifdef RUA_AMD64
-		RUA_STATIC_ASSERT(offsetof(continuation, osctx) == 152);
+		RUA_SASSERT(offsetof(continuation, osctx) == 152);
 	#endif
 
 	#ifdef RUA_I386
-		RUA_STATIC_ASSERT(offsetof(continuation, osctx) == 48);
+		RUA_SASSERT(offsetof(continuation, osctx) == 48);
 	#endif
 #endif
 
