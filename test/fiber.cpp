@@ -1,4 +1,4 @@
-#include <rua/coroutine.hpp>
+#include <rua/fiber.hpp>
 #include <rua/channel.hpp>
 
 #include <rua/test.hpp>
@@ -8,45 +8,45 @@
 
 namespace {
 
-rua::test _t("coroutine", "coroutine_pool", []() {
-	static rua::coroutine_pool cp;
+rua::test _t("fiber", "fiber_pool", []() {
+	static rua::fiber_pool fp;
 	static std::string r;
 
-	cp.add([]() {
+	fp.add([]() {
 		r += "1";
 		rua::sleep(300);
 		r += "1";
 	});
-	cp.add([]() {
+	fp.add([]() {
 		r += "2";
 		rua::sleep(200);
 		r += "2";
 	});
-	cp.add([]() {
+	fp.add([]() {
 		r += "3";
 		rua::sleep(100);
 		r += "3";
 	});
-	cp.run();
+	fp.run();
 
 	RUA_RASSERT(r == "123321");
 });
 
-rua::test _t2("coroutine", "co", []() {
+rua::test _t2("fiber", "fiber", []() {
 	static std::string r;
 
-	rua::co([]() {
-		rua::co([]() {
+	rua::fiber([]() {
+		rua::fiber([]() {
 			r += "1";
 			rua::sleep(300);
 			r += "1";
 		});
-		rua::co([]() {
+		rua::fiber([]() {
 			r += "2";
 			rua::sleep(200);
 			r += "2";
 		});
-		rua::co([]() {
+		rua::fiber([]() {
 			r += "3";
 			rua::sleep(100);
 			r += "3";
@@ -56,8 +56,8 @@ rua::test _t2("coroutine", "co", []() {
 	RUA_RASSERT(r == "123321");
 });
 
-rua::test _t3("coroutine", "use channel", []() {
-	rua::co([]() {
+rua::test _t3("fiber", "use channel", []() {
+	rua::fiber([]() {
 		rua::channel<std::string> ch;
 
 		std::thread([ch]() mutable {
