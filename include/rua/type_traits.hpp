@@ -10,6 +10,8 @@
 	#include <string_view>
 #endif
 
+#include <cstddef>
+
 namespace rua {
 
 // Compatibility and improvement of std::type_traits.
@@ -136,6 +138,10 @@ template <>
 constexpr uintptr_t type_id<std::nullptr_t>() {
 	return static_cast<uintptr_t>(-1);
 }
+
+#define RUA_CONTAINER_OF(member_ptr, type, member) reinterpret_cast<type *>( \
+	reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member) \
+)
 
 ////////////////////////////////////////////////////////////////////////
 
