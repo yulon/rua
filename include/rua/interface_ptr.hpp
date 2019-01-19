@@ -217,6 +217,7 @@ public:
 	}
 
 	Base *operator->() const {
+		assert(_base_raw_ptr);
 		return _base_raw_ptr;
 	}
 
@@ -269,18 +270,29 @@ public:
 
 	_RUA_INTERFACE_CONCEPT(Derived)
 	Derived *to() const {
-		assert(type_is<Derived>());
+		assert(_base_raw_ptr);
 
-		auto base_ptr = get();
-		return base_ptr ? static_cast<Derived *>(base_ptr) : nullptr;
+		if (!type_is<Derived>()) {
+			return nullptr;
+		}
+		if (!_base_raw_ptr) {
+			return nullptr;
+		}
+		return static_cast<Derived *>(_base_raw_ptr);
 	}
 
 	_RUA_INTERFACE_CONCEPT(Derived)
 	std::shared_ptr<Derived> to_shared() const {
-		assert(type_is<Derived>());
+		assert(_base_raw_ptr);
 
+		if (!type_is<Derived>()) {
+			return nullptr;
+		}
 		auto base_ptr = get_shared();
-		return base_ptr ? std::static_pointer_cast<Derived>(base_ptr) : std::shared_ptr<Derived>();
+		if (!base_ptr) {
+			return nullptr;
+		}
+		return std::static_pointer_cast<Derived>(base_ptr);
 	}
 
 	void reset() {
