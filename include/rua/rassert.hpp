@@ -1,5 +1,5 @@
-#ifndef _RUA_ASSERT_HPP
-#define _RUA_ASSERT_HPP
+#ifndef _RUA_RASSERT_HPP
+#define _RUA_RASSERT_HPP
 
 #include "console.hpp"
 #include "str.hpp"
@@ -9,7 +9,7 @@
 #define RUA_RASSERT(_exp) { \
 	if (!(_exp)) { \
 		rua::cerr( \
-			"Panic!", \
+			"Assertion failed!", \
 			rua::eol, \
 			"File:", std::string(__FILE__) + ":" + std::to_string(__LINE__), \
 			rua::eol, \

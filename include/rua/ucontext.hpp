@@ -1,5 +1,5 @@
-#ifndef _RUA_CONTEXT_HPP
-#define _RUA_CONTEXT_HPP
+#ifndef _RUA_UCONTEXT_HPP
+#define _RUA_UCONTEXT_HPP
 
 #include "macros.hpp"
 
