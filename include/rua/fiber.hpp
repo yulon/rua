@@ -1,5 +1,5 @@
-#ifndef _RUA_COROTINE_HPP
-#define _RUA_COROTINE_HPP
+#ifndef _RUA_FIBER_HPP
+#define _RUA_FIBER_HPP
 
 #include "bin.hpp"
 #include "ucontext.hpp"
@@ -143,8 +143,8 @@ public:
 		}
 
 		scheduler_guard sg(_sch);
-		auto &ll_sch = sg.previous();
-		auto ll_cv = ll_sch.make_cond_var();
+		auto ll_sch = sg.previous();
+		auto ll_cv = ll_sch->make_cond_var();
 
 		auto now = _fiber_now();
 
@@ -181,7 +181,7 @@ public:
 							} else {
 								auto wake_ti = _cws.begin()->first;
 								_ll_cv = ll_cv;
-								ll_sch.cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
+								ll_sch->cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
 									return _ll_cv_changed;
 								}, wake_ti - _fiber_now());
 								_ll_cv_changed = false;
@@ -191,7 +191,7 @@ public:
 							now = _fiber_now();
 							break;
 						}
-						ll_sch.yield();
+						ll_sch->yield();
 						now = _fiber_now();
 						if (wake_ti <= now) {
 							break;
@@ -208,9 +208,9 @@ public:
 
 				auto wake_ti = _slps.begin()->first;
 				if (wake_ti > now) {
-					ll_sch.sleep(wake_ti - now);
+					ll_sch->sleep(wake_ti - now);
 				} else {
-					ll_sch.yield();
+					ll_sch->yield();
 				}
 
 				now = _fiber_now();
@@ -220,14 +220,14 @@ public:
 
 			} else if (_cws.size()) {
 
-				ll_sch.lock(_ll_cv_mtx);
+				ll_sch->lock(_ll_cv_mtx);
 
 				if (_ll_cv_changed) {
 					_ll_cv_changed = false;
 				} else {
 					auto wake_ti = _cws.begin()->first;
 					_ll_cv = ll_cv;
-					ll_sch.cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
+					ll_sch->cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
 						return _ll_cv_changed;
 					}, wake_ti - now);
 					_ll_cv_changed = false;
@@ -298,15 +298,15 @@ public:
 			friend scheduler;
 		};
 
-		virtual std::shared_ptr<rua::scheduler::cond_var> make_cond_var() {
-			return std::static_pointer_cast<rua::scheduler::cond_var>(std::make_shared<cond_var>(*_fp));
+		virtual rua::scheduler::cond_var_i make_cond_var() {
+			return std::make_shared<cond_var>(*_fp);
 		}
 
-		virtual std::cv_status cond_wait(std::shared_ptr<rua::scheduler::cond_var> cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
-			auto ncv = std::static_pointer_cast<cond_var>(cv);
-			assert(ncv->_fp == _fp);
+		virtual std::cv_status cond_wait(rua::scheduler::cond_var_i cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
+			auto fscv = cv.to<cond_var>();
+			assert(fscv->_fp == _fp);
 
-			_fp->_cur_fc->is_cv_notified = ncv->_n;
+			_fp->_cur_fc->is_cv_notified = fscv->_n;
 
 			lck.unlock();
 			_sleep(_fp->_cws, timeout);
@@ -471,11 +471,11 @@ private:
 	scheduler _sch;
 
 	bool _ll_cv_changed;
-	std::shared_ptr<rua::scheduler::cond_var> _ll_cv;
+	rua::scheduler::cond_var_i _ll_cv;
 	std::mutex _ll_cv_mtx;
 
 	void _ll_cv_notify() {
-		rua::get_scheduler().lock(_ll_cv_mtx);
+		rua::get_scheduler()->lock(_ll_cv_mtx);
 		_ll_cv_changed = true;
 		if (_ll_cv) {
 			auto ll_cv = _ll_cv;
@@ -492,22 +492,17 @@ inline fiber::fiber(std::function<void()> func, size_t dur, fiber_pool *fp_ptr) 
 		_ctx = std::move(fp_ptr->add(std::move(func), dur)._ctx);
 		return;
 	}
-
-	static tls cps;
-	fp_ptr = cps.get().to<fiber_pool *>();
-	if (fp_ptr) {
-		_ctx = std::move(fp_ptr->add(std::move(func), dur)._ctx);
-		return;
+	auto s = get_scheduler();
+	if (s) {
+		auto fs = s.to<fiber_pool::scheduler>();
+		if (fs) {
+			_ctx = std::move(fs->get_fiber_pool()->add(std::move(func), dur)._ctx);
+			return;
+		}
 	}
-
-	fp_ptr = new fiber_pool;
-	std::unique_ptr<fiber_pool> cp_uptr(fp_ptr);
-	cps.set(fp_ptr);
-
-	_ctx = std::move(fp_ptr->add(std::move(func), dur)._ctx);
-	fp_ptr->run();
-
-	cps.set(nullptr);
+	std::unique_ptr<fiber_pool> fp_uptr(new fiber_pool);
+	_ctx = std::move(fp_uptr->add(std::move(func), dur)._ctx);
+	fp_uptr->run();
 }
 
 }

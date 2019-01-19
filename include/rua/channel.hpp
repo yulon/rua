@@ -25,19 +25,18 @@ private:
 public:
 	class locked_t {
 	public:
-		locked_t(channel<T> ch, bool try_lock = false, scheduler *sch = nullptr) {
+		locked_t(channel<T> ch, bool try_lock = false, scheduler_i sch = nullptr) {
 			if (!ch._ctx) {
 				return;
 			}
 			if (try_lock) {
 				if (!ch._ctx->mtx.try_lock()) {
-					_sch = nullptr;
 					return;
 				}
-				_sch = sch ? sch : &get_scheduler();
+				_sch = sch ? std::move(sch) : get_scheduler();
 				_ctx = std::move(ch._ctx);
 			} else {
-				_sch = sch ? sch : &get_scheduler();
+				_sch = sch ? std::move(sch) : get_scheduler();
 				_ctx = std::move(ch._ctx);
 				_sch->lock(_ctx->mtx);
 			}
@@ -144,14 +143,14 @@ public:
 
 	private:
 		std::shared_ptr<_ctx_t> _ctx;
-		scheduler *_sch;
+		scheduler_i _sch;
 	};
 
-	typename channel<T>::locked_t lock(scheduler *sch = nullptr) const {
+	typename channel<T>::locked_t lock(scheduler_i sch = nullptr) const {
 		return locked_t(*this, false, sch);
 	}
 
-	typename channel<T>::locked_t try_lock(scheduler *sch = nullptr) const {
+	typename channel<T>::locked_t try_lock(scheduler_i sch = nullptr) const {
 		return locked_t(*this, true, sch);
 	}
 
@@ -162,7 +161,7 @@ public:
 		return ioer;
 	}
 
-	typename channel<T>::locked_t wait_inputs(scheduler *sch = nullptr) {
+	typename channel<T>::locked_t wait_inputs(scheduler_i sch = nullptr) {
 		auto ioer = lock(sch);
 		ioer.wait_inputs();
 		return ioer;
@@ -179,7 +178,7 @@ public:
 		return lock(sch).get();
 	}
 
-	std::queue<T> get_all(scheduler *sch = nullptr) {
+	std::queue<T> get_all(scheduler_i sch = nullptr) {
 		return lock(sch).get_all();
 	}
 
@@ -203,7 +202,7 @@ private:
 	struct _ctx_t {
 		std::mutex mtx;
 		std::queue<T> buffer;
-		std::queue<std::shared_ptr<scheduler::cond_var>> reqs;
+		std::queue<scheduler::cond_var_i> reqs;
 	};
 
 	std::shared_ptr<_ctx_t> _ctx;
