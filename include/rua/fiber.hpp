@@ -29,6 +29,14 @@ public:
 
 	inline fiber(std::function<void()> func, size_t dur = 0, fiber_pool *fp_ptr = nullptr);
 
+	struct not_run {};
+	inline fiber(not_run, std::function<void()> func, size_t dur = 0) {
+		_ctx = std::make_shared<_ctx_t>();
+		_ctx->fn = std::move(func);
+		_ctx->is_stoped = true;
+		_ctx->reset_duration(dur);
+	}
+
 	void stop() {
 		if (!_ctx) {
 			return;
@@ -58,7 +66,7 @@ private:
 	struct _ctx_t {
 		std::function<void()> fn;
 
-		bool is_stoped;
+		std::atomic<bool> is_stoped;
 		size_t end_ti;
 
 		void reset_duration(size_t dur = 0) {
@@ -97,14 +105,20 @@ public:
 	}
 
 	fiber add(std::function<void()> func, size_t dur = 0) {
-		auto fc = std::make_shared<fiber::_ctx_t>();
+		fiber f(fiber::not_run{}, std::move(func), dur);
+		f._ctx->is_stoped = false;
+		_fcs.emplace(f._ctx);
+		return f;
+	}
 
-		fc->fn = std::move(func);
-		fc->is_stoped = false;
-		fc->reset_duration(dur);
+	void add(fiber f) {
+		assert(f._ctx);
 
-		_fcs.emplace(fc);
-		return std::move(fc);
+		auto old = f._ctx->is_stoped.exchange(false);
+		if (!old) {
+			return;
+		}
+		_fcs.emplace(std::move(f._ctx));
 	}
 
 	/*void enable_add_from_other_thread() {
@@ -487,21 +501,23 @@ private:
 	}
 };
 
-inline fiber::fiber(std::function<void()> func, size_t dur, fiber_pool *fp_ptr) {
+inline fiber::fiber(std::function<void()> func, size_t dur, fiber_pool *fp_ptr) :
+	fiber(fiber::not_run{}, std::move(func), dur)
+{
 	if (fp_ptr) {
-		_ctx = std::move(fp_ptr->add(std::move(func), dur)._ctx);
+		fp_ptr->add(*this);
 		return;
 	}
 	auto s = get_scheduler();
 	if (s) {
 		auto fs = s.to<fiber_pool::scheduler>();
 		if (fs) {
-			_ctx = std::move(fs->get_fiber_pool()->add(std::move(func), dur)._ctx);
+			fs->get_fiber_pool()->add(*this);
 			return;
 		}
 	}
 	std::unique_ptr<fiber_pool> fp_uptr(new fiber_pool);
-	_ctx = std::move(fp_uptr->add(std::move(func), dur)._ctx);
+	fp_uptr->add(*this);
 	fp_uptr->run();
 }
 

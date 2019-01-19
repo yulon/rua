@@ -10,21 +10,22 @@ namespace {
 
 rua::test _t("fiber", "fiber_pool", []() {
 	static rua::fiber_pool fp;
+	static auto &sch = fp.get_scheduler();
 	static std::string r;
 
 	fp.add([]() {
 		r += "1";
-		rua::sleep(300);
+		sch.sleep(300);
 		r += "1";
 	});
 	fp.add([]() {
 		r += "2";
-		rua::sleep(200);
+		sch.sleep(200);
 		r += "2";
 	});
 	fp.add([]() {
 		r += "3";
-		rua::sleep(100);
+		sch.sleep(100);
 		r += "3";
 	});
 	fp.run();
