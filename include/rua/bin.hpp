@@ -842,6 +842,8 @@ namespace rua {
 
 			explicit bin(size_t sz) {
 				if (!sz) {
+					_reset();
+					_alloced = nullptr;
 					return;
 				}
 				_alloc(sz);
