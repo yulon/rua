@@ -126,7 +126,7 @@ using switch_false_t = typename switch_false<Args...>::type;
 
 template <typename T>
 inline uintptr_t type_id() {
-	return reinterpret_cast<uintptr_t>(&type_id<T>);
+	return reinterpret_cast<uintptr_t>(reinterpret_cast<void *>(&type_id<T>));
 }
 
 template <>
@@ -155,7 +155,7 @@ struct is_string : bool_constant<
 	#endif
 > {};
 
-#ifdef __cpp_lib_type_trait_variable_templates
+#ifdef __cpp_inline_variables
 	template <typename T>
 	inline constexpr bool is_string_v = is_string<T>::value;
 #endif
