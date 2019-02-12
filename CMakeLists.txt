@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.1.3)
+
+project(rua)
+
+add_library(rua INTERFACE IMPORTED)
+target_include_directories(rua INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+if(WIN32)
+	target_link_libraries(rua INTERFACE psapi)
+else()
+	target_link_libraries(rua INTERFACE pthread)
+endif()
+
+if(DEFINED RUA_TEST)
+	set(rua_test_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test")
+	if(${RUA_TEST} STREQUAL "all")
+		file(GLOB_RECURSE rua_test_SOURCES "${rua_test_SOURCE_DIR}/*.cpp")
+	else()
+		file(GLOB_RECURSE rua_test_SOURCES "${rua_test_SOURCE_DIR}/main.cpp" "${rua_test_SOURCE_DIR}/${RUA_TEST}.cpp")
+	endif()
+	add_executable(rua_test ${rua_test_SOURCES})
+	target_link_libraries(rua_test PRIVATE rua)
+	set_target_properties(rua_test PROPERTIES CXX_STANDARD 11)
+endif()

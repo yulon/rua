@@ -1,6 +1,8 @@
-bin
-lib
-build
-obj
-.vscode
+bin/
+lib/
+build/
+obj/
+.vscode/
 *.bin
+out/
+out.*/

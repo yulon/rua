@@ -21,7 +21,7 @@ function mkdir(dir) {
 }
 
 const repoDir = path.dirname(path.dirname(__dirname))
-const binDir = path.join(repoDir, "build", "ucontext")
+const binDir = path.join(repoDir, "bin", "ucontext")
 const incDir = path.join(repoDir, "include", "rua", "ucontext")
 
 mkdir(binDir)
