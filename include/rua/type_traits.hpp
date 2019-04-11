@@ -149,7 +149,7 @@ constexpr uintptr_t type_id<std::nullptr_t>() {
 		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value \
 	>::type \
 >
-#define RUA_DERIVAED_CONCEPT(_B, _D) template < \
+#define RUA_DERIVED_CONCEPT(_B, _D) template < \
 	typename _D, \
 	typename = typename std::enable_if< \
 		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value && \

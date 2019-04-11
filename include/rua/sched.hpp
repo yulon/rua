@@ -4,7 +4,7 @@
 #include "tls.hpp"
 #include "lock_ref.hpp"
 #include "limits.hpp"
-#include "interface_ptr.hpp"
+#include "adapted_ptr.hpp"
 
 #include <chrono>
 #include <memory>
@@ -52,7 +52,7 @@ public:
 		virtual void notify() {}
 	};
 
-	using cond_var_i = interface_ptr<cond_var>;
+	using cond_var_i = adapted_ptr<cond_var>;
 
 	virtual cond_var_i make_cond_var() {
 		return std::make_shared<cond_var>();
@@ -91,7 +91,7 @@ protected:
 	scheduler() {}
 };
 
-using scheduler_i = interface_ptr<scheduler>;
+using scheduler_i = adapted_ptr<scheduler>;
 
 class default_scheduler : public scheduler {
 public:
