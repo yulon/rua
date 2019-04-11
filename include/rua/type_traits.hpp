@@ -143,6 +143,20 @@ constexpr uintptr_t type_id<std::nullptr_t>() {
 	reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member) \
 )
 
+#define RUA_IS_BASE_OF_CONCEPT(_B, _D) template < \
+	typename _D, \
+	typename = typename std::enable_if< \
+		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value \
+	>::type \
+>
+#define RUA_DERIVAED_CONCEPT(_B, _D) template < \
+	typename _D, \
+	typename = typename std::enable_if< \
+		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value && \
+		!std::is_same<_B, _D>::value \
+	>::type \
+>
+
 ////////////////////////////////////////////////////////////////////////
 
 template <typename T>
