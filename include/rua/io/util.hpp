@@ -2,7 +2,7 @@
 #define _RUA_IO_UTIL_HPP
 
 #include "abstract.hpp"
-#include "../channel.hpp"
+#include "../chan.hpp"
 
 #include <cstddef>
 #include <thread>
@@ -106,7 +106,7 @@ public:
 
 private:
 	std::atomic<size_t> _c, _buf_sz;
-	channel<bin> _ch;
+	chan<bin> _ch;
 	bin _buf;
 };
 

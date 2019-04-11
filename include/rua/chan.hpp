@@ -1,5 +1,5 @@
-#ifndef _RUA_CHANNEL_HPP
-#define _RUA_CHANNEL_HPP
+#ifndef _RUA_CHAN_HPP
+#define _RUA_CHAN_HPP
 
 #include "sched.hpp"
 #include "macros.hpp"
@@ -15,9 +15,9 @@
 namespace rua {
 
 template <typename T>
-class channel {
+class chan {
 public:
-	channel() : _ctx(std::make_shared<_ctx_t>()) {}
+	chan() : _ctx(std::make_shared<_ctx_t>()) {}
 
 private:
 	struct _ctx_t;
@@ -25,7 +25,7 @@ private:
 public:
 	class locked_t {
 	public:
-		locked_t(channel<T> ch, bool try_lock = false, scheduler_i sch = nullptr) {
+		locked_t(chan<T> ch, bool try_lock = false, scheduler_i sch = nullptr) {
 			if (!ch._ctx) {
 				return;
 			}
@@ -146,29 +146,29 @@ public:
 		scheduler_i _sch;
 	};
 
-	typename channel<T>::locked_t lock(scheduler_i sch = nullptr) const {
+	typename chan<T>::locked_t lock(scheduler_i sch = nullptr) const {
 		return locked_t(*this, false, sch);
 	}
 
-	typename channel<T>::locked_t try_lock(scheduler_i sch = nullptr) const {
+	typename chan<T>::locked_t try_lock(scheduler_i sch = nullptr) const {
 		return locked_t(*this, true, sch);
 	}
 
 	template <typename V>
-	typename channel<T>::locked_t operator<<(V &&value) {
+	typename chan<T>::locked_t operator<<(V &&value) {
 		auto ioer = lock();
 		ioer << std::forward<V>(value);
 		return ioer;
 	}
 
-	typename channel<T>::locked_t wait_inputs(scheduler_i sch = nullptr) {
+	typename chan<T>::locked_t wait_inputs(scheduler_i sch = nullptr) {
 		auto ioer = lock(sch);
 		ioer.wait_inputs();
 		return ioer;
 	}
 
 	template <typename R>
-	typename channel<T>::locked_t operator>>(R &receiver) {
+	typename chan<T>::locked_t operator>>(R &receiver) {
 		auto ioer = lock();
 		ioer >> receiver;
 		return ioer;

@@ -1,5 +1,5 @@
 #include <rua/fiber.hpp>
-#include <rua/channel.hpp>
+#include <rua/chan.hpp>
 
 #include <rua/test.hpp>
 
@@ -57,9 +57,9 @@ rua::test _t2("fiber", "fiber", []() {
 	RUA_RASSERT(r == "123321");
 });
 
-rua::test _t3("fiber", "use channel", []() {
+rua::test _t3("fiber", "use chan", []() {
 	rua::fiber([]() {
-		rua::channel<std::string> ch;
+		rua::chan<std::string> ch;
 
 		std::thread([ch]() mutable {
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
