@@ -207,6 +207,10 @@ public:
 		return _raw_ptr != src._raw_ptr;
 	}
 
+	template <typename = typename std::enable_if<
+		std::is_class<T>::value ||
+		std::is_union<T>::value
+	>::type>
 	T *operator->() const {
 		assert(_raw_ptr);
 		return _raw_ptr;
