@@ -8,7 +8,6 @@
 #include "../io.hpp"
 #include "../pipe.hpp"
 #include "../stdio.hpp"
-#include "../always_move.hpp"
 #include "../any_word.hpp"
 #include "../str.hpp"
 #include "../limits.hpp"
@@ -25,6 +24,7 @@
 #include <thread>
 #include <functional>
 #include <cstring>
+#include <memory>
 #include <cassert>
 
 namespace rua {
@@ -107,7 +107,9 @@ public:
 		si.cb = sizeof(si);
 		si.wShowWindow = SW_HIDE;
 
-		always_move<io::win32_stream> stdo_r, stde_r, stdi_w;
+		auto stdo_r = std::make_shared<io::win32_stream>();
+		auto stde_r = std::make_shared<io::win32_stream>();
+		auto stdi_w = std::make_shared<io::win32_stream>();
 		io::win32_stream stdo_w, stde_w, stdi_r;
 
 		bool is_combined_stdout = false;
@@ -137,7 +139,7 @@ public:
 						DUPLICATE_SAME_ACCESS
 					);
 				} else {
-					if (!make_pipe(stdo_r, stdo_w) || !SetHandleInformation(stdo_w.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
+					if (!make_pipe(*stdo_r, stdo_w) || !SetHandleInformation(stdo_w.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
 						_reset();
 						return;
 					}
@@ -171,7 +173,7 @@ public:
 							DUPLICATE_SAME_ACCESS
 						);
 					} else {
-						if (!make_pipe(stde_r, stde_w) || !SetHandleInformation(stde_w.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
+						if (!make_pipe(*stde_r, stde_w) || !SetHandleInformation(stde_w.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
 							_reset();
 							return;
 						}
@@ -195,7 +197,7 @@ public:
 						DUPLICATE_SAME_ACCESS
 					);
 				} else {
-					if (!make_pipe(stdi_r, stdi_w) || !SetHandleInformation(stdi_r.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
+					if (!make_pipe(stdi_r, *stdi_w) || !SetHandleInformation(stdi_r.native_handle(), HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) {
 						_reset();
 						return;
 					}
@@ -228,17 +230,17 @@ public:
 			return;
 		}
 
-		if (stdo_r.value) {
+		if (*stdo_r) {
 			std::thread([&stdout_writer, stdo_r]() mutable {
-				stdout_writer->copy(stdo_r.value);
+				stdout_writer->copy(*stdo_r);
 			}).detach();
 		}
-		if (stde_r.value) {
+		if (*stde_r) {
 			std::thread([&stderr_writer, stde_r]() mutable {
-				stderr_writer->copy(stde_r.value);
+				stderr_writer->copy(*stde_r);
 			}).detach();
 		}
-		if (stdi_w.value) {
+		if (*stdi_w) {
 			std::thread([stdi_w, &stdin_reader]() mutable {
 				stdi_w->copy(stdin_reader);
 			}).detach();
