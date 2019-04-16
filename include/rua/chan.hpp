@@ -198,6 +198,10 @@ public:
 		return std::queue<T>();
 	}
 
+	void reset() {
+		_ctx = std::make_shared<_ctx_t>();
+	}
+
 private:
 	struct _ctx_t {
 		std::mutex mtx;
