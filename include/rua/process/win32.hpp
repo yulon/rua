@@ -25,6 +25,7 @@
 #include <functional>
 #include <cstring>
 #include <memory>
+#include <type_traits>
 #include <cassert>
 
 namespace rua {
@@ -75,13 +76,16 @@ public:
 
 	process(std::nullptr_t) : process() {}
 
-	process(HANDLE process) : _h(process), _main_td(nullptr), _need_close(false) {}
+	template <typename T, typename = typename std::enable_if<
+		std::is_same<typename std::decay<T>::type, HANDLE>::value
+	>::type>
+	process(T process) : _h(process), _main_td(nullptr), _need_close(false) {}
 
 	process(
 		const std::string &file,
 		const std::vector<std::string> &args = {},
 		const std::string &work_dir = "",
-		bool pause_main_thread = false,
+		bool freeze_at_startup = false,
 		io::writer_i stdout_writer = nullptr,
 		io::writer_i stderr_writer = nullptr,
 		io::reader_i stdin_reader = nullptr
@@ -218,7 +222,7 @@ public:
 			nullptr,
 			nullptr,
 			true,
-			pause_main_thread ? CREATE_SUSPENDED : 0,
+			freeze_at_startup ? CREATE_SUSPENDED : 0,
 			nullptr,
 			work_dir.empty() ? nullptr : u8_to_w(work_dir).c_str(),
 			&si,
@@ -249,7 +253,7 @@ public:
 		_h = pi.hProcess;
 		_need_close = true;
 
-		if (pause_main_thread) {
+		if (freeze_at_startup) {
 			_main_td = pi.hThread;
 		} else {
 			CloseHandle(pi.hThread);
@@ -322,7 +326,7 @@ public:
 		return *this;
 	}
 
-	void resume_main_thread() {
+	void unfreeze() {
 		if (_main_td) {
 			ResumeThread(_main_td);
 			CloseHandle(_main_td);
@@ -333,7 +337,7 @@ public:
 	int wait_for_exit() {
 		assert(_h);
 		if (_h) {
-			resume_main_thread();
+			unfreeze();
 			WaitForSingleObject(_h, INFINITE);
 			DWORD exit_code;
 			GetExitCodeProcess(_h, &exit_code);
@@ -360,7 +364,7 @@ public:
 	}
 
 	void reset() {
-		resume_main_thread();
+		unfreeze();
 
 		if (_h) {
 			if (_need_close) {
