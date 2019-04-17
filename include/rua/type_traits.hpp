@@ -125,18 +125,20 @@ template <typename... Args>
 using switch_false_t = typename switch_false<Args...>::type;
 
 template <typename T>
-inline uintptr_t type_id() {
-	return reinterpret_cast<uintptr_t>(reinterpret_cast<void *>(&type_id<T>));
+inline std::string &type_info() {
+	static std::string inf;
+	return inf;
 }
 
-template <>
-constexpr uintptr_t type_id<void>() {
-	return 0;
+using type_id_t = std::string &(*)();
+
+template <typename T>
+constexpr type_id_t type_id() {
+	return &type_info<T>;
 }
 
-template <>
-constexpr uintptr_t type_id<std::nullptr_t>() {
-	return static_cast<uintptr_t>(-1);
+inline std::string &type_info(type_id_t id) {
+	return id();
 }
 
 #define RUA_CONTAINER_OF(member_ptr, type, member) reinterpret_cast<type *>( \

@@ -220,7 +220,7 @@ public:
 		return *_raw_ptr;
 	}
 
-	uintptr_t type() const {
+	type_id_t type() const {
 		return _type;
 	}
 
@@ -301,7 +301,7 @@ public:
 private:
 	T *_raw_ptr;
 	std::shared_ptr<T> _shared_ptr;
-	uintptr_t _type;
+	type_id_t _type;
 };
 
 }
