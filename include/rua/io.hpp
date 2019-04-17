@@ -3,6 +3,7 @@
 
 #include "io/abstract.hpp"
 #include "io/util.hpp"
-#include "io/os_stream.hpp"
+#include "io/c_stream.hpp"
+#include "io/sys_stream.hpp"
 
 #endif

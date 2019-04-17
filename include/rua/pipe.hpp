@@ -1,7 +1,7 @@
 #ifndef _RUA_PIPE_HPP
 #define _RUA_PIPE_HPP
 
-#include "io/os_stream.hpp"
+#include "io/sys_stream.hpp"
 #include "str.hpp"
 #include "limits.hpp"
 
@@ -16,7 +16,7 @@
 namespace rua {
 
 struct pipe_accessors {
-	io::os_stream r, w;
+	io::sys_stream r, w;
 
 	operator bool() const {
 		return r || w;
@@ -24,7 +24,7 @@ struct pipe_accessors {
 };
 
 #if defined(_WIN32)
-	inline bool make_pipe(io::os_stream &r, io::os_stream &w) {
+	inline bool make_pipe(io::sys_stream &r, io::sys_stream &w) {
 		SECURITY_ATTRIBUTES sa;
 		memset(&sa, 0, sizeof(SECURITY_ATTRIBUTES));
 		sa.nLength = sizeof(SECURITY_ATTRIBUTES);
@@ -44,7 +44,7 @@ struct pipe_accessors {
 		return pa;
 	}
 
-	inline io::os_stream make_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
+	inline io::sys_stream make_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
 		auto h = CreateNamedPipeW(
 			rua::u8_to_w("\\\\.\\pipe\\" + name).c_str(),
 			PIPE_ACCESS_INBOUND | PIPE_ACCESS_OUTBOUND,
@@ -64,7 +64,7 @@ struct pipe_accessors {
 		return h;
 	}
 
-	inline io::os_stream open_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
+	inline io::sys_stream open_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
 		auto fmt_name = rua::u8_to_w("\\\\.\\pipe\\" + name);
 
 		if (!WaitNamedPipeW(fmt_name.c_str(), static_cast<DWORD>(timeout))) {

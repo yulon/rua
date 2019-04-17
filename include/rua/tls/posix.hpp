@@ -1,5 +1,5 @@
-#ifndef _RUA_TLS_POSIX_HPP
-#define _RUA_TLS_POSIX_HPP
+#ifndef _RUA_POSIX_TLS_HPP
+#define _RUA_POSIX_TLS_HPP
 
 #include "../any_word.hpp"
 
@@ -7,92 +7,96 @@
 	#if __has_include(<pthread.h>)
 		#include <pthread.h>
 	#else
-		#error rua::cp::posix::tls: not supported this platform!
+		#error rua::posix::tls: not supported this platform!
 	#endif
 #else
 	#include <pthread.h>
 #endif
 
-namespace rua { namespace posix {
-	class tls {
-		public:
-			using native_handle_t = pthread_key_t;
+namespace rua {
+namespace posix {
 
-			constexpr tls(std::nullptr_t) : _key(0), _invalid(true) {}
+class tls {
+public:
+	using native_handle_t = pthread_key_t;
 
-			tls(native_handle_t key) : _key(key), _invalid(false) {}
+	constexpr tls(std::nullptr_t) : _key(0), _invalid(true) {}
 
-			tls() {
-				_invalid = pthread_key_create(&_key, nullptr);
-			}
+	tls(native_handle_t key) : _key(key), _invalid(false) {}
 
-			~tls() {
-				free();
-			}
+	tls() {
+		_invalid = pthread_key_create(&_key, nullptr);
+	}
 
-			tls(const tls &) = delete;
+	~tls() {
+		free();
+	}
 
-			tls &operator=(const tls &) = delete;
+	tls(const tls &) = delete;
 
-			tls(tls &&src) : _key(src._key), _invalid(src._invalid) {
-				if (src) {
-					src._invalid = true;
-				}
-			}
+	tls &operator=(const tls &) = delete;
 
-			tls &operator=(tls &&src) {
-				free();
-				if (src) {
-					_key = src._key;
-					_invalid = false;
-					src._invalid = true;
-				}
-				return *this;
-			}
+	tls(tls &&src) : _key(src._key), _invalid(src._invalid) {
+		if (src) {
+			src._invalid = true;
+		}
+	}
 
-			native_handle_t native_handle() const {
-				return _key;
-			}
+	tls &operator=(tls &&src) {
+		free();
+		if (src) {
+			_key = src._key;
+			_invalid = false;
+			src._invalid = true;
+		}
+		return *this;
+	}
 
-			operator native_handle_t() const {
-				return _key;
-			}
+	native_handle_t native_handle() const {
+		return _key;
+	}
 
-			operator bool() const {
-				return !_invalid;
-			}
+	operator native_handle_t() const {
+		return _key;
+	}
 
-			bool set(any_word value) {
-				return pthread_setspecific(_key, value) == 0;
-			}
+	operator bool() const {
+		return !_invalid;
+	}
 
-			any_word get() const {
-				return pthread_getspecific(_key);
-			}
+	bool set(any_word value) {
+		return pthread_setspecific(_key, value) == 0;
+	}
 
-			bool alloc() {
-				if (!free()) {
-					return false;
-				}
-				_invalid = pthread_key_create(&_key, nullptr);
-				return *this;
-			}
+	any_word get() const {
+		return pthread_getspecific(_key);
+	}
 
-			bool free() {
-				if (!*this) {
-					return true;
-				}
-				if (pthread_key_delete(_key) != 0) {
-					return false;
-				}
-				_invalid = true;
-				return true;
-			}
+	bool alloc() {
+		if (!free()) {
+			return false;
+		}
+		_invalid = pthread_key_create(&_key, nullptr);
+		return *this;
+	}
 
-		private:
-			native_handle_t _key;
-			bool _invalid;
-	};
-}}
+	bool free() {
+		if (!*this) {
+			return true;
+		}
+		if (pthread_key_delete(_key) != 0) {
+			return false;
+		}
+		_invalid = true;
+		return true;
+	}
+
+private:
+	native_handle_t _key;
+	bool _invalid;
+};
+
+}
+}
 
 #endif

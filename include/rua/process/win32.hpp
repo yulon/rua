@@ -1,5 +1,5 @@
-#ifndef _RUA_PROC_WIN32_HPP
-#define _RUA_PROC_WIN32_HPP
+#ifndef _RUA_WIN32_PROCESS_HPP
+#define _RUA_WIN32_PROCESS_HPP
 
 #ifndef _WIN32
 	#error rua::process: not supported this platform!
@@ -33,9 +33,15 @@ namespace win32 {
 
 class process {
 public:
+	using native_handle_t = HANDLE;
+
+	using id_t = DWORD;
+
+	////////////////////////////////////////////////////////////////
+
 	static process find(const std::string &name) {
 		std::wstring wname(u8_to_w(name));
-		HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (snapshot != INVALID_HANDLE_VALUE) {
 			PROCESSENTRY32W entry;
 			entry.dwSize = sizeof(PROCESSENTRY32W);
@@ -44,12 +50,12 @@ public:
 				if (wname == entry.szExeFile) {
 					CloseHandle(snapshot);
 					if (entry.th32ProcessID) {
-						return entry.th32ProcessID;
+						return process(entry.th32ProcessID);
 					}
 				}
 			} while (Process32NextW(snapshot, &entry));
 		}
-		return nullptr;
+		return process();
 	}
 
 	static process loop_find(const std::string &name) {
@@ -65,23 +71,21 @@ public:
 	}
 
 	static process current() {
-		process tp;
-		tp._h = GetCurrentProcess();
-		return tp;
+		return process(GetCurrentProcess());
 	}
 
 	////////////////////////////////////////////////////////////////
 
 	process() : _h(nullptr), _main_td(nullptr), _need_close(false) {}
 
-	process(std::nullptr_t) : process() {}
+	explicit process(std::nullptr_t) : process() {}
 
 	template <typename T, typename = typename std::enable_if<
-		std::is_same<typename std::decay<T>::type, HANDLE>::value
+		std::is_same<typename std::decay<T>::type, native_handle_t>::value
 	>::type>
-	process(T process) : _h(process), _main_td(nullptr), _need_close(false) {}
+	explicit process(T process) : _h(process), _main_td(nullptr), _need_close(false) {}
 
-	process(
+	explicit process(
 		const std::string &file,
 		const std::vector<std::string> &args = {},
 		const std::string &work_dir = "",
@@ -111,10 +115,10 @@ public:
 		si.cb = sizeof(si);
 		si.wShowWindow = SW_HIDE;
 
-		auto stdo_r = std::make_shared<io::win32_stream>();
-		auto stde_r = std::make_shared<io::win32_stream>();
-		auto stdi_w = std::make_shared<io::win32_stream>();
-		io::win32_stream stdo_w, stde_w, stdi_r;
+		auto stdo_r = std::make_shared<io::win32::sys_stream>();
+		auto stde_r = std::make_shared<io::win32::sys_stream>();
+		auto stdi_w = std::make_shared<io::win32::sys_stream>();
+		io::win32::sys_stream stdo_w, stde_w, stdi_r;
 
 		bool is_combined_stdout = false;
 
@@ -131,7 +135,7 @@ public:
 				stdout_writer = rua::stdout_writer();
 			}
 			if (stdout_writer) {
-				auto stdout_writer_for_sys = stdout_writer.to<io::win32_stream>();
+				auto stdout_writer_for_sys = stdout_writer.to<io::win32::sys_stream>();
 				if (stdout_writer_for_sys) {
 					DuplicateHandle(
 						cph,
@@ -165,7 +169,7 @@ public:
 					stderr_writer = rua::stderr_writer();
 				}
 				if (stderr_writer) {
-					auto stderr_writer_for_sys = stderr_writer.to<io::win32_stream>();
+					auto stderr_writer_for_sys = stderr_writer.to<io::win32::sys_stream>();
 					if (stderr_writer_for_sys) {
 						DuplicateHandle(
 							cph,
@@ -189,7 +193,7 @@ public:
 				stdin_reader = rua::stdin_reader();
 			}
 			if (stdin_reader) {
-				auto stdin_reader_for_sys = stdin_reader.to<io::win32_stream>();;
+				auto stdin_reader_for_sys = stdin_reader.to<io::win32::sys_stream>();;
 				if (stdin_reader_for_sys) {
 					DuplicateHandle(
 						cph,
@@ -261,7 +265,7 @@ public:
 		}
 	}
 
-	process(DWORD pid) : _main_td(nullptr) {
+	explicit process(DWORD pid) : _main_td(nullptr) {
 		if (!pid) {
 			_h = nullptr;
 			_need_close = false;
@@ -279,18 +283,12 @@ public:
 		reset();
 	}
 
-	using native_handle_t = HANDLE;
-
 	native_handle_t native_handle() const {
 		return _h;
 	}
 
-	operator HANDLE() const {
-		return native_handle();
-	}
-
 	operator bool() const {
-		return native_handle();
+		return _h;
 	}
 
 	bool operator==(const process &target) const {
@@ -378,48 +376,48 @@ public:
 	////////////////////////////////////////////////////////////////
 
 	class mem_t {
-		public:
-			mem_t() {}
+	public:
+		mem_t() {}
 
-			mem_t(process &process, size_t n) :
-				_owner(&process),
-				_ptr(VirtualAllocEx(process.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE)),
-				_sz(n)
-			{}
+		mem_t(process &p, size_t n) :
+			_owner(&p),
+			_ptr(VirtualAllocEx(p.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE)),
+			_sz(n)
+		{}
 
-			~mem_t() {
-				reset();
+		~mem_t() {
+			reset();
+		}
+
+		any_ptr ptr() const {
+			return _ptr;
+		}
+
+		size_t size() const {
+			return _sz;
+		}
+
+		size_t write_at(ptrdiff_t pos, bin_view data) {
+			SIZE_T sz;
+			WriteProcessMemory(_owner->native_handle(), ptr() + pos, data.base(), data.size(), &sz);
+			assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
+			return static_cast<size_t>(sz);
+		}
+
+		void reset() {
+			if (!_owner) {
+				return;
 			}
+			VirtualFreeEx(_owner->native_handle(), _ptr, _sz, MEM_RELEASE);
+			_owner = nullptr;
+			_ptr = nullptr;
+			_sz = 0;
+		}
 
-			any_ptr ptr() const {
-				return _ptr;
-			}
-
-			size_t size() const {
-				return _sz;
-			}
-
-			size_t write_at(ptrdiff_t pos, bin_view data) {
-				SIZE_T sz;
-				WriteProcessMemory(_owner->native_handle(), ptr() + pos, data.base(), data.size(), &sz);
-				assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
-				return static_cast<size_t>(sz);
-			}
-
-			void reset() {
-				if (!_owner) {
-					return;
-				}
-				VirtualFreeEx(_owner->native_handle(), _ptr, _sz, MEM_RELEASE);
-				_owner = nullptr;
-				_ptr = nullptr;
-				_sz = 0;
-			}
-
-		private:
-			const process *_owner;
-			any_ptr _ptr;
-			size_t _sz;
+	private:
+		const process *_owner;
+		any_ptr _ptr;
+		size_t _sz;
 	};
 
 	bin_view mem_image() const {

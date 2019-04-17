@@ -1,5 +1,5 @@
-#ifndef _RUA_IO_C_HPP
-#define _RUA_IO_C_HPP
+#ifndef _RUA_IO_C_STREAM_HPP
+#define _RUA_IO_C_STREAM_HPP
 
 #include "abstract.hpp"
 

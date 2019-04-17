@@ -1,8 +1,8 @@
-#ifndef _RUA_TLS_WIN32_HPP
-#define _RUA_TLS_WIN32_HPP
+#ifndef _RUA_WIN32_TLS_HPP
+#define _RUA_WIN32_TLS_HPP
 
 #ifndef _WIN32
-	#error rua::cp::win32::tls: not supported this platform!
+	#error rua::win32::tls: not supported this platform!
 #endif
 
 #include "../any_word.hpp"
@@ -12,187 +12,191 @@
 
 #include <cassert>
 
-namespace rua { namespace win32 {
-	class fls {
-		public:
-			static bool valid() {
-				return _apis().alloc;
-			}
+namespace rua {
+namespace win32 {
 
-			using native_handle_t = DWORD;
+class fls {
+public:
+	static bool valid() {
+		return _apis().alloc;
+	}
 
-			constexpr fls(std::nullptr_t) : _ix(TLS_OUT_OF_INDEXES) {}
+	using native_handle_t = DWORD;
 
-			fls(native_handle_t index) : _ix(index) {}
+	constexpr fls(std::nullptr_t) : _ix(TLS_OUT_OF_INDEXES) {}
 
-			fls() : _ix(_apis().alloc(nullptr)) {}
+	fls(native_handle_t index) : _ix(index) {}
 
-			~fls() {
-				free();
-			}
+	fls() : _ix(_apis().alloc(nullptr)) {}
 
-			fls(const fls &) = delete;
+	~fls() {
+		free();
+	}
 
-			fls &operator=(const fls &) = delete;
+	fls(const fls &) = delete;
 
-			fls(fls &&src) : _ix(src._ix) {
-				if (src) {
-					src._ix = TLS_OUT_OF_INDEXES;
-				}
-			}
+	fls &operator=(const fls &) = delete;
 
-			fls &operator=(fls &&src) {
-				free();
-				if (src) {
-					_ix = src._ix;
-					src._ix = TLS_OUT_OF_INDEXES;
-				}
-				return *this;
-			}
+	fls(fls &&src) : _ix(src._ix) {
+		if (src) {
+			src._ix = TLS_OUT_OF_INDEXES;
+		}
+	}
 
-			native_handle_t native_handle() const {
-				return _ix;
-			}
+	fls &operator=(fls &&src) {
+		free();
+		if (src) {
+			_ix = src._ix;
+			src._ix = TLS_OUT_OF_INDEXES;
+		}
+		return *this;
+	}
 
-			operator native_handle_t() const {
-				return _ix;
-			}
+	native_handle_t native_handle() const {
+		return _ix;
+	}
 
-			operator bool() const {
-				return _ix != TLS_OUT_OF_INDEXES;
-			}
+	operator native_handle_t() const {
+		return _ix;
+	}
 
-			bool set(any_word value) {
-				return _apis().set(_ix, value);
-			}
+	operator bool() const {
+		return _ix != TLS_OUT_OF_INDEXES;
+	}
 
-			any_word get() const {
-				return _apis().get(_ix);
-			}
+	bool set(any_word value) {
+		return _apis().set(_ix, value);
+	}
 
-			bool alloc() {
-				if (!free()) {
-					return false;
-				}
-				_ix = _apis().alloc(nullptr);
-				return *this;
-			}
+	any_word get() const {
+		return _apis().get(_ix);
+	}
 
-			bool free() {
-				if (!*this) {
-					return true;
-				}
-				if (!_apis().free(_ix)) {
-					return false;
-				}
-				_ix = TLS_OUT_OF_INDEXES;
-				return true;
-			}
+	bool alloc() {
+		if (!free()) {
+			return false;
+		}
+		_ix = _apis().alloc(nullptr);
+		return *this;
+	}
 
-		private:
-			native_handle_t _ix;
+	bool free() {
+		if (!*this) {
+			return true;
+		}
+		if (!_apis().free(_ix)) {
+			return false;
+		}
+		_ix = TLS_OUT_OF_INDEXES;
+		return true;
+	}
 
-			struct _apis_t {
-				DWORD (WINAPI *alloc)(PVOID);
-				decltype(&TlsFree) free;
-				decltype(&TlsGetValue) get;
-				decltype(&TlsSetValue) set;
-			};
+private:
+	native_handle_t _ix;
 
-			static _apis_t _load_apis() {
-				_apis_t apis;
-				auto kernel32 = GetModuleHandleW(L"kernel32.dll");
-				apis.alloc = any_ptr(GetProcAddress(kernel32, "FlsAlloc"));
-				if (!apis.alloc) {
-					return apis;
-				}
-				apis.free = any_ptr(GetProcAddress(kernel32, "FlsFree"));
-				apis.get = any_ptr(GetProcAddress(kernel32, "FlsGetValue"));
-				apis.set = any_ptr(GetProcAddress(kernel32, "FlsSetValue"));
-				return apis;
-			}
-
-			static _apis_t &_apis() {
-				static _apis_t apis = _load_apis();
-				return apis;
-			}
+	struct _apis_t {
+		DWORD (WINAPI *alloc)(PVOID);
+		decltype(&TlsFree) free;
+		decltype(&TlsGetValue) get;
+		decltype(&TlsSetValue) set;
 	};
 
-	class tls {
-		public:
-			using native_handle_t = DWORD;
+	static _apis_t _load_apis() {
+		_apis_t apis;
+		auto kernel32 = GetModuleHandleW(L"kernel32.dll");
+		apis.alloc = any_ptr(GetProcAddress(kernel32, "FlsAlloc"));
+		if (!apis.alloc) {
+			return apis;
+		}
+		apis.free = any_ptr(GetProcAddress(kernel32, "FlsFree"));
+		apis.get = any_ptr(GetProcAddress(kernel32, "FlsGetValue"));
+		apis.set = any_ptr(GetProcAddress(kernel32, "FlsSetValue"));
+		return apis;
+	}
 
-			constexpr tls(std::nullptr_t) : _ix(TLS_OUT_OF_INDEXES) {}
+	static _apis_t &_apis() {
+		static _apis_t apis = _load_apis();
+		return apis;
+	}
+};
 
-			tls(native_handle_t index) : _ix(index) {}
+class tls {
+public:
+	using native_handle_t = DWORD;
 
-			tls() : _ix(TlsAlloc()) {}
+	constexpr tls(std::nullptr_t) : _ix(TLS_OUT_OF_INDEXES) {}
 
-			~tls() {
-				free();
-			}
+	tls(native_handle_t index) : _ix(index) {}
 
-			tls(const tls &) = delete;
+	tls() : _ix(TlsAlloc()) {}
 
-			tls &operator=(const tls &) = delete;
+	~tls() {
+		free();
+	}
 
-			tls(tls &&src) : _ix(src._ix) {
-				if (src) {
-					src._ix = TLS_OUT_OF_INDEXES;
-				}
-			}
+	tls(const tls &) = delete;
 
-			tls &operator=(tls &&src) {
-				free();
-				if (src) {
-					_ix = src._ix;
-					src._ix = TLS_OUT_OF_INDEXES;
-				}
-				return *this;
-			}
+	tls &operator=(const tls &) = delete;
 
-			native_handle_t native_handle() const {
-				return _ix;
-			}
+	tls(tls &&src) : _ix(src._ix) {
+		if (src) {
+			src._ix = TLS_OUT_OF_INDEXES;
+		}
+	}
 
-			operator native_handle_t() const {
-				return _ix;
-			}
+	tls &operator=(tls &&src) {
+		free();
+		if (src) {
+			_ix = src._ix;
+			src._ix = TLS_OUT_OF_INDEXES;
+		}
+		return *this;
+	}
 
-			operator bool() const {
-				return _ix != TLS_OUT_OF_INDEXES;
-			}
+	native_handle_t native_handle() const {
+		return _ix;
+	}
 
-			bool set(any_word value) {
-				return TlsSetValue(_ix, value);
-			}
+	operator native_handle_t() const {
+		return _ix;
+	}
 
-			any_word get() const {
-				return TlsGetValue(_ix);
-			}
+	operator bool() const {
+		return _ix != TLS_OUT_OF_INDEXES;
+	}
 
-			bool alloc() {
-				if (!free()) {
-					return false;
-				}
-				_ix = TlsAlloc();
-				return *this;
-			}
+	bool set(any_word value) {
+		return TlsSetValue(_ix, value);
+	}
 
-			bool free() {
-				if (!*this) {
-					return true;
-				}
-				if (!TlsFree(_ix)) {
-					return false;
-				}
-				_ix = TLS_OUT_OF_INDEXES;
-				return true;
-			}
+	any_word get() const {
+		return TlsGetValue(_ix);
+	}
 
-		private:
-			native_handle_t _ix;
-	};
-}}
+	bool alloc() {
+		if (!free()) {
+			return false;
+		}
+		_ix = TlsAlloc();
+		return *this;
+	}
+
+	bool free() {
+		if (!*this) {
+			return true;
+		}
+		if (!TlsFree(_ix)) {
+			return false;
+		}
+		_ix = TLS_OUT_OF_INDEXES;
+		return true;
+	}
+
+private:
+	native_handle_t _ix;
+};
+
+}
+}
 
 #endif
