@@ -172,4 +172,22 @@
 	#define RUA_FORCE_INLINE inline
 #endif
 
+#define RUA_OVERLOAD_ASSIGNMENT_L(T) \
+	T &operator=(const T &src) { \
+		this->~T(); \
+		new (this) T(src); \
+		return *this; \
+	}
+
+#define RUA_OVERLOAD_ASSIGNMENT_R(T) \
+	T &operator=(T &&src) { \
+		this->~T(); \
+		new (this) T(std::move(src)); \
+		return *this; \
+	}
+
+#define RUA_OVERLOAD_ASSIGNMENT(T) \
+	RUA_OVERLOAD_ASSIGNMENT_L(T) \
+	RUA_OVERLOAD_ASSIGNMENT_R(T)
+
 #endif
