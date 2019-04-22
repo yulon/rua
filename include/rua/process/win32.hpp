@@ -13,6 +13,7 @@
 #include "../limits.hpp"
 #include "../bin.hpp"
 #include "../sched.hpp"
+#include "../macros.hpp"
 
 #include <windows.h>
 #include <tlhelp32.h>
@@ -70,20 +71,17 @@ public:
 		return p;
 	}
 
+	static id_t current_id() {
+		return GetCurrentProcessId();
+	}
+
 	static process current() {
-		return process(GetCurrentProcess());
+		return process(current_id());
 	}
 
 	////////////////////////////////////////////////////////////////
 
-	process() : _h(nullptr), _main_td(nullptr), _need_close(false) {}
-
-	explicit process(std::nullptr_t) : process() {}
-
-	template <typename T, typename = typename std::enable_if<
-		std::is_same<typename std::decay<T>::type, native_handle_t>::value
-	>::type>
-	explicit process(T process) : _h(process), _main_td(nullptr), _need_close(false) {}
+	constexpr process() : _h(nullptr), _main_td_h(nullptr) {}
 
 	explicit process(
 		const std::string &file,
@@ -255,32 +253,80 @@ public:
 		}
 
 		_h = pi.hProcess;
-		_need_close = true;
 
 		if (freeze_at_startup) {
-			_main_td = pi.hThread;
+			_main_td_h = pi.hThread;
 		} else {
 			CloseHandle(pi.hThread);
-			_main_td = nullptr;
+			_main_td_h = nullptr;
 		}
 	}
 
-	explicit process(DWORD pid) : _main_td(nullptr) {
-		if (!pid) {
-			_h = nullptr;
-			_need_close = false;
-			return;
-		}
-		if (pid == GetCurrentProcessId()) {
-			_h = GetCurrentProcess();
-			return;
-		}
-		_h = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-		_need_close = true;
-	}
+	explicit process(id_t id) :
+		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, FALSE, id) : nullptr),
+		_main_td_h(nullptr)
+	{}
+
+	constexpr explicit process(std::nullptr_t) : process() {}
+
+	template <typename T, typename = typename std::enable_if<
+		std::is_same<typename std::decay<T>::type, native_handle_t>::value
+	>::type>
+	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
 
 	~process() {
 		reset();
+	}
+
+	bool operator==(const process &target) const {
+		return id() == target.id();
+	}
+
+	bool operator!=(const process &target) const {
+		return id() != target.id();
+	}
+
+	process(const process &src) {
+		if (!src) {
+			_reset();
+			return;
+		}
+		DuplicateHandle(
+			GetCurrentProcess(),
+			src._h,
+			GetCurrentProcess(),
+			&_h,
+			0,
+			FALSE,
+			DUPLICATE_SAME_ACCESS
+		);
+		if (!src._main_td_h) {
+			_main_td_h = nullptr;
+			return;
+		}
+		DuplicateHandle(
+			GetCurrentProcess(),
+			src._main_td_h,
+			GetCurrentProcess(),
+			&_main_td_h,
+			0,
+			FALSE,
+			DUPLICATE_SAME_ACCESS
+		);
+	}
+
+	process(process &&src) :
+		_h(src._h), _main_td_h(src._main_td_h)
+	{
+		if (src) {
+			src._reset();
+		}
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT(process)
+
+	id_t id() const {
+		return GetProcessId(_h);
 	}
 
 	native_handle_t native_handle() const {
@@ -291,44 +337,11 @@ public:
 		return _h;
 	}
 
-	bool operator==(const process &target) const {
-		return _h == target._h;
-	}
-
-	bool operator!=(const process &target) const {
-		return _h != target._h;
-	}
-
-	process(const process &) = delete;
-
-	process &operator=(const process &) = delete;
-
-	process(process &&src) :
-		_h(src._h), _main_td(src._main_td), _need_close(src._need_close)
-	{
-		if (src) {
-			src._reset();
-		}
-	}
-
-	process &operator=(process &&src) {
-		reset();
-
-		if (src) {
-			_h = src._h;
-			_main_td = src._main_td;
-			_need_close = src._need_close;
-			src._reset();
-		}
-
-		return *this;
-	}
-
 	void unfreeze() {
-		if (_main_td) {
-			ResumeThread(_main_td);
-			CloseHandle(_main_td);
-			_main_td = nullptr;
+		if (_main_td_h) {
+			ResumeThread(_main_td_h);
+			CloseHandle(_main_td_h);
+			_main_td_h = nullptr;
 		}
 	}
 
@@ -340,7 +353,7 @@ public:
 			DWORD exit_code;
 			GetExitCodeProcess(_h, &exit_code);
 			reset();
-			return exit_code;
+			return static_cast<int>(exit_code);
 		}
 		return -1;
 	}
@@ -348,7 +361,7 @@ public:
 	void exit(int code = 1) {
 		if (_h) {
 			TerminateProcess(_h, code);
-			_main_td = nullptr;
+			_main_td_h = nullptr;
 			reset();
 		}
 	}
@@ -363,12 +376,8 @@ public:
 
 	void reset() {
 		unfreeze();
-
 		if (_h) {
-			if (_need_close) {
-				CloseHandle(_h);
-				_need_close = false;
-			}
+			CloseHandle(_h);
 			_h = nullptr;
 		}
 	}
@@ -460,13 +469,11 @@ public:
 	}
 
 private:
-	HANDLE _h, _main_td;
-	bool _need_close;
+	HANDLE _h, _main_td_h;
 
 	void _reset() {
 		_h = nullptr;
-		_main_td = nullptr;
-		_need_close = false;
+		_main_td_h = nullptr;
 	}
 };
 
