@@ -8,27 +8,27 @@
 
 namespace {
 
-rua::test _t("fiber", "fiber_pool", []() {
-	static rua::fiber_pool fp;
-	static auto &sch = fp.get_scheduler();
+rua::test _t("fiber", "fiber_driver", []() {
+	static rua::fiber_driver fib_dvr;
+	static auto &sch = fib_dvr.get_scheduler();
 	static std::string r;
 
-	fp.add([]() {
+	fib_dvr.attach([]() {
 		r += "1";
 		sch.sleep(300);
 		r += "1";
 	});
-	fp.add([]() {
+	fib_dvr.attach([]() {
 		r += "2";
 		sch.sleep(200);
 		r += "2";
 	});
-	fp.add([]() {
+	fib_dvr.attach([]() {
 		r += "3";
 		sch.sleep(100);
 		r += "3";
 	});
-	fp.run();
+	fib_dvr.run();
 
 	RUA_RASSERT(r == "123321");
 });

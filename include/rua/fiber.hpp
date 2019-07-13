@@ -18,20 +18,25 @@
 namespace rua {
 
 inline size_t _fiber_now() {
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock().now().time_since_epoch()).count();
+	return static_cast<size_t>(
+		std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::steady_clock().now().time_since_epoch()
+		).count()
+	);
 }
 
-class fiber_pool;
+class fiber_driver;
 
 class fiber {
 public:
 	fiber() = default;
 
-	inline fiber(std::function<void()> func, size_t dur = 0, fiber_pool *fp_ptr = nullptr);
+	inline fiber(std::function<void()> func, size_t dur = 0);
 
-	struct not_run {};
-	inline fiber(not_run, std::function<void()> func, size_t dur = 0) {
-		_ctx = std::make_shared<_ctx_t>();
+	inline fiber(fiber_driver &fib_dvr, std::function<void()> func, size_t dur = 0);
+
+	struct not_auto_attach {};
+	fiber(not_auto_attach, std::function<void()> func, size_t dur = 0): _ctx(std::make_shared<_ctx_t>()) {
 		_ctx->fn = std::move(func);
 		_ctx->is_stoped = true;
 		_ctx->reset_duration(dur);
@@ -61,7 +66,7 @@ public:
 	}
 
 private:
-	friend fiber_pool;
+	friend fiber_driver;
 
 	struct _ctx_t {
 		std::function<void()> fn;
@@ -94,24 +99,23 @@ private:
 
 	_ctx_ptr_t _ctx;
 
-	fiber(_ctx_ptr_t &&fc) : _ctx(std::move(fc)) {}
-	fiber(const _ctx_ptr_t &fc) : _ctx(fc) {}
+	fiber(_ctx_ptr_t fc) : _ctx(std::move(fc)) {}
 };
 
-class fiber_pool {
+class fiber_driver {
 public:
-	fiber_pool() : _sch(scheduler(*this)) {
+	fiber_driver() : _sch(scheduler(*this)) {
 		get_ucontext(&_worker_uc_base);
 	}
 
-	fiber add(std::function<void()> func, size_t dur = 0) {
-		fiber f(fiber::not_run{}, std::move(func), dur);
+	fiber attach(std::function<void()> func, size_t dur = 0) {
+		fiber f(fiber::not_auto_attach{}, std::move(func), dur);
 		f._ctx->is_stoped = false;
 		_fcs.emplace(f._ctx);
 		return f;
 	}
 
-	void add(fiber f) {
+	void attach(fiber f) {
 		assert(f._ctx);
 
 		auto old = f._ctx->is_stoped.exchange(false);
@@ -121,18 +125,13 @@ public:
 		_fcs.emplace(std::move(f._ctx));
 	}
 
-	/*void enable_add_from_other_thread() {
-		assert(false);
-	}
-
-	void add_from_other_thread(std::function<void()> func, size_t dur = 0) {
-		assert(false);
-	}*/
-
 	fiber current() const {
 		return _cur_fc;
 	}
 
+	// Does not block the current context.
+	// The current scheduler will not be used.
+	// Mostly used for scheduling of frame tasks.
 	void step() {
 		auto now = _fiber_now();
 
@@ -147,18 +146,19 @@ public:
 		}
 
 		scheduler_guard sg(_sch);
-
 		_work();
 	}
 
+	// May block the current context.
+	// The current scheduler will be used.
 	void run() {
 		if (_fcs.empty() && _slps.empty() && _cws.empty()) {
 			return;
 		}
 
 		scheduler_guard sg(_sch);
-		auto ll_sch = sg.previous();
-		auto ll_cv = ll_sch->make_cond_var();
+		auto orig_sch = sg.previous();
+		auto orig_cv = orig_sch->make_cond_var();
 
 		auto now = _fiber_now();
 
@@ -188,24 +188,24 @@ public:
 
 					bool need_check_slps = true;
 					for (;;) {
-						if (_ll_cv_mtx.try_lock()) {
-							if (_ll_cv_changed) {
-								_ll_cv_changed = false;
+						if (_orig_cv_mtx.try_lock()) {
+							if (_orig_cv_changed) {
+								_orig_cv_changed = false;
 								need_check_slps = false;
 							} else {
-								auto wake_ti = _cws.begin()->first;
-								_ll_cv = ll_cv;
-								ll_sch->cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
-									return _ll_cv_changed;
-								}, wake_ti - _fiber_now());
-								_ll_cv_changed = false;
-								_ll_cv.reset();
+								auto wait_ti = _cws.begin()->first;
+								_orig_cv = orig_cv;
+								orig_sch->cond_wait(orig_cv, _orig_cv_mtx, [this]() -> bool {
+									return _orig_cv_changed;
+								}, wait_ti - _fiber_now());
+								_orig_cv_changed = false;
+								_orig_cv.reset();
 							}
-							_ll_cv_mtx.unlock();
+							_orig_cv_mtx.unlock();
 							now = _fiber_now();
 							break;
 						}
-						ll_sch->yield();
+						orig_sch->yield();
 						now = _fiber_now();
 						if (wake_ti <= now) {
 							break;
@@ -222,9 +222,9 @@ public:
 
 				auto wake_ti = _slps.begin()->first;
 				if (wake_ti > now) {
-					ll_sch->sleep(wake_ti - now);
+					orig_sch->sleep(wake_ti - now);
 				} else {
-					ll_sch->yield();
+					orig_sch->yield();
 				}
 
 				now = _fiber_now();
@@ -234,21 +234,21 @@ public:
 
 			} else if (_cws.size()) {
 
-				ll_sch->lock(_ll_cv_mtx);
+				orig_sch->lock(_orig_cv_mtx);
 
-				if (_ll_cv_changed) {
-					_ll_cv_changed = false;
+				if (_orig_cv_changed) {
+					_orig_cv_changed = false;
 				} else {
 					auto wake_ti = _cws.begin()->first;
-					_ll_cv = ll_cv;
-					ll_sch->cond_wait(ll_cv, _ll_cv_mtx, [this]() -> bool {
-						return _ll_cv_changed;
+					_orig_cv = orig_cv;
+					orig_sch->cond_wait(orig_cv, _orig_cv_mtx, [this]() -> bool {
+						return _orig_cv_changed;
 					}, wake_ti - now);
-					_ll_cv_changed = false;
-					_ll_cv.reset();
+					_orig_cv_changed = false;
+					_orig_cv.reset();
 				}
 
-				_ll_cv_mtx.unlock();
+				_orig_cv_mtx.unlock();
 
 				_check_cws(now);
 
@@ -262,7 +262,7 @@ public:
 	public:
 		scheduler() = default;
 
-		scheduler(fiber_pool &fp) : _fp(&fp) {}
+		scheduler(fiber_driver &fib_dvr) : _fib_dvr(&fib_dvr) {}
 
 		virtual ~scheduler() = default;
 
@@ -279,66 +279,74 @@ public:
 
 			auto &fc = *slp_map.emplace(
 				wake_ti,
-				std::move(_fp->_cur_fc)
+				std::move(_fib_dvr->_cur_fc)
 			)->second;
 
 			fc.is_slept = true;
 
-			fc.stk = std::move(_fp->_cur_stk);
+			fc.stk = std::move(_fib_dvr->_cur_stk);
 
-			if (_fp->_fcs.size()) {
-				_fp->_swap_worker_uc(&fc.uc);
+			if (_fib_dvr->_fcs.size()) {
+				_fib_dvr->_swap_worker_uc(&fc.uc);
 				return;
 			}
-			swap_ucontext(&fc.uc, &_fp->_orig_uc);
+			swap_ucontext(&fc.uc, &_fib_dvr->_orig_uc);
 		}
 
 		virtual void sleep(size_t timeout) {
-			_sleep(_fp->_slps, timeout);
+			_sleep(_fib_dvr->_slps, timeout);
 		}
 
 		class cond_var : public rua::scheduler::cond_var {
 		public:
-			cond_var(fiber_pool &fp) : _fp(&fp), _n(std::make_shared<std::atomic<bool>>(false)) {}
+			cond_var(fiber_driver &fib_dvr) : _fib_dvr(&fib_dvr), _n(std::make_shared<std::atomic<bool>>(false)) {}
 
 			virtual void notify() {
 				_n->store(true);
-				_fp->_ll_cv_notify();
+				_fib_dvr->_orig_cv_notify();
 			}
 
 		private:
-			fiber_pool *_fp;
+			fiber_driver *_fib_dvr;
 			std::shared_ptr<std::atomic<bool>> _n;
 			friend scheduler;
 		};
 
 		virtual rua::scheduler::cond_var_i make_cond_var() {
-			return std::make_shared<cond_var>(*_fp);
+			return std::make_shared<cond_var>(*_fib_dvr);
 		}
 
 		virtual std::cv_status cond_wait(rua::scheduler::cond_var_i cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
 			auto fscv = cv.to<cond_var>();
-			assert(fscv->_fp == _fp);
+			assert(fscv->_fib_dvr == _fib_dvr);
 
-			_fp->_cur_fc->is_cv_notified = fscv->_n;
+			_fib_dvr->_cur_fc->is_cv_notified = fscv->_n;
 
 			lck.unlock();
-			_sleep(_fp->_cws, timeout);
+			_sleep(_fib_dvr->_cws, timeout);
 
 			lock(lck);
-			return _fp->_cur_fc->cv_st;
+			return _fib_dvr->_cur_fc->cv_st;
 		}
 
-		fiber_pool *get_fiber_pool() {
-			return _fp;
+		fiber_driver *get_fiber_pool() {
+			return _fib_dvr;
 		}
 
 	private:
-		fiber_pool *_fp;
+		fiber_driver *_fib_dvr;
 	};
 
 	scheduler &get_scheduler() {
 		return _sch;
+	}
+
+	size_t fiber_count() const {
+		auto c = _slps.size() + _cws.size();
+		if (_cur_stk) {
+			++c;
+		}
+		return c;
 	}
 
 	size_t stack_count() const {
@@ -417,45 +425,45 @@ private:
 	}
 
 	static void _worker(any_word p) {
-		auto &fp = *p.to<fiber_pool *>();
+		auto &fib_dvr = *p.to<fiber_driver *>();
 
-		while (fp._fcs.size()) {
-			fp._cur_fc = std::move(fp._fcs.front());
-			fp._fcs.pop();
+		while (fib_dvr._fcs.size()) {
+			fib_dvr._cur_fc = std::move(fib_dvr._fcs.front());
+			fib_dvr._fcs.pop();
 
-			if (fp._cur_fc->stk) {
-				fp._resume_cur_fc();
+			if (fib_dvr._cur_fc->stk) {
+				fib_dvr._resume_cur_fc();
 				continue;
 			}
 
-			if (fp._cur_fc->is_stoped) {
+			if (fib_dvr._cur_fc->is_stoped) {
 				continue;
 			}
 
 			for (;;) {
-				fp._cur_fc->fn();
+				fib_dvr._cur_fc->fn();
 
-				if (fp._cur_fc->is_stoped) {
+				if (fib_dvr._cur_fc->is_stoped) {
 					break;
 				}
 
-				if (fp._cur_fc->end_ti <= _fiber_now()) {
-					fp._cur_fc->is_stoped = false;
+				if (fib_dvr._cur_fc->end_ti <= _fiber_now()) {
+					fib_dvr._cur_fc->is_stoped = false;
 					break;
 				}
 
-				if (!fp._cur_fc->is_slept) {
-					fp._slps.emplace(
+				if (!fib_dvr._cur_fc->is_slept) {
+					fib_dvr._slps.emplace(
 						0,
-						std::move(fp._cur_fc)
+						std::move(fib_dvr._cur_fc)
 					);
 					break;
 				}
-				fp._cur_fc->is_slept = false;
+				fib_dvr._cur_fc->is_slept = false;
 			}
 		}
 
-		set_ucontext(&fp._orig_uc);
+		set_ucontext(&fib_dvr._orig_uc);
 	}
 
 	void _swap_worker_uc(ucontext_t *oucp) {
@@ -484,41 +492,43 @@ private:
 	friend scheduler;
 	scheduler _sch;
 
-	bool _ll_cv_changed;
-	rua::scheduler::cond_var_i _ll_cv;
-	std::mutex _ll_cv_mtx;
+	bool _orig_cv_changed;
+	rua::scheduler::cond_var_i _orig_cv;
+	std::mutex _orig_cv_mtx;
 
-	void _ll_cv_notify() {
-		rua::get_scheduler()->lock(_ll_cv_mtx);
-		_ll_cv_changed = true;
-		if (_ll_cv) {
-			auto ll_cv = _ll_cv;
-			_ll_cv_mtx.unlock();
-			ll_cv->notify();
+	void _orig_cv_notify() {
+		rua::get_scheduler()->lock(_orig_cv_mtx);
+		_orig_cv_changed = true;
+		if (_orig_cv) {
+			auto orig_cv = _orig_cv;
+			_orig_cv_mtx.unlock();
+			orig_cv->notify();
 			return;
 		}
-		_ll_cv_mtx.unlock();
+		_orig_cv_mtx.unlock();
 	}
 };
 
-inline fiber::fiber(std::function<void()> func, size_t dur, fiber_pool *fp_ptr) :
-	fiber(fiber::not_run{}, std::move(func), dur)
+inline fiber::fiber(std::function<void()> func, size_t dur) :
+	fiber(fiber::not_auto_attach{}, std::move(func), dur)
 {
-	if (fp_ptr) {
-		fp_ptr->add(*this);
-		return;
-	}
 	auto s = get_scheduler();
 	if (s) {
-		auto fs = s.to<fiber_pool::scheduler>();
+		auto fs = s.to<fiber_driver::scheduler>();
 		if (fs) {
-			fs->get_fiber_pool()->add(*this);
+			fs->get_fiber_pool()->attach(*this);
 			return;
 		}
 	}
-	std::unique_ptr<fiber_pool> fp_uptr(new fiber_pool);
-	fp_uptr->add(*this);
-	fp_uptr->run();
+	std::unique_ptr<fiber_driver> fib_dvr_uptr(new fiber_driver);
+	fib_dvr_uptr->attach(*this);
+	fib_dvr_uptr->run();
+}
+
+inline fiber::fiber(fiber_driver &fib_dvr, std::function<void()> func, size_t dur) :
+	fiber(fiber::not_auto_attach{}, std::move(func), dur)
+{
+	fib_dvr.attach(*this);
 }
 
 }
