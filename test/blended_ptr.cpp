@@ -1,4 +1,4 @@
-#include <rua/adapted_ptr.hpp>
+#include <rua/blended_ptr.hpp>
 
 #include <rua/test.hpp>
 
@@ -6,13 +6,13 @@
 
 namespace {
 
-rua::test _t("adapted_ptr", "interface", []() {
+rua::test _t("blended_ptr", "interface", []() {
 	struct animal {
 		virtual ~animal() = default;
 		virtual size_t age() const = 0;
 	};
 
-	using animal_i = rua::adapted_ptr<animal>;
+	using animal_i = rua::blended_ptr<animal>;
 
 	struct dog : animal {
 		virtual ~dog() = default;
