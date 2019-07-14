@@ -2,16 +2,9 @@
 #define _RUA_POSIX_TLS_HPP
 
 #include "../any_word.hpp"
+#include "../macros.hpp"
 
-#ifdef __has_include
-	#if __has_include(<pthread.h>)
-		#include <pthread.h>
-	#else
-		#error rua::posix::tls: not supported this platform!
-	#endif
-#else
-	#include <pthread.h>
-#endif
+#include <pthread.h>
 
 namespace rua {
 namespace posix {
@@ -42,15 +35,7 @@ public:
 		}
 	}
 
-	tls &operator=(tls &&src) {
-		free();
-		if (src) {
-			_key = src._key;
-			_invalid = false;
-			src._invalid = true;
-		}
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(tls)
 
 	native_handle_t native_handle() const {
 		return _key;

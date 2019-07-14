@@ -1,12 +1,9 @@
 #ifndef _RUA_WIN32_TLS_HPP
 #define _RUA_WIN32_TLS_HPP
 
-#ifndef _WIN32
-	#error rua::win32::tls: not supported this platform!
-#endif
-
 #include "../any_word.hpp"
 #include "../any_ptr.hpp"
+#include "../macros.hpp"
 
 #include <windows.h>
 
@@ -43,14 +40,7 @@ public:
 		}
 	}
 
-	fls &operator=(fls &&src) {
-		free();
-		if (src) {
-			_ix = src._ix;
-			src._ix = TLS_OUT_OF_INDEXES;
-		}
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(fls)
 
 	native_handle_t native_handle() const {
 		return _ix;
@@ -144,14 +134,7 @@ public:
 		}
 	}
 
-	tls &operator=(tls &&src) {
-		free();
-		if (src) {
-			_ix = src._ix;
-			src._ix = TLS_OUT_OF_INDEXES;
-		}
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(tls)
 
 	native_handle_t native_handle() const {
 		return _ix;

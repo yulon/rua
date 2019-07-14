@@ -1,11 +1,8 @@
 #ifndef _RUA_IO_WIN32_SYS_STREAM_HPP
 #define _RUA_IO_WIN32_SYS_STREAM_HPP
 
-#ifndef _WIN32
-	#error rua::io::win32::sys_stream: not supported this platform!
-#endif
-
 #include "../abstract.hpp"
+#include "../../macros.hpp"
 
 #include <windows.h>
 
@@ -25,11 +22,7 @@ public:
 		src.detach();
 	}
 
-	sys_stream &operator=(sys_stream &&src) {
-		close();
-		new (this) sys_stream(std::move(src));
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(sys_stream)
 
 	virtual ~sys_stream() {
 		close();

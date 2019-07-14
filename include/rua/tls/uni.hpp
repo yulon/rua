@@ -2,6 +2,7 @@
 #define _RUA_UNI_TLS_HPP
 
 #include "../any_word.hpp"
+#include "../macros.hpp"
 
 #include <unordered_map>
 #include <vector>
@@ -35,14 +36,7 @@ public:
 		}
 	}
 
-	tls &operator=(tls &&src) {
-		free();
-		if (src) {
-			_ix = src._ix;
-			src._ix = static_cast<size_t>(-1);
-		}
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(tls)
 
 	native_handle_t native_handle() const {
 		return nullptr;

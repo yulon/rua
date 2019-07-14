@@ -1,10 +1,6 @@
 #ifndef _RUA_WIN32_PROCESS_HPP
 #define _RUA_WIN32_PROCESS_HPP
 
-#ifndef _WIN32
-	#error rua::process: not supported this platform!
-#endif
-
 #include "../io.hpp"
 #include "../pipe.hpp"
 #include "../stdio.hpp"
@@ -42,31 +38,35 @@ public:
 
 	static process find(const std::string &name) {
 		std::wstring wname(u8_to_w(name));
+
 		auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (snapshot != INVALID_HANDLE_VALUE) {
-			PROCESSENTRY32W entry;
-			entry.dwSize = sizeof(PROCESSENTRY32W);
-			Process32FirstW(snapshot, &entry);
-			do {
-				if (wname == entry.szExeFile) {
-					CloseHandle(snapshot);
-					if (entry.th32ProcessID) {
-						return process(entry.th32ProcessID);
-					}
-				}
-			} while (Process32NextW(snapshot, &entry));
+		if (snapshot == INVALID_HANDLE_VALUE) {
+			return nullptr;
 		}
-		return process();
+
+		PROCESSENTRY32W entry;
+		entry.dwSize = sizeof(PROCESSENTRY32W);
+		Process32FirstW(snapshot, &entry);
+		do {
+			if (wname == entry.szExeFile) {
+				CloseHandle(snapshot);
+				if (entry.th32ProcessID) {
+					return entry.th32ProcessID;
+				}
+			}
+		} while (Process32NextW(snapshot, &entry));
+
+		return nullptr;
 	}
 
-	static process loop_find(const std::string &name) {
+	static process wait_for_found(const std::string &name, size_t interval = 100) {
 		process p;
 		for (;;) {
 			p = find(name);
 			if (p) {
 				break;
 			}
-			sleep(10);
+			rua::sleep(interval);
 		}
 		return p;
 	}
@@ -76,7 +76,7 @@ public:
 	}
 
 	static process current() {
-		return process(current_id());
+		return current_id();
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -262,28 +262,20 @@ public:
 		}
 	}
 
-	explicit process(id_t id) :
+	process(id_t id) :
 		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, FALSE, id) : nullptr),
 		_main_td_h(nullptr)
 	{}
 
-	constexpr explicit process(std::nullptr_t) : process() {}
+	constexpr process(std::nullptr_t) : process() {}
 
 	template <typename T, typename = typename std::enable_if<
 		std::is_same<typename std::decay<T>::type, native_handle_t>::value
 	>::type>
-	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
+	process(T process) : _h(process), _main_td_h(nullptr) {}
 
 	~process() {
 		reset();
-	}
-
-	bool operator==(const process &target) const {
-		return id() == target.id();
-	}
-
-	bool operator!=(const process &target) const {
-		return id() != target.id();
 	}
 
 	process(const process &src) {
@@ -329,6 +321,14 @@ public:
 		return GetProcessId(_h);
 	}
 
+	bool operator==(const process &target) const {
+		return id() == target.id();
+	}
+
+	bool operator!=(const process &target) const {
+		return id() != target.id();
+	}
+
 	native_handle_t native_handle() const {
 		return _h;
 	}
@@ -338,32 +338,33 @@ public:
 	}
 
 	void unfreeze() {
-		if (_main_td_h) {
-			ResumeThread(_main_td_h);
-			CloseHandle(_main_td_h);
-			_main_td_h = nullptr;
+		if (!_main_td_h) {
+			return;
 		}
+		ResumeThread(_main_td_h);
+		CloseHandle(_main_td_h);
+		_main_td_h = nullptr;
 	}
 
 	int wait_for_exit() {
-		assert(_h);
-		if (_h) {
-			unfreeze();
-			WaitForSingleObject(_h, INFINITE);
-			DWORD exit_code;
-			GetExitCodeProcess(_h, &exit_code);
-			reset();
-			return static_cast<int>(exit_code);
+		if (!_h) {
+			return -1;
 		}
-		return -1;
+		unfreeze();
+		WaitForSingleObject(_h, INFINITE);
+		DWORD exit_code;
+		GetExitCodeProcess(_h, &exit_code);
+		reset();
+		return static_cast<int>(exit_code);
 	}
 
 	void exit(int code = 1) {
-		if (_h) {
-			TerminateProcess(_h, code);
-			_main_td_h = nullptr;
-			reset();
+		if (!_h) {
+			return;
 		}
+		TerminateProcess(_h, code);
+		_main_td_h = nullptr;
+		reset();
 	}
 
 	using native_module_handle_t = HMODULE;
@@ -376,10 +377,11 @@ public:
 
 	void reset() {
 		unfreeze();
-		if (_h) {
-			CloseHandle(_h);
-			_h = nullptr;
+		if (!_h) {
+			return;
 		}
+		CloseHandle(_h);
+		_h = nullptr;
 	}
 
 	////////////////////////////////////////////////////////////////
