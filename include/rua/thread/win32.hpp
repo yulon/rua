@@ -35,14 +35,12 @@ public:
 	explicit thread(std::function<void()> fn) : _h(CreateThread(
 		nullptr,
 		0,
-		reinterpret_cast<LPTHREAD_START_ROUTINE>(
-			static_cast<void (*)(std::function<void()> *)>(
-				[](std::function<void()> *fn_ptr) {
-					(*fn_ptr)();
-					delete fn_ptr;
-				}
-			)
-		),
+		[](LPVOID lpThreadParameter)->DWORD {
+			auto fn_ptr = reinterpret_cast<std::function<void()> *>(lpThreadParameter);
+			(*fn_ptr)();
+			delete fn_ptr;
+			return 0;
+		},
 		reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
 		0,
 		nullptr
