@@ -2,10 +2,10 @@
 #define _RUA_IO_UTIL_HPP
 
 #include "abstract.hpp"
+#include "../thread.hpp"
 #include "../chan.hpp"
 
 #include <cstddef>
-#include <thread>
 #include <atomic>
 
 namespace rua {
@@ -75,7 +75,7 @@ public:
 
 	void add(reader &r) {
 		++_c;
-		std::thread([this, &r]() {
+		thread([this, &r]() {
 			bin buf(_buf_sz);
 			for (;;) {
 				auto sz = r.read(buf);
@@ -85,7 +85,7 @@ public:
 				}
 				_ch << bin(buf(0, sz));
 			}
-		}).detach();
+		});
 	}
 
 	virtual size_t read(bin_ref p) {

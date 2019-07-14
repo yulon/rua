@@ -9,6 +9,7 @@
 #include "../limits.hpp"
 #include "../bin.hpp"
 #include "../sched.hpp"
+#include "../thread.hpp"
 #include "../macros.hpp"
 
 #include <windows.h>
@@ -18,7 +19,6 @@
 #include <string>
 #include <vector>
 #include <sstream>
-#include <thread>
 #include <functional>
 #include <cstring>
 #include <memory>
@@ -237,19 +237,19 @@ public:
 		}
 
 		if (*stdo_r) {
-			std::thread([&stdout_writer, stdo_r]() mutable {
+			thread([&stdout_writer, stdo_r]() mutable {
 				stdout_writer->copy(*stdo_r);
-			}).detach();
+			});
 		}
 		if (*stde_r) {
-			std::thread([&stderr_writer, stde_r]() mutable {
+			thread([&stderr_writer, stde_r]() mutable {
 				stderr_writer->copy(*stde_r);
-			}).detach();
+			});
 		}
 		if (*stdi_w) {
-			std::thread([stdi_w, &stdin_reader]() mutable {
+			thread([stdi_w, &stdin_reader]() mutable {
 				stdi_w->copy(stdin_reader);
-			}).detach();
+			});
 		}
 
 		_h = pi.hProcess;

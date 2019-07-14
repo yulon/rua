@@ -1,13 +1,13 @@
 #ifndef _RUA_UNI_TLS_HPP
 #define _RUA_UNI_TLS_HPP
 
+#include "../thread.hpp"
 #include "../any_word.hpp"
 #include "../macros.hpp"
 
 #include <unordered_map>
 #include <vector>
 #include <queue>
-#include <thread>
 #include <atomic>
 #include <mutex>
 
@@ -50,10 +50,10 @@ public:
 		auto &s_ctx = _s_ctx();
 		std::lock_guard<std::mutex>(s_ctx.mtx);
 
-		auto it = s_ctx.map.find(std::this_thread::get_id());
+		auto it = s_ctx.map.find(thread::current_id());
 		if (it == s_ctx.map.end()) {
-			s_ctx.map.emplace(std::this_thread::get_id(), std::vector<uintptr_t>());
-			it = s_ctx.map.find(std::this_thread::get_id());
+			s_ctx.map.emplace(thread::current_id(), std::vector<uintptr_t>());
+			it = s_ctx.map.find(thread::current_id());
 		}
 		auto &li = it->second;
 		if (li.size() <= _ix) {
@@ -67,7 +67,7 @@ public:
 		auto &s_ctx = _s_ctx();
 		std::lock_guard<std::mutex>(s_ctx.mtx);
 
-		auto it = s_ctx.map.find(std::this_thread::get_id());
+		auto it = s_ctx.map.find(thread::current_id());
 		if (it == s_ctx.map.end()) {
 			return 0;
 		}
@@ -115,7 +115,7 @@ private:
 		return ++_s_ctx().ix_c;
 	}
 
-	using _map_t = std::unordered_map<std::thread::id, std::vector<uintptr_t>>;
+	using _map_t = std::unordered_map<thread::id_t, std::vector<uintptr_t>>;
 
 	struct _s_ctx_t {
 		std::atomic<size_t> ix_c;
