@@ -9,7 +9,6 @@
 #include <atomic>
 
 namespace rua {
-namespace io {
 
 inline size_t reader::read_full(bin_ref p) {
 	size_t tsz = 0;
@@ -110,7 +109,6 @@ private:
 	bin _buf;
 };
 
-}
 }
 
 #endif

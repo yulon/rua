@@ -22,7 +22,7 @@ public:
 		return _lr.read_line();
 	}
 
-	void set_recv_reader(io::reader_i rr) {
+	void set_recv_reader(reader_i rr) {
 		lock_guard<std::mutex> lg(get_mutex());
 
 		_lr.reset(std::move(rr));

@@ -7,9 +7,8 @@
 #include <cstdio>
 
 namespace rua {
-namespace io {
 
-class c_stream : public io::read_write_closer {
+class c_stream : public read_write_closer {
 public:
 	using native_handle_t = FILE *;
 
@@ -75,7 +74,6 @@ private:
 	bool _nc;
 };
 
-}
 }
 
 #endif

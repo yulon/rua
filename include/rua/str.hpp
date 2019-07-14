@@ -89,11 +89,11 @@ namespace rua {
 		#define RUA_L_TO_U8(str) ::rua::l_to_u8(str)
 		#define RUA_U8_TO_L(u8_str) ::rua::u8_to_l(u8_str)
 
-		class l_to_u8_reader : public virtual io::reader {
+		class l_to_u8_reader : public virtual reader {
 			public:
 				l_to_u8_reader() : _lr(nullptr), _data_sz(0) {}
 
-				l_to_u8_reader(io::reader_i l_reader) : _lr(std::move(l_reader)), _data_sz(0) {}
+				l_to_u8_reader(reader_i l_reader) : _lr(std::move(l_reader)), _data_sz(0) {}
 
 				virtual ~l_to_u8_reader() = default;
 
@@ -128,17 +128,17 @@ namespace rua {
 				}
 
 			private:
-				io::reader_i _lr;
+				reader_i _lr;
 				std::string _cache;
 				bin _buf;
 				size_t _data_sz;
 		};
 
-		class u8_to_l_writer : public virtual io::writer {
+		class u8_to_l_writer : public virtual writer {
 			public:
 				u8_to_l_writer() : _lw(nullptr) {}
 
-				u8_to_l_writer(io::writer_i l_writer) : _lw(std::move(l_writer)) {}
+				u8_to_l_writer(writer_i l_writer) : _lw(std::move(l_writer)) {}
 
 				virtual ~u8_to_l_writer() = default;
 
@@ -148,7 +148,7 @@ namespace rua {
 				}
 
 			private:
-				io::writer_i _lw;
+				writer_i _lw;
 		};
 
 	#else
@@ -205,7 +205,7 @@ namespace rua {
 		public:
 			line_reader() : _r(nullptr), _1st_chr_is_cr(false) {}
 
-			line_reader(io::reader_i r) : _r(std::move(r)), _1st_chr_is_cr(false) {}
+			line_reader(reader_i r) : _r(std::move(r)), _1st_chr_is_cr(false) {}
 
 			std::string read_line(size_t buf_sz = 256) {
 				for (;;) {
@@ -256,7 +256,7 @@ namespace rua {
 				return _r;
 			}
 
-			void reset(io::reader_i r) {
+			void reset(reader_i r) {
 				_r = std::move(r);
 				_1st_chr_is_cr = false;
 				_cache = "";
@@ -272,7 +272,7 @@ namespace rua {
 			}
 
 		private:
-			io::reader_i _r;
+			reader_i _r;
 			bool _1st_chr_is_cr;
 			bin _buf;
 			std::string _cache;

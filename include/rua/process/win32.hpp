@@ -88,9 +88,9 @@ public:
 		const std::vector<std::string> &args = {},
 		const std::string &work_dir = "",
 		bool freeze_at_startup = false,
-		io::writer_i stdout_writer = nullptr,
-		io::writer_i stderr_writer = nullptr,
-		io::reader_i stdin_reader = nullptr
+		writer_i stdout_writer = nullptr,
+		writer_i stderr_writer = nullptr,
+		reader_i stdin_reader = nullptr
 	) {
 		std::wstringstream cmd;
 		if (file.find(" ") == std::string::npos) {
@@ -113,10 +113,10 @@ public:
 		si.cb = sizeof(si);
 		si.wShowWindow = SW_HIDE;
 
-		auto stdo_r = std::make_shared<io::win32::sys_stream>();
-		auto stde_r = std::make_shared<io::win32::sys_stream>();
-		auto stdi_w = std::make_shared<io::win32::sys_stream>();
-		io::win32::sys_stream stdo_w, stde_w, stdi_r;
+		auto stdo_r = std::make_shared<win32::sys_stream>();
+		auto stde_r = std::make_shared<win32::sys_stream>();
+		auto stdi_w = std::make_shared<win32::sys_stream>();
+		win32::sys_stream stdo_w, stde_w, stdi_r;
 
 		bool is_combined_stdout = false;
 
@@ -133,7 +133,7 @@ public:
 				stdout_writer = rua::stdout_writer();
 			}
 			if (stdout_writer) {
-				auto stdout_writer_for_sys = stdout_writer.to<io::win32::sys_stream>();
+				auto stdout_writer_for_sys = stdout_writer.to<win32::sys_stream>();
 				if (stdout_writer_for_sys) {
 					DuplicateHandle(
 						cph,
@@ -167,7 +167,7 @@ public:
 					stderr_writer = rua::stderr_writer();
 				}
 				if (stderr_writer) {
-					auto stderr_writer_for_sys = stderr_writer.to<io::win32::sys_stream>();
+					auto stderr_writer_for_sys = stderr_writer.to<win32::sys_stream>();
 					if (stderr_writer_for_sys) {
 						DuplicateHandle(
 							cph,
@@ -191,7 +191,7 @@ public:
 				stdin_reader = rua::stdin_reader();
 			}
 			if (stdin_reader) {
-				auto stdin_reader_for_sys = stdin_reader.to<io::win32::sys_stream>();;
+				auto stdin_reader_for_sys = stdin_reader.to<win32::sys_stream>();;
 				if (stdin_reader_for_sys) {
 					DuplicateHandle(
 						cph,

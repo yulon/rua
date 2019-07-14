@@ -63,30 +63,30 @@ public:
 	std::string err_prefix;
 	std::function<void(const std::string &)> on_err;
 
-	void set_writer(io::writer_i w) {
+	void set_writer(writer_i w) {
 		lock_guard<std::mutex> lg(*_mtx);
 
 		_lw = w;
 		_ew = std::move(w);
 	}
 
-	void set_log_writer(io::writer_i lw) {
+	void set_log_writer(writer_i lw) {
 		lock_guard<std::mutex> lg(*_mtx);
 
 		_lw = std::move(lw);
 	}
 
-	io::writer_i get_log_writer() {
+	writer_i get_log_writer() {
 		return _lw;
 	}
 
-	void set_err_writer(io::writer_i ew) {
+	void set_err_writer(writer_i ew) {
 		lock_guard<std::mutex> lg(*_mtx);
 
 		_ew = std::move(ew);
 	}
 
-	io::writer_i get_err_writer() {
+	writer_i get_err_writer() {
 		return _ew;
 	}
 
@@ -111,11 +111,11 @@ protected:
 	std::unique_ptr<std::mutex> _mtx;
 
 private:
-	io::writer_i _lw, _ew;
+	writer_i _lw, _ew;
 	const char *_oe;
 
 	template <typename... V>
-	void _write(const io::writer_i &w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
+	void _write(const writer_i &w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
 		std::vector<std::string> strs;
 		if (prefix.length()) {
 			strs = { prefix, to_str(v)..., eol };

@@ -9,10 +9,9 @@
 #include <cassert>
 
 namespace rua {
-namespace io {
 namespace win32 {
 
-class sys_stream : public io::read_write_closer {
+class sys_stream : public read_write_closer {
 public:
 	using native_handle_t = HANDLE;
 
@@ -76,7 +75,6 @@ private:
 	bool _nc;
 };
 
-}
 }
 }
 

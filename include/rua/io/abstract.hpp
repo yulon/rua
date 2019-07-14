@@ -9,7 +9,6 @@
 #include <cstddef>
 
 namespace rua {
-namespace io {
 
 class reader {
 public:
@@ -109,7 +108,6 @@ class read_writer_at_closer : public read_writer_at, public closer {};
 
 using read_writer_at_closer_i = blended_ptr<read_writer_at_closer>;
 
-}
 }
 
 #endif
