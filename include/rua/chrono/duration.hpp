@@ -1,17 +1,34 @@
 #ifndef _RUA_CHRONO_DURATION_HPP
 #define _RUA_CHRONO_DURATION_HPP
 
+#include "../bin.hpp"
+#include "../limits.hpp"
 #include "../macros.hpp"
 #include "../str.hpp"
-#include "../bin.hpp"
 
 #include <cstdint>
+#include <type_traits>
 
 namespace rua {
 
-class duration {
+class duration_base {};
+
+template <
+	int64_t Multiple,
+	typename = typename std::enable_if<(Multiple > 0)>::type>
+class duration : public duration_base {
 public:
+	static constexpr int64_t multiple = Multiple;
+
 	constexpr duration(int64_t count = 0) : _c(count) {}
+
+	template <
+		typename Duration,
+		typename = typename std::enable_if<
+			std::is_base_of<duration_base, Duration>::value &&
+			!std::is_same<Duration, duration>::value>::type>
+	constexpr duration(Duration dur) :
+		_c(Duration::multiple / multiple * dur.count()) {}
 
 	constexpr int64_t count() const {
 		return _c;
@@ -25,28 +42,8 @@ public:
 		return !_c;
 	}
 
-	constexpr bool operator==(duration target) const {
-		return _c == target.count();
-	}
-
-	constexpr bool operator>(duration target) const {
-		return _c > target.count();
-	}
-
-	constexpr bool operator<(duration target) const {
-		return _c < target.count();
-	}
-
-	constexpr bool operator>=(duration target) const {
-		return _c >= target.count();
-	}
-
-	constexpr bool operator<=(duration target) const {
-		return _c <= target.count();
-	}
-
-	constexpr duration operator+(duration target) const {
-		return _c + target.count();
+	constexpr duration operator-() const {
+		return -_c;
 	}
 
 	duration &operator+=(duration target) {
@@ -54,43 +51,19 @@ public:
 		return *this;
 	}
 
-	constexpr duration operator-(duration target) const {
-		return _c - target.count();
-	}
-
-	constexpr duration operator-() const {
-		return -_c;
-	}
-
 	duration &operator-=(duration target) {
 		_c -= target.count();
 		return *this;
 	}
 
-	constexpr duration operator*(int64_t target) const {
-		return _c * target;
-	}
-
-	duration &operator*=(int64_t target) {
-		_c *= target;
+	duration &operator*=(duration target) {
+		_c *= target.count();
 		return *this;
 	}
 
-	constexpr int64_t operator/(duration target) const {
-		return _c / target.count();
-	}
-
-	constexpr duration operator/(int64_t target) const {
-		return _c / target;
-	}
-
-	duration &operator/=(int64_t target) {
-		_c /= target;
+	duration &operator/=(duration target) {
+		_c /= target.count();
 		return *this;
-	}
-
-	constexpr duration operator%(duration target) const {
-		return _c % target.count();
 	}
 
 	duration &operator%=(duration target) {
@@ -102,54 +75,150 @@ public:
 	int64_t _c;
 };
 
-RUA_FORCE_INLINE constexpr duration operator*(int64_t a, duration b) {
+class _fake_duration {
+public:
+	static constexpr int64_t multiple = -1;
+};
+
+#define RUA_DURATION_CONCEPT(Duration)                                         \
+	typename Duration,                                                         \
+		typename = typename std::enable_if<                                    \
+			std::is_base_of<duration_base, Duration>::value>::type
+
+#define RUA_DURATION_PAIR_CONCEPT                                              \
+	typename A, typename B,                                                    \
+                                                                               \
+		typename = typename std::enable_if <                                   \
+					   std::is_base_of<duration_base, A>::value ||             \
+				   std::is_base_of<duration_base, B>::value > ::type,          \
+                                                                               \
+		typename DurationA = typename std::conditional<                        \
+			std::is_base_of<duration_base, A>::value,                          \
+			A,                                                                 \
+			_fake_duration>::type,                                             \
+                                                                               \
+		typename DurationB = typename std::conditional<                        \
+			std::is_base_of<duration_base, B>::value,                          \
+			B,                                                                 \
+			_fake_duration>::type,                                             \
+                                                                               \
+		typename DurationC =                                                   \
+			typename std::conditional < (DurationA::multiple > 0) &&           \
+			(((DurationB::multiple > 0) &&                                     \
+			  DurationA::multiple <= DurationB::multiple) ||                   \
+			 (DurationB::multiple <= 0)),                                      \
+		DurationA, DurationB > ::type
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {
+	return DurationC(a).count() == DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr bool operator>(A a, B b) {
+	return DurationC(a).count() > DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr bool operator<(A a, B b) {
+	return DurationC(a).count() < DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr bool operator>=(A a, B b) {
+	return DurationC(a).count() >= DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr bool operator<=(A a, B b) {
+	return DurationC(a).count() <= DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr DurationC operator+(A a, B b) {
+	return DurationC(a).count() + DurationC(b).count();
+}
+
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr DurationC operator-(A a, B b) {
+	return DurationC(a).count() - DurationC(b).count();
+}
+
+template <RUA_DURATION_CONCEPT(Duration)>
+RUA_FORCE_INLINE constexpr Duration operator*(Duration a, int64_t b) {
+	return a.count() * b;
+}
+
+template <RUA_DURATION_CONCEPT(Duration)>
+RUA_FORCE_INLINE constexpr Duration operator*(int64_t a, Duration b) {
 	return a * b.count();
 }
 
-namespace chrono_literals {
-	constexpr duration operator""_ns(size_t count) {
-		return static_cast<int64_t>(count);
-	}
-
-	constexpr duration operator""_us(size_t count) {
-		return static_cast<int64_t>(count) * 1000;
-	}
-
-	constexpr duration operator""_ms(size_t count) {
-		return static_cast<int64_t>(count) * 1000000;
-	}
-
-	constexpr duration operator""_s(size_t count) {
-		return static_cast<int64_t>(count) * 1000000000;
-	}
-
-	constexpr duration operator""_min(size_t count) {
-		return static_cast<int64_t>(count) * 60000000000;
-	}
-
-	constexpr duration operator""_h(size_t count) {
-		return static_cast<int64_t>(count) * 3600000000000;
-	}
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr int64_t operator/(A a, B b) {
+	return DurationC(a).count().count() / DurationC(b).count();
 }
 
-using namespace chrono_literals;
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr DurationC operator/(A a, int64_t b) {
+	return DurationC(a).count() / b;
+}
 
-static constexpr auto ns = 1_ns;
-static constexpr auto us = 1_us;
-static constexpr auto ms = 1_ms;
-static constexpr auto s = 1_s;
-static constexpr auto min = 1_min;
-static constexpr auto h = 1_h;
+template <RUA_DURATION_PAIR_CONCEPT>
+RUA_FORCE_INLINE constexpr DurationC operator%(A a, B b) {
+	return DurationC(a).count() % DurationC(b).count();
+}
+
+using ns = duration<1>;
+using us = duration<1000 * ns::multiple>;
+using ms = duration<1000 * us::multiple>;
+using s = duration<1000 * ms::multiple>;
+using min = duration<60 * s::multiple>;
+using h = duration<60 * min::multiple>;
+using day = duration<24 * h::multiple>;
+using week = duration<7 * day::multiple>;
+
+namespace duration_literals {
+
+RUA_FORCE_INLINE constexpr ns operator""_ns(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr us operator""_us(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr ms operator""_ms(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr s operator""_s(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr min operator""_min(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr h operator""_h(size_t count) {
+	return static_cast<int64_t>(count);
+}
+
+} // namespace duration_literals
+
+using namespace duration_literals;
 
 ////////////////////////////////////////////////////////////////////////////
 
-// Reference from https://github.com/golang/go/blob/release-branch.go1.12/src/time/time.go#L665
+// Reference from
+// https://github.com/golang/go/blob/release-branch.go1.12/src/time/time.go#L665
 
-// _duration_to_string_fmt_frac formats the fraction of v/10**prec (e.g., ".12345") into the
-// tail of buf, omitting trailing zeros. It omits the decimal
+// _duration_to_string_fmt_frac formats the fraction of v/10**prec (e.g.,
+// ".12345") into the tail of buf, omitting trailing zeros. It omits the decimal
 // point too when the fraction is 0. It returns the index where the
 // output bytes begin and the value v/10**prec.
-inline void _duration_to_string_fmt_frac(bin_ref buf, duration v, int prec, int *nw, duration *nv) {
+inline void
+_duration_to_string_fmt_frac(bin_ref buf, ns v, int prec, int *nw, ns *nv) {
 	// Omit trailing zeros up to and including decimal point.
 	auto w = buf.size();
 	auto print = false;
@@ -160,7 +229,7 @@ inline void _duration_to_string_fmt_frac(bin_ref buf, duration v, int prec, int 
 			w--;
 			buf[w] = static_cast<char>(digit) + '0';
 		}
-		v = v / 10;
+		v /= 10;
 	}
 	if (print) {
 		w--;
@@ -172,7 +241,7 @@ inline void _duration_to_string_fmt_frac(bin_ref buf, duration v, int prec, int 
 
 // _duration_to_string_fmt_int formats v into the tail of buf.
 // It returns the index where the output begins.
-inline int _duration_to_string_fmt_int(bin_ref buf, duration v) {
+inline int _duration_to_string_fmt_int(bin_ref buf, ns v) {
 	auto w = buf.size();
 	if (v == 0) {
 		w--;
@@ -180,7 +249,7 @@ inline int _duration_to_string_fmt_int(bin_ref buf, duration v) {
 	} else {
 		while (v > 0) {
 			w--;
-			buf[w] = static_cast<char>(v.count()%10) + '0';
+			buf[w] = static_cast<char>(v.count() % 10) + '0';
 			v /= 10;
 		}
 	}
@@ -191,20 +260,19 @@ inline int _duration_to_string_fmt_int(bin_ref buf, duration v) {
 // Leading zero units are omitted. As a special case, durations less than one
 // second format use a smaller unit (milli-, micro-, or nanoseconds) to ensure
 // that the leading digit is non-zero. The zero duration formats as 0s.
-inline std::string to_str(duration dur) {
+inline std::string to_str(ns dur) {
 	// Largest time is 2540400h10m10.000000000s
 	char b[32];
 	int w = sizeof(b);
 	bin_ref buf(b, w);
 
-	auto d = dur;
-	auto u = d;
-	auto neg = d < 0;
+	auto u = dur;
+	auto neg = dur < 0;
 	if (neg) {
 		u = -u;
 	}
 
-	if (u < s) {
+	if (u < 1_s) {
 		// Special case: if duration is smaller than a second,
 		// use smaller units, like 1.2ms
 		int prec;
@@ -213,11 +281,11 @@ inline std::string to_str(duration dur) {
 		w--;
 		if (u == 0) {
 			return "0s";
-		} else if (u < us) {
+		} else if (u < 1_us) {
 			// print nanoseconds
 			prec = 0;
 			buf[w] = 'n';
-		} else if (u < ms) {
+		} else if (u < 1_ms) {
 			// print microseconds
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
@@ -238,7 +306,7 @@ inline std::string to_str(duration dur) {
 
 		// u is now integer seconds
 		w = _duration_to_string_fmt_int(buf(0, w), u % 60);
-		u = u/60;
+		u /= 60;
 
 		// u is now integer minutes
 		if (u > 0) {
@@ -266,6 +334,6 @@ inline std::string to_str(duration dur) {
 	return std::string(buf.base(), buf.size());
 }
 
-}
+} // namespace rua
 
 #endif
