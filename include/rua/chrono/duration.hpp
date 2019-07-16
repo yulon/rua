@@ -28,7 +28,7 @@ public:
 			std::is_base_of<duration_base, Duration>::value &&
 			!std::is_same<Duration, duration>::value>::type>
 	constexpr duration(Duration dur) :
-		_c(Duration::multiple / multiple * dur.count()) {}
+		_c(Duration::multiple * dur.count() / multiple) {}
 
 	constexpr int64_t count() const {
 		return _c;
@@ -156,7 +156,7 @@ RUA_FORCE_INLINE constexpr Duration operator*(int64_t a, Duration b) {
 
 template <RUA_DURATION_PAIR_CONCEPT>
 RUA_FORCE_INLINE constexpr int64_t operator/(A a, B b) {
-	return DurationC(a).count().count() / DurationC(b).count();
+	return DurationC(a).count() / DurationC(b).count();
 }
 
 template <RUA_DURATION_PAIR_CONCEPT>
