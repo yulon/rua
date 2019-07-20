@@ -3,7 +3,7 @@
 
 #include "../lock_ref.hpp"
 #include "../limits.hpp"
-#include "../blended_ptr.hpp"
+#include "../ref.hpp"
 
 #include <chrono>
 #include <memory>
@@ -51,7 +51,7 @@ public:
 		virtual void notify() {}
 	};
 
-	using cond_var_i = blended_ptr<cond_var>;
+	using cond_var_i = ref<cond_var>;
 
 	virtual cond_var_i make_cond_var() {
 		return std::make_shared<cond_var>();
@@ -90,7 +90,7 @@ protected:
 	scheduler() {}
 };
 
-using scheduler_i = blended_ptr<scheduler>;
+using scheduler_i = ref<scheduler>;
 
 }
 

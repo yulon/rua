@@ -4,7 +4,7 @@
 #include "logger.hpp"
 #include "stdio.hpp"
 #include "str.hpp"
-#include "blended_ptr.hpp"
+#include "ref.hpp"
 
 #include <mutex>
 
@@ -32,7 +32,7 @@ private:
 	line_reader _lr;
 };
 
-using console_i = blended_ptr<console>;
+using console_i = ref<console>;
 
 inline console_i &default_console() {
 	static console_i inst = ([]()->console_i {
