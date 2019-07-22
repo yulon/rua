@@ -28,7 +28,7 @@ public:
 			std::is_base_of<duration_base, Duration>::value &&
 			!std::is_same<Duration, duration>::value>::type>
 	constexpr duration(Duration dur) :
-		_c(Duration::multiple * dur.count() / multiple) {}
+		_c(_converter<Duration, (Duration::multiple > multiple)>::conv(dur)) {}
 
 	constexpr int64_t count() const {
 		return _c;
@@ -71,8 +71,43 @@ public:
 		return *this;
 	}
 
-public:
+	duration &operator++() {
+		++_c;
+		return *this;
+	}
+
+	duration operator++(int) {
+		return _c++;
+	}
+
+	duration &operator--() {
+		--_c;
+		return *this;
+	}
+
+	duration operator--(int) {
+		return _c--;
+	}
+
+private:
 	int64_t _c;
+
+	template <typename Duration, bool IsHigherMultiple>
+	struct _converter {};
+
+	template <typename Duration>
+	struct _converter<Duration, true> {
+		static constexpr int64_t conv(Duration dur) {
+			return dur.count() * (Duration::multiple / Multiple);
+		}
+	};
+
+	template <typename Duration>
+	struct _converter<Duration, false> {
+		static constexpr int64_t conv(Duration dur) {
+			return dur.count() / (Multiple / Duration::multiple);
+		}
+	};
 };
 
 class _fake_duration {
@@ -89,8 +124,10 @@ public:
 	typename A, typename B,                                                    \
                                                                                \
 		typename = typename std::enable_if <                                   \
-					   std::is_base_of<duration_base, A>::value ||             \
-				   std::is_base_of<duration_base, B>::value > ::type,          \
+					   (std::is_base_of<duration_base, A>::value ||            \
+						std::is_base_of<duration_base, B>::value) &&           \
+				   std::is_convertible<A, duration<1>>::value &&               \
+				   std::is_convertible<B, duration<1>>::value > ::type,        \
                                                                                \
 		typename DurationA = typename std::conditional<                        \
 			std::is_base_of<duration_base, A>::value,                          \
@@ -173,34 +210,52 @@ using ns = duration<1>;
 using us = duration<1000 * ns::multiple>;
 using ms = duration<1000 * us::multiple>;
 using s = duration<1000 * ms::multiple>;
-using min = duration<60 * s::multiple>;
-using h = duration<60 * min::multiple>;
-using day = duration<24 * h::multiple>;
-using week = duration<7 * day::multiple>;
+using m = duration<60 * s::multiple>;
+using h = duration<60 * m::multiple>;
+using d = duration<24 * h::multiple>;
+using w = duration<7 * d::multiple>;
+using y = duration<365 * d::multiple>;
+using ly = duration<366 * d::multiple>;
 
 namespace duration_literals {
 
-RUA_FORCE_INLINE constexpr ns operator""_ns(size_t count) {
+RUA_FORCE_INLINE constexpr ns operator""_ns(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
-RUA_FORCE_INLINE constexpr us operator""_us(size_t count) {
+RUA_FORCE_INLINE constexpr us operator""_us(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
-RUA_FORCE_INLINE constexpr ms operator""_ms(size_t count) {
+RUA_FORCE_INLINE constexpr ms operator""_ms(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
-RUA_FORCE_INLINE constexpr s operator""_s(size_t count) {
+RUA_FORCE_INLINE constexpr s operator""_s(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
-RUA_FORCE_INLINE constexpr min operator""_min(size_t count) {
+RUA_FORCE_INLINE constexpr m operator""_m(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
-RUA_FORCE_INLINE constexpr h operator""_h(size_t count) {
+RUA_FORCE_INLINE constexpr h operator""_h(unsigned long long count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr d operator""_d(unsigned long long count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr w operator""_w(unsigned long long count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr y operator""_y(unsigned long long count) {
+	return static_cast<int64_t>(count);
+}
+
+RUA_FORCE_INLINE constexpr ly operator""_ly(unsigned long long count) {
 	return static_cast<int64_t>(count);
 }
 
@@ -258,7 +313,7 @@ inline int _duration_to_string_fmt_int(bin_ref buf, ns v) {
 
 // String returns a string representing the duration in the form "72h3m0.5s".
 // Leading zero units are omitted. As a special case, durations less than one
-// second format use a smaller unit (milli-, micro-, or nanoseconds) to ensure
+// second format use a smaller unit (milli-, micro-, or ns) to ensure
 // that the leading digit is non-zero. The zero duration formats as 0s.
 inline std::string to_str(ns dur) {
 	// Largest time is 2540400h10m10.000000000s
@@ -282,17 +337,17 @@ inline std::string to_str(ns dur) {
 		if (u == 0) {
 			return "0s";
 		} else if (u < 1_us) {
-			// print nanoseconds
+			// print ns
 			prec = 0;
 			buf[w] = 'n';
 		} else if (u < 1_ms) {
-			// print microseconds
+			// print us
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
 			w--; // Need room for two bytes.
 			buf(w).copy("µ");
 		} else {
-			// print milliseconds
+			// print ms
 			prec = 6;
 			buf[w] = 'm';
 		}
@@ -304,19 +359,19 @@ inline std::string to_str(ns dur) {
 
 		_duration_to_string_fmt_frac(buf(0, w), u, 9, &w, &u);
 
-		// u is now integer seconds
+		// u is now integer s
 		w = _duration_to_string_fmt_int(buf(0, w), u % 60);
 		u /= 60;
 
-		// u is now integer minutes
+		// u is now integer m
 		if (u > 0) {
 			w--;
 			buf[w] = 'm';
 			w = _duration_to_string_fmt_int(buf(0, w), u % 60);
 			u /= 60;
 
-			// u is now integer hours
-			// Stop at hours because days can be different lengths.
+			// u is now integer h
+			// Stop at h because d can be different lengths.
 			if (u > 0) {
 				w--;
 				buf[w] = 'h';
