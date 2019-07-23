@@ -1,14 +1,12 @@
-#include <rua/fiber.hpp>
 #include <rua/chan.hpp>
+#include <rua/fiber.hpp>
 #include <rua/thread.hpp>
 
-#include <rua/test.hpp>
+#include <catch.hpp>
 
 #include <string>
 
-namespace {
-
-rua::test _t("fiber", "fiber_driver", []() {
+TEST_CASE("fiber_driver", "[fiber]") {
 	static rua::fiber_driver fib_dvr;
 	static auto &sch = fib_dvr.get_scheduler();
 	static std::string r;
@@ -30,10 +28,10 @@ rua::test _t("fiber", "fiber_driver", []() {
 	});
 	fib_dvr.run();
 
-	RUA_RASSERT(r == "123321");
-});
+	REQUIRE(r == "123321");
+}
 
-rua::test _t2("fiber", "fiber", []() {
+TEST_CASE("fiber", "[fiber]") {
 	static std::string r;
 
 	rua::fiber([]() {
@@ -54,10 +52,10 @@ rua::test _t2("fiber", "fiber", []() {
 		});
 	});
 
-	RUA_RASSERT(r == "123321");
-});
+	REQUIRE(r == "123321");
+}
 
-rua::test _t3("fiber", "use chan", []() {
+TEST_CASE("use chan on fiber", "[fiber]") {
 	rua::fiber([]() {
 		rua::chan<std::string> ch;
 
@@ -66,8 +64,6 @@ rua::test _t3("fiber", "use chan", []() {
 			ch << "ok";
 		});
 
-		RUA_RASSERT(ch.get() == "ok");
+		REQUIRE(ch.get() == "ok");
 	});
-});
-
 }

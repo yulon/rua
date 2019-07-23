@@ -1,12 +1,10 @@
 #include <rua/ref.hpp>
 
-#include <rua/test.hpp>
+#include <catch.hpp>
 
 #include <memory>
 
-namespace {
-
-rua::test _t("ref", "interface", []() {
+TEST_CASE("interface", "[ref]") {
 	struct animal {
 		virtual ~animal() = default;
 		virtual size_t age() const = 0;
@@ -30,13 +28,13 @@ rua::test _t("ref", "interface", []() {
 	////////////////////////////////////////////////////////////////////////////
 
 	// save raw pointer
-	animal_i aml1(dog_lval); // Impl &
-	animal_i aml2(&dog_lval); // Impl *
+	animal_i aml1(dog_lval);			// Impl &
+	animal_i aml2(&dog_lval);			// Impl *
 	animal_i aml3(dog_unique_ptr_lval); // std::unique_ptr<Impl> &
 
 	// save shared pointer
-	animal_i aml4(std::make_shared<dog>()); // std::shared_ptr<Impl>
-	animal_i aml5(dog{}); // Impl &&
+	animal_i aml4(std::make_shared<dog>());		  // std::shared_ptr<Impl>
+	animal_i aml5(dog{});						  // Impl &&
 	animal_i aml6(std::unique_ptr<dog>(new dog)); // std::unique_ptr<Impl> &&
 
 	// save pointer type same as source jeko
@@ -48,16 +46,14 @@ rua::test _t("ref", "interface", []() {
 
 	////////////////////////////////////////////////////////////////////////////
 
-	RUA_RASSERT(aml1->age() == dog_lval.age());
-	RUA_RASSERT(aml1.to<dog>()->age() == dog_lval.age());
-	RUA_RASSERT(aml2->age() == dog_lval.age());
-	RUA_RASSERT(aml3->age() == dog_lval.age());
-	RUA_RASSERT(aml4->age() == dog_lval.age());
-	RUA_RASSERT(aml5->age() == dog_lval.age());
-	RUA_RASSERT(aml6->age() == dog_lval.age());
-	RUA_RASSERT(aml7->age() == dog_lval.age());
-	RUA_RASSERT(!aml8);
-	RUA_RASSERT(!aml9);
-});
-
+	REQUIRE(aml1->age() == dog_lval.age());
+	REQUIRE(aml1.to<dog>()->age() == dog_lval.age());
+	REQUIRE(aml2->age() == dog_lval.age());
+	REQUIRE(aml3->age() == dog_lval.age());
+	REQUIRE(aml4->age() == dog_lval.age());
+	REQUIRE(aml5->age() == dog_lval.age());
+	REQUIRE(aml6->age() == dog_lval.age());
+	REQUIRE(aml7->age() == dog_lval.age());
+	REQUIRE(!aml8);
+	REQUIRE(!aml9);
 }

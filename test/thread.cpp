@@ -1,24 +1,23 @@
 #include <rua/chan.hpp>
 #include <rua/thread.hpp>
 
-#include <rua/test.hpp>
+#include <catch.hpp>
 
 #include <string>
 
-namespace {
-
-rua::test _t("thread", "thread", []() {
+TEST_CASE("thread", "[thread]") {
 	static std::string r;
 
 	rua::thread([]() mutable {
 		rua::sleep(100);
 		r = "ok";
-	}).wait_for_exit();
+	})
+		.wait_for_exit();
 
-	RUA_RASSERT(r == "ok");
-});
+	REQUIRE(r == "ok");
+}
 
-rua::test _t2("thread", "use chan", []() {
+TEST_CASE("use chan on thread", "[thread]") {
 	rua::chan<std::string> ch;
 
 	rua::thread([ch]() mutable {
@@ -26,7 +25,5 @@ rua::test _t2("thread", "use chan", []() {
 		ch << "ok";
 	});
 
-	RUA_RASSERT(ch.get() == "ok");
-});
-
+	REQUIRE(ch.get() == "ok");
 }

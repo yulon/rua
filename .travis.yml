@@ -2,12 +2,23 @@ dist: trusty
 sudo: false
 language: cpp
 
+common_sources: &all_sources
+  - ubuntu-toolchain-r-test
+  - llvm-toolchain-trusty
+  - llvm-toolchain-trusty-3.9
+  - llvm-toolchain-trusty-4.0
+  - llvm-toolchain-trusty-5.0
+  - llvm-toolchain-trusty-6.0
+
 addons:
   apt:
     sources:
-      - llvm-toolchain-trusty-5.0
+      - *all_sources
     packages:
       - clang-5.0
+
+before_install:
+  - wget https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O /usr/local/include/catch.hpp
 
 script:
   - mkdir ./bin

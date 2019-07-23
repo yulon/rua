@@ -1,5 +1,3 @@
-#include <rua/test.hpp>
+#define CATCH_CONFIG_MAIN
 
-int main() {
-	rua::test::run();
-}
+#include <catch.hpp>
