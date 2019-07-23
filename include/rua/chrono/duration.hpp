@@ -18,7 +18,7 @@ public:
 		_n(nanos) {}
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
-	static duration_base constexpr make(int64_t secs, int64_t nanos) {
+	static constexpr duration_base make(int64_t secs, int64_t nanos) {
 		auto new_secs = nanos / 1000000000;
 		if (new_secs != 0) {
 			secs += new_secs;
@@ -284,119 +284,106 @@ private:
 	}
 };
 
-class _fake_duration {
-public:
-	static constexpr int64_t multiple = -1;
-};
-
 #define RUA_DURATION_CONCEPT(Duration)                                         \
 	typename Duration,                                                         \
 		typename = typename std::enable_if <                                   \
 					   std::is_base_of<duration_base, Duration>::value &&      \
 				   !std::is_same<duration_base, Duration>::value > ::type
 
-#define RUA_DURATION_EXPR_CONCEPT(Duration)                                    \
-	typename A, typename B,                                                    \
+#define RUA_DURATION_EXPR_CONCEPT(First, Second, FirstDuration)                \
+	typename First, typename Second,                                           \
                                                                                \
 		typename = typename std::enable_if <                                   \
-					   (std::is_base_of<duration_base, A>::value &&            \
-						!std::is_same<duration_base, A>::value &&              \
-						std::is_convertible<B, A>::value) ||                   \
-				   (std::is_base_of<duration_base, B>::value &&                \
-					!std::is_same<duration_base, B>::value &&                  \
-					std::is_convertible<A, B>::value) > ::type,                \
+					   (std::is_base_of<duration_base, First>::value &&        \
+						!std::is_same<duration_base, First>::value &&          \
+						std::is_convertible<Second, First>::value) ||          \
+				   (std::is_base_of<duration_base, Second>::value &&           \
+					!std::is_same<duration_base, Second>::value &&             \
+					std::is_convertible<First, Second>::value) > ::type,       \
                                                                                \
-		typename Duration = typename std::conditional<                         \
-			(std::is_base_of<duration_base, A>::value &&                       \
-			 !std::is_same<duration_base, A>::value &&                         \
-			 std::is_convertible<B, A>::value),                                \
-			A,                                                                 \
-			B>::type
+		typename FirstDuration = typename std::conditional<                    \
+			(std::is_base_of<duration_base, First>::value &&                   \
+			 !std::is_same<duration_base, First>::value &&                     \
+			 std::is_convertible<Second, First>::value),                       \
+			First,                                                             \
+			Second>::type
 
-#define RUA_DURATION_PAIR_CONCEPT(Duration)                                    \
-	typename A, typename B,                                                    \
+#define RUA_DURATION_PAIR_CONCEPT(FirstDuration, SecondDuration)               \
+	typename FirstDuration, typename SecondDuration,                           \
                                                                                \
-		typename = typename std::enable_if <                                   \
-					   (std::is_base_of<duration_base, A>::value &&            \
-						!std::is_same<duration_base, A>::value &&              \
-						std::is_base_of<duration_base, B>::value) ||           \
-				   (std::is_base_of<duration_base, B>::value &&                \
-					!std::is_same<duration_base, B>::value &&                  \
-					std::is_base_of<duration_base, A>::value) > ::type,        \
-                                                                               \
-		typename Duration = A
+		typename =                                                             \
+			typename std::enable_if <                                          \
+				(std::is_base_of<duration_base, FirstDuration>::value &&       \
+				 !std::is_same<duration_base, FirstDuration>::value &&         \
+				 std::is_base_of<duration_base, SecondDuration>::value) ||     \
+			(std::is_base_of<duration_base, SecondDuration>::value &&          \
+			 !std::is_same<duration_base, SecondDuration>::value &&            \
+			 std::is_base_of<duration_base, FirstDuration>::value) > ::type
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) ==
-		   static_cast<duration_base &&>(Duration(b));
+	return static_cast<duration_base &&>(Dur(a)) ==
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) >
-		   static_cast<duration_base &&>(Duration(b));
+	return static_cast<duration_base &&>(Dur(a)) >
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) <
-		   static_cast<duration_base &&>(Duration(b));
+	return static_cast<duration_base &&>(Dur(a)) <
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>=(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) >=
-		   static_cast<duration_base &&>(Duration(b));
+	return static_cast<duration_base &&>(Dur(a)) >=
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<=(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) <=
-		   static_cast<duration_base &&>(Duration(b));
+	return static_cast<duration_base &&>(Dur(a)) <=
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator+(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) +
-		   static_cast<duration_base &&>(Duration(b));
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+RUA_FORCE_INLINE constexpr Dur operator+(A a, B b) {
+	return static_cast<duration_base &&>(Dur(a)) +
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator-(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) -
-		   static_cast<duration_base &&>(Duration(b));
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+RUA_FORCE_INLINE constexpr Dur operator-(A a, B b) {
+	return static_cast<duration_base &&>(Dur(a)) -
+		   static_cast<duration_base &&>(Dur(b));
 }
 
-template <RUA_DURATION_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator*(Duration a, int64_t b) {
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr Dur operator*(Dur a, int64_t b) {
 	return static_cast<duration_base &>(a) * b;
 }
 
-template <RUA_DURATION_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator*(int64_t a, Duration b) {
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr Dur operator*(int64_t a, Dur b) {
 	return a * static_cast<duration_base &>(b);
 }
 
-template <RUA_DURATION_PAIR_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr int64_t operator/(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) /
-		   static_cast<duration_base &&>(Duration(b));
-}
-
-template <RUA_DURATION_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator/(Duration a, int64_t b) {
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr Dur operator/(Dur a, int64_t b) {
 	return static_cast<duration_base &>(a) / b;
 }
 
-template <RUA_DURATION_PAIR_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator%(A a, B b) {
-	return static_cast<duration_base &&>(Duration(a)) %
-		   static_cast<duration_base &&>(Duration(b));
+template <RUA_DURATION_PAIR_CONCEPT(DurA, DurB)>
+RUA_FORCE_INLINE constexpr DurA operator%(DurA a, DurB b) {
+	return static_cast<duration_base &>(a) % static_cast<duration_base &>(b);
 }
 
-template <RUA_DURATION_CONCEPT(Duration)>
-RUA_FORCE_INLINE constexpr Duration operator%(Duration a, int64_t b) {
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr Dur operator%(Dur a, int64_t b) {
 	return static_cast<duration_base &>(a) % b;
 }
 

@@ -98,8 +98,7 @@ public:
 				}
 			}
 			auto lys = (lst_ly - fst_ly) / 4 + 1;
-			secs += y(y_end - y_begin - lys);
-			secs += ly(lys);
+			secs += y(y_end - y_begin - lys) + ly(lys);
 		}
 		secs += _date2s_exc_yr(end) - _date2s_exc_yr(*_bgn);
 		secs -= h(end.zone - _bgn->zone);
