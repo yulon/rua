@@ -18,7 +18,7 @@ inline time tick() {
 inline time now() {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
-	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_start_date);
+	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_time_begin);
 }
 
 }} // namespace rua::posix
