@@ -65,19 +65,16 @@ static constexpr int16_t _days_before_month[]{
 
 class time {
 public:
-	constexpr time() : _s(), _ns(), _bgn(nullptr) {}
+	constexpr time() : _ela(), _bgn(nullptr) {}
 
-	template <RUA_DURATION_CONCEPT(Duration)>
-	time(Duration elapsed, ref<const date> begin = nullptr) :
-		_s(elapsed),
-		_ns(elapsed % 1_s),
+	time(duration_base elapsed, ref<const date> begin = nullptr) :
+		_ela(elapsed),
 		_bgn(std::move(begin)) {}
 
 	time(const date &end, ref<const date> begin = unix_time_begin) :
-		_s(0),
-		_ns(end.nanoseconds),
 		_bgn(std::move(begin)) {
 
+		s secs;
 		if (end.year != _bgn->year) {
 			int16_t y_begin, y_end;
 			if (end.year > _bgn->year) {
@@ -101,29 +98,21 @@ public:
 				}
 			}
 			auto lys = (lst_ly - fst_ly) / 4 + 1;
-			_s += y(y_end - y_begin - lys);
-			_s += ly(lys);
+			secs += y(y_end - y_begin - lys);
+			secs += ly(lys);
 		}
-		_s += _date2s_exc_yr(end) - _date2s_exc_yr(*_bgn);
-		_s -= h(end.zone - _bgn->zone);
+		secs += _date2s_exc_yr(end) - _date2s_exc_yr(*_bgn);
+		secs -= h(end.zone - _bgn->zone);
+		_ela = duration_base(secs.count(), end.nanoseconds);
 	}
-
-	time(s elapsed_s, ns elapsed_remained_ns, ref<const date> begin = nullptr) :
-		_s(elapsed_s),
-		_ns(elapsed_remained_ns),
-		_bgn(std::move(begin)) {}
 
 	template <RUA_DURATION_CONCEPT(Duration)>
 	constexpr Duration elapsed() const {
-		return Duration(_s) + Duration(_ns);
+		return Duration(_ela);
 	}
 
-	s elapsed_s() const {
-		return _s;
-	}
-
-	ns elapsed_remained_ns() const {
-		return _ns;
+	duration_base elapsed() const {
+		return _ela;
 	}
 
 	bool has_begin() const {
@@ -142,12 +131,13 @@ public:
 		// zone
 		nd.zone = zone;
 
-		auto ela_s = _s + _date2s_exc_yr(*_bgn) - h(_bgn->zone - zone);
+		auto ela_s =
+			_ela.total_seconds() + _date2s_exc_yr(*_bgn) - h(_bgn->zone - zone);
 
 		// nanosecond
-		auto ns_sum = _ns + _bgn->nanoseconds;
-		ela_s += ns_sum / 1_s;
-		nd.nanoseconds = (ns_sum % 1_s).count();
+		ns ns_sum = _ela.extra_nanoseconds() + _bgn->nanoseconds;
+		ela_s += ns_sum.total_seconds();
+		nd.nanoseconds = ns_sum.extra_nanoseconds();
 
 		auto ela_days = d(ela_s);
 
@@ -158,7 +148,7 @@ public:
 		auto ela_400_yrs = ela_days / days_per_400_yrs;
 		if (ela_400_yrs) {
 			ela_days %= days_per_400_yrs;
-			nd.year += 400 * ela_400_yrs;
+			nd.year += static_cast<int16_t>(400 * ela_400_yrs);
 		}
 
 		constexpr auto days_per_100_yrs = 100 * 1_y + 24_d;
@@ -166,21 +156,21 @@ public:
 		if (ela_100_yrs) {
 			ela_100_yrs -= ela_100_yrs >> 2;
 			ela_days -= days_per_100_yrs * ela_100_yrs;
-			nd.year += 100 * ela_100_yrs;
+			nd.year += static_cast<int16_t>(100 * ela_100_yrs);
 		}
 
 		constexpr auto days_per_4_yrs = 4 * 1_y + 1_d;
 		auto ela_4_yrs = ela_days / days_per_4_yrs;
 		if (ela_4_yrs) {
 			ela_days %= days_per_4_yrs;
-			nd.year += 4 * ela_4_yrs;
+			nd.year += static_cast<int16_t>(4 * ela_4_yrs);
 		}
 
 		auto ela_yrs = ela_days / 1_y;
 		if (ela_yrs) {
 			ela_yrs -= ela_yrs >> 2;
 			ela_days -= ela_yrs * 1_y;
-			nd.year += ela_yrs;
+			nd.year += static_cast<int16_t>(ela_yrs);
 		}
 
 		// month
@@ -191,25 +181,25 @@ public:
 				++dbm;
 			}
 			if (dbm < ela_days) {
-				nd.month = i + 1;
+				nd.month = static_cast<int8_t>(i + 1);
 				ela_days = ela_days - dbm + 1;
 				break;
 			}
 		}
 
 		// day
-		nd.day = ela_days.count();
+		nd.day = static_cast<int8_t>(ela_days.count());
 		ela_s %= 1_d;
 
 		// hour
-		nd.hour = ela_s / 1_h;
+		nd.hour = static_cast<int8_t>(ela_s / 1_h);
 		ela_s %= 1_h;
 
 		// minute
-		nd.minute = ela_s / 1_m;
+		nd.minute = static_cast<int8_t>(ela_s / 1_m);
 
 		// second
-		nd.second = (ela_s % 1_m).count();
+		nd.second = static_cast<int8_t>((ela_s % 1_m).count());
 
 		return nd;
 	}
@@ -224,8 +214,7 @@ public:
 	}
 
 private:
-	s _s;
-	ns _ns;
+	duration_base _ela;
 	ref<const date> _bgn;
 
 	static s _date2s_exc_yr(const date &d8) {

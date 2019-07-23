@@ -12,13 +12,13 @@ namespace rua { namespace posix {
 inline time tick() {
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return time(ts.tv_sec, ts.tv_nsec);
+	return time(duration_base(ts.tv_sec, ts.tv_nsec));
 }
 
 inline time now() {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
-	return time(tv.tv_sec, tv.tv_nsec, unix_start_date);
+	return time(duration_base(tv.tv_sec, tv.tv_nsec), unix_start_date);
 }
 
 }} // namespace rua::posix

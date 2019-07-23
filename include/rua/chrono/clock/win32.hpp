@@ -22,9 +22,10 @@ inline time tick() {
 		LARGE_INTEGER end;
 		if (QueryPerformanceCounter(&end)) {
 			auto els = (end.QuadPart - start.QuadPart);
-			s els_s(els / freq.QuadPart);
-			ns els_ns(els * 1000000000 / freq.QuadPart);
-			return time(els_s, els_ns - els_s);
+			auto els_s = (end.QuadPart - start.QuadPart) / freq.QuadPart;
+			return time(duration_base(
+				els_s,
+				static_cast<int32_t>(els * 1000000000 / freq.QuadPart - els_s)));
 		}
 	}
 	static dylib kernel32("KERNEL32.DLL", false);

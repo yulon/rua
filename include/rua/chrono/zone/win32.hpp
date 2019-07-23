@@ -11,7 +11,7 @@ namespace rua { namespace win32 {
 inline int8_t local_time_zone() {
 	TIME_ZONE_INFORMATION info;
 	GetTimeZoneInformation(&info);
-	return info.Bias / (-60);
+	return static_cast<int8_t>(info.Bias / (-60));
 }
 
 }} // namespace rua::win32
