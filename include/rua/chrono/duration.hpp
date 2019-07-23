@@ -64,31 +64,31 @@ public:
 		return !_s && !_n;
 	}
 
-	constexpr bool operator==(duration_base target) {
+	constexpr bool operator==(duration_base target) const {
 		return _s == target._s && _n == target._n;
 	}
 
-	constexpr bool operator!=(duration_base target) {
+	constexpr bool operator!=(duration_base target) const {
 		return _s != target._s || _n != target._n;
 	}
 
-	constexpr bool operator>(duration_base target) {
+	constexpr bool operator>(duration_base target) const {
 		return _s > target._s || (_s == target._s && _n > target._n);
 	}
 
-	constexpr bool operator<(duration_base target) {
+	constexpr bool operator<(duration_base target) const {
 		return _s < target._s || (_s == target._s && _n < target._n);
 	}
 
-	constexpr bool operator>=(duration_base target) {
+	constexpr bool operator>=(duration_base target) const {
 		return _s >= target._s || (_s == target._s && _n >= target._n);
 	}
 
-	constexpr bool operator<=(duration_base target) {
+	constexpr bool operator<=(duration_base target) const {
 		return _s <= target._s || (_s == target._s && _n <= target._n);
 	}
 
-	constexpr duration_base operator+(duration_base target) {
+	constexpr duration_base operator+(duration_base target) const {
 		return make(
 			_s + target._s,
 			static_cast<int64_t>(_n) + static_cast<int64_t>(target._n));
@@ -98,7 +98,7 @@ public:
 		return *this = *this + target;
 	}
 
-	constexpr duration_base operator-(duration_base target) {
+	constexpr duration_base operator-(duration_base target) const {
 		return make(
 			_s - target._s,
 			static_cast<int64_t>(_n) - static_cast<int64_t>(target._n));
@@ -112,7 +112,7 @@ public:
 		return *this = *this - target;
 	}
 
-	constexpr duration_base operator*(int64_t target) {
+	constexpr duration_base operator*(int64_t target) const {
 		return make(_s * target, static_cast<int64_t>(_n) * target);
 	}
 
@@ -120,7 +120,7 @@ public:
 		return *this = *this * target;
 	}
 
-	constexpr int64_t operator/(duration_base target) {
+	constexpr int64_t operator/(duration_base target) const {
 		return ((target._s || !target._n) ? _s / target._s : 0) +
 			   (target._n ? ((static_cast<int64_t>(_n) +
 							  _s % target._s * 1000000000) /
@@ -128,7 +128,7 @@ public:
 						  : 0);
 	}
 
-	constexpr duration_base operator/(int64_t target) {
+	constexpr duration_base operator/(int64_t target) const {
 		return make(
 			_s / target,
 			(static_cast<int64_t>(_n) + _s % target * 1000000000) / target);
@@ -138,7 +138,7 @@ public:
 		return *this = *this / target;
 	}
 
-	constexpr duration_base operator%(duration_base target) {
+	constexpr duration_base operator%(duration_base target) const {
 		return make(
 			0,
 			target._n ? (static_cast<int64_t>(_n) +
@@ -150,7 +150,7 @@ public:
 							 1000000000));
 	}
 
-	constexpr duration_base operator%(int64_t target) {
+	constexpr duration_base operator%(int64_t target) const {
 		return make(
 			0, (static_cast<int64_t>(_n) + _s % target * 1000000000) % target);
 	}

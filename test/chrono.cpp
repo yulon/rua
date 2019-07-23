@@ -47,15 +47,13 @@ TEST_CASE("date convert", "[chrono]") {
 #include <ctime>
 
 TEST_CASE("now", "[chrono]") {
-	tm c_tm;
-	time_t c_ti = time(nullptr);
-	localtime_s(&c_tm, &c_ti);
+	auto c_ti = time(nullptr);
+	auto c_tm = *gmtime(&c_ti);
 
-	auto d = rua::now().end();
+	auto d = rua::now().end(0);
 
-	tm c_tm_2;
-	time_t c_ti_2 = time(nullptr);
-	localtime_s(&c_tm_2, &c_ti_2);
+	auto c_ti_2 = time(nullptr);
+	auto c_tm_2 = *gmtime(&c_ti_2);
 
 	if (c_tm_2.tm_year == c_tm.tm_year) {
 		REQUIRE(d.year == (c_tm.tm_year + 1900));
