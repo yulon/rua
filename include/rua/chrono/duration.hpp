@@ -68,6 +68,10 @@ public:
 		return _s == target._s && _n == target._n;
 	}
 
+	constexpr bool operator!=(duration_base target) {
+		return _s != target._s || _n != target._n;
+	}
+
 	constexpr bool operator>(duration_base target) {
 		return _s > target._s || (_s == target._s && _n > target._n);
 	}
@@ -323,6 +327,12 @@ private:
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {
 	return static_cast<duration_base &&>(Dur(a)) ==
+		   static_cast<duration_base &&>(Dur(b));
+}
+
+template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+RUA_FORCE_INLINE constexpr bool operator!=(A a, B b) {
+	return static_cast<duration_base &&>(Dur(a)) !=
 		   static_cast<duration_base &&>(Dur(b));
 }
 
