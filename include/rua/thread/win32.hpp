@@ -1,16 +1,15 @@
 #ifndef _RUA_WIN32_THREAD_HPP
 #define _RUA_WIN32_THREAD_HPP
 
-#include "../macros.hpp"
 #include "../any_word.hpp"
+#include "../macros.hpp"
 #include "../sched/abstract.hpp"
 
 #include <windows.h>
 
 #include <functional>
 
-namespace rua {
-namespace win32 {
+namespace rua { namespace win32 {
 
 class thread {
 public:
@@ -32,23 +31,17 @@ public:
 
 	constexpr thread() : _h(nullptr) {}
 
-	explicit thread(std::function<void()> fn) : _h(CreateThread(
-		nullptr,
-		0,
-		[](LPVOID lpThreadParameter)->DWORD {
-			auto fn_ptr = reinterpret_cast<std::function<void()> *>(lpThreadParameter);
-			(*fn_ptr)();
-			delete fn_ptr;
-			return 0;
-		},
-		reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
-		0,
-		nullptr
-	)) {}
+	explicit thread(std::function<void()> fn) :
+		_h(CreateThread(
+			nullptr,
+			0,
+			&_start,
+			reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
+			0,
+			nullptr)) {}
 
 	thread(id_t id) :
-		_h(id ? OpenThread(THREAD_ALL_ACCESS, FALSE, id) : nullptr)
-	{}
+		_h(id ? OpenThread(THREAD_ALL_ACCESS, FALSE, id) : nullptr) {}
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
@@ -70,8 +63,7 @@ public:
 			&_h,
 			0,
 			FALSE,
-			DUPLICATE_SAME_ACCESS
-		);
+			DUPLICATE_SAME_ACCESS);
 	}
 
 	thread(thread &&src) : _h(src._h) {
@@ -132,6 +124,14 @@ public:
 private:
 	HANDLE _h;
 
+	static DWORD __stdcall _start(LPVOID lpThreadParameter) {
+		auto fn_ptr =
+			reinterpret_cast<std::function<void()> *>(lpThreadParameter);
+		(*fn_ptr)();
+		delete fn_ptr;
+		return 0;
+	}
+
 public:
 	class scheduler : public rua::scheduler {
 	public:
@@ -147,7 +147,7 @@ public:
 		virtual ~scheduler() = default;
 
 		virtual void yield() {
-			if (_yield_dur > 1){
+			if (_yield_dur > 1) {
 				Sleep(_yield_dur);
 			}
 			for (auto i = 0; i < 3; ++i) {
@@ -184,7 +184,10 @@ public:
 			return std::make_shared<cond_var>();
 		}
 
-		virtual std::cv_status cond_wait(scheduler::cond_var_i cv, typeless_lock_ref &lck, size_t timeout = nmax<size_t>()) {
+		virtual std::cv_status cond_wait(
+			scheduler::cond_var_i cv,
+			typeless_lock_ref &lck,
+			size_t timeout = nmax<size_t>()) {
 			auto dscv = cv.to<cond_var>();
 			if (timeout == nmax<size_t>()) {
 				dscv->_cv.wait(lck);
@@ -198,7 +201,6 @@ public:
 	};
 };
 
-}
-}
+}} // namespace rua::win32
 
 #endif
