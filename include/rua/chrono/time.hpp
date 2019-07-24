@@ -105,6 +105,10 @@ public:
 		_ela = duration_base(secs.count(), end.nanoseconds);
 	}
 
+	explicit operator bool() const {
+		return _bgn || _ela;
+	}
+
 	template <RUA_DURATION_CONCEPT(Duration)>
 	constexpr Duration elapsed() const {
 		return Duration(_ela);
@@ -118,8 +122,8 @@ public:
 		return _bgn;
 	}
 
-	const date &begin() const {
-		return *_bgn;
+	ref<const date> begin() const {
+		return _bgn;
 	}
 
 	date end(int8_t zone = local_time_zone()) const {
@@ -212,6 +216,75 @@ public:
 		return time(end(0));
 	}
 
+	void reset() {
+		_ela = duration_base();
+		_bgn = nullptr;
+	}
+
+	bool operator==(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela == target.elapsed();
+		}
+		return _ela == time(target.end(), _bgn).elapsed();
+	}
+
+	bool operator>(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela > target.elapsed();
+		}
+		return _ela > time(target.end(), _bgn).elapsed();
+	}
+
+	bool operator>=(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela >= target.elapsed();
+		}
+		return _ela >= time(target.end(), _bgn).elapsed();
+	}
+
+	bool operator<(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela < target.elapsed();
+		}
+		return _ela < time(target.end(), _bgn).elapsed();
+	}
+
+	bool operator<=(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela <= target.elapsed();
+		}
+		return _ela <= time(target.end(), _bgn).elapsed();
+	}
+
+	time operator+(duration_base dur) const {
+		return time(_ela + dur, _bgn);
+	}
+
+	time &operator+=(duration_base dur) {
+		_ela += dur;
+		return *this;
+	}
+
+	time operator-(duration_base dur) const {
+		return time(_ela - dur, _bgn);
+	}
+
+	duration_base operator-(const time &target) const {
+		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+			return _ela - target.elapsed();
+		}
+		return _ela - time(target.end(), _bgn).elapsed();
+	}
+
+	duration_base operator-(const date &d8) const {
+		return _ela - time(d8, _bgn).elapsed();
+	}
+
+	time &operator-=(duration_base dur) {
+		_ela -= dur;
+		return *this;
+	}
+
 private:
 	duration_base _ela;
 	ref<const date> _bgn;
@@ -227,6 +300,40 @@ private:
 	}
 };
 
+RUA_FORCE_INLINE time operator+(duration_base dur, const time &tim) {
+	return tim + dur;
+}
+
+RUA_FORCE_INLINE time time_max(ref<const date> begin = nullptr) {
+	return time(duration_max(), std::move(begin));
+}
+
+RUA_FORCE_INLINE time time_zero(ref<const date> begin = nullptr) {
+	return time(duration_zero(), std::move(begin));
+}
+
+RUA_FORCE_INLINE time time_min(ref<const date> begin = nullptr) {
+	return time(duration_min(), std::move(begin));
+}
+
 } // namespace rua
+
+namespace std {
+
+template <>
+struct hash<rua::time> {
+	RUA_FORCE_INLINE size_t operator()(const rua::time &t) const {
+		return _szt(
+			t.has_begin() ? t.to_unix().elapsed().total_seconds()
+						  : rua::ms(t.elapsed()).count());
+	}
+
+private:
+	static RUA_FORCE_INLINE size_t _szt(int64_t c) {
+		return static_cast<size_t>(c >= 0 ? c : 0);
+	}
+};
+
+} // namespace std
 
 #endif

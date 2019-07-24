@@ -18,10 +18,11 @@ public:
 		_n(nanos) {}
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
+
 	static constexpr duration_base make(int64_t secs, int64_t nanos) {
-		auto new_secs = nanos / 1000000000;
-		if (new_secs != 0) {
-			secs += new_secs;
+		auto carrys = nanos / 1000000000;
+		if (carrys != 0) {
+			secs += carrys;
 			nanos %= 1000000000;
 		}
 		if (secs < 0 && nanos > 0) {
@@ -33,19 +34,34 @@ public:
 		}
 		return duration_base(secs, static_cast<int32_t>(nanos));
 	}
+
 #else
-	static constexpr duration_base make(int64_t secs, int64_t nanos) {
+
+private:
+	static RUA_FORCE_INLINE constexpr duration_base
+	_handle_pan(int64_t secs, int64_t nanos) {
 		return (secs < 0 && nanos > 0)
 				   ? duration_base(
-						 secs + nanos / 1000000000 + 1,
-						 -(1000000000 - nanos % 1000000000))
+						 secs + 1, static_cast<int32_t>(-(1000000000 - nanos)))
 				   : ((secs > 0 && nanos < 0)
 						  ? duration_base(
-								secs + nanos / 1000000000 - 1,
-								1000000000 + nanos % 1000000000)
-						  : duration_base(
-								secs + nanos / 1000000000, nanos % 1000000000));
+								secs - 1,
+								static_cast<int32_t>(1000000000 + nanos))
+						  : duration_base(secs, static_cast<int32_t>(nanos)));
 	}
+
+	static RUA_FORCE_INLINE constexpr duration_base _handle_overflow(
+		int64_t secs, int64_t nanos, int64_t carrys, int64_t remainders) {
+		return (carrys != 0) ? _handle_pan(secs + carrys, remainders)
+							 : _handle_pan(secs, nanos);
+	}
+
+public:
+	static constexpr duration_base make(int64_t secs, int64_t nanos) {
+		return _handle_overflow(
+			secs, nanos, nanos / 1000000000, nanos % 1000000000);
+	}
+
 #endif
 
 	constexpr int64_t total_seconds() const {
@@ -182,6 +198,18 @@ protected:
 
 RUA_FORCE_INLINE constexpr duration_base operator*(int64_t a, duration_base b) {
 	return b * a;
+}
+
+RUA_FORCE_INLINE constexpr duration_base duration_max() {
+	return duration_base(nmax<int64_t>(), 999999999);
+}
+
+RUA_FORCE_INLINE constexpr duration_base duration_zero() {
+	return duration_base();
+}
+
+RUA_FORCE_INLINE constexpr duration_base duration_min() {
+	return duration_base(nmin<int64_t>(), -999999999);
 }
 
 template <
@@ -395,6 +423,21 @@ RUA_FORCE_INLINE constexpr DurA operator%(DurA a, DurB b) {
 template <RUA_DURATION_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator%(Dur a, int64_t b) {
 	return static_cast<duration_base &>(a) % b;
+}
+
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr Dur duration_max() {
+	return Dur(duration_max());
+}
+
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr duration_base duration_zero() {
+	return Dur(duration_zero());
+}
+
+template <RUA_DURATION_CONCEPT(Dur)>
+RUA_FORCE_INLINE constexpr duration_base duration_min() {
+	return Dur(duration_min());
 }
 
 using ns = duration<1>;
