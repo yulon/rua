@@ -3,8 +3,8 @@
 
 #include "macros.hpp"
 
-#if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \
-	defined(__cpp_lib_any)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_optional) ||                    \
+	defined(__cpp_lib_variant) || defined(__cpp_lib_any)
 
 #include <utility>
 

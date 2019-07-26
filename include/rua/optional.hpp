@@ -4,7 +4,7 @@
 #include "in_place.hpp"
 #include "macros.hpp"
 
-#ifdef __cpp_lib_optional
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_optional)
 
 #include <optional>
 

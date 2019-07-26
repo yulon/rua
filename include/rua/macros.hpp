@@ -24,7 +24,7 @@
 #define RUA_HAS_INC(header_name) 0
 #endif
 
-#if !defined(_MSC_VER) || RUA_HAS_INC(<version>)
+#if RUA_HAS_INC(<version>)
 #include <version>
 #endif
 
