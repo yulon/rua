@@ -7,7 +7,7 @@
 
 #include <string>
 #ifdef __cpp_lib_string_view
-	#include <string_view>
+#include <string_view>
 #endif
 
 #include <cstddef>
@@ -17,11 +17,11 @@ namespace rua {
 // Compatibility and improvement of std::type_traits.
 
 #ifdef __cpp_lib_bool_constant
-	template <bool Cond>
-	using bool_constant = std::bool_constant<Cond>;
+template <bool Cond>
+using bool_constant = std::bool_constant<Cond>;
 #else
-	template <bool Cond>
-	using bool_constant = std::integral_constant<bool, Cond>;
+template <bool Cond>
+using bool_constant = std::integral_constant<bool, Cond>;
 #endif
 
 template <bool Cond, typename... T>
@@ -84,11 +84,8 @@ struct type_switch<Cond, Case, Result, DefaultResult> {
 
 	static constexpr bool is_matched_v = is_matched::value;
 
-	using type = typename std::conditional<
-		is_matched_v,
-		Result,
-		DefaultResult
-	>::type;
+	using type =
+		typename std::conditional<is_matched_v, Result, DefaultResult>::type;
 
 	template <typename... Args>
 	struct rebind {
@@ -97,17 +94,19 @@ struct type_switch<Cond, Case, Result, DefaultResult> {
 };
 
 template <typename Cond, typename Case, typename Result>
-struct type_switch<Cond, Case, Result> :
-	type_switch<Cond, Case, Result, default_t>
-{};
+struct type_switch<Cond, Case, Result>
+	: type_switch<Cond, Case, Result, default_t> {};
 
 template <typename Top, typename Cond, typename... Others>
-using _type_switch_multicase_handler = rebind_if<!Top::is_matched_v, Top, Cond, Others...>;
+using _type_switch_multicase_handler =
+	rebind_if<!Top::is_matched_v, Top, Cond, Others...>;
 
 template <typename Cond, typename Case, typename Result, typename... Others>
-struct type_switch<Cond, Case, Result, Others...> :
-	_type_switch_multicase_handler<type_switch<Cond, Case, Result>, Cond, Others...>::type
-{};
+struct type_switch<Cond, Case, Result, Others...>
+	: _type_switch_multicase_handler<
+		  type_switch<Cond, Case, Result>,
+		  Cond,
+		  Others...>::type {};
 
 template <typename... Args>
 using type_switch_t = typename type_switch<Args...>::type;
@@ -141,41 +140,93 @@ inline std::string &type_info(type_id_t id) {
 	return id();
 }
 
-#define RUA_CONTAINER_OF(member_ptr, type, member) reinterpret_cast<type *>( \
-	reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member) \
-)
+#define RUA_CONTAINER_OF(member_ptr, type, member)                             \
+	reinterpret_cast<type *>(                                                  \
+		reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member))
 
-#define RUA_IS_BASE_OF_CONCEPT(_B, _D) template < \
-	typename _D, \
-	typename = typename std::enable_if< \
-		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value \
-	>::type \
->
-#define RUA_DERIVED_CONCEPT(_B, _D) template < \
-	typename _D, \
-	typename = typename std::enable_if< \
-		std::is_base_of<_B, typename std::remove_reference<_D>::type>::value && \
-		!std::is_same<_B, _D>::value \
-	>::type \
->
+#define RUA_IS_BASE_OF_CONCEPT(_B, _D)                                         \
+	template <                                                                 \
+		typename _D,                                                           \
+		typename = typename std::enable_if<std::is_base_of<                    \
+			_B,                                                                \
+			typename std::remove_reference<_D>::type>::value>::type>
+#define RUA_DERIVED_CONCEPT(_B, _D)                                            \
+	template <                                                                 \
+		typename _D,                                                           \
+		typename = typename std::enable_if<                                    \
+			std::is_base_of<_B, typename std::remove_reference<_D>::type>::    \
+				value &&                                                       \
+			!std::is_same<_B, _D>::value>::type>
+
+template <bool IsCopyable, bool IsMovable>
+class enable_copy_move;
+
+template <>
+class enable_copy_move<true, true> {
+public:
+	constexpr enable_copy_move() = default;
+
+	enable_copy_move(const enable_copy_move &) = default;
+	enable_copy_move(enable_copy_move &&) = default;
+
+	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
+};
+
+template <>
+class enable_copy_move<true, false> {
+public:
+	constexpr enable_copy_move() = default;
+
+	enable_copy_move(const enable_copy_move &) = default;
+
+	RUA_OVERLOAD_ASSIGNMENT_L(enable_copy_move)
+};
+
+template <>
+class enable_copy_move<false, true> {
+public:
+	constexpr enable_copy_move() = default;
+
+	enable_copy_move(enable_copy_move &&) = default;
+
+	RUA_OVERLOAD_ASSIGNMENT_R(enable_copy_move)
+};
+
+template <>
+class enable_copy_move<false, false> {
+public:
+	constexpr enable_copy_move() = default;
+
+	enable_copy_move(const enable_copy_move &) = delete;
+	enable_copy_move(enable_copy_move &&) = delete;
+
+	enable_copy_move &operator=(const enable_copy_move &) = delete;
+	enable_copy_move &operator=(enable_copy_move &&) = delete;
+};
+
+template <typename T>
+using enable_copy_move_from = enable_copy_move<
+	std::is_copy_constructible<T>::value,
+	std::is_move_constructible<T>::value>;
 
 ////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 struct is_string : bool_constant<
-	std::is_same<T, char *>::value
-	|| std::is_same<T, const char *>::value
-	|| std::is_base_of<std::string, T>::value
-	#ifdef __cpp_lib_string_view
-		|| std::is_base_of<std::string, T>::value
-	#endif
-> {};
+					   std::is_same<T, char *>::value ||
+					   std::is_same<T, const char *>::value ||
+					   std::is_base_of<std::string, T>::value
+#ifdef __cpp_lib_string_view
+					   || std::is_base_of<std::string, T>::value
+#endif
+					   > {
+};
 
 #ifdef __cpp_inline_variables
-	template <typename T>
-	inline constexpr bool is_string_v = is_string<T>::value;
+template <typename T>
+inline constexpr bool is_string_v = is_string<T>::value;
 #endif
 
-}
+} // namespace rua
 
 #endif
