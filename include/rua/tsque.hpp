@@ -14,12 +14,14 @@ public:
 	constexpr tsque() : _root(nullptr) {}
 
 	template <typename... A>
-	void emplace(A &&... a) {
+	bool // was empty before
+	emplace(A &&... a) {
 		auto new_root = new _node_t(std::forward<A>(a)...);
 		auto old_root = _root.load();
 		do {
 			new_root->next = old_root;
 		} while (!_root.compare_exchange_weak(old_root, new_root));
+		return !old_root;
 	}
 
 	optional<T> pop() {
