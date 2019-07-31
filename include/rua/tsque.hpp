@@ -1,6 +1,7 @@
 #ifndef _RUA_TSQUE_HPP
 #define _RUA_TSQUE_HPP
 
+#include "macros.hpp"
 #include "optional.hpp"
 
 #include <atomic>
@@ -12,6 +13,10 @@ template <typename T>
 class tsque {
 public:
 	constexpr tsque() : _root(nullptr) {}
+
+	tsque(tsque &&src) : _root(src._root.exchange(nullptr)) {}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(tsque)
 
 	template <typename... A>
 	bool // was empty before
