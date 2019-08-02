@@ -19,7 +19,7 @@ public:
 		_shared_ptr(),
 		_type(type_id<std::nullptr_t>()) {}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	ref(SameBase *raw_ptr) {
 		if (!raw_ptr) {
 			_raw_ptr = nullptr;
@@ -30,10 +30,10 @@ public:
 		_raw_ptr = static_cast<T *>(raw_ptr);
 	}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	ref(SameBase &lv) : ref(&lv) {}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	ref(SameBase &&rv) {
 		_type = type_id<SameBase>();
 		new (&_shared_ptr) std::shared_ptr<T>(std::static_pointer_cast<T>(
@@ -63,7 +63,7 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	RUA_DERIVED_CONCEPT(T, Derived)
+	template <RUA_DERIVED_CONCEPT(T, Derived)>
 	ref(const std::shared_ptr<Derived> &derived_shared_ptr_lv) {
 		if (!derived_shared_ptr_lv) {
 			_raw_ptr = nullptr;
@@ -76,7 +76,7 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	RUA_DERIVED_CONCEPT(T, Derived)
+	template <RUA_DERIVED_CONCEPT(T, Derived)>
 	ref(std::shared_ptr<Derived> &&derived_shared_ptr_rv) {
 		if (!derived_shared_ptr_rv) {
 			_raw_ptr = nullptr;
@@ -89,11 +89,11 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	ref(const std::unique_ptr<SameBase> &unique_ptr_lv) :
 		ref(unique_ptr_lv.get()) {}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	ref(std::unique_ptr<SameBase> &&unique_ptr_rv) {
 		if (!unique_ptr_rv) {
 			_raw_ptr = nullptr;
@@ -106,7 +106,7 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	RUA_DERIVED_CONCEPT(T, Derived)
+	template <RUA_DERIVED_CONCEPT(T, Derived)>
 	ref(const ref<Derived> &derived_blended_ptr_lv) {
 		_type = derived_blended_ptr_lv.type();
 
@@ -126,7 +126,7 @@ public:
 		_raw_ptr = static_cast<T *>(derived_blended_ptr_lv.get());
 	}
 
-	RUA_DERIVED_CONCEPT(T, Derived)
+	template <RUA_DERIVED_CONCEPT(T, Derived)>
 	ref(ref<Derived> &&derived_blended_ptr_rv) {
 		_type = derived_blended_ptr_rv.type();
 
@@ -213,7 +213,7 @@ public:
 		return _type;
 	}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	bool type_is() const {
 		return type() == type_id<SameBase>();
 	}
@@ -252,7 +252,7 @@ public:
 		return release_shared();
 	}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	SameBase *to() const {
 		assert(_raw_ptr);
 
@@ -265,7 +265,7 @@ public:
 		return static_cast<SameBase *>(_raw_ptr);
 	}
 
-	RUA_IS_BASE_OF_CONCEPT(T, SameBase)
+	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	std::shared_ptr<SameBase> to_shared() const {
 		assert(_raw_ptr);
 

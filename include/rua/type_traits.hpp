@@ -145,18 +145,17 @@ inline std::string &type_info(type_id_t id) {
 		reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member))
 
 #define RUA_IS_BASE_OF_CONCEPT(_B, _D)                                         \
-	template <                                                                 \
-		typename _D,                                                           \
-		typename = typename std::enable_if<std::is_base_of<                    \
-			_B,                                                                \
-			typename std::remove_reference<_D>::type>::value>::type>
+	typename _D, typename = typename std::enable_if<std::is_base_of<           \
+					 _B,                                                       \
+					 typename std::remove_reference<_D>::type>::value>::type
+
 #define RUA_DERIVED_CONCEPT(_B, _D)                                            \
-	template <                                                                 \
-		typename _D,                                                           \
-		typename = typename std::enable_if<                                    \
-			std::is_base_of<_B, typename std::remove_reference<_D>::type>::    \
-				value &&                                                       \
-			!std::is_same<_B, _D>::value>::type>
+	typename _D,                                                               \
+		typename = typename std::enable_if <                                   \
+					   std::is_base_of<                                        \
+						   _B,                                                 \
+						   typename std::remove_reference<_D>::type>::value && \
+				   !std::is_same<_B, _D>::value > ::type
 
 template <bool IsCopyable, bool IsMovable>
 class enable_copy_move;
