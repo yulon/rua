@@ -259,7 +259,7 @@ public:
 
 		using signaler = rua::secondary_signaler;
 
-		virtual rua::scheduler::signaler_i make_signaler() {
+		virtual signaler_i make_signaler() {
 			assert(_fib_dvr->_cur_fc);
 
 			if (!_fib_dvr->_cur_fc->sig.type_is<signaler>() ||
@@ -271,8 +271,7 @@ public:
 			return _fib_dvr->_cur_fc->sig;
 		}
 
-		virtual bool
-		wait(rua::scheduler::signaler_i sig, ms timeout = duration_max()) {
+		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
 			assert(sig == _fib_dvr->_cur_fc->sig);
 
 			auto sig_impl = sig.to<signaler>();
