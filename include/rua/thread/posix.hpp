@@ -2,6 +2,7 @@
 #define _RUA_THREAD_POSIX_HPP
 
 #include "../any_word.hpp"
+#include "../limits.hpp"
 #include "../sched/scheduler.hpp"
 
 #include <pthread.h>
@@ -144,7 +145,11 @@ public:
 
 		virtual void yield() {
 			if (_yield_dur > 1_us) {
-				::usleep(us(_yield_dur).count());
+				auto us_c = us(_yield_dur).count();
+				::usleep(
+					static_cast<int64_t>(nmax<int>()) < us_c
+						? nmax<int>()
+						: static_cast<int>(us_c));
 			}
 			for (auto i = 0; i < 3; ++i) {
 				if (!sched_yield()) {
@@ -155,7 +160,11 @@ public:
 		}
 
 		virtual void sleep(ms timeout) {
-			::usleep(us(timeout).count());
+			auto us_c = us(timeout).count();
+			::usleep(
+				static_cast<int64_t>(nmax<int>()) < us_c
+					? nmax<int>()
+					: static_cast<int>(us_c));
 		}
 
 		class signaler : public rua::scheduler::signaler {
@@ -174,7 +183,7 @@ public:
 				_need_close = false;
 			}
 
-			native_handle_t native_handle() const {
+			native_handle_t native_handle() {
 				return &_sem;
 			}
 
@@ -196,15 +205,22 @@ public:
 			return std::make_shared<signaler>();
 		}
 
-		virtual bool wait(signaler_i wkr, ms timeout = duration_max()) {
-			assert(wkr.type_is<signaler>());
+		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
+			assert(sig.type_is<signaler>());
 
 			timespec ts;
-			ts.tv_sec = static_cast<decltype(ts.tv_sec)>(ms.total_seconds());
+			ts.tv_sec =
+				static_cast<int64_t>(nmax<decltype(ts.tv_sec)>()) <
+						timeout.total_seconds()
+					? nmax<decltype(ts.tv_sec)>()
+					: static_cast<decltype(ts.tv_sec)>(timeout.total_seconds());
 			ts.tv_nsec =
-				static_cast<decltype(ts.tv_nsec)>(ms.extra_nanoseconds());
-			return sem_timedwait(wkr.to<signaler>()->native_handle(), &ts) !=
-				   ETIMEDOUT;
+				static_cast<decltype(ts.tv_nsec)>(timeout.extra_nanoseconds());
+
+			auto sig_impl = sig.to<signaler>();
+			auto r = sem_timedwait(sig_impl->native_handle(), &ts) != ETIMEDOUT;
+			sig_impl->reset();
+			return r;
 		}
 
 	private:

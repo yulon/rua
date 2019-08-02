@@ -2,6 +2,7 @@
 #define _RUA_THREAD_WIN32_HPP
 
 #include "../any_word.hpp"
+#include "../limits.hpp"
 #include "../macros.hpp"
 #include "../sched/scheduler.hpp"
 
@@ -147,7 +148,10 @@ public:
 
 		virtual void yield() {
 			if (_yield_dur > 1) {
-				Sleep(static_cast<DWORD>(_yield_dur.count()));
+				Sleep(
+					static_cast<int64_t>(nmax<DWORD>()) < _yield_dur.count()
+						? nmax<DWORD>()
+						: static_cast<DWORD>(_yield_dur.count()));
 			}
 			for (auto i = 0; i < 3; ++i) {
 				if (SwitchToThread()) {
@@ -158,7 +162,10 @@ public:
 		}
 
 		virtual void sleep(ms timeout) {
-			Sleep(static_cast<DWORD>(timeout.count()));
+			Sleep(
+				static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
+					? nmax<DWORD>()
+					: static_cast<DWORD>(timeout.count()));
 		}
 
 		class signaler : public rua::scheduler::signaler {
@@ -197,12 +204,15 @@ public:
 			return std::make_shared<signaler>();
 		}
 
-		virtual bool wait(signaler_i wkr, ms timeout = duration_max()) {
-			assert(wkr.type_is<signaler>());
+		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
+			assert(sig.type_is<signaler>());
 
 			return WaitForSingleObject(
-					   wkr.to<signaler>()->native_handle(),
-					   static_cast<DWORD>(timeout.count())) != WAIT_TIMEOUT;
+					   sig.to<signaler>()->native_handle(),
+					   static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
+						   ? nmax<DWORD>()
+						   : static_cast<DWORD>(timeout.count())) !=
+				   WAIT_TIMEOUT;
 		}
 
 	private:
