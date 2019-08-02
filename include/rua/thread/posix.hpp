@@ -192,7 +192,7 @@ public:
 			}
 
 			virtual void reset() {
-				while (sem_trywait(&_sem) != EAGAIN)
+				while (!sem_trywait(&_sem))
 					;
 			}
 
