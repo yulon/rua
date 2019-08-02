@@ -4,7 +4,7 @@
 #include "../bin.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
-#include "../str.hpp"
+#include "../string/to_string.hpp"
 
 #include <cstdint>
 #include <type_traits>
@@ -509,7 +509,7 @@ using namespace duration_literals;
 inline void
 _duration_to_string_fmt_frac(bin_ref buf, ns v, int prec, int *nw, ns *nv) {
 	// Omit trailing zeros up to and including decimal point.
-	auto w = buf.size();
+	auto w = static_cast<int>(buf.size());
 	auto print = false;
 	for (auto i = 0; i < prec; i++) {
 		auto digit = v.count() % 10;
@@ -531,7 +531,7 @@ _duration_to_string_fmt_frac(bin_ref buf, ns v, int prec, int *nw, ns *nv) {
 // _duration_to_string_fmt_int formats v into the tail of buf.
 // It returns the index where the output begins.
 inline int _duration_to_string_fmt_int(bin_ref buf, ns v) {
-	auto w = buf.size();
+	auto w = static_cast<int>(buf.size());
 	if (v == 0) {
 		w--;
 		buf[w] = '0';
@@ -549,7 +549,7 @@ inline int _duration_to_string_fmt_int(bin_ref buf, ns v) {
 // Leading zero units are omitted. As a special case, durations less than one
 // second format use a smaller unit (milli-, micro-, or ns) to ensure
 // that the leading digit is non-zero. The zero duration formats as 0s.
-inline std::string to_str(ns dur) {
+inline std::string to_string(ns dur) {
 	// Largest time is 2540400h10m10.000000000s
 	char b[32];
 	int w = sizeof(b);

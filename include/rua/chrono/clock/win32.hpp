@@ -7,8 +7,8 @@
 
 #include <windows.h>
 
+#include <cstdint>
 #include <cstdlib>
-#include <mutex>
 
 namespace rua { namespace win32 {
 
@@ -21,11 +21,12 @@ inline time tick() {
 	if (ok) {
 		LARGE_INTEGER end;
 		if (QueryPerformanceCounter(&end)) {
-			auto els = (end.QuadPart - start.QuadPart);
-			auto els_s = (end.QuadPart - start.QuadPart) / freq.QuadPart;
+			int64_t els = (end.QuadPart - start.QuadPart);
+			int64_t els_s = els / freq.QuadPart;
 			return time(duration_base(
 				els_s,
-				static_cast<int32_t>(els * 1000000000 / freq.QuadPart - els_s)));
+				static_cast<int32_t>(
+					els * 1000000000 / freq.QuadPart - els_s * 1000000000)));
 		}
 	}
 	static dylib kernel32("KERNEL32.DLL", false);

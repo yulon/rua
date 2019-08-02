@@ -1,12 +1,12 @@
 #ifndef _RUA_IO_UTIL_HPP
 #define _RUA_IO_UTIL_HPP
 
-#include "abstract.hpp"
+#include "../sync/chan.hpp"
 #include "../thread.hpp"
-#include "../chan.hpp"
+#include "abstract.hpp"
 
-#include <cstddef>
 #include <atomic>
+#include <cstddef>
 
 namespace rua {
 
@@ -109,6 +109,6 @@ private:
 	bin _buf;
 };
 
-}
+} // namespace rua
 
 #endif

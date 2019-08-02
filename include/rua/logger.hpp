@@ -2,18 +2,19 @@
 #define _RUA_LOGGER_HPP
 
 #include "io.hpp"
-#include "str.hpp"
 #include "sched.hpp"
+#include "string/strjoin.hpp"
+#include "string/to_string.hpp"
 
 #ifdef _WIN32
-	#include <windows.h>
+#include <windows.h>
 #endif
 
-#include <mutex>
-#include <memory>
-#include <vector>
-#include <type_traits>
 #include <functional>
+#include <memory>
+#include <mutex>
+#include <type_traits>
+#include <vector>
 
 namespace rua {
 
@@ -22,7 +23,7 @@ public:
 	logger() : _mtx(new std::mutex), _lw(nullptr), _ew(nullptr), _oe(eol) {}
 
 	template <typename... V>
-	void log(V&&... v) {
+	void log(V &&... v) {
 		_write(_lw, on_log, log_prefix, std::forward<V>(v)...);
 	}
 
@@ -30,17 +31,17 @@ public:
 	std::function<void(const std::string &)> on_log;
 
 	template <typename... V>
-	void dbg(V&&... v) {
-		#ifndef NDEBUG
-			_write(_lw, on_dbg, dbg_prefix, std::forward<V>(v)...);
-		#endif
+	void dbg(V &&... v) {
+#ifndef NDEBUG
+		_write(_lw, on_dbg, dbg_prefix, std::forward<V>(v)...);
+#endif
 	}
 
 	std::string dbg_prefix;
 	std::function<void(const std::string &)> on_dbg;
 
 	template <typename... V>
-	void info(V&&... v) {
+	void info(V &&... v) {
 		_write(_lw, on_info, info_prefix, std::forward<V>(v)...);
 	}
 
@@ -48,7 +49,7 @@ public:
 	std::function<void(const std::string &)> on_info;
 
 	template <typename... V>
-	void warn(V&&... v) {
+	void warn(V &&... v) {
 		_write(_lw, on_warn, warn_prefix, std::forward<V>(v)...);
 	}
 
@@ -56,7 +57,7 @@ public:
 	std::function<void(const std::string &)> on_warn;
 
 	template <typename... V>
-	void err(V&&... v) {
+	void err(V &&... v) {
 		_write(_ew, on_err, err_prefix, std::forward<V>(v)...);
 	}
 
@@ -64,14 +65,14 @@ public:
 	std::function<void(const std::string &)> on_err;
 
 	void set_writer(writer_i w) {
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 
 		_lw = w;
 		_ew = std::move(w);
 	}
 
 	void set_log_writer(writer_i lw) {
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 
 		_lw = std::move(lw);
 	}
@@ -81,7 +82,7 @@ public:
 	}
 
 	void set_err_writer(writer_i ew) {
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 
 		_ew = std::move(ew);
 	}
@@ -91,7 +92,7 @@ public:
 	}
 
 	void set_over_mark(const char *str = eol) {
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 
 		_oe = str;
 	}
@@ -101,7 +102,7 @@ public:
 	}
 
 	void reset() {
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 
 		_lw.reset();
 		_ew.reset();
@@ -115,19 +116,23 @@ private:
 	const char *_oe;
 
 	template <typename... V>
-	void _write(const writer_i &w, std::function<void(const std::string &)> &on, const std::string &prefix, V&&... v) {
+	void _write(
+		const writer_i &w,
+		std::function<void(const std::string &)> &on,
+		const std::string &prefix,
+		V &&... v) {
 		std::vector<std::string> strs;
 		if (prefix.length()) {
-			strs = { prefix, to_str(v)..., eol };
+			strs = {prefix, to_string(v)..., eol};
 		} else {
-			strs = { to_str(v)..., eol };
+			strs = {to_string(v)..., eol};
 		}
 
 		if (on) {
 			auto cont = strjoin(strs, " ", strjoin_multi_line);
 			on(cont);
 
-			lock_guard<std::mutex> lg(*_mtx);
+			std::lock_guard<std::mutex> lg(*_mtx);
 			if (!w) {
 				return;
 			}
@@ -135,7 +140,7 @@ private:
 			return;
 		}
 
-		lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<std::mutex> lg(*_mtx);
 		if (!w) {
 			return;
 		}
@@ -148,6 +153,6 @@ private:
 	}
 };
 
-}
+} // namespace rua
 
 #endif

@@ -15,7 +15,7 @@ TEST_CASE("precision of duration", "[chrono]") {
 }
 
 TEST_CASE("duration to string", "[chrono]") {
-	REQUIRE(rua::to_str(7_s + 8_ms + 2_h) == "2h0m7.008s");
+	REQUIRE(rua::to_string(7_s + 8_ms + 2_h) == "2h0m7.008s");
 }
 
 TEST_CASE("date convert", "[chrono]") {

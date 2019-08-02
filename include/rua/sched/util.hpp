@@ -1,9 +1,12 @@
 #ifndef _RUA_SCHED_UTIL_HPP
 #define _RUA_SCHED_UTIL_HPP
 
-#include "abstract.hpp"
+#include "scheduler.hpp"
+
 #include "../thread.hpp"
 #include "../tls.hpp"
+
+#include <atomic>
 
 namespace rua {
 
@@ -67,34 +70,44 @@ inline void yield() {
 	get_scheduler()->yield();
 }
 
-inline void sleep(size_t timeout) {
+inline void sleep(ms timeout) {
 	get_scheduler()->sleep(timeout);
 }
 
-template <typename Lockable>
-class lock_guard {
+class secondary_signaler : public scheduler::signaler {
 public:
-	lock_guard() : _owner(nullptr) {}
+	constexpr secondary_signaler() : _pri_sch(nullptr), _state(false) {}
 
-	lock_guard(Lockable &lck) : _owner(&lck) {
-		get_scheduler()->lock(lck);
+	explicit secondary_signaler(scheduler::signaler_i main_sch) :
+		_pri_sch(main_sch),
+		_state(false) {}
+
+	virtual ~secondary_signaler() = default;
+
+	bool state() const {
+		return _state.load();
 	}
 
-	~lock_guard() {
-		unlock();
-	}
-
-	void unlock() {
-		if (_owner) {
-			_owner->unlock();
-			_owner = nullptr;
+	virtual void signal() {
+		_state.store(true);
+		if (_pri_sch) {
+			_pri_sch->signal();
 		}
 	}
 
+	virtual void reset() {
+		_state.store(false);
+	}
+
+	scheduler::signaler_i primary_signaler() const {
+		return _pri_sch;
+	}
+
 private:
-	Lockable *_owner;
+	scheduler::signaler_i _pri_sch;
+	std::atomic<bool> _state;
 };
 
-}
+} // namespace rua
 
 #endif

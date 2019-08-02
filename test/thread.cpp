@@ -1,4 +1,4 @@
-#include <rua/chan.hpp>
+#include <rua/sync.hpp>
 #include <rua/thread.hpp>
 
 #include <catch.hpp>
@@ -18,12 +18,12 @@ TEST_CASE("thread", "[thread]") {
 }
 
 TEST_CASE("use chan on thread", "[thread]") {
-	rua::chan<std::string> ch;
+	static rua::chan<std::string> ch;
 
-	rua::thread([ch]() mutable {
+	rua::thread([]() mutable {
 		rua::sleep(100);
 		ch << "ok";
 	});
 
-	REQUIRE(ch.get() == "ok");
+	REQUIRE(ch.pop() == "ok");
 }

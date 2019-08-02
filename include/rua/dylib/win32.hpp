@@ -2,7 +2,7 @@
 #define _RUA_DYLIB_WIN32_HPP
 
 #include "../macros.hpp"
-#include "../str.hpp"
+#include "../string/encoding/base/win32.hpp"
 
 #include <windows.h>
 
@@ -13,15 +13,15 @@ public:
 	using native_handle_t = HMODULE;
 
 	dylib(const std::string &name, bool always_load = true) {
-		auto wname = u8_to_w(name).c_str();
+		auto wname = u8_to_w(name);
 		if (!always_load) {
-			_h = GetModuleHandleW(wname);
+			_h = GetModuleHandleW(wname.c_str());
 			if (_h) {
 				_need_unload = false;
 				return;
 			}
 		}
-		_h = LoadLibraryW(wname);
+		_h = LoadLibraryW(wname.c_str());
 		_need_unload = _h;
 	}
 

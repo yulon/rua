@@ -1,12 +1,13 @@
-#ifndef _RUA_WIN32_THREAD_HPP
-#define _RUA_WIN32_THREAD_HPP
+#ifndef _RUA_THREAD_WIN32_HPP
+#define _RUA_THREAD_WIN32_HPP
 
 #include "../any_word.hpp"
 #include "../macros.hpp"
-#include "../sched/abstract.hpp"
+#include "../sched/scheduler.hpp"
 
 #include <windows.h>
 
+#include <cassert>
 #include <functional>
 
 namespace rua { namespace win32 {
@@ -90,7 +91,7 @@ public:
 		return _h;
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return _h;
 	}
 
@@ -140,15 +141,13 @@ public:
 			return ds;
 		}
 
-		scheduler() = default;
-
-		scheduler(size_t yield_dur) : _yield_dur(yield_dur) {}
+		constexpr scheduler(ms yield_dur = 0) : _yield_dur(yield_dur) {}
 
 		virtual ~scheduler() = default;
 
 		virtual void yield() {
 			if (_yield_dur > 1) {
-				Sleep(_yield_dur);
+				Sleep(static_cast<DWORD>(_yield_dur.count()));
 			}
 			for (auto i = 0; i < 3; ++i) {
 				if (SwitchToThread()) {
@@ -158,46 +157,56 @@ public:
 			Sleep(1);
 		}
 
-		virtual void sleep(size_t timeout) {
-			Sleep(timeout);
+		virtual void sleep(ms timeout) {
+			Sleep(static_cast<DWORD>(timeout.count()));
 		}
 
-		virtual void lock(typeless_lock_ref &lck) {
-			lck.lock();
-		}
-
-		class cond_var : public rua::scheduler::cond_var {
+		class signaler : public rua::scheduler::signaler {
 		public:
-			cond_var() = default;
-			virtual ~cond_var() = default;
+			using native_handle_t = HANDLE;
 
-			virtual void notify() {
-				_cv.notify_one();
+			signaler(native_handle_t h) : _h(h) {}
+
+			signaler() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
+
+			virtual ~signaler() {
+				if (!_h) {
+					return;
+				}
+				CloseHandle(_h);
+				_h = nullptr;
+			}
+
+			native_handle_t native_handle() const {
+				return _h;
+			}
+
+			virtual void signal() {
+				SetEvent(_h);
+			}
+
+			virtual void reset() {
+				ResetEvent(_h);
 			}
 
 		private:
-			std::condition_variable_any _cv;
-			friend scheduler;
+			HANDLE _h;
 		};
 
-		virtual scheduler::cond_var_i make_cond_var() {
-			return std::make_shared<cond_var>();
+		virtual signaler_i make_signaler() {
+			return std::make_shared<signaler>();
 		}
 
-		virtual std::cv_status cond_wait(
-			scheduler::cond_var_i cv,
-			typeless_lock_ref &lck,
-			size_t timeout = nmax<size_t>()) {
-			auto dscv = cv.to<cond_var>();
-			if (timeout == nmax<size_t>()) {
-				dscv->_cv.wait(lck);
-				return std::cv_status::no_timeout;
-			}
-			return dscv->_cv.wait_for(lck, std::chrono::milliseconds(timeout));
+		virtual bool wait(signaler_i wkr, ms timeout = duration_max()) {
+			assert(wkr.type_is<signaler>());
+
+			return WaitForSingleObject(
+					   wkr.to<signaler>()->native_handle(),
+					   static_cast<DWORD>(timeout.count())) != WAIT_TIMEOUT;
 		}
 
 	private:
-		size_t _yield_dur;
+		ms _yield_dur;
 	};
 };
 
