@@ -39,7 +39,7 @@ inline std::string loc_to_u8(const std::string &str) {
 }
 
 inline std::string u8_to_loc(const std::string &u8_str) {
-	return uni::u8_to_loc(str);
+	return uni::u8_to_loc(u8_str);
 }
 
 inline std::wstring u8_to_w(const std::string &u8_str) {
