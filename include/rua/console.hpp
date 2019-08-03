@@ -6,9 +6,7 @@
 #include "stdio.hpp"
 #include "string/encoding.hpp"
 #include "string/line.hpp"
-#include "sync/mutex.hpp"
-
-#include <mutex>
+#include "sync.hpp"
 
 namespace rua {
 
@@ -17,7 +15,7 @@ public:
 	console() = default;
 
 	std::string recv() {
-		std::lock_guard<mutex> lg(get_mutex());
+		auto lg = make_lock_guard(get_mutex());
 		if (!_lr) {
 			return "";
 		}
@@ -25,7 +23,7 @@ public:
 	}
 
 	void set_recv_reader(reader_i rr) {
-		std::lock_guard<mutex> lg(get_mutex());
+		auto lg = make_lock_guard(get_mutex());
 
 		_lr.reset(std::move(rr));
 	}

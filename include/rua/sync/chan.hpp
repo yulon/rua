@@ -3,16 +3,12 @@
 
 #include "tsque.hpp"
 
-#include "../macros.hpp"
+#include "../chrono/clock.hpp"
+#include "../optional.hpp"
 #include "../sched.hpp"
 
-#include <atomic>
-#include <cassert>
-#include <functional>
-#include <memory>
-#include <mutex>
 #include <queue>
-#include <vector>
+#include <utility>
 
 namespace rua {
 
@@ -43,19 +39,25 @@ public:
 			return val_opt;
 		}
 
-		if (!sch->wait(sig, timeout)) {
+		if (timeout == duration_max()) {
+			do {
+				sch->wait(sig, timeout);
+				val_opt = _buf.pop();
+			} while (!val_opt);
 			return val_opt;
 		}
-		val_opt = _buf.pop();
+
+		while (timeout > 0 && !val_opt) {
+			auto t = tick();
+			sch->wait(sig, timeout);
+			timeout -= tick() - t;
+			val_opt = _buf.pop();
+		}
 		return val_opt;
 	}
 
 	T pop() {
-		rua::optional<T> val_opt;
-		do {
-			val_opt = try_pop(duration_max());
-		} while (!val_opt);
-		return std::move(val_opt.value());
+		return try_pop(duration_max()).value();
 	}
 
 	template <typename... A>

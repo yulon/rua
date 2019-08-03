@@ -5,7 +5,7 @@
 #include "sched.hpp"
 #include "string/strjoin.hpp"
 #include "string/to_string.hpp"
-#include "sync/mutex.hpp"
+#include "sync.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -13,7 +13,6 @@
 
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <type_traits>
 #include <vector>
 
@@ -66,14 +65,14 @@ public:
 	std::function<void(const std::string &)> on_err;
 
 	void set_writer(writer_i w) {
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 
 		_lw = w;
 		_ew = std::move(w);
 	}
 
 	void set_log_writer(writer_i lw) {
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 
 		_lw = std::move(lw);
 	}
@@ -83,7 +82,7 @@ public:
 	}
 
 	void set_err_writer(writer_i ew) {
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 
 		_ew = std::move(ew);
 	}
@@ -93,7 +92,7 @@ public:
 	}
 
 	void set_over_mark(const char *str = eol) {
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 
 		_oe = str;
 	}
@@ -103,7 +102,7 @@ public:
 	}
 
 	void reset() {
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 
 		_lw.reset();
 		_ew.reset();
@@ -133,7 +132,7 @@ private:
 			auto cont = strjoin(strs, " ", strjoin_multi_line);
 			on(cont);
 
-			std::lock_guard<mutex> lg(*_mtx);
+			auto lg = make_lock_guard(*_mtx);
 			if (!w) {
 				return;
 			}
@@ -141,7 +140,7 @@ private:
 			return;
 		}
 
-		std::lock_guard<mutex> lg(*_mtx);
+		auto lg = make_lock_guard(*_mtx);
 		if (!w) {
 			return;
 		}

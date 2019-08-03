@@ -3,6 +3,7 @@
 
 #include "tsque.hpp"
 
+#include "../chrono/clock.hpp"
 #include "../sched.hpp"
 
 #include <atomic>
@@ -38,12 +39,24 @@ public:
 			return true;
 		}
 
-		return sch->wait(sig, timeout);
+		if (timeout == duration_max()) {
+			while (!sch->wait(sig, timeout))
+				;
+			return true;
+		}
+
+		while (timeout > 0) {
+			auto t = tick();
+			if (sch->wait(sig, timeout)) {
+				return true;
+			}
+			timeout -= tick() - t;
+		}
+		return false;
 	}
 
 	void lock() {
-		while (!try_lock(duration_max()))
-			;
+		try_lock(duration_max());
 	}
 
 	void unlock() {
