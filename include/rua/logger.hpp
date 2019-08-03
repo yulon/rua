@@ -5,6 +5,7 @@
 #include "sched.hpp"
 #include "string/strjoin.hpp"
 #include "string/to_string.hpp"
+#include "sync/mutex.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -20,7 +21,7 @@ namespace rua {
 
 class logger {
 public:
-	logger() : _mtx(new std::mutex), _lw(nullptr), _ew(nullptr), _oe(eol) {}
+	logger() : _mtx(new mutex), _lw(nullptr), _ew(nullptr), _oe(eol) {}
 
 	template <typename... V>
 	void log(V &&... v) {
@@ -65,14 +66,14 @@ public:
 	std::function<void(const std::string &)> on_err;
 
 	void set_writer(writer_i w) {
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 
 		_lw = w;
 		_ew = std::move(w);
 	}
 
 	void set_log_writer(writer_i lw) {
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 
 		_lw = std::move(lw);
 	}
@@ -82,7 +83,7 @@ public:
 	}
 
 	void set_err_writer(writer_i ew) {
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 
 		_ew = std::move(ew);
 	}
@@ -92,24 +93,24 @@ public:
 	}
 
 	void set_over_mark(const char *str = eol) {
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 
 		_oe = str;
 	}
 
-	std::mutex &get_mutex() {
+	mutex &get_mutex() {
 		return *_mtx;
 	}
 
 	void reset() {
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 
 		_lw.reset();
 		_ew.reset();
 	}
 
 protected:
-	std::unique_ptr<std::mutex> _mtx;
+	std::unique_ptr<mutex> _mtx;
 
 private:
 	writer_i _lw, _ew;
@@ -132,7 +133,7 @@ private:
 			auto cont = strjoin(strs, " ", strjoin_multi_line);
 			on(cont);
 
-			std::lock_guard<std::mutex> lg(*_mtx);
+			std::lock_guard<mutex> lg(*_mtx);
 			if (!w) {
 				return;
 			}
@@ -140,7 +141,7 @@ private:
 			return;
 		}
 
-		std::lock_guard<std::mutex> lg(*_mtx);
+		std::lock_guard<mutex> lg(*_mtx);
 		if (!w) {
 			return;
 		}
