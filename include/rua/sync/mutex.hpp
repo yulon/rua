@@ -15,13 +15,17 @@ class mutex {
 public:
 	constexpr mutex() : _locked(false), _waiters() {}
 
+	mutex(const mutex &) = delete;
+
+	mutex &operator=(const mutex &) = delete;
+
 	bool try_lock() {
 		return !_locked.exchange(true);
 	}
 
-	void lock() {
+	bool lock(ms timeout = duration_max()) {
 		if (try_lock()) {
-			return;
+			return true;
 		}
 		auto sch = get_scheduler();
 		auto sig = sch->make_signaler();
@@ -31,9 +35,9 @@ public:
 			if (!_waiters.erase(n)) {
 				sig->reset();
 			}
-			return;
+			return true;
 		}
-		sch->wait(sig);
+		return sch->wait(sig, timeout);
 	}
 
 	void unlock() {

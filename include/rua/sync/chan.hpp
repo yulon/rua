@@ -21,6 +21,10 @@ class chan {
 public:
 	constexpr chan() : _buf(), _waiters() {}
 
+	chan(const chan &) = delete;
+
+	chan &operator=(const chan &) = delete;
+
 	T pop() {
 		for (;;) {
 			auto val_opt = _buf.pop();
