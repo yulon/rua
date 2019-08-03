@@ -25,29 +25,37 @@ public:
 
 	chan &operator=(const chan &) = delete;
 
-	T pop() {
-		for (;;) {
-			auto val_opt = _buf.pop();
-			if (val_opt) {
-				return std::move(val_opt.value());
-			}
-			auto sch = get_scheduler();
-			auto sig = sch->make_signaler();
-			auto n = _waiters.emplace(sig);
-
-			val_opt = _buf.pop();
-			if (val_opt) {
-				if (!_waiters.erase(n)) {
-					sig->reset();
-				}
-				return std::move(val_opt.value());
-			}
-			sch->wait(sig);
+	rua::optional<T> try_pop(ms timeout = 0) {
+		auto val_opt = _buf.pop();
+		if (val_opt || !timeout) {
+			return val_opt;
 		}
+
+		auto sch = get_scheduler();
+		auto sig = sch->make_signaler();
+		auto n = _waiters.emplace(sig);
+
+		val_opt = _buf.pop();
+		if (val_opt) {
+			if (!_waiters.erase(n)) {
+				sig->reset();
+			}
+			return val_opt;
+		}
+
+		if (!sch->wait(sig, timeout)) {
+			return val_opt;
+		}
+		val_opt = _buf.pop();
+		return val_opt;
 	}
 
-	rua::optional<T> try_get() {
-		return _buf.pop();
+	T pop() {
+		rua::optional<T> val_opt;
+		do {
+			val_opt = try_pop(duration_max());
+		} while (!val_opt);
+		return std::move(val_opt.value());
 	}
 
 	template <typename... A>

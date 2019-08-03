@@ -19,25 +19,31 @@ public:
 
 	mutex &operator=(const mutex &) = delete;
 
-	bool try_lock() {
-		return !_locked.exchange(true);
-	}
-
-	bool lock(ms timeout = duration_max()) {
-		if (try_lock()) {
+	bool try_lock(ms timeout = 0) {
+		if (!_locked.exchange(true)) {
 			return true;
 		}
+		if (!timeout) {
+			return false;
+		}
+
 		auto sch = get_scheduler();
 		auto sig = sch->make_signaler();
 		auto n = _waiters.emplace(sig);
 
-		if (try_lock()) {
+		if (!_locked.exchange(true)) {
 			if (!_waiters.erase(n)) {
 				sig->reset();
 			}
 			return true;
 		}
+
 		return sch->wait(sig, timeout);
+	}
+
+	void lock() {
+		while (!try_lock(duration_max()))
+			;
 	}
 
 	void unlock() {
