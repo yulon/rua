@@ -1,12 +1,13 @@
 #ifndef _RUA_SYNC_MUTEX_HPP
 #define _RUA_SYNC_MUTEX_HPP
 
-#include "tsque.hpp"
+#include "lf_forward_list.hpp"
 
 #include "../chrono/clock.hpp"
 #include "../sched.hpp"
 
 #include <atomic>
+#include <cassert>
 #include <cstdint>
 #include <queue>
 
@@ -14,7 +15,7 @@ namespace rua {
 
 class mutex {
 public:
-	constexpr mutex() : _locked(false), _waiters() {}
+	constexpr mutex() : _locked(false), _waiters(), _sig_c(0) {}
 
 	mutex(const mutex &) = delete;
 
@@ -30,27 +31,38 @@ public:
 
 		auto sch = get_scheduler();
 		auto sig = sch->make_signaler();
-		auto n = _waiters.emplace(sig);
+		auto it = _waiters.emplace_front(sig);
 
-		if (!_locked.exchange(true)) {
-			if (!_waiters.erase(n)) {
-				sig->reset();
-			}
+		if (it.is_back() && !_locked.exchange(true)) {
+			_waiters.erase(it);
 			return true;
 		}
 
 		if (timeout == duration_max()) {
-			while (!sch->wait(sig, timeout))
-				;
-			return true;
+			for (;;) {
+				if (sch->wait(sig, timeout)) {
+					if (!_locked.exchange(true)) {
+						return true;
+					}
+					it = _waiters.emplace_front(sig);
+				}
+			}
 		}
 
-		while (timeout > 0) {
+		for (;;) {
 			auto t = tick();
-			if (sch->wait(sig, timeout)) {
+			auto r = sch->wait(sig, timeout);
+			if (!_locked.exchange(true)) {
 				return true;
 			}
+			if (!r) {
+				return false;
+			}
 			timeout -= tick() - t;
+			if (timeout <= 0) {
+				return false;
+			}
+			it = _waiters.emplace_front(sig);
 		}
 		return false;
 	}
@@ -60,9 +72,15 @@ public:
 	}
 
 	void unlock() {
-		auto waiter_opt = _waiters.pop();
-		if (!waiter_opt.has_value()) {
-			_locked.store(false);
+		auto waiter_opt = _waiters.pop_back();
+
+#ifndef NDEBUG
+		assert(_locked.exchange(false));
+#else
+		_locked.store(false);
+#endif
+
+		if (!waiter_opt) {
 			return;
 		}
 		waiter_opt.value()->signal();
@@ -70,7 +88,8 @@ public:
 
 private:
 	std::atomic<bool> _locked;
-	tsque<scheduler::signaler_i> _waiters;
+	lf_forward_list<scheduler::signaler_i> _waiters;
+	std::atomic<size_t> _sig_c;
 };
 
 } // namespace rua

@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "tsque.hpp"
+#include "lf_forward_list.hpp"
 
 #include "../chrono/clock.hpp"
 #include "../optional.hpp"
@@ -22,36 +22,52 @@ public:
 	chan &operator=(const chan &) = delete;
 
 	rua::optional<T> try_pop(ms timeout = 0) {
-		auto val_opt = _buf.pop();
+		auto val_opt = _buf.pop_front();
 		if (val_opt || !timeout) {
 			return val_opt;
 		}
 
 		auto sch = get_scheduler();
 		auto sig = sch->make_signaler();
-		auto n = _waiters.emplace(sig);
+		auto it = _waiters.emplace_front(sig);
 
-		val_opt = _buf.pop();
-		if (val_opt) {
-			if (!_waiters.erase(n)) {
-				sig->reset();
+		if (it.is_back()) {
+			val_opt = _buf.pop_front();
+			if (val_opt) {
+				if (!_waiters.erase(it) && !_buf.is_empty()) {
+					auto waiter_opt = _waiters.pop_back();
+					if (waiter_opt && waiter_opt.value() != sig) {
+						waiter_opt.value()->signal();
+					}
+				}
+				return val_opt;
 			}
-			return val_opt;
 		}
 
 		if (timeout == duration_max()) {
-			do {
-				sch->wait(sig, timeout);
-				val_opt = _buf.pop();
-			} while (!val_opt);
-			return val_opt;
+			for (;;) {
+				if (sch->wait(sig, timeout)) {
+					val_opt = _buf.pop_front();
+					if (val_opt) {
+						return val_opt;
+					}
+					it = _waiters.emplace_front(sig);
+				}
+			}
 		}
 
-		while (timeout > 0 && !val_opt) {
+		for (;;) {
 			auto t = tick();
-			sch->wait(sig, timeout);
+			auto r = sch->wait(sig, timeout);
+			val_opt = _buf.pop_front();
+			if (val_opt || !r) {
+				return val_opt;
+			}
 			timeout -= tick() - t;
-			val_opt = _buf.pop();
+			if (timeout <= 0) {
+				return val_opt;
+			}
+			it = _waiters.emplace_front(sig);
 		}
 		return val_opt;
 	}
@@ -62,8 +78,10 @@ public:
 
 	template <typename... A>
 	void emplace(A &&... a) {
-		_buf.emplace(std::forward<A>(a)...);
-		auto waiter_opt = _waiters.pop();
+		if (!_buf.emplace_front(std::forward<A>(a)...).is_back()) {
+			return;
+		}
+		auto waiter_opt = _waiters.pop_back();
 		if (!waiter_opt) {
 			return;
 		}
@@ -71,8 +89,8 @@ public:
 	}
 
 private:
-	tsque<T> _buf;
-	tsque<scheduler::signaler_i> _waiters;
+	lf_forward_list<T> _buf;
+	lf_forward_list<scheduler::signaler_i> _waiters;
 };
 
 template <typename T, typename R>
