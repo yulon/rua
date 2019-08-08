@@ -1,7 +1,6 @@
 #ifndef _RUA_ANY_WORD_HPP
 #define _RUA_ANY_WORD_HPP
 
-#include "macros.hpp"
 #include "type_traits.hpp"
 
 #include <cassert>
@@ -13,7 +12,7 @@ namespace rua {
 
 class any_word {
 public:
-	constexpr any_word() : _val(0) {}
+	any_word() = default;
 
 	constexpr any_word(std::nullptr_t) : _val(0) {}
 
@@ -29,20 +28,11 @@ public:
 		typename T,
 		typename DecayT = typename std::decay<T>::type,
 		typename = typename std::enable_if<
-			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
+			!std::is_integral<DecayT>::value &&
+			!std::is_pointer<DecayT>::value &&
 			!std::is_base_of<any_word, DecayT>::value>::type>
 	any_word(T &&src) :
 		_val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
-
-	any_word(const any_word &src) : _val(src._val) {}
-
-	any_word(any_word &&src) : _val(src._val) {
-		if (src._val) {
-			src._val = 0;
-		}
-	}
-
-	RUA_OVERLOAD_ASSIGNMENT(any_word)
 
 	uintptr_t &value() {
 		return _val;
@@ -109,10 +99,9 @@ public:
 
 	template <typename T>
 	void destroy() {
-		if (!_val) {
-			return;
-		}
-		_dtor<T>(_out_pattern_t<T>{});
+		_dtor<T>(
+			bool_constant < !std::is_integral<T>::value &&
+			!std::is_pointer<T>::value > {});
 	}
 
 private:
@@ -158,19 +147,11 @@ private:
 	}
 
 	template <typename T>
-	void _dtor(_is_int &&) {
-		_val = 0;
-	}
+	void _dtor(std::false_type &&) {}
 
 	template <typename T>
-	void _dtor(_is_ptr &&) {
-		_val = 0;
-	}
-
-	template <typename T>
-	void _dtor(default_t &&) {
+	void _dtor(std::true_type &&) {
 		delete reinterpret_cast<T *>(_val);
-		_val = 0;
 	}
 };
 
