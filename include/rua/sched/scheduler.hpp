@@ -29,7 +29,6 @@ public:
 		virtual ~signaler() = default;
 
 		virtual void signal() {}
-		virtual void reset() {}
 	};
 
 	using signaler_i = ref<signaler>;

@@ -95,7 +95,7 @@ public:
 		}
 	}
 
-	virtual void reset() {
+	void reset() {
 		_state.store(false);
 	}
 

@@ -191,11 +191,6 @@ public:
 				sem_post(&_sem);
 			}
 
-			virtual void reset() {
-				while (!sem_trywait(&_sem))
-					;
-			}
-
 		private:
 			sem_t _sem;
 			bool _need_close;
@@ -217,10 +212,8 @@ public:
 			ts.tv_nsec =
 				static_cast<decltype(ts.tv_nsec)>(timeout.extra_nanoseconds());
 
-			auto sig_impl = sig.to<signaler>();
-			auto r = sem_timedwait(sig_impl->native_handle(), &ts) != ETIMEDOUT;
-			sig_impl->reset();
-			return r;
+			return sem_timedwait(sig.to<signaler>()->native_handle(), &ts) !=
+				   ETIMEDOUT;
 		}
 
 	private:

@@ -192,10 +192,6 @@ public:
 				SetEvent(_h);
 			}
 
-			virtual void reset() {
-				ResetEvent(_h);
-			}
-
 		private:
 			HANDLE _h;
 		};
