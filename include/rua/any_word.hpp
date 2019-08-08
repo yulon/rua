@@ -4,111 +4,176 @@
 #include "macros.hpp"
 #include "type_traits.hpp"
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 #include <utility>
-#include <cassert>
 
 namespace rua {
-	class any_word {
-		public:
-			any_word() = default;
 
-			constexpr any_word(std::nullptr_t) : _val(0) {}
+class any_word {
+public:
+	constexpr any_word() : _val(0) {}
 
-			template <typename T>
-			RUA_CONSTEXPR_14 any_word(T &&src) : _val(_in(std::forward<T>(src))) {}
+	constexpr any_word(std::nullptr_t) : _val(0) {}
 
-			uintptr_t &value() {
-				return _val;
-			}
+	template <
+		typename T,
+		typename = typename std::enable_if<std::is_integral<T>::value>::type>
+	constexpr any_word(T val) : _val(static_cast<uintptr_t>(val)) {}
 
-			uintptr_t value() const {
-				return _val;
-			}
+	template <typename T>
+	constexpr any_word(T *ptr) : _val(reinterpret_cast<uintptr_t>(ptr)) {}
 
-			template <typename T>
-			T to() const {
-				return _out<T>();
-			}
+	template <
+		typename T,
+		typename DecayT = typename std::decay<T>::type,
+		typename = typename std::enable_if<
+			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
+			!std::is_base_of<any_word, DecayT>::value>::type>
+	any_word(T &&src) :
+		_val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
 
-			template <typename T>
-			operator T() const {
-				return to<T>();
-			}
+	any_word(const any_word &src) : _val(src._val) {}
 
-		private:
-			uintptr_t _val;
+	any_word(any_word &&src) : _val(src._val) {
+		if (src._val) {
+			src._val = 0;
+		}
+	}
 
-			struct _is_int {};
-			struct _is_sm {};
+	RUA_OVERLOAD_ASSIGNMENT(any_word)
 
-			template <typename T>
-			static constexpr uintptr_t _in(T &&src, _is_int &&) {
-				return static_cast<uintptr_t>(src);
-			}
+	uintptr_t &value() {
+		return _val;
+	}
 
-			template <typename T>
-			static RUA_CONSTEXPR_14 uintptr_t _in(T &&src, _is_sm &&) {
-				union val_u {
-					typename std::decay<T>::type src_v;
-					uintptr_t uint_v;
-				};
-				return val_u{std::forward<T>(src)}.uint_v;
-			}
+	uintptr_t value() const {
+		return _val;
+	}
 
-			template <typename T>
-			static constexpr uintptr_t _in(T &&src, default_t &&) {
-				return *reinterpret_cast<uintptr_t *>(&src);
-			}
+	template <typename T>
+	typename std::conditional<
+		std::is_integral<T>::value || std::is_pointer<T>::value,
+		T,
+		T &>::type
+	to() & {
+		return _out<T>(_out_pattern_t<T>{});
+	}
 
-			template <typename T>
-			static RUA_CONSTEXPR_14 uintptr_t _in(T &&src) {
-				using TT = typename std::decay<T>::type;
+	template <typename T>
+	T to() && {
+		return std::move(*this)._out<T>(_out_pattern_t<T>{});
+	}
 
-				return _in(
-					std::forward<T>(src),
-					switch_true_t<
-						std::is_integral<TT>,
-						_is_int,
-						bool_constant<sizeof(TT) < sizeof(uintptr_t)>,
-						_is_sm
-					>{}
-				);
-			}
+	template <typename T>
+	typename std::conditional<
+		std::is_integral<T>::value || std::is_pointer<T>::value,
+		T,
+		const T &>::type
+	to() const & {
+		return _out<T>(_out_pattern_t<T>{});
+	}
 
-			struct _is_big {};
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			std::is_integral<T>::value || std::is_pointer<T>::value>::type>
+	operator T() const & {
+		return to<T>();
+	}
 
-			template <typename T>
-			T _out(_is_int &&) const {
-				return static_cast<T>(_val);
-			}
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_integral<T>::value && !std::is_pointer<T>::value>::type>
+	operator T &() & {
+		return to<T>();
+	}
 
-			template <typename T>
-			T _out(_is_big &&) const {
-				uint8_t r[sizeof(T)];
-				*reinterpret_cast<uintptr_t *>(&r) = _val;
-				return *reinterpret_cast<T *>(&r);
-			}
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_integral<T>::value && !std::is_pointer<T>::value>::type>
+	operator T() && {
+		return std::move(*this).to<T>();
+	}
 
-			template <typename T>
-			T _out(default_t &&) const {
-				return *reinterpret_cast<const T *>(this);
-			}
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_integral<T>::value && !std::is_pointer<T>::value>::type>
+	operator const T &() const & {
+		return to<T>();
+	}
 
-			template <typename T>
-			T _out() const {
-				using TT = typename std::decay<T>::type;
+	template <typename T>
+	void destroy() {
+		if (!_val) {
+			return;
+		}
+		_dtor<T>(_out_pattern_t<T>{});
+	}
 
-				return _out<TT>(switch_true_t<
-					std::is_integral<TT>,
-					_is_int,
-					bool_constant<(sizeof(TT) > sizeof(uintptr_t))>,
-					_is_big
-				>{});
-			}
-	};
-}
+private:
+	uintptr_t _val;
+
+	struct _is_int {};
+	struct _is_ptr {};
+
+	template <typename T>
+	using _out_pattern_t = switch_true_t<
+		std::is_integral<T>,
+		_is_int,
+		std::is_pointer<T>,
+		_is_ptr>;
+
+	template <typename T>
+	T _out(_is_int &&) const {
+		return static_cast<T>(_val);
+	}
+
+	template <typename T>
+	T _out(_is_ptr &&) const {
+		return reinterpret_cast<T>(_val);
+	}
+
+	template <typename T>
+	T &_out(default_t &&) & {
+		return *reinterpret_cast<T *>(_val);
+	}
+
+	template <typename T>
+	T _out(default_t &&) && {
+		auto ptr = reinterpret_cast<T *>(_val);
+		T r(std::move(*ptr));
+		delete ptr;
+		_val = 0;
+		return r;
+	}
+
+	template <typename T>
+	const T &_out(default_t &&) const & {
+		return *reinterpret_cast<const T *>(_val);
+	}
+
+	template <typename T>
+	void _dtor(_is_int &&) {
+		_val = 0;
+	}
+
+	template <typename T>
+	void _dtor(_is_ptr &&) {
+		_val = 0;
+	}
+
+	template <typename T>
+	void _dtor(default_t &&) {
+		delete reinterpret_cast<T *>(_val);
+		_val = 0;
+	}
+};
+
+} // namespace rua
 
 #endif
