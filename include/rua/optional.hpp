@@ -23,7 +23,6 @@ RUA_MULTIDEF_VAR constexpr auto nullopt = std::nullopt;
 
 #include "type_traits.hpp"
 
-#include <array>
 #include <cstdint>
 #include <initializer_list>
 #include <utility>
@@ -39,9 +38,9 @@ class _optional_base {
 public:
 	using value_type = T;
 
-	_optional_base() = default;
+	constexpr _optional_base() = default;
 
-	constexpr _optional_base(bool has_val) : _val(), _has_val(has_val) {}
+	constexpr _optional_base(bool has_val) : _empty(), _has_val(has_val) {}
 
 	~_optional_base() {
 		reset();
@@ -51,16 +50,16 @@ public:
 		if (!src._has_val) {
 			return;
 		}
-		src._has_val = false;
-		new (_val_ptr()) T(*src._val_ptr());
+		new (&_val) T(src._val);
 	}
 
 	_optional_base(_optional_base &&src) : _has_val(src._has_val) {
 		if (!src._has_val) {
 			return;
 		}
+		new (&_val) T(std::move(src._val));
+		src._val.~T();
 		src._has_val = false;
-		new (_val_ptr()) T(std::move(*src._val_ptr()));
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(_optional_base)
@@ -74,27 +73,27 @@ public:
 	}
 
 	T &value() & {
-		return *_val_ptr();
+		return _val;
 	}
 
 	const T &value() const & {
-		return *_val_ptr();
+		return _val;
 	}
 
 	T &&value() && {
-		return std::move(*_val_ptr());
+		return std::move(_val);
 	}
 
 	T &operator*() & {
-		return *_val_ptr();
+		return _val;
 	}
 
 	const T &operator*() const & {
-		return *_val_ptr();
+		return _val;
 	}
 
 	T &&operator*() && {
-		return std::move(*_val_ptr());
+		return std::move(_val);
 	}
 
 	template <
@@ -103,8 +102,7 @@ public:
 			std::is_copy_constructible<T>::value &&
 			std::is_convertible<U, T>::value>::type>
 	T value_or(U &&default_value) const & {
-		return _has_val ? *_val_ptr()
-						: static_cast<T>(std::forward<U>(default_value));
+		return _has_val ? _val : static_cast<T>(std::forward<U>(default_value));
 	}
 
 	template <
@@ -113,23 +111,23 @@ public:
 			std::is_move_constructible<T>::value &&
 			std::is_convertible<U, T>::value>::type>
 	T value_or(U &&default_value) && {
-		return _has_val ? std::move(*_val_ptr())
+		return _has_val ? std::move(_val)
 						: static_cast<T>(std::forward<U>(default_value));
 	}
 
 	T *operator->() {
-		return _val_ptr();
+		return &_val;
 	}
 
 	const T *operator->() const {
-		return _val_ptr();
+		return &_val;
 	}
 
 	void reset() {
 		if (!_has_val) {
 			return;
 		}
-		_val_ptr()->~T();
+		_val.~T();
 		_has_val = false;
 	}
 
@@ -156,23 +154,19 @@ public:
 	}
 
 protected:
-	std::array<uint8_t, sizeof(T)> _val;
+	struct _empty_t {};
+	union {
+		_empty_t _empty;
+		T _val;
+	};
 	bool _has_val;
-
-	RUA_FORCE_INLINE T *_val_ptr() {
-		return reinterpret_cast<T *>(_val.data());
-	}
-
-	RUA_FORCE_INLINE const T *_val_ptr() const {
-		return reinterpret_cast<const T *>(_val.data());
-	}
 
 	template <
 		typename... Args,
 		typename = typename std::enable_if<
 			std::is_constructible<T, Args...>::value>::type>
 	void _emplace(Args &&... args) {
-		new (_val_ptr()) T(std::forward<Args>(args)...);
+		new (&_val) T(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -182,7 +176,7 @@ protected:
 			std::is_constructible<T, std::initializer_list<U>, Args...>::
 				value>::type>
 	void _emplace(std::initializer_list<U> il, Args &&... args) {
-		new (_val_ptr()) T(il, std::forward<Args>(args)...);
+		new (&_val) T(il, std::forward<Args>(args)...);
 	}
 };
 
