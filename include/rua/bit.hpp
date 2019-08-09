@@ -56,7 +56,7 @@ RUA_FORCE_INLINE typename std::enable_if<
 		std::is_trivial<To>::value,
 	To>::type
 bit_cast(const From &src) noexcept {
-	return bit_get(&src);
+	return bit_get<To>(&src);
 }
 
 } // namespace rua
