@@ -4,25 +4,21 @@ language: cpp
 
 common_sources: &all_sources
   - ubuntu-toolchain-r-test
-  - llvm-toolchain-trusty
-  - llvm-toolchain-trusty-3.9
-  - llvm-toolchain-trusty-4.0
-  - llvm-toolchain-trusty-5.0
-  - llvm-toolchain-trusty-6.0
 
 addons:
   apt:
     sources:
       - *all_sources
     packages:
-      - clang-5.0
+      - gcc-5
+      - g++-5
 
 before_install:
   - sudo wget https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O /usr/local/include/catch.hpp
 
 script:
   - mkdir ./bin
-  - clang++-5.0 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
+  - g++-5 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
   - ./bin/rua_tests_d
-  - clang++-5.0 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
+  - g++-5 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
   - ./bin/rua_tests
