@@ -43,26 +43,40 @@ public:
 	}
 
 	template <typename T>
-	typename std::conditional<
-		std::is_integral<T>::value || std::is_pointer<T>::value,
-		T,
-		T &>::type
-	to() & {
-		return _out<T>(_out_pattern_t<T>{});
+	typename std::enable_if<std::is_integral<T>::value, T>::type to() const & {
+		return static_cast<T>(_val);
 	}
 
 	template <typename T>
-	T to() && {
-		return std::move(*this)._out<T>(_out_pattern_t<T>{});
+	typename std::enable_if<std::is_pointer<T>::value, T>::type to() const & {
+		return reinterpret_cast<T>(_val);
 	}
 
 	template <typename T>
-	typename std::conditional<
-		std::is_integral<T>::value || std::is_pointer<T>::value,
-		T,
+	typename std::enable_if<
+		!std::is_integral<T>::value && !std::is_pointer<T>::value,
 		const T &>::type
 	to() const & {
-		return _out<T>(_out_pattern_t<T>{});
+		return *reinterpret_cast<const T *>(_val);
+	}
+
+	template <typename T>
+	typename std::enable_if<
+		!std::is_integral<T>::value && !std::is_pointer<T>::value,
+		T &>::type
+	to() & {
+		return *reinterpret_cast<T *>(_val);
+	}
+
+	template <typename T>
+	typename std::enable_if<
+		!std::is_integral<T>::value && !std::is_pointer<T>::value,
+		T>::type
+	to() && {
+		auto ptr = reinterpret_cast<T *>(_val);
+		T r(std::move(*ptr));
+		delete ptr;
+		return r;
 	}
 
 	template <
@@ -70,6 +84,14 @@ public:
 		typename = typename std::enable_if<
 			std::is_integral<T>::value || std::is_pointer<T>::value>::type>
 	operator T() const & {
+		return to<T>();
+	}
+
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_integral<T>::value && !std::is_pointer<T>::value>::type>
+	operator const T &() const & {
 		return to<T>();
 	}
 
@@ -93,66 +115,12 @@ public:
 		typename T,
 		typename = typename std::enable_if<
 			!std::is_integral<T>::value && !std::is_pointer<T>::value>::type>
-	operator const T &() const & {
-		return to<T>();
-	}
-
-	template <typename T>
-	void destroy() {
-		_dtor<T>(
-			bool_constant < !std::is_integral<T>::value &&
-			!std::is_pointer<T>::value > {});
+	void destruct() {
+		delete reinterpret_cast<T *>(_val);
 	}
 
 private:
 	uintptr_t _val;
-
-	struct _is_int {};
-	struct _is_ptr {};
-
-	template <typename T>
-	using _out_pattern_t = switch_true_t<
-		std::is_integral<T>,
-		_is_int,
-		std::is_pointer<T>,
-		_is_ptr>;
-
-	template <typename T>
-	T _out(_is_int &&) const {
-		return static_cast<T>(_val);
-	}
-
-	template <typename T>
-	T _out(_is_ptr &&) const {
-		return reinterpret_cast<T>(_val);
-	}
-
-	template <typename T>
-	T &_out(default_t &&) & {
-		return *reinterpret_cast<T *>(_val);
-	}
-
-	template <typename T>
-	T _out(default_t &&) && {
-		auto ptr = reinterpret_cast<T *>(_val);
-		T r(std::move(*ptr));
-		delete ptr;
-		_val = 0;
-		return r;
-	}
-
-	template <typename T>
-	const T &_out(default_t &&) const & {
-		return *reinterpret_cast<const T *>(_val);
-	}
-
-	template <typename T>
-	void _dtor(std::false_type &&) {}
-
-	template <typename T>
-	void _dtor(std::true_type &&) {
-		delete reinterpret_cast<T *>(_val);
-	}
 };
 
 } // namespace rua
