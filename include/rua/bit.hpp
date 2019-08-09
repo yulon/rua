@@ -50,15 +50,12 @@ RUA_FORCE_INLINE void bit_aligned_set(void *ptr, ptrdiff_t ix, const T &val) {
 	return bit_set<T>(ptr, ix * sizeof(T), val);
 }
 
-template <
-	typename To,
-	typename From,
-	typename = typename std::enable_if<
-		(sizeof(To) == sizeof(From)) &&
-			std::is_trivially_copyable<From>::value &&
-			std::is_trivial<To>::value,
-		To>::type>
-RUA_FORCE_INLINE To bit_cast(const From &src) {
+template <typename To, typename From>
+RUA_FORCE_INLINE typename std::enable_if<
+	(sizeof(To) == sizeof(From)) && std::is_trivially_copyable<From>::value &&
+		std::is_trivial<To>::value,
+	To>::type
+bit_cast(const From &src) {
 	return bit_get<To>(&src);
 }
 
