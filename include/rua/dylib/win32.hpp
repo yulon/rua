@@ -60,7 +60,8 @@ public:
 
 	template <typename FuncPtr>
 	FuncPtr get(const std::string &name) const {
-		return reinterpret_cast<FuncPtr>(GetProcAddress(_h, name.c_str()));
+		return reinterpret_cast<FuncPtr>(
+			reinterpret_cast<void *>(GetProcAddress(_h, name.c_str())));
 	}
 
 	void unload() {
