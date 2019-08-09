@@ -13,12 +13,12 @@ inline std::string u8_to_loc(const std::string &u8_str) {
 	return u8_str;
 }
 
-inline std::wstring u8_to_w(const std::string &u8_str) {
+inline std::wstring u8_to_w(const std::string &) {
 	// TODO
 	return L"";
 }
 
-inline std::string w_to_u8(const std::wstring &w_str) {
+inline std::string w_to_u8(const std::wstring &) {
 	// TODO
 	return "";
 }

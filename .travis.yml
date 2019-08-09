@@ -1,24 +1,68 @@
-dist: trusty
-sudo: false
 language: cpp
+dist: xenial
+sudo: false
 
-common_sources: &all_sources
-  - ubuntu-toolchain-r-test
+matrix:
+  include:
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++11 -DDEBUG -Wall -Wextra"
+      compiler: gcc
 
-addons:
-  apt:
-    sources:
-      - *all_sources
-    packages:
-      - gcc-5
-      - g++-5
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++11 -DNDEBUG -O3"
+      compiler: gcc
 
-before_install:
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++17 -DDEBUG -Wall -Wextra"
+      compiler: gcc
+
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++17 -DNDEBUG -O3"
+      compiler: gcc
+
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++11 -DDEBUG -Wall -Wextra"
+      compiler: clang
+
+    - os: linux
+      env:
+        - CXXFLAGS="-std=c++11 -DNDEBUG -O3"
+      compiler: clang
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env:
+        - CXXFLAGS="-std=c++17 -DDEBUG -Wall -Wextra"
+      compiler: clang
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env:
+        - CXXFLAGS="-std=c++17 -DNDEBUG -O3"
+      compiler: clang
+
+install:
   - sudo wget https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O /usr/local/include/catch.hpp
 
 script:
   - mkdir ./bin
-  - g++-5 ./test/*.cpp -Wall -Wextra -DDEBUG -std=c++11 -I./include -lpthread -o ./bin/rua_tests_d
-  - ./bin/rua_tests_d
-  - g++-5 ./test/*.cpp -DNDEBUG -O3 -std=c++11 -I./include -lpthread -o ./bin/rua_tests
+  - ${CXX} ./test/*.cpp ${CXXFLAGS} -I./include -lpthread -o ./bin/rua_tests
   - ./bin/rua_tests
+
+notifications:
+  email: false
