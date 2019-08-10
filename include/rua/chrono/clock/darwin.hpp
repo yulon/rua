@@ -11,23 +11,8 @@
 namespace rua { namespace darwin {
 
 inline time tick() {
-	struct info_t {
-		double base;
-		uint64_t start;
-	};
-	static const info_t info = ([]() -> info_t {
-		info_t r;
-		mach_timebase_info_data_t tb;
-		memset(&tb, 0, sizeof(mach_timebase_info_data_t));
-		mach_timebase_info(&tb);
-		r.base = tb.numer;
-		r.base /= tb.denom;
-		r.start = mach_absolute_time();
-		return r;
-	})();
-	double diff = (mach_absolute_time() - info.start) * info.base;
-	auto sec = diff * +1.0E-9;
-	return time(duration_base(sec, diff - (sec * 1000000000)));
+	static auto start = mach_absolute_time();
+	return time(ns(static_cast<int64_t>(mach_absolute_time() - start)));
 }
 
 inline time now() {
