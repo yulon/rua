@@ -14,15 +14,15 @@ namespace rua {
 
 class printer {
 public:
-	printer() : _mtx(), _w(), _eol(eol::sys), _is_valid(false), _buf() {}
+	printer() : _is_valid(false) {}
 
 	printer(std::nullptr_t) : printer() {}
 
 	explicit printer(writer_i w, const char *eol = eol::sys) :
-		_mtx(),
 		_w(std::move(w)),
-		_eol(eol),
-		_is_valid(w) {}
+		_eol(eol) {
+		_is_valid = _w;
+	}
 
 	~printer() {
 		if (!_is_valid) {

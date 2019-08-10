@@ -40,19 +40,19 @@ private:
 #endif
 
 inline printer &log_printer() {
+#ifdef _WIN32
 	static auto &p = ([]() -> printer & {
 		static printer p;
-#ifdef _WIN32
 		auto w = get_stdout();
 		if (!w) {
 			return p;
 		}
 		p.reset(u8_to_loc_writer(std::move(w)));
-#else
-		p.reset(get_stdout());
-#endif
 		return p;
 	})();
+#else
+	static printer p(get_stdout(), eol::lf);
+#endif
 	return p;
 }
 
@@ -62,9 +62,9 @@ inline void log(Args &&... args) {
 }
 
 inline printer &error_log_printer() {
+#ifdef _WIN32
 	static auto &p = ([]() -> printer & {
 		static printer p;
-#ifdef _WIN32
 		auto mbw =
 			std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR);
 		auto w = get_stderr();
@@ -73,11 +73,11 @@ inline printer &error_log_printer() {
 			return p;
 		}
 		p.reset(write_group{u8_to_loc_writer(std::move(w)), std::move(mbw)});
-#else
-		p.reset(get_stderr());
-#endif
 		return p;
 	})();
+#else
+	static printer p(get_stderr(), eol::lf);
+#endif
 	return p;
 }
 

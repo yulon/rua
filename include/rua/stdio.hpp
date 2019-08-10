@@ -3,22 +3,36 @@
 
 #include "io.hpp"
 
+#include <memory>
+
 #if defined(_WIN32)
 
 #include "windows.h"
 
 namespace rua {
 
-inline sys_stream get_stdout() {
-	return sys_stream(GetStdHandle(STD_OUTPUT_HANDLE), false);
+inline writer_i get_stdout() {
+	auto h = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (!h) {
+		return nullptr;
+	}
+	return std::make_shared<sys_stream>(h, false);
 }
 
-inline sys_stream get_stderr() {
-	return sys_stream(GetStdHandle(STD_ERROR_HANDLE), false);
+inline writer_i get_stderr() {
+	auto h = GetStdHandle(STD_ERROR_HANDLE);
+	if (!h) {
+		return nullptr;
+	}
+	return std::make_shared<sys_stream>(h, false);
 }
 
-inline sys_stream get_stdin() {
-	return sys_stream(GetStdHandle(STD_INPUT_HANDLE), false);
+inline reader_i get_stdin() {
+	auto h = GetStdHandle(STD_INPUT_HANDLE);
+	if (!h) {
+		return nullptr;
+	}
+	return std::make_shared<sys_stream>(h, false);
 }
 
 } // namespace rua
@@ -29,16 +43,16 @@ inline sys_stream get_stdin() {
 
 namespace rua {
 
-inline sys_stream get_stdout() {
-	return sys_stream(stdout, false);
+inline writer_i get_stdout() {
+	return std::make_shared<sys_stream>(stdout, false);
 }
 
-inline sys_stream get_stderr() {
-	return sys_stream(stderr, false);
+inline writer_i get_stderr() {
+	return std::make_shared<sys_stream>(stderr, false);
 }
 
-inline sys_stream get_stdin() {
-	return sys_stream(stdin, false);
+inline reader_i get_stdin() {
+	return std::make_shared<sys_stream>(stdin, false);
 }
 
 } // namespace rua
