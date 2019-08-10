@@ -56,6 +56,26 @@ matrix:
         - CXXFLAGS="-std=c++17 -DNDEBUG -O3"
       compiler: clang
 
+    - os: osx
+      osx_image: xcode11
+      env:
+        - CXXFLAGS="-std=c++11 -DDEBUG -Wall -Wextra"
+
+    - os: osx
+      osx_image: xcode11
+      env:
+        - CXXFLAGS="-std=c++11 -DNDEBUG -O3"
+
+    - os: osx
+      osx_image: xcode11
+      env:
+        - CXXFLAGS="-std=c++17 -DDEBUG -Wall -Wextra"
+
+    - os: osx
+      osx_image: xcode11
+      env:
+        - CXXFLAGS="-std=c++17 -DNDEBUG -O3"
+
 install:
   - sudo wget https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O /usr/local/include/catch.hpp
 

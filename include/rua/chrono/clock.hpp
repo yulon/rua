@@ -19,6 +19,22 @@ RUA_FORCE_INLINE time now() {
 
 } // namespace rua
 
+#elif defined(RUA_DARWIN)
+
+#include "clock/darwin.hpp"
+
+namespace rua {
+
+RUA_FORCE_INLINE time tick() {
+	return darwin::tick();
+}
+
+RUA_FORCE_INLINE time now() {
+	return darwin::now();
+}
+
+} // namespace rua
+
 #elif defined(RUA_UNIX)
 
 #include "clock/posix.hpp"
