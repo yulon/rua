@@ -31,12 +31,10 @@ namespace rua {
 
 inline sys_stream get_stdout() {
 	return sys_stream(stdout, false);
-	return inst;
 }
 
 inline sys_stream get_stderr() {
 	return sys_stream(stderr, false);
-	return inst;
 }
 
 inline sys_stream get_stdin() {
