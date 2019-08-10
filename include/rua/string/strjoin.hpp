@@ -19,8 +19,10 @@ namespace rua {
 static constexpr uint32_t strjoin_ignore_empty = 0x0000000F;
 static constexpr uint32_t strjoin_multi_line = 0x000000F0;
 
-inline std::string strjoin(
-	const std::vector<std::string> &strs,
+template <typename StrList>
+inline void strjoin(
+	std::string &buf,
+	const StrList &strs,
 	const std::string &sep,
 	uint32_t flags = 0,
 	size_t reserved_size = 0) {
@@ -44,14 +46,11 @@ inline std::string strjoin(
 		}
 	}
 
-	std::string r;
 	if (!len) {
-		return r;
+		return;
 	}
-	r.reserve(len + reserved_size);
-	r.resize(len);
+	buf.reserve(buf.size() + len + reserved_size);
 
-	size_t pos = 0;
 	bf_is_eol = true;
 	for (auto &str : strs) {
 		if (!str.length() && is_ignore_empty) {
@@ -60,15 +59,24 @@ inline std::string strjoin(
 		if (bf_is_eol) {
 			bf_is_eol = false;
 		} else {
-			sep.copy(stldata(r) + pos, sep.length());
-			pos += sep.length();
+			buf += sep;
 		}
-		str.copy(stldata(r) + pos, str.length());
-		pos += str.length();
+		buf += str;
 		if (is_multi_line && is_eol(str)) {
 			bf_is_eol = true;
 		}
 	}
+	return;
+}
+
+template <typename StrList>
+inline std::string strjoin(
+	const StrList &strs,
+	const std::string &sep,
+	uint32_t flags = 0,
+	size_t reserved_size = 0) {
+	std::string r;
+	strjoin(r, strs, sep, flags, reserved_size);
 	return r;
 }
 

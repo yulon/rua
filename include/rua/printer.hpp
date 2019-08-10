@@ -7,15 +7,16 @@
 
 #include <array>
 #include <atomic>
+#include <string>
 #include <utility>
 
 namespace rua {
 
 class printer {
 public:
-	constexpr printer() : _mtx(), _w(), _eol(eol::sys), _is_valid(false) {}
+	printer() : _mtx(), _w(), _eol(eol::sys), _is_valid(false), _buf() {}
 
-	constexpr printer(std::nullptr_t) : printer() {}
+	printer(std::nullptr_t) : printer() {}
 
 	explicit printer(writer_i w, const char *eol = eol::sys) :
 		_mtx(),
@@ -55,8 +56,7 @@ public:
 		if (!_w) {
 			return;
 		}
-		_print(std::forward<Args>(args)...);
-		_w->write_all(_eol);
+		_print(std::forward<Args>(args)..., _eol);
 	}
 
 	void reset(writer_i w = nullptr, const char *eol = eol::sys) {
@@ -71,16 +71,14 @@ private:
 	writer_i _w;
 	const char *_eol;
 	std::atomic<bool> _is_valid;
+	std::string _buf;
 
 	template <typename... Args>
 	void _print(Args &&... args) {
 		std::array<std::string, sizeof...(args)> strs{to_string(args)...};
-		for (auto &str : strs) {
-			_w->write_all(str);
-			if (&str != &strs.back()) {
-				_w->write_all(" ");
-			}
-		}
+		strjoin(_buf, strs, " ", strjoin_multi_line);
+		_w->write_all(_buf);
+		_buf.resize(0);
 	}
 };
 

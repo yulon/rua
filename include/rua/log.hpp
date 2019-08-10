@@ -22,29 +22,17 @@ public:
 		_ico(icon) {}
 
 	virtual size_t write(bin_view p) {
-		auto sz = p.size();
-		for (int i = 0; static_cast<size_t>(i) < p.size(); ++i) {
-			if (!is_eol(static_cast<const char &>(p[i]))) {
-				continue;
-			}
-			if (i > 0 || _buf.size()) {
-				_buf += std::string(p(0, i).base().to<const char *>(), i);
-				MessageBoxW(0, u8_to_w(_buf).c_str(), _tit.c_str(), _ico);
-				_buf.resize(0);
-			}
-			p.slice_self(i + 1);
-			i = -1;
-		}
-		if (p.size()) {
-			_buf = std::string(p.base().to<const char *>(), p.size());
-		}
-		return sz;
+		MessageBoxW(
+			0,
+			u8_to_w(std::string(p.base().to<const char *>(), p.size())).c_str(),
+			_tit.c_str(),
+			_ico);
+		return p.size();
 	}
 
 private:
 	std::wstring _tit;
 	UINT _ico;
-	std::string _buf;
 };
 
 } // namespace win32
