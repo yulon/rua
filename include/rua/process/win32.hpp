@@ -129,7 +129,7 @@ public:
 			}
 
 			if (!stdout_writer) {
-				stdout_writer = rua::stdout_writer();
+				stdout_writer = rua::get_stdout();
 			}
 			if (stdout_writer) {
 				auto stdout_writer_for_sys =
@@ -166,7 +166,7 @@ public:
 					DUPLICATE_SAME_ACCESS);
 			} else {
 				if (!stderr_writer) {
-					stderr_writer = rua::stderr_writer();
+					stderr_writer = rua::get_stderr();
 				}
 				if (stderr_writer) {
 					auto stderr_writer_for_sys =
@@ -194,7 +194,7 @@ public:
 			}
 
 			if (!stdin_reader) {
-				stdin_reader = rua::stdin_reader();
+				stdin_reader = rua::get_stdin();
 			}
 			if (stdin_reader) {
 				auto stdin_reader_for_sys =

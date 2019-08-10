@@ -9,23 +9,29 @@
 
 namespace rua {
 
+namespace eol {
+
 static constexpr const char *lf = "\n";
-
 static constexpr const char *crlf = "\r\n";
-
 static constexpr const char *cr = "\r";
 
 #ifdef _WIN32
-static constexpr const char *eol = crlf;
+static constexpr const char *sys = crlf;
 #elif defined(RUA_DARWIN)
-static constexpr const char *eol = cr;
+static constexpr const char *sys = cr;
 #else
-static constexpr const char *eol = lf;
+static constexpr const char *sys = lf;
 #endif
 
+} // namespace eol
+
+inline bool is_eol(const char c) {
+	return c == eol::lf[0] || c == eol::cr[0];
+}
+
 inline bool is_eol(const std::string &str) {
-	for (auto &chr : str) {
-		if (chr != lf[0] && chr != cr[0]) {
+	for (auto &c : str) {
+		if (!is_eol(c)) {
 			return false;
 		}
 	}

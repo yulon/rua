@@ -1,20 +1,20 @@
 #ifndef _RUA_RASSERT_HPP
 #define _RUA_RASSERT_HPP
 
-#include "console.hpp"
-#include "string/line.hpp"
+#include "log.hpp"
+#include "string.hpp"
 
 #include <cstdlib>
 
 #define RUA_RASSERT(_exp)                                                      \
 	{                                                                          \
 		if (!(_exp)) {                                                         \
-			rua::cerr(                                                         \
+			rua::error_log(                                                    \
 				"Assertion failed!",                                           \
-				rua::eol,                                                      \
+				rua::eol::sys,                                                 \
 				"File:",                                                       \
 				std::string(__FILE__) + ":" + std::to_string(__LINE__),        \
-				rua::eol,                                                      \
+				rua::eol::sys,                                                 \
 				"Expression:",                                                 \
 				#_exp);                                                        \
 			abort();                                                           \

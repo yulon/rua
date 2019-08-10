@@ -12,7 +12,9 @@ class c_stream : public read_write_closer {
 public:
 	using native_handle_t = FILE *;
 
-	c_stream(native_handle_t f = nullptr, bool need_close = true) : _f(f), _nc(f ? need_close : false) {}
+	c_stream(native_handle_t f = nullptr, bool need_close = true) :
+		_f(f),
+		_nc(f ? need_close : false) {}
 
 	c_stream(c_stream &&src) : c_stream(src._f, src._nc) {
 		src.detach();
@@ -36,7 +38,7 @@ public:
 		return _f;
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return _f;
 	}
 
@@ -74,6 +76,6 @@ private:
 	bool _nc;
 };
 
-}
+} // namespace rua
 
 #endif

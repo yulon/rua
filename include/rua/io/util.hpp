@@ -7,6 +7,8 @@
 
 #include <atomic>
 #include <cstddef>
+#include <initializer_list>
+#include <vector>
 
 namespace rua {
 
@@ -69,16 +71,16 @@ inline bool writer::copy(const reader_i &r, bin_ref buf) {
 	return false;
 }
 
-class read_group : public virtual reader {
+class read_group : public reader {
 public:
 	read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
 
-	void add(reader &r) {
+	void add(reader_i r) {
 		++_c;
-		thread([this, &r]() {
+		thread([this, r]() {
 			bin buf(_buf_sz);
 			for (;;) {
-				auto sz = r.read(buf);
+				auto sz = r->read(buf);
 				if (!sz) {
 					_ch << nullptr;
 					return;
@@ -107,6 +109,27 @@ private:
 	std::atomic<size_t> _c, _buf_sz;
 	chan<bin> _ch;
 	bin _buf;
+};
+
+class write_group : public writer {
+public:
+	write_group() = default;
+
+	write_group(std::initializer_list<writer_i> li) : _li(li) {}
+
+	void add(writer_i w) {
+		_li.emplace_back(std::move(w));
+	}
+
+	virtual size_t write(bin_view p) {
+		for (auto &w : _li) {
+			w->write_all(p);
+		}
+		return p.size();
+	}
+
+private:
+	std::vector<writer_i> _li;
 };
 
 } // namespace rua

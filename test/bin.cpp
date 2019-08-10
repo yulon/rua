@@ -1,6 +1,6 @@
 #include <rua/bin.hpp>
 #include <rua/chrono.hpp>
-#include <rua/console.hpp>
+#include <rua/log.hpp>
 
 #include <catch.hpp>
 
@@ -61,7 +61,7 @@ TEST_CASE("find", "[bin]") {
 	REQUIRE(fp != std::string::npos);
 	REQUIRE(fp == pat_pos);
 
-	rua::clog("bin_base::find:", find_dur);
-	rua::clog("bin_base::match:", match_dur);
-	rua::clog("std::string::find:", str_find_dur);
+	rua::log("bin_base::find:", find_dur);
+	rua::log("bin_base::match:", match_dur);
+	rua::log("std::string::find:", str_find_dur);
 }
