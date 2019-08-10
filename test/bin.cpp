@@ -1,8 +1,9 @@
 #include <rua/bin.hpp>
+#include <rua/chrono.hpp>
+#include <rua/console.hpp>
 
 #include <catch.hpp>
 
-#include <chrono>
 #include <iostream>
 
 TEST_CASE("find", "[bin]") {
@@ -28,26 +29,22 @@ TEST_CASE("find", "[bin]") {
 
 	// bin_base::find
 
-	auto tp = std::chrono::steady_clock::now();
+	auto tp = rua::tick();
 
 	auto fr = dat.find({255, 255, 255, 255, 255, 6, 7, 255});
 
-	auto data_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(
-							 std::chrono::steady_clock::now() - tp)
-							 .count();
+	auto find_dur = rua::tick() - tp;
 
 	REQUIRE(fr);
 	REQUIRE(fr.pos == pat_pos);
 
 	// bin_base::match
 
-	tp = std::chrono::steady_clock::now();
+	tp = rua::tick();
 
 	auto mr = dat.match({255, 1111, 255, 255, 255, 6, 7, 255});
 
-	auto data_match_dur = std::chrono::duration_cast<std::chrono::milliseconds>(
-							  std::chrono::steady_clock::now() - tp)
-							  .count();
+	auto match_dur = rua::tick() - tp;
 
 	REQUIRE(mr);
 	REQUIRE(mr.pos == pat_pos);
@@ -55,18 +52,16 @@ TEST_CASE("find", "[bin]") {
 
 	// std::string::find
 
-	tp = std::chrono::steady_clock::now();
+	tp = rua::tick();
 
 	auto fp = dat_str.find(pat);
 
-	auto str_find_dur = std::chrono::duration_cast<std::chrono::milliseconds>(
-							std::chrono::steady_clock::now() - tp)
-							.count();
+	auto str_find_dur = rua::tick() - tp;
 
 	REQUIRE(fp != std::string::npos);
 	REQUIRE(fp == pat_pos);
 
-	std::cout << "bin_base::find: " << data_find_dur << " ms" << std::endl
-			  << "bin_base::match: " << data_match_dur << " ms" << std::endl
-			  << "std::string::find: " << str_find_dur << " ms" << std::endl;
+	rua::clog("bin_base::find:", find_dur);
+	rua::clog("bin_base::match:", match_dur);
+	rua::clog("std::string::find:", str_find_dur);
 }
