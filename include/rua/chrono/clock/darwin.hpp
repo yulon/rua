@@ -10,9 +10,6 @@
 
 namespace rua { namespace darwin {
 
-RUA_MULTIDEF_VAR constexpr auto orwl_nano = +1.0E-9;
-RUA_MULTIDEF_VAR constexpr uint64_t orwl_giga = 1000000000;
-
 inline time tick() {
 	struct info_t {
 		double base;
@@ -21,7 +18,7 @@ inline time tick() {
 	static const info_t info = ([]() -> info_t {
 		info_t r;
 		mach_timebase_info_data_t tb;
-		memset(&tb, 0, sizsof(mach_timebase_info_data_t));
+		memset(&tb, 0, sizeof(mach_timebase_info_data_t));
 		mach_timebase_info(&tb);
 		r.base = tb.numer;
 		r.base /= tb.denom;
@@ -29,7 +26,7 @@ inline time tick() {
 		return r;
 	})();
 	double diff = (mach_absolute_time() - info.start) * info.base;
-	auto sec = diff * orwl_nano;
+	auto sec = diff * +1.0E-9;
 	return time(duration_base(sec, diff - (sec * 1000000000)));
 }
 
