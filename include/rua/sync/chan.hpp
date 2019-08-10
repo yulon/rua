@@ -76,9 +76,9 @@ public:
 		return try_pop(duration_max()).value();
 	}
 
-	template <typename... A>
-	void emplace(A &&... a) {
-		if (!_buf.emplace_front(std::forward<A>(a)...).is_back()) {
+	template <typename... Args>
+	void emplace(Args &&... args) {
+		if (!_buf.emplace_front(std::forward<Args>(args)...).is_back()) {
 			return;
 		}
 		auto waiter_opt = _waiters.pop_back();
@@ -105,15 +105,15 @@ chan<T> &operator<<(R &receiver, chan<T> &ch) {
 	return ch;
 }
 
-template <typename T, typename A>
-chan<T> &operator<<(chan<T> &ch, A &&val) {
-	ch.emplace(std::forward<A>(val));
+template <typename T, typename V>
+chan<T> &operator<<(chan<T> &ch, V &&val) {
+	ch.emplace(std::forward<V>(val));
 	return ch;
 }
 
-template <typename T, typename A>
-chan<T> &operator>>(A &&val, chan<T> &ch) {
-	ch.emplace(std::forward<A>(val));
+template <typename T, typename V>
+chan<T> &operator>>(V &&val, chan<T> &ch) {
+	ch.emplace(std::forward<V>(val));
 	return ch;
 }
 

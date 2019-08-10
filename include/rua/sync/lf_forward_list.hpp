@@ -33,8 +33,8 @@ private:
 		T val;
 		std::atomic<_node_t *> after;
 
-		template <typename... A>
-		_node_t(A &&... a) : val(std::forward<A>(a)...) {}
+		template <typename... Args>
+		_node_t(Args &&... args) : val(std::forward<Args>(args)...) {}
 	};
 
 public:
@@ -90,9 +90,9 @@ public:
 	};
 	friend iterator;
 
-	template <typename... A>
-	iterator emplace_front(A &&... a) {
-		auto new_front = new _node_t(std::forward<A>(a)...);
+	template <typename... Args>
+	iterator emplace_front(Args &&... args) {
+		auto new_front = new _node_t(std::forward<Args>(args)...);
 		_insert_node(_front, new_front);
 		return iterator(new_front);
 	}
@@ -132,9 +132,9 @@ public:
 		return iterator(nullptr);
 	}
 
-	template <typename... A>
-	iterator emplace_back(A &&... a) {
-		auto new_back = new _node_t(std::forward<A>(a)...);
+	template <typename... Args>
+	iterator emplace_back(Args &&... args) {
+		auto new_back = new _node_t(std::forward<Args>(args)...);
 		new_back->after = nullptr;
 		_insert_back_node(&_front);
 		return iterator(new_back);
