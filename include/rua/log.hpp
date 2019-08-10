@@ -51,25 +51,21 @@ private:
 
 #endif
 
-inline printer make_default_log_printer() {
-#ifdef _WIN32
-	auto &w = get_stdout();
-	if (!w) {
-		return nullptr;
-	}
-	return printer(u8_to_loc_writer(w));
-#else
-	return printer(get_stdout());
-#endif
-}
-
 inline printer &log_printer() {
-	static auto inst = make_default_log_printer();
-	return inst;
-}
-
-inline void reset_log_printer() {
-	log_printer() = make_default_log_printer();
+	static auto &p = ([]() -> printer & {
+		static printer p;
+#ifdef _WIN32
+		auto w = get_stdout();
+		if (!w) {
+			return p;
+		}
+		p.reset(u8_to_loc_writer(std::move(w)));
+#else
+		p.reset(get_stdout());
+#endif
+		return p;
+	})();
+	return p;
 }
 
 template <typename... Args>
@@ -77,31 +73,29 @@ inline void log(Args &&... args) {
 	log_printer().println(std::forward<Args>(args)...);
 }
 
-inline printer make_default_error_log_printer() {
-#ifdef _WIN32
-	auto mbw = std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR);
-	auto &w = get_stderr();
-	if (!w) {
-		return printer(std::move(mbw));
-	}
-	return printer(write_group{u8_to_loc_writer(w), std::move(mbw)});
-#else
-	return printer(get_stderr());
-#endif
-}
-
 inline printer &error_log_printer() {
-	static auto inst = make_default_error_log_printer();
-	return inst;
+	static auto &p = ([]() -> printer & {
+		static printer p;
+#ifdef _WIN32
+		auto mbw =
+			std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR);
+		auto w = get_stderr();
+		if (!w) {
+			p.reset(std::move(mbw));
+			return p;
+		}
+		p.reset(write_group{u8_to_loc_writer(std::move(w)), std::move(mbw)});
+#else
+		p.reset(get_stderr());
+#endif
+		return p;
+	})();
+	return p;
 }
 
 template <typename... Args>
 inline void error_log(Args &&... args) {
 	error_log_printer().println(std::forward<Args>(args)...);
-}
-
-inline void reset_error_log_printer() {
-	error_log_printer() = make_default_error_log_printer();
 }
 
 } // namespace rua
