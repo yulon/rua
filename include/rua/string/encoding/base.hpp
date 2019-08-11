@@ -7,21 +7,7 @@
 
 namespace rua {
 
-inline std::string loc_to_u8(const std::string &str) {
-	return win32::loc_to_u8(str);
-}
-
-inline std::string u8_to_loc(const std::string &u8_str) {
-	return win32::u8_to_loc(u8_str);
-}
-
-inline std::wstring u8_to_w(const std::string &u8_str) {
-	return win32::u8_to_w(u8_str);
-}
-
-inline std::string w_to_u8(const std::wstring &w_str) {
-	return win32::w_to_u8(w_str);
-}
+using namespace win32::_string_encoding_base;
 
 } // namespace rua
 
@@ -34,21 +20,7 @@ inline std::string w_to_u8(const std::wstring &w_str) {
 
 namespace rua {
 
-inline std::string loc_to_u8(const std::string &str) {
-	return uni::loc_to_u8(str);
-}
-
-inline std::string u8_to_loc(const std::string &u8_str) {
-	return uni::u8_to_loc(u8_str);
-}
-
-inline std::wstring u8_to_w(const std::string &u8_str) {
-	return uni::u8_to_w(u8_str);
-}
-
-inline std::string w_to_u8(const std::wstring &w_str) {
-	return uni::w_to_u8(w_str);
-}
+using namespace uni::_string_encoding_base;
 
 } // namespace rua
 

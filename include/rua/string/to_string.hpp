@@ -2,65 +2,44 @@
 #define _RUA_STRING_TO_STRING_HPP
 
 #include "encoding/base.hpp"
-
-#include "../macros.hpp"
-
-#include <string>
-
-#ifdef __cpp_lib_string_view
-#include <string_view>
-#endif
+#include "string_view.hpp"
 
 #include <cstdint>
-#include <cstring>
 #include <iomanip>
 #include <sstream>
+#include <string>
 #include <type_traits>
 
 namespace rua {
 
 template <typename T>
-inline std::string to_string(
-	T &&val,
-	decltype(std::to_string(std::declval<typename std::decay<T>::type>())) * =
-		nullptr,
-	typename std::enable_if<
-		!std::is_unsigned<typename std::decay<T>::type>::value>::type * =
-		nullptr) {
+inline typename std::enable_if<
+	!std::is_same<typename std::decay<T>::type, bool>::value,
+	decltype(
+		std::to_string(std::declval<typename std::decay<T>::type>()))>::type
+to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
 
-inline std::string to_string(std::nullptr_t) {
-	return "null";
+inline const char *to_string(std::nullptr_t) {
+	static const auto null_str = "null";
+	return null_str;
 }
 
-inline std::string to_string(const char *val) {
-	return val ? val : to_string(nullptr);
+inline std::string to_string(string_view sv) {
+	return std::string(sv);
 }
 
-inline std::string to_string(std::string val) {
-	return val;
+template <typename Str>
+inline typename std::
+	enable_if<std::is_same<Str, std::string>::value, std::string>::type
+	to_string(Str &&s) {
+	return std::move(s);
 }
 
-inline std::string to_string(const wchar_t *val) {
-	return val ? w_to_u8(val) : to_string(nullptr);
+inline std::string to_string(wstring_view wsv) {
+	return w_to_u8(wsv.data());
 }
-
-inline std::string to_string(std::wstring val) {
-	return w_to_u8(val);
-}
-
-#ifdef __cpp_lib_string_view
-
-inline std::string to_string(std::string_view val) {
-	return val.data();
-}
-
-inline std::string to_string(std::wstring_view val) {
-	return w_to_u8(val.data());
-}
-
-#endif
 
 template <
 	typename T,
@@ -79,23 +58,45 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 	return to_hex(static_cast<uintptr_t>(val), width);
 }
 
+template <typename P>
+inline typename std::enable_if<
+	!std::is_convertible<P *, string_view>::value &&
+		!std::is_convertible<P *, wstring_view>::value,
+	std::string>::type
+to_string(P *val) {
+	return val ? to_hex(reinterpret_cast<uintptr_t>(val)) : to_string(nullptr);
+}
+
+inline const char *to_string(bool val) {
+	static const auto true_str = "true";
+	static const auto false_str = "false";
+	return val ? true_str : false_str;
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+inline string_view to_temp_string(string_view sv) {
+	return sv;
+}
+
 template <typename T>
-inline std::string to_string(
-	T &&val,
-	typename std::enable_if<
-		std::is_unsigned<typename std::decay<T>::type>::value &&
-		!std::is_same<typename std::decay<T>::type, bool>::value>::type * =
-		nullptr) {
-	return to_hex(std::forward<T>(val));
+inline typename std::enable_if<
+	!std::is_convertible<T, string_view>::value &&
+		!std::is_same<decltype(to_string(std::declval<T>())), const char *>::
+			value,
+	std::string>::type
+to_temp_string(T &&src) {
+	return to_string(std::forward<T>(src));
 }
 
-inline std::string to_string(const void *val) {
-	return val ? to_string(reinterpret_cast<uintptr_t>(val))
-			   : to_string(nullptr);
-}
-
-inline std::string to_string(bool val) {
-	return val ? "true" : "false";
+template <typename T>
+inline typename std::enable_if<
+	!std::is_convertible<T, string_view>::value &&
+		std::is_same<decltype(to_string(std::declval<T>())), const char *>::
+			value,
+	const char *>::type
+to_temp_string(T &&src) {
+	return to_string(std::forward<T>(src));
 }
 
 } // namespace rua

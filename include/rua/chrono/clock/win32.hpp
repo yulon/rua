@@ -12,6 +12,8 @@
 
 namespace rua { namespace win32 {
 
+namespace _chrono_clock {
+
 inline time tick() {
 	static LARGE_INTEGER start, freq;
 	static bool ok = ([]() -> bool {
@@ -57,6 +59,10 @@ inline time now() {
 			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
 		sys_time_begin);
 }
+
+} // namespace _chrono_clock
+
+using namespace _chrono_clock;
 
 }} // namespace rua::win32
 

@@ -17,7 +17,7 @@ class msgbox_writer : public writer {
 public:
 	virtual ~msgbox_writer() = default;
 
-	msgbox_writer(const std::string &title, UINT icon) :
+	msgbox_writer(string_view title, UINT icon) :
 		_tit(u8_to_w(title)),
 		_ico(icon) {}
 

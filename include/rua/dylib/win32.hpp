@@ -3,6 +3,7 @@
 
 #include "../macros.hpp"
 #include "../string/encoding/base/win32.hpp"
+#include "../string/string_view.hpp"
 
 #include <windows.h>
 
@@ -12,7 +13,7 @@ class dylib {
 public:
 	using native_handle_t = HMODULE;
 
-	dylib(const std::string &name, bool always_load = true) {
+	dylib(string_view name, bool always_load = true) {
 		auto wname = u8_to_w(name);
 		if (!always_load) {
 			_h = GetModuleHandleW(wname.c_str());
@@ -59,9 +60,9 @@ public:
 	}
 
 	template <typename FuncPtr>
-	FuncPtr get(const std::string &name) const {
+	FuncPtr get(string_view name) const {
 		return reinterpret_cast<FuncPtr>(
-			reinterpret_cast<void *>(GetProcAddress(_h, name.c_str())));
+			reinterpret_cast<void *>(GetProcAddress(_h, name.data())));
 	}
 
 	void unload() {

@@ -2,10 +2,9 @@
 #define _RUA_DYLIB_POSIX_HPP
 
 #include "../macros.hpp"
+#include "../string/string_view.hpp"
 
 #include <dlfcn.h>
-
-#include <string>
 
 namespace rua { namespace posix {
 
@@ -13,14 +12,14 @@ class dylib {
 public:
 	using native_handle_t = void *;
 
-	dylib(const std::string &name, bool shared_scope = true) {
+	dylib(string_view name, bool shared_scope = true) {
 		auto flags = RTLD_LAZY;
 		if (shared_scope) {
 			flags |= RTLD_GLOBAL;
 		} else {
 			flags |= RTLD_LOCAL;
 		}
-		_h = dlopen(name.c_str(), flags);
+		_h = dlopen(name.data(), flags);
 		_need_unload = _h;
 	}
 
@@ -58,8 +57,8 @@ public:
 	}
 
 	template <typename FuncPtr>
-	FuncPtr get(const std::string &name) const {
-		return reinterpret_cast<FuncPtr>(dlsym(_h, name.c_str()));
+	FuncPtr get(string_view name) const {
+		return reinterpret_cast<FuncPtr>(dlsym(_h, name.data()));
 	}
 
 	void unload() {

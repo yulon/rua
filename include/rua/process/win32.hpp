@@ -10,6 +10,7 @@
 #include "../sched.hpp"
 #include "../stdio.hpp"
 #include "../string/encoding/base/win32.hpp"
+#include "../string/string_view.hpp"
 #include "../thread.hpp"
 
 #include <psapi.h>
@@ -35,7 +36,7 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	static process find(const std::string &name) {
+	static process find(string_view name) {
 		std::wstring wname(u8_to_w(name));
 
 		auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -58,8 +59,7 @@ public:
 		return nullptr;
 	}
 
-	static process
-	wait_for_found(const std::string &name, size_t interval = 100) {
+	static process wait_for_found(string_view name, size_t interval = 100) {
 		process p;
 		for (;;) {
 			p = find(name);
@@ -84,22 +84,22 @@ public:
 	constexpr process() : _h(nullptr), _main_td_h(nullptr) {}
 
 	explicit process(
-		const std::string &file,
+		string_view file,
 		const std::vector<std::string> &args = {},
-		const std::string &work_dir = "",
+		string_view work_dir = "",
 		bool freeze_at_startup = false,
 		writer_i stdout_writer = nullptr,
 		writer_i stderr_writer = nullptr,
 		reader_i stdin_reader = nullptr) {
 		std::wstringstream cmd;
-		if (file.find(" ") == std::string::npos) {
+		if (file.find(' ') == std::string::npos) {
 			cmd << u8_to_w(file);
 		} else {
 			cmd << L"\"" << u8_to_w(file) << L"\"";
 		}
 		if (args.size()) {
 			for (auto &arg : args) {
-				if (arg.find(" ") == std::string::npos) {
+				if (arg.find(' ') == std::string::npos) {
 					cmd << L" " << u8_to_w(arg);
 				} else {
 					cmd << L" \"" << u8_to_w(arg) << L"\"";
@@ -455,17 +455,17 @@ public:
 		return mem_t(*this, size);
 	}
 
-	mem_t mem_alloc(const std::string &str) {
+	mem_t mem_alloc(string_view str) {
 		auto sz = str.length() + 1;
 		mem_t data(*this, sz);
-		data.write_at(0, bin_view(str.c_str(), sz));
+		data.write_at(0, bin_view(str.data(), sz));
 		return data;
 	}
 
-	mem_t mem_alloc(const std::wstring &wstr) {
+	mem_t mem_alloc(wstring_view wstr) {
 		auto sz = (wstr.length() + 1) * sizeof(wchar_t);
 		mem_t data(*this, sz);
-		data.write_at(0, bin_view(wstr.c_str(), sz));
+		data.write_at(0, bin_view(wstr.data(), sz));
 		return data;
 	}
 

@@ -3,7 +3,7 @@
 
 #include "io/sys_stream.hpp"
 #include "limits.hpp"
-#include "string/encoding.hpp"
+#include "string.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -11,7 +11,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <string>
 
 namespace rua {
 
@@ -44,10 +43,9 @@ inline pipe_accessors make_pipe() {
 	return pa;
 }
 
-inline sys_stream
-make_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
+inline sys_stream make_pipe(string_view name, size_t timeout = nmax<size_t>()) {
 	auto h = CreateNamedPipeW(
-		u8_to_w("\\\\.\\pipe\\" + name).c_str(),
+		u8_to_w(strjoin("\\\\.\\pipe\\", name)).data(),
 		PIPE_ACCESS_INBOUND | PIPE_ACCESS_OUTBOUND,
 		PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 		PIPE_UNLIMITED_INSTANCES,
@@ -64,9 +62,8 @@ make_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
 	return h;
 }
 
-inline sys_stream
-open_pipe(const std::string &name, size_t timeout = nmax<size_t>()) {
-	auto fmt_name = u8_to_w("\\\\.\\pipe\\" + name);
+inline sys_stream open_pipe(string_view name, size_t timeout = nmax<size_t>()) {
+	auto fmt_name = u8_to_w(strjoin("\\\\.\\pipe\\", name));
 
 	if (!WaitNamedPipeW(fmt_name.c_str(), static_cast<DWORD>(timeout))) {
 		return nullptr;

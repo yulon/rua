@@ -9,9 +9,7 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE int8_t local_time_zone() {
-	return win32::local_time_zone();
-}
+using namespace win32::_chrono_zone;
 
 } // namespace rua
 
@@ -21,9 +19,7 @@ RUA_FORCE_INLINE int8_t local_time_zone() {
 
 namespace rua {
 
-RUA_FORCE_INLINE int8_t local_time_zone() {
-	return posix::local_time_zone();
-}
+using namespace posix::_chrono_zone;
 
 } // namespace rua
 

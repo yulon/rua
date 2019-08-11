@@ -1,6 +1,8 @@
 #ifndef _RUA_STRING_LINE_HPP
 #define _RUA_STRING_LINE_HPP
 
+#include "string_view.hpp"
+
 #include "../bin.hpp"
 #include "../io/util.hpp"
 
@@ -29,7 +31,7 @@ inline bool is_eol(const char c) {
 	return c == eol::lf[0] || c == eol::cr[0];
 }
 
-inline bool is_eol(const std::string &str) {
+inline bool is_eol(string_view str) {
 	for (auto &c : str) {
 		if (!is_eol(c)) {
 			return false;

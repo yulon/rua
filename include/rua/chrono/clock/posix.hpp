@@ -9,17 +9,25 @@
 
 namespace rua { namespace posix {
 
+namespace _chrono_clock {
+
 inline time tick() {
 	struct timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return time(duration_base(ts.tv_sec, ts.tv_nsec));
 }
 
+static const auto sys_time_begin = unix_time_begin;
+
 inline time now() {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
 	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_time_begin);
 }
+
+} // namespace _chrono_clock
+
+using namespace _chrono_clock;
 
 }} // namespace rua::posix
 

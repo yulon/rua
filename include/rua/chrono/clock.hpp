@@ -9,13 +9,7 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE time tick() {
-	return win32::tick();
-}
-
-RUA_FORCE_INLINE time now() {
-	return win32::now();
-}
+using namespace win32::_chrono_clock;
 
 } // namespace rua
 
@@ -25,13 +19,7 @@ RUA_FORCE_INLINE time now() {
 
 namespace rua {
 
-RUA_FORCE_INLINE time tick() {
-	return darwin::tick();
-}
-
-RUA_FORCE_INLINE time now() {
-	return darwin::now();
-}
+using namespace darwin::_chrono_clock;
 
 } // namespace rua
 
@@ -41,13 +29,7 @@ RUA_FORCE_INLINE time now() {
 
 namespace rua {
 
-RUA_FORCE_INLINE time tick() {
-	return posix::tick();
-}
-
-RUA_FORCE_INLINE time now() {
-	return posix::now();
-}
+using namespace posix::_chrono_clock;
 
 } // namespace rua
 

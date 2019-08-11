@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <initializer_list>
 #include <string>
 #include <utility>
 
@@ -44,19 +45,18 @@ public:
 		if (!_w) {
 			return;
 		}
-		_print(std::forward<Args>(args)...);
+		strjoin(
+			_buf,
+			std::initializer_list<string_view>{to_temp_string(args)...},
+			" ",
+			strjoin_multi_line);
+		_w->write_all(_buf);
+		_buf.resize(0);
 	}
 
 	template <typename... Args>
 	void println(Args &&... args) {
-		if (!_is_valid) {
-			return;
-		}
-		auto lg = make_lock_guard(_mtx);
-		if (!_w) {
-			return;
-		}
-		_print(std::forward<Args>(args)..., _eol);
+		print(std::forward<Args>(args)..., _eol);
 	}
 
 	void reset(writer_i w = nullptr, const char *eol = eol::sys) {
@@ -72,14 +72,6 @@ private:
 	const char *_eol;
 	std::atomic<bool> _is_valid;
 	std::string _buf;
-
-	template <typename... Args>
-	void _print(Args &&... args) {
-		std::array<std::string, sizeof...(args)> strs{to_string(args)...};
-		strjoin(_buf, strs, " ", strjoin_multi_line);
-		_w->write_all(_buf);
-		_buf.resize(0);
-	}
 };
 
 } // namespace rua
