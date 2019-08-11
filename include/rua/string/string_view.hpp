@@ -37,10 +37,6 @@ public:
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :
 		basic_string_view(s.c_str(), s.size()) {}
 
-	operator std::basic_string<CharT, Traits>() const {
-		return std::basic_string<CharT, Traits>(data(), size());
-	}
-
 	basic_string_view(const basic_string_view &src) :
 		_s(src._s),
 		_c(src._c),

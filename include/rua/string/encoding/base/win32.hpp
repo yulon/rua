@@ -58,7 +58,6 @@ inline std::wstring u8_to_w(string_view u8_str) {
 
 inline std::string w_to_u8(wstring_view w_str) {
 	return w_to_mb(w_str, CP_UTF8);
-	;
 }
 
 inline std::wstring loc_to_w(string_view str) {
@@ -67,7 +66,6 @@ inline std::wstring loc_to_w(string_view str) {
 
 inline std::string w_to_loc(wstring_view w_str) {
 	return w_to_mb(w_str, CP_ACP);
-	;
 }
 
 inline std::string loc_to_u8(string_view str) {

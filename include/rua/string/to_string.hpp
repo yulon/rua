@@ -27,7 +27,7 @@ inline const char *to_string(std::nullptr_t) {
 }
 
 inline std::string to_string(string_view sv) {
-	return std::string(sv);
+	return std::string(sv.data(), sv.size());
 }
 
 template <typename Str>
