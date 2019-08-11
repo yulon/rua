@@ -1,10 +1,10 @@
 #include <rua/chrono.hpp>
 
-#include <catch.hpp>
+#include <doctest/doctest.h>
 
 using namespace rua::duration_literals;
 
-TEST_CASE("precision of duration", "[chrono]") {
+TEST_CASE("precision of duration") {
 	auto dur = rua::h(rua::d(6_ns));
 	REQUIRE(dur != 0);
 	REQUIRE(dur.count() == 0);
@@ -14,11 +14,11 @@ TEST_CASE("precision of duration", "[chrono]") {
 	REQUIRE(rua::ns(dur) == 2);
 }
 
-TEST_CASE("duration to string", "[chrono]") {
+TEST_CASE("duration to string") {
 	REQUIRE(rua::to_string(7_s + 8_ms + 2_h) == "2h0m7.008s");
 }
 
-TEST_CASE("date convert", "[chrono]") {
+TEST_CASE("date convert") {
 	auto t = rua::now();
 	auto d = t.end();
 	auto d2 = rua::time(
@@ -46,7 +46,7 @@ TEST_CASE("date convert", "[chrono]") {
 
 #include <ctime>
 
-TEST_CASE("now", "[chrono]") {
+TEST_CASE("now") {
 	auto c_ti = time(nullptr);
 	auto c_tm = *gmtime(&c_ti);
 

@@ -1,9 +1,23 @@
 #include <rua/log.hpp>
+#include <rua/string.hpp>
 #include <rua/ucontext.hpp>
 
-#include <catch.hpp>
+#include <doctest/doctest.h>
 
-TEST_CASE("basic", "[ucontext]") {
+static void log(rua::string_view str) {
+	static size_t log_sz = 0;
+	if (log_sz) {
+		rua::log_printer().print(std::string(log_sz, '\b'));
+		log_sz = 0;
+	}
+	if (str.empty()) {
+		return;
+	}
+	log_sz = str.size();
+	rua::log_printer().print(str);
+}
+
+TEST_CASE("ucontext") {
 	static size_t main_uc_looping_count = 0, sub_uc_1_restore_count = 0,
 				  sub_uc_1_running_count = 0, sub_uc_1_looping_count,
 				  sub_uc_2_restore_count = 0, sub_uc_2_running_count = 0,
@@ -11,9 +25,9 @@ TEST_CASE("basic", "[ucontext]") {
 	static rua::ucontext_t main_uc, sub_uc_1, sub_uc_2;
 	rua::bin stack(8 * 1024 * 1024);
 
-	rua::log("get_ucontext(&sub_uc_1)");
+	log("get_ucontext(&sub_uc_1)");
 	rua::get_ucontext(&sub_uc_1);
-	rua::log("make_ucontext(&sub_uc_1, ...)");
+	log("make_ucontext(&sub_uc_1, ...)");
 	rua::make_ucontext(
 		&sub_uc_1,
 		[](rua::any_word param) {
@@ -24,7 +38,7 @@ TEST_CASE("basic", "[ucontext]") {
 			sub_uc_1_looping_count = 0;
 			for (;;) {
 				++sub_uc_1_looping_count;
-				rua::log("set_ucontext(&main_uc)");
+				log("set_ucontext(&main_uc)");
 				rua::set_ucontext(&main_uc);
 			}
 		},
@@ -34,7 +48,7 @@ TEST_CASE("basic", "[ucontext]") {
 	while (main_uc_looping_count < 3) {
 		++main_uc_looping_count;
 		++sub_uc_1_restore_count;
-		rua::log("swap_ucontext(&main_uc, &sub_uc_1)");
+		log("swap_ucontext(&main_uc, &sub_uc_1)");
 		rua::swap_ucontext(&main_uc, &sub_uc_1);
 		REQUIRE(sub_uc_1_running_count == sub_uc_1_restore_count);
 		REQUIRE(sub_uc_1_looping_count == 1);
@@ -42,9 +56,9 @@ TEST_CASE("basic", "[ucontext]") {
 
 	REQUIRE(main_uc_looping_count == 3);
 
-	rua::log("get_ucontext(&sub_uc_2)");
+	log("get_ucontext(&sub_uc_2)");
 	rua::get_ucontext(&sub_uc_2);
-	rua::log("make_ucontext(&sub_uc_2, ...)");
+	log("make_ucontext(&sub_uc_2, ...)");
 	rua::make_ucontext(
 		&sub_uc_2,
 		[](rua::any_word param) {
@@ -55,7 +69,7 @@ TEST_CASE("basic", "[ucontext]") {
 			sub_uc_2_looping_count = 0;
 			for (;;) {
 				++sub_uc_2_looping_count;
-				rua::log("swap_ucontext(&sub_uc_2, &main_uc)");
+				log("swap_ucontext(&sub_uc_2, &main_uc)");
 				rua::swap_ucontext(&sub_uc_2, &main_uc);
 			}
 		},
@@ -65,11 +79,13 @@ TEST_CASE("basic", "[ucontext]") {
 	while (main_uc_looping_count < 6) {
 		++main_uc_looping_count;
 		++sub_uc_2_restore_count;
-		rua::log("swap_ucontext(&main_uc, &sub_uc_2)");
+		log("swap_ucontext(&main_uc, &sub_uc_2)");
 		rua::swap_ucontext(&main_uc, &sub_uc_2);
 		REQUIRE(sub_uc_2_running_count == 1);
 		REQUIRE(sub_uc_2_looping_count == sub_uc_2_restore_count);
 	}
+
+	log("");
 
 	REQUIRE(main_uc_looping_count == 6);
 }

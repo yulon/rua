@@ -1,10 +1,10 @@
 #include <rua/ref.hpp>
 
-#include <catch.hpp>
+#include <doctest/doctest.h>
 
 #include <memory>
 
-TEST_CASE("interface", "[ref]") {
+TEST_CASE("use ref for interface") {
 	struct animal {
 		virtual ~animal() = default;
 		virtual size_t age() const = 0;

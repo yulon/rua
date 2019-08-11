@@ -1,11 +1,11 @@
 #include <rua/sync.hpp>
 #include <rua/thread.hpp>
 
-#include <catch.hpp>
+#include <doctest/doctest.h>
 
 #include <string>
 
-TEST_CASE("thread", "[thread]") {
+TEST_CASE("thread") {
 	static std::string r;
 
 	rua::thread([]() mutable {
@@ -17,7 +17,7 @@ TEST_CASE("thread", "[thread]") {
 	REQUIRE(r == "ok");
 }
 
-TEST_CASE("use chan on thread", "[thread]") {
+TEST_CASE("use chan on thread") {
 	static rua::chan<std::string> ch;
 
 	rua::thread([]() mutable {

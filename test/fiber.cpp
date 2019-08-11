@@ -2,11 +2,11 @@
 #include <rua/sync.hpp>
 #include <rua/thread.hpp>
 
-#include <catch.hpp>
+#include <doctest/doctest.h>
 
 #include <string>
 
-TEST_CASE("fiber_driver", "[fiber]") {
+TEST_CASE("fiber_driver") {
 	static rua::fiber_driver dvr;
 	static auto &sch = dvr.get_scheduler();
 	static std::string r;
@@ -31,7 +31,7 @@ TEST_CASE("fiber_driver", "[fiber]") {
 	REQUIRE(r == "123321");
 }
 
-TEST_CASE("fiber", "[fiber]") {
+TEST_CASE("fiber") {
 	static std::string r;
 
 	rua::fiber([]() {
@@ -55,7 +55,7 @@ TEST_CASE("fiber", "[fiber]") {
 	REQUIRE(r == "123321");
 }
 
-TEST_CASE("use chan on fiber", "[fiber]") {
+TEST_CASE("use chan on fiber") {
 	rua::fiber([]() {
 		static rua::chan<std::string> ch;
 

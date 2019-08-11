@@ -77,7 +77,8 @@ matrix:
         - CXXFLAGS="-std=c++17 -DNDEBUG -O3"
 
 install:
-  - sudo wget https://raw.githubusercontent.com/catchorg/Catch2/master/single_include/catch2/catch.hpp -O /usr/local/include/catch.hpp
+  - mkdir ./include/doctest
+  - wget https://raw.githubusercontent.com/onqtam/doctest/2.3.3/doctest/doctest.h -O ./include/doctest/doctest.h
 
 script:
   - mkdir ./bin
