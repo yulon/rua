@@ -23,18 +23,23 @@ namespace rua {
 template <typename CharT, typename Traits = std::char_traits<CharT> >
 class basic_string_view {
 public:
+	using size_type = size_t;
+	using value_type = CharT;
+	using iterator = const CharT *;
+	using const_iterator = const CharT *;
+
 	constexpr basic_string_view() : _s(nullptr), _c(0) {}
 
 	constexpr basic_string_view(std::nullptr_t) : basic_string_view() {}
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
-	constexpr basic_string_view(const CharT *s, size_t count) :
+	constexpr basic_string_view(const CharT *s, size_type count) :
 		_s(s),
 		_c(count) {}
 	constexpr basic_string_view(const CharT *s) : _s(s), _c(_strlen(s)) {}
 #else
-	static constexpr auto _nullsz = static_cast<size_t>(-3);
-	constexpr basic_string_view(const CharT *s, size_t count = _nullsz) :
+	static constexpr auto _nullsz = static_cast<size_type>(-3);
+	constexpr basic_string_view(const CharT *s, size_type count = _nullsz) :
 		_s(s),
 		_c(count) {}
 #endif
@@ -42,7 +47,7 @@ public:
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :
 		basic_string_view(s.c_str(), s.size()) {}
 
-	RUA_CONSTEXPR_14 size_t size() {
+	RUA_CONSTEXPR_14 size_type size() {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
 			_c = _strlen(_s);
@@ -51,7 +56,7 @@ public:
 		return _c;
 	}
 
-	RUA_CONSTEXPR_14 size_t size() const {
+	RUA_CONSTEXPR_14 size_type size() const {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
 			return _strlen(_s);
@@ -60,15 +65,15 @@ public:
 		return _c;
 	}
 
-	constexpr size_t max_size() const {
-		return static_cast<size_t>(-1);
+	constexpr size_type max_size() const {
+		return static_cast<size_type>(-1);
 	}
 
-	RUA_CONSTEXPR_14 size_t length() {
+	RUA_CONSTEXPR_14 size_type length() {
 		return size();
 	}
 
-	RUA_CONSTEXPR_14 size_t length() const {
+	RUA_CONSTEXPR_14 size_type length() const {
 		return size();
 	}
 
@@ -100,13 +105,14 @@ public:
 		return cbegin() + size();
 	}
 
-	static constexpr size_t npos = static_cast<size_t>(-1);
+	static constexpr auto npos = static_cast<size_type>(-1);
 
-	RUA_CONSTEXPR_14 size_t find(basic_string_view v, size_t pos = 0) const {
+	RUA_CONSTEXPR_14 size_type
+	find(basic_string_view v, size_type pos = 0) const {
 		auto vsz = v.size();
 		auto end_ix = size() - vsz + 1;
-		for (size_t i = pos; i < end_ix; ++i) {
-			size_t j = 0;
+		for (size_type i = pos; i < end_ix; ++i) {
+			size_type j = 0;
 			for (; j < vsz && (*this)[i + j] == v[j]; ++j)
 				;
 			if (j == vsz) {
@@ -116,12 +122,12 @@ public:
 		return npos;
 	}
 
-	RUA_CONSTEXPR_14 size_t find(CharT ch, size_t pos = 0) const {
+	RUA_CONSTEXPR_14 size_type find(CharT ch, size_type pos = 0) const {
 		return find(basic_string_view(&ch, 1), pos);
 	}
 
-	RUA_CONSTEXPR_14 size_t
-	find(const CharT *s, size_t pos, size_t count) const {
+	RUA_CONSTEXPR_14 size_type
+	find(const CharT *s, size_type pos, size_type count) const {
 		return find(basic_string_view(s, count), pos);
 	}
 
@@ -130,7 +136,7 @@ public:
 		if (size() != v.size()) {
 			return false;
 		}
-		for (size_t i = 0; i < sz; ++i) {
+		for (size_type i = 0; i < sz; ++i) {
 			if ((*this)[i] != v[i]) {
 				return false;
 			}
@@ -144,10 +150,10 @@ public:
 
 private:
 	const CharT *_s;
-	size_t _c;
+	size_type _c;
 
-	static RUA_CONSTEXPR_14 size_t _strlen(const CharT *c_str) {
-		size_t i = 0;
+	static RUA_CONSTEXPR_14 size_type _strlen(const CharT *c_str) {
+		size_type i = 0;
 		while (c_str[i] != 0) {
 			++i;
 		}
