@@ -58,7 +58,7 @@ public:
 			if (_1st_chr_is_cr) {
 				_1st_chr_is_cr = false;
 				if (_buf[0] == static_cast<uint8_t>('\n')) {
-					_buf = std::move(_buf)(1);
+					_buf = _buf(1);
 				}
 			}
 			for (size_t i = 0; i < sz; ++i) {

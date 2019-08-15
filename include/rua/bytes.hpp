@@ -1055,62 +1055,6 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(bytes)
 
-	inline bytes_view
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const & {
-		return bytes_ref::slice(begin_offset, end_offset_from_begin);
-	}
-
-	inline bytes_view slice(ptrdiff_t begin_offset) const & {
-		return slice(begin_offset, size());
-	}
-
-	inline bytes_ref
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) & {
-		return bytes_ref::slice(begin_offset, end_offset_from_begin);
-	}
-
-	inline bytes_ref slice(ptrdiff_t begin_offset) & {
-		return slice(begin_offset, size());
-	}
-
-	inline bytes
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) && {
-		bytes r(slice(begin_offset, end_offset_from_begin));
-		reset();
-		return r;
-	}
-
-	inline bytes slice(ptrdiff_t begin_offset) && {
-		return std::move(*this).slice(begin_offset, size());
-	}
-
-	inline bytes_view operator()(
-		ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const & {
-		return slice(begin_offset, end_offset_from_begin);
-	}
-
-	inline bytes_view operator()(ptrdiff_t begin_offset) const & {
-		return slice(begin_offset);
-	}
-
-	inline bytes_ref
-	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) & {
-		return slice(begin_offset, end_offset_from_begin);
-	}
-
-	inline bytes_ref operator()(ptrdiff_t begin_offset) & {
-		return slice(begin_offset);
-	}
-
-	inline bytes
-	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) && {
-		return std::move(*this).slice(begin_offset, end_offset_from_begin);
-	}
-
-	inline bytes operator()(ptrdiff_t begin_offset) && {
-		return std::move(*this).slice(begin_offset);
-	}
-
 	void resize(size_t size = 0) {
 		if (!size) {
 			reset();

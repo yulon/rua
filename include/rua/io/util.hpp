@@ -101,7 +101,7 @@ public:
 			}
 		}
 		auto csz = p.copy_from(_buf);
-		_buf = std::move(_buf)(csz);
+		_buf = _buf(csz);
 		return csz;
 	}
 

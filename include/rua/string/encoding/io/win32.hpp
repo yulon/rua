@@ -40,7 +40,7 @@ public:
 						reinterpret_cast<const char *>(_buf.data()), valid_sz));
 
 					_data_sz -= valid_sz;
-					_buf = std::move(_buf)(valid_sz);
+					_buf = _buf(valid_sz);
 					break;
 				}
 			}
