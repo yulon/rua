@@ -1,8 +1,8 @@
 #ifndef _RUA_IO_ABSTRACT_HPP
 #define _RUA_IO_ABSTRACT_HPP
 
-#include "../bin.hpp"
 #include "../any_ptr.hpp"
+#include "../bytes.hpp"
 #include "../limits.hpp"
 #include "../ref.hpp"
 
@@ -14,11 +14,11 @@ class reader {
 public:
 	virtual ~reader() = default;
 
-	virtual size_t read(bin_ref) = 0;
+	virtual size_t read(bytes_ref) = 0;
 
-	inline size_t read_full(bin_ref);
+	inline size_t read_full(bytes_ref);
 
-	inline bin read_all(size_t buf_grain_sz = 1024);
+	inline bytes read_all(size_t buf_grain_sz = 1024);
 };
 
 using reader_i = ref<reader>;
@@ -27,11 +27,11 @@ class writer {
 public:
 	virtual ~writer() = default;
 
-	virtual size_t write(bin_view) = 0;
+	virtual size_t write(bytes_view) = 0;
 
-	inline bool write_all(bin_view);
+	inline bool write_all(bytes_view);
 
-	inline bool copy(const reader_i &r, bin_ref buf = nullptr);
+	inline bool copy(const reader_i &r, bytes_ref buf = nullptr);
 };
 
 using writer_i = ref<writer>;
@@ -86,7 +86,7 @@ class reader_at {
 public:
 	virtual ~reader_at() = default;
 
-	virtual size_t read_at(ptrdiff_t pos, bin_ref) = 0;
+	virtual size_t read_at(ptrdiff_t pos, bytes_ref) = 0;
 };
 
 using reader_at_i = ref<reader_at>;
@@ -95,7 +95,7 @@ class writer_at {
 public:
 	virtual ~writer_at() = default;
 
-	virtual size_t write_at(ptrdiff_t pos, bin_view) = 0;
+	virtual size_t write_at(ptrdiff_t pos, bytes_view) = 0;
 };
 
 using writer_at_i = ref<writer_at>;
@@ -108,6 +108,6 @@ class read_writer_at_closer : public read_writer_at, public closer {};
 
 using read_writer_at_closer_i = ref<read_writer_at_closer>;
 
-}
+} // namespace rua
 
 #endif

@@ -14,6 +14,8 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 
 #else
 
+#include "strlen.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <string>
@@ -36,7 +38,7 @@ public:
 	constexpr basic_string_view(const CharT *s, size_type count) :
 		_s(s),
 		_c(count) {}
-	constexpr basic_string_view(const CharT *s) : _s(s), _c(_strlen(s)) {}
+	constexpr basic_string_view(const CharT *s) : _s(s), _c(strlen(s)) {}
 #else
 	static constexpr auto _nullsz = static_cast<size_type>(-3);
 	constexpr basic_string_view(const CharT *s, size_type count = _nullsz) :
@@ -50,7 +52,7 @@ public:
 	RUA_CONSTEXPR_14 size_type size() {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
-			_c = _strlen(_s);
+			_c = strlen(_s);
 		}
 #endif
 		return _c;
@@ -59,7 +61,7 @@ public:
 	RUA_CONSTEXPR_14 size_type size() const {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
-			return _strlen(_s);
+			return strlen(_s);
 		}
 #endif
 		return _c;
@@ -151,14 +153,6 @@ public:
 private:
 	const CharT *_s;
 	size_type _c;
-
-	static RUA_CONSTEXPR_14 size_type _strlen(const CharT *c_str) {
-		size_type i = 0;
-		while (c_str[i] != 0) {
-			++i;
-		}
-		return i;
-	}
 };
 
 template <typename CharT, typename Traits>

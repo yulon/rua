@@ -3,7 +3,7 @@
 
 #include "string_view.hpp"
 
-#include "../bin.hpp"
+#include "../bytes.hpp"
 #include "../io/util.hpp"
 
 #include <cstdint>
@@ -58,12 +58,13 @@ public:
 			if (_1st_chr_is_cr) {
 				_1st_chr_is_cr = false;
 				if (_buf[0] == static_cast<uint8_t>('\n')) {
-					_buf.slice_self(1);
+					_buf = std::move(_buf)(1);
 				}
 			}
 			for (size_t i = 0; i < sz; ++i) {
 				if (_buf[i] == static_cast<uint8_t>('\r')) {
-					_cache += std::string(_buf.base().to<const char *>(), i);
+					_cache += std::string(
+						reinterpret_cast<const char *>(_buf.data()), i);
 					if (i == sz - 1) {
 						_1st_chr_is_cr = true;
 						return std::move(_cache);
@@ -79,16 +80,20 @@ public:
 
 					std::string r(std::move(_cache));
 					_cache = std::string(
-						(_buf.base() + end).to<const char *>(),
+						reinterpret_cast<const char *>(_buf.data() + end),
 						_buf.size() - end);
 					return r;
 
 				} else if (_buf[i] == static_cast<uint8_t>('\n')) {
-					_cache += std::string(_buf.base().to<const char *>(), i);
+					_cache += std::string(
+						reinterpret_cast<const char *>(_buf.data()), i);
 					return std::move(_cache);
 				}
 			}
-			_cache += std::string(_buf.base(), sz);
+			if (_buf) {
+				_cache += std::string(
+					reinterpret_cast<const char *>(_buf.data()), sz);
+			}
 		}
 		return "";
 	}
@@ -115,7 +120,7 @@ public:
 private:
 	reader_i _r;
 	bool _1st_chr_is_cr;
-	bin _buf;
+	bytes _buf;
 	std::string _cache;
 };
 

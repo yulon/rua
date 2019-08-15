@@ -40,18 +40,18 @@ public:
 		return _h;
 	}
 
-	virtual size_t read(bin_ref p) {
+	virtual size_t read(bytes_ref p) {
 		DWORD rsz;
 		return ReadFile(
-				   _h, p.base(), static_cast<DWORD>(p.size()), &rsz, nullptr)
+				   _h, p.data(), static_cast<DWORD>(p.size()), &rsz, nullptr)
 				   ? static_cast<size_t>(rsz)
 				   : static_cast<size_t>(0);
 	}
 
-	virtual size_t write(bin_view p) {
+	virtual size_t write(bytes_view p) {
 		DWORD wsz;
 		return WriteFile(
-				   _h, p.base(), static_cast<DWORD>(p.size()), &wsz, nullptr)
+				   _h, p.data(), static_cast<DWORD>(p.size()), &wsz, nullptr)
 				   ? static_cast<size_t>(wsz)
 				   : static_cast<size_t>(0);
 	}

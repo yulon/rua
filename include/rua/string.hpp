@@ -5,6 +5,7 @@
 #include "string/line.hpp"
 #include "string/string_view.hpp"
 #include "string/strjoin.hpp"
+#include "string/strlen.hpp"
 #include "string/to_string.hpp"
 
 #include <string>

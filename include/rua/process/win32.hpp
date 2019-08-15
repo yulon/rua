@@ -2,7 +2,7 @@
 #define _RUA_PROCESS_WIN32_HPP
 
 #include "../any_word.hpp"
-#include "../bin.hpp"
+#include "../bytes.hpp"
 #include "../io.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
@@ -415,12 +415,12 @@ public:
 			return _sz;
 		}
 
-		size_t write_at(ptrdiff_t pos, bin_view data) {
+		size_t write_at(ptrdiff_t pos, bytes_view data) {
 			SIZE_T sz;
 			WriteProcessMemory(
 				_owner->native_handle(),
 				ptr() + pos,
-				data.base(),
+				data.data(),
 				data.size(),
 				&sz);
 			assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
@@ -443,12 +443,12 @@ public:
 		size_t _sz;
 	};
 
-	bin_view mem_image() const {
+	bytes_view mem_image() const {
 		assert(*this == current());
 		MODULEINFO mi;
 		GetModuleInformation(
 			_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
-		return bin_view(mi.lpBaseOfDll, mi.SizeOfImage);
+		return bytes_view(mi.lpBaseOfDll, mi.SizeOfImage);
 	}
 
 	mem_t mem_alloc(size_t size) {
@@ -458,14 +458,14 @@ public:
 	mem_t mem_alloc(string_view str) {
 		auto sz = str.length() + 1;
 		mem_t data(*this, sz);
-		data.write_at(0, bin_view(str.data(), sz));
+		data.write_at(0, bytes_view(str.data(), sz));
 		return data;
 	}
 
 	mem_t mem_alloc(wstring_view wstr) {
 		auto sz = (wstr.length() + 1) * sizeof(wchar_t);
 		mem_t data(*this, sz);
-		data.write_at(0, bin_view(wstr.data(), sz));
+		data.write_at(0, bytes_view(wstr.data(), sz));
 		return data;
 	}
 

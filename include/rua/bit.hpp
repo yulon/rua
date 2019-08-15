@@ -25,7 +25,7 @@ bit_get(P *ptr, ptrdiff_t offset) {
 
 template <typename T, typename P>
 RUA_FORCE_INLINE typename std::enable_if<std::is_trivial<T>::value, T>::type
-bit_aligned_get(P *ptr, ptrdiff_t ix) {
+bit_get_aligned(P *ptr, ptrdiff_t ix) {
 	return bit_get<T>(reinterpret_cast<const T *>(ptr) + ix);
 }
 
@@ -43,7 +43,7 @@ bit_set(P *ptr, ptrdiff_t offset, const T &val) {
 
 template <typename T, typename P>
 RUA_FORCE_INLINE typename std::enable_if<std::is_trivial<T>::value>::type
-bit_aligned_set(P *ptr, ptrdiff_t ix, const T &val) {
+bit_set_aligned(P *ptr, ptrdiff_t ix, const T &val) {
 	return bit_set<T>(reinterpret_cast<T *>(ptr) + ix, val);
 }
 

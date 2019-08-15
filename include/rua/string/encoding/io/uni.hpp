@@ -3,7 +3,7 @@
 
 #include "../base/uni.hpp"
 
-#include "../../../bin.hpp"
+#include "../../../bytes.hpp"
 #include "../../../io/util.hpp"
 
 namespace rua { namespace uni {
@@ -16,7 +16,7 @@ public:
 
 	virtual ~loc_to_u8_reader() = default;
 
-	virtual size_t read(bin_ref p) {
+	virtual size_t read(bytes_ref p) {
 		return _lr->read(p);
 	}
 
@@ -32,7 +32,7 @@ public:
 
 	virtual ~u8_to_loc_writer() = default;
 
-	virtual size_t write(bin_view p) {
+	virtual size_t write(bytes_view p) {
 		return _lw->write(p);
 	}
 

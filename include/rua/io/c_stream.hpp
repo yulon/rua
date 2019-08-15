@@ -42,12 +42,12 @@ public:
 		return _f;
 	}
 
-	virtual size_t read(bin_ref p) {
-		return static_cast<size_t>(fread(p.base(), 1, p.size(), _f));
+	virtual size_t read(bytes_ref p) {
+		return static_cast<size_t>(fread(p.data(), 1, p.size(), _f));
 	}
 
-	virtual size_t write(bin_view p) {
-		return static_cast<size_t>(fwrite(p.base(), 1, p.size(), _f));
+	virtual size_t write(bytes_view p) {
+		return static_cast<size_t>(fwrite(p.data(), 1, p.size(), _f));
 	}
 
 	virtual void close() {

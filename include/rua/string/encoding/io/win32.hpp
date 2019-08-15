@@ -3,7 +3,7 @@
 
 #include "../base/win32.hpp"
 
-#include "../../../bin.hpp"
+#include "../../../bytes.hpp"
 #include "../../../io/util.hpp"
 
 namespace rua { namespace win32 {
@@ -18,15 +18,15 @@ public:
 
 	virtual ~loc_to_u8_reader() = default;
 
-	virtual size_t read(bin_ref p) {
+	virtual size_t read(bytes_ref p) {
 		while (_cache.empty()) {
 			_buf.resize(_data_sz + p.size());
 
 			auto rsz = _lr->read(_buf);
 			if (!rsz) {
 				if (_data_sz) {
-					_cache = loc_to_u8(
-						std::string(_buf.base().to<const char *>(), _data_sz));
+					_cache = loc_to_u8(std::string(
+						reinterpret_cast<const char *>(_buf.data()), _data_sz));
 				}
 				break;
 			}
@@ -36,16 +36,16 @@ public:
 				if (static_cast<char>(_buf[static_cast<size_t>(i)]) >= 0) {
 					auto valid_sz = static_cast<size_t>(i + 1);
 
-					_cache = loc_to_u8(
-						std::string(_buf.base().to<const char *>(), valid_sz));
+					_cache = loc_to_u8(std::string(
+						reinterpret_cast<const char *>(_buf.data()), valid_sz));
 
 					_data_sz -= valid_sz;
-					_buf.slice_self(valid_sz);
+					_buf = std::move(_buf)(valid_sz);
 					break;
 				}
 			}
 		};
-		auto sz = p.copy(_cache);
+		auto sz = p.copy_from(_cache);
 		_cache = _cache.substr(sz, _cache.size() - sz);
 		return sz;
 	}
@@ -53,7 +53,7 @@ public:
 private:
 	reader_i _lr;
 	std::string _cache;
-	bin _buf;
+	bytes _buf;
 	size_t _data_sz;
 };
 
@@ -65,9 +65,9 @@ public:
 
 	virtual ~u8_to_loc_writer() = default;
 
-	virtual size_t write(bin_view p) {
-		_lw->write_all(
-			u8_to_loc(std::string(p.base().to<const char *>(), p.size())));
+	virtual size_t write(bytes_view p) {
+		_lw->write_all(u8_to_loc(
+			std::string(reinterpret_cast<const char *>(p.data()), p.size())));
 		return p.size();
 	}
 

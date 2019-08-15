@@ -12,7 +12,7 @@
 
 namespace rua {
 
-inline size_t reader::read_full(bin_ref p) {
+inline size_t reader::read_full(bytes_ref p) {
 	size_t tsz = 0;
 	while (tsz < p.size()) {
 		auto sz = read(p(tsz));
@@ -24,8 +24,8 @@ inline size_t reader::read_full(bin_ref p) {
 	return tsz;
 }
 
-inline bin reader::read_all(size_t buf_grain_sz) {
-	bin buf(buf_grain_sz);
+inline bytes reader::read_all(size_t buf_grain_sz) {
+	bytes buf(buf_grain_sz);
 	size_t tsz = 0;
 	for (;;) {
 		auto sz = read(buf(tsz));
@@ -41,7 +41,7 @@ inline bin reader::read_all(size_t buf_grain_sz) {
 	return buf;
 }
 
-inline bool writer::write_all(bin_view p) {
+inline bool writer::write_all(bytes_view p) {
 	size_t tsz = 0;
 	while (tsz < p.size()) {
 		auto sz = write(p(tsz));
@@ -53,8 +53,8 @@ inline bool writer::write_all(bin_view p) {
 	return true;
 }
 
-inline bool writer::copy(const reader_i &r, bin_ref buf) {
-	bin inner_buf;
+inline bool writer::copy(const reader_i &r, bytes_ref buf) {
+	bytes inner_buf;
 	if (!buf) {
 		inner_buf.reset(1024);
 		buf = inner_buf;
@@ -78,19 +78,19 @@ public:
 	void add(reader_i r) {
 		++_c;
 		thread([this, r]() {
-			bin buf(_buf_sz);
+			bytes buf(_buf_sz);
 			for (;;) {
 				auto sz = r->read(buf);
 				if (!sz) {
 					_ch << nullptr;
 					return;
 				}
-				_ch << bin(buf(0, sz));
+				_ch << bytes(buf(0, sz));
 			}
 		});
 	}
 
-	virtual size_t read(bin_ref p) {
+	virtual size_t read(bytes_ref p) {
 		while (!_buf) {
 			_ch >> _buf;
 			if (!_buf) {
@@ -100,15 +100,15 @@ public:
 				return 0;
 			}
 		}
-		auto csz = p.copy(_buf);
-		_buf.slice_self(csz);
+		auto csz = p.copy_from(_buf);
+		_buf = std::move(_buf)(csz);
 		return csz;
 	}
 
 private:
 	std::atomic<size_t> _c, _buf_sz;
-	chan<bin> _ch;
-	bin _buf;
+	chan<bytes> _ch;
+	bytes _buf;
 };
 
 class write_group : public writer {
@@ -121,7 +121,7 @@ public:
 		_li.emplace_back(std::move(w));
 	}
 
-	virtual size_t write(bin_view p) {
+	virtual size_t write(bytes_view p) {
 		for (auto &w : _li) {
 			w->write_all(p);
 		}

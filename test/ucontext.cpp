@@ -23,7 +23,7 @@ TEST_CASE("ucontext") {
 				  sub_uc_2_restore_count = 0, sub_uc_2_running_count = 0,
 				  sub_uc_2_looping_count;
 	static rua::ucontext_t main_uc, sub_uc_1, sub_uc_2;
-	rua::bin stack(8 * 1024 * 1024);
+	rua::bytes stack(8 * 1024 * 1024);
 
 	log("get_ucontext(&sub_uc_1)");
 	rua::get_ucontext(&sub_uc_1);

@@ -1,7 +1,7 @@
 #ifndef _RUA_FIBER_HPP
 #define _RUA_FIBER_HPP
 
-#include "bin.hpp"
+#include "bytes.hpp"
 #include "chrono.hpp"
 #include "limits.hpp"
 #include "sched.hpp"
@@ -83,7 +83,7 @@ private:
 		}
 
 		ucontext_t uc;
-		bin stk;
+		bytes stk;
 
 		bool is_slept;
 
@@ -117,7 +117,7 @@ public:
 		if (!old) {
 			return;
 		}
-		_fcs.emplace(std::move(f._ctx));
+		_fcs.emplace(f._ctx);
 	}
 
 	fiber current() const {
@@ -352,8 +352,8 @@ private:
 
 	ucontext_t _orig_uc, _worker_uc_base;
 
-	bin _cur_stk;
-	std::vector<bin> _idle_stks;
+	bytes _cur_stk;
+	std::vector<bytes> _idle_stks;
 
 	void _resume_cur_stk() {
 		if (_cur_stk) {

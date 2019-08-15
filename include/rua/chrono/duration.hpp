@@ -1,7 +1,7 @@
 #ifndef _RUA_CHRONO_DURATION_HPP
 #define _RUA_CHRONO_DURATION_HPP
 
-#include "../bin.hpp"
+#include "../bytes.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
 #include "../string/to_string.hpp"
@@ -507,7 +507,7 @@ using namespace duration_literals;
 // point too when the fraction is 0. It returns the index where the
 // output bytes begin and the value v/10**prec.
 inline void
-_duration_to_string_fmt_frac(bin_ref buf, ns v, int prec, int *nw, ns *nv) {
+_duration_to_string_fmt_frac(bytes_ref buf, ns v, int prec, int *nw, ns *nv) {
 	// Omit trailing zeros up to and including decimal point.
 	auto w = static_cast<int>(buf.size());
 	auto print = false;
@@ -530,7 +530,7 @@ _duration_to_string_fmt_frac(bin_ref buf, ns v, int prec, int *nw, ns *nv) {
 
 // _duration_to_string_fmt_int formats v into the tail of buf.
 // It returns the index where the output begins.
-inline int _duration_to_string_fmt_int(bin_ref buf, ns v) {
+inline int _duration_to_string_fmt_int(bytes_ref buf, ns v) {
 	auto w = static_cast<int>(buf.size());
 	if (v == 0) {
 		w--;
@@ -553,7 +553,7 @@ inline std::string to_string(ns dur) {
 	// Largest time is 2540400h10m10.000000000s
 	char b[32];
 	int w = sizeof(b);
-	bin_ref buf(b, w);
+	bytes_ref buf(b, w);
 
 	auto u = dur;
 	auto neg = dur < 0;
@@ -579,7 +579,7 @@ inline std::string to_string(ns dur) {
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
 			w--; // Need room for two bytes.
-			buf(w).copy("µ");
+			buf(w).copy_from("µ");
 		} else {
 			// print ms
 			prec = 6;
@@ -620,7 +620,7 @@ inline std::string to_string(ns dur) {
 	}
 
 	buf = buf(w);
-	return std::string(buf.base(), buf.size());
+	return std::string(   reinterpret_cast<const char *>(buf.data()),buf.size());
 }
 
 } // namespace rua

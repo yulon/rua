@@ -1,7 +1,7 @@
 #ifndef _RUA_LOG_HPP
 #define _RUA_LOG_HPP
 
-#include "bin.hpp"
+#include "bytes.hpp"
 #include "io.hpp"
 #include "printer.hpp"
 #include "stdio.hpp"
@@ -21,10 +21,12 @@ public:
 		_tit(u8_to_w(title)),
 		_ico(icon) {}
 
-	virtual size_t write(bin_view p) {
+	virtual size_t write(bytes_view p) {
 		MessageBoxW(
 			0,
-			u8_to_w(std::string(p.base().to<const char *>(), p.size())).c_str(),
+			u8_to_w(
+				std::string(reinterpret_cast<const char *>(p.data()), p.size()))
+				.c_str(),
 			_tit.c_str(),
 			_ico);
 		return p.size();
