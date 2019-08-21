@@ -133,7 +133,7 @@ public:
 			}
 			if (stdout_writer) {
 				auto stdout_writer_for_sys =
-					stdout_writer.to<win32::sys_stream>();
+					stdout_writer.as<win32::sys_stream>();
 				if (stdout_writer_for_sys) {
 					DuplicateHandle(
 						cph,
@@ -170,7 +170,7 @@ public:
 				}
 				if (stderr_writer) {
 					auto stderr_writer_for_sys =
-						stderr_writer.to<win32::sys_stream>();
+						stderr_writer.as<win32::sys_stream>();
 					if (stderr_writer_for_sys) {
 						DuplicateHandle(
 							cph,
@@ -198,7 +198,7 @@ public:
 			}
 			if (stdin_reader) {
 				auto stdin_reader_for_sys =
-					stdin_reader.to<win32::sys_stream>();
+					stdin_reader.as<win32::sys_stream>();
 				;
 				if (stdin_reader_for_sys) {
 					DuplicateHandle(
@@ -473,7 +473,7 @@ public:
 		HANDLE td;
 		DWORD tid;
 		td = CreateRemoteThread(
-			_h, nullptr, 0, func.to<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
+			_h, nullptr, 0, func.as<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
 		if (!td) {
 			return 0;
 		}

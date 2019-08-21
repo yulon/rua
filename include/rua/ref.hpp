@@ -253,7 +253,7 @@ public:
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	SameBase *to() const {
+	SameBase *as() const {
 		assert(_raw_ptr);
 
 		if (!type_is<SameBase>()) {

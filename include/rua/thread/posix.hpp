@@ -212,7 +212,7 @@ public:
 			ts.tv_nsec =
 				static_cast<decltype(ts.tv_nsec)>(timeout.extra_nanoseconds());
 
-			return sem_timedwait(sig.to<signaler>()->native_handle(), &ts) !=
+			return sem_timedwait(sig.as<signaler>()->native_handle(), &ts) !=
 				   ETIMEDOUT;
 		}
 

@@ -204,7 +204,7 @@ public:
 			assert(sig.type_is<signaler>());
 
 			return WaitForSingleObject(
-					   sig.to<signaler>()->native_handle(),
+					   sig.as<signaler>()->native_handle(),
 					   static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
 						   ? nmax<DWORD>()
 						   : static_cast<DWORD>(timeout.count())) !=

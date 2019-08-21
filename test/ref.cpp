@@ -47,7 +47,7 @@ TEST_CASE("use ref for interface") {
 	////////////////////////////////////////////////////////////////////////////
 
 	REQUIRE(aml1->age() == dog_lval.age());
-	REQUIRE(aml1.to<dog>()->age() == dog_lval.age());
+	REQUIRE(aml1.as<dog>()->age() == dog_lval.age());
 	REQUIRE(aml2->age() == dog_lval.age());
 	REQUIRE(aml3->age() == dog_lval.age());
 	REQUIRE(aml4->age() == dog_lval.age());

@@ -263,7 +263,7 @@ public:
 			assert(_fib_dvr->_cur_fc);
 
 			if (!_fib_dvr->_cur_fc->sig.type_is<signaler>() ||
-				_fib_dvr->_cur_fc->sig.to<signaler>()->primary_signaler() !=
+				_fib_dvr->_cur_fc->sig.as<signaler>()->primary() !=
 					_fib_dvr->_orig_sig) {
 				_fib_dvr->_cur_fc->sig =
 					std::make_shared<signaler>(_fib_dvr->_orig_sig);
@@ -274,7 +274,7 @@ public:
 		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
 			assert(sig == _fib_dvr->_cur_fc->sig);
 
-			auto sig_impl = sig.to<signaler>();
+			auto sig_impl = sig.as<signaler>();
 			auto state = sig_impl->state();
 			if (!state) {
 				_sleep(_fib_dvr->_cws, timeout);
@@ -340,7 +340,7 @@ private:
 
 	void _check_cws(time now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->second->sig.to<secondary_signaler>()->state() ||
+			if (it->second->sig.as<secondary_signaler>()->state() ||
 				now >= it->first) {
 				_fcs.emplace(std::move(it->second));
 				it = _cws.erase(it);
@@ -374,7 +374,7 @@ private:
 	}
 
 	static void _worker(any_word p) {
-		auto &fib_dvr = *p.to<fiber_driver *>();
+		auto &fib_dvr = *p.as<fiber_driver *>();
 
 		while (fib_dvr._fcs.size()) {
 			fib_dvr._cur_fc = std::move(fib_dvr._fcs.front());
@@ -446,7 +446,7 @@ inline fiber::fiber(std::function<void()> func, size_t dur) :
 	fiber(fiber::not_auto_attach, std::move(func), dur) {
 	auto s = get_scheduler();
 	if (s) {
-		auto fs = s.to<fiber_driver::scheduler>();
+		auto fs = s.as<fiber_driver::scheduler>();
 		if (fs) {
 			fs->get_fiber_pool()->attach(*this);
 			return;

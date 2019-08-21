@@ -3,6 +3,7 @@
 
 #include "scheduler.hpp"
 
+#include "../macros.hpp"
 #include "../thread.hpp"
 #include "../tls.hpp"
 
@@ -16,7 +17,7 @@ inline tls &_scheduler_storage() {
 }
 
 inline scheduler_i _get_scheduler(tls &ss) {
-	auto p = ss.get().to<scheduler_i *>();
+	auto p = ss.get().as<scheduler_i *>();
 	if (!p) {
 		return thread::scheduler::instance();
 	}
@@ -31,7 +32,7 @@ class scheduler_guard {
 public:
 	scheduler_guard(scheduler_i s) {
 		auto &ss = _scheduler_storage();
-		auto p = ss.get().to<scheduler_i *>();
+		auto p = ss.get().as<scheduler_i *>();
 		if (p) {
 			_previous = *p;
 			*p = std::move(s);
@@ -44,7 +45,7 @@ public:
 	~scheduler_guard() {
 		auto &ss = _scheduler_storage();
 
-		auto p = ss.get().to<scheduler_i *>();
+		auto p = ss.get().as<scheduler_i *>();
 		assert(p);
 
 		if (!_previous) {
@@ -66,20 +67,20 @@ private:
 	scheduler_i _previous;
 };
 
-inline void yield() {
+RUA_FORCE_INLINE void yield() {
 	get_scheduler()->yield();
 }
 
-inline void sleep(ms timeout) {
+RUA_FORCE_INLINE void sleep(ms timeout) {
 	get_scheduler()->sleep(timeout);
 }
 
 class secondary_signaler : public scheduler::signaler {
 public:
-	constexpr secondary_signaler() : _pri_sch(nullptr), _state(false) {}
+	constexpr secondary_signaler() : _pri(nullptr), _state(false) {}
 
 	explicit secondary_signaler(scheduler::signaler_i main_sch) :
-		_pri_sch(main_sch),
+		_pri(main_sch),
 		_state(false) {}
 
 	virtual ~secondary_signaler() = default;
@@ -90,8 +91,8 @@ public:
 
 	virtual void signal() {
 		_state.store(true);
-		if (_pri_sch) {
-			_pri_sch->signal();
+		if (_pri) {
+			_pri->signal();
 		}
 	}
 
@@ -99,12 +100,12 @@ public:
 		_state.store(false);
 	}
 
-	scheduler::signaler_i primary_signaler() const {
-		return _pri_sch;
+	scheduler::signaler_i primary() const {
+		return _pri;
 	}
 
 private:
-	scheduler::signaler_i _pri_sch;
+	scheduler::signaler_i _pri;
 	std::atomic<bool> _state;
 };
 

@@ -201,7 +201,7 @@ public:
 			assert(sig.type_is<signaler>());
 
 			return !dispatch_semaphore_wait(
-				sig.to<signaler>()->native_handle(),
+				sig.as<signaler>()->native_handle(),
 				static_cast<dispatch_time_t>(timeout.extra_nanoseconds()));
 		}
 

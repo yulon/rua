@@ -3,6 +3,7 @@
 
 #include "bytes.hpp"
 #include "io.hpp"
+#include "macros.hpp"
 #include "printer.hpp"
 #include "stdio.hpp"
 #include "string.hpp"
@@ -59,7 +60,7 @@ inline printer &log_printer() {
 }
 
 template <typename... Args>
-inline void log(Args &&... args) {
+RUA_FORCE_INLINE void log(Args &&... args) {
 	log_printer().println(std::forward<Args>(args)...);
 }
 
@@ -84,7 +85,7 @@ inline printer &error_log_printer() {
 }
 
 template <typename... Args>
-inline void error_log(Args &&... args) {
+RUA_FORCE_INLINE void error_log(Args &&... args) {
 	error_log_printer().println(std::forward<Args>(args)...);
 }
 
