@@ -17,8 +17,14 @@ public:
 	RUA_FORCE_INLINE constexpr any_ptr(std::nullptr_t) : _val(0) {}
 
 	template <typename T>
-	RUA_FORCE_INLINE constexpr any_ptr(T *src) :
-		_val(reinterpret_cast<uintptr_t>(src)) {}
+	RUA_FORCE_INLINE any_ptr(T *src) : _val(reinterpret_cast<uintptr_t>(src)) {}
+
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			std::is_member_function_pointer<T>::value>::type>
+	RUA_FORCE_INLINE any_ptr(const T &src) :
+		any_ptr(reinterpret_cast<const void *>(src)) {}
 
 	RUA_FORCE_INLINE explicit constexpr any_ptr(uintptr_t val) : _val(val) {}
 
@@ -26,11 +32,11 @@ public:
 		return _val;
 	}
 
-	RUA_FORCE_INLINE uintptr_t value() const {
+	constexpr RUA_FORCE_INLINE uintptr_t value() const {
 		return _val;
 	}
 
-	RUA_FORCE_INLINE operator bool() const {
+	constexpr RUA_FORCE_INLINE operator bool() const {
 		return _val;
 	}
 

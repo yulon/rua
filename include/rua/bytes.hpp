@@ -711,18 +711,17 @@ public:
 			!std::is_convertible<const T *, string_view>::value &&
 			!std::is_convertible<const T *, wstring_view>::value &&
 			!std::is_function<T>::value>::type>
-	constexpr bytes_view(const T *ptr, size_t size = sizeof(T)) :
+	bytes_view(const T *ptr, size_t size = sizeof(T)) :
 		bytes_view(reinterpret_cast<const byte *>(ptr), size) {}
 
 	template <
 		typename T,
 		typename CArray = typename std::remove_reference<T>::type,
 		typename = typename std::enable_if<std::is_array<CArray>::value>::type>
-	constexpr bytes_view(T &&c_array_ref) :
-		bytes_view(&c_array_ref, sizeof(CArray)) {}
+	bytes_view(T &&c_array_ref) : bytes_view(&c_array_ref, sizeof(CArray)) {}
 
 	template <typename R, typename... A>
-	constexpr bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
+	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
 		_p(reinterpret_cast<const byte *>(ptr)),
 		_n(size) {}
 
@@ -740,7 +739,7 @@ public:
 
 	bytes_view(const wchar_t *c_wstr) :
 		_p(reinterpret_cast<const byte *>(c_wstr)),
-		_n(strlen(c_wstr) * sizeof(wchar_t)) {}
+		_n(c_wstr ? strlen(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
 		typename T,
@@ -750,7 +749,7 @@ public:
 			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value &&
 			!is_span<T>::value &&
 			!std::is_member_function_pointer<T>::value>::type>
-	constexpr bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
+	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
 		bytes_view(&const_val_ref, size) {}
 
 	template <
@@ -762,7 +761,7 @@ public:
 			!is_span<T>::value>::type,
 		typename = typename std::enable_if<
 			std::is_member_function_pointer<T>::value>::type>
-	constexpr bytes_view(const T &mbr_fn_ref, size_t size = nmax<size_t>()) :
+	bytes_view(const T &mbr_fn_ref, size_t size = nmax<size_t>()) :
 		bytes_view(reinterpret_cast<const void *>(mbr_fn_ref), size) {}
 
 	template <
@@ -774,15 +773,15 @@ public:
 	bytes_view(const T &span) :
 		bytes_view(span.data(), span.size() * sizeof(SpanElem)) {}
 
-	operator bool() const {
+	constexpr operator bool() const {
 		return _p;
 	}
 
-	const byte *data() const {
+	constexpr const byte *data() const {
 		return _p;
 	}
 
-	size_t size() const {
+	constexpr size_t size() const {
 		return _n;
 	}
 
@@ -832,7 +831,7 @@ public:
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>::type>
-	constexpr bytes_ref(T *ptr, size_t size = sizeof(T)) :
+	bytes_ref(T *ptr, size_t size = sizeof(T)) :
 		bytes_ref(reinterpret_cast<byte *>(ptr), size) {}
 
 	template <
@@ -842,8 +841,7 @@ public:
 			std::is_array<CArray>::value &&
 			!std::is_const<typename std::remove_pointer<
 				typename std::decay<CArray>::type>::type>::value>::type>
-	constexpr bytes_ref(T &&c_array_ref) :
-		bytes_ref(&c_array_ref, sizeof(CArray)) {}
+	bytes_ref(T &&c_array_ref) : bytes_ref(&c_array_ref, sizeof(CArray)) {}
 
 	bytes_ref(char *c_str, size_t size) :
 		_p(reinterpret_cast<byte *>(c_str)),
@@ -872,19 +870,19 @@ public:
 	bytes_ref(T &span) :
 		bytes_ref(stldata(span), span.size() * sizeof(SpanElem)) {}
 
-	operator bool() const {
+	constexpr operator bool() const {
 		return _p;
 	}
 
-	const byte *data() const {
+	constexpr const byte *data() const {
 		return _p;
 	}
 
-	byte *data() {
+	RUA_CONSTEXPR_14 byte *data() {
 		return _p;
 	}
 
-	size_t size() const {
+	constexpr size_t size() const {
 		return _n;
 	}
 

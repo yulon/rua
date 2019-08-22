@@ -165,7 +165,7 @@
 #ifdef _MSC_VER
 #define RUA_FORCE_INLINE __forceinline
 #elif defined(__GNUC__)
-#define RUA_FORCE_INLINE __inline__ __attribute__((always_inline))
+#define RUA_FORCE_INLINE inline __attribute__((always_inline))
 #else
 #define RUA_FORCE_INLINE inline
 #endif
