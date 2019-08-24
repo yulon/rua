@@ -203,6 +203,11 @@ public:
 		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
 			assert(sig.type_is<signaler>());
 
+			if (timeout == duration_max()) {
+				return sem_wait(sig.as<signaler>()->native_handle()) !=
+					   ETIMEDOUT;
+			}
+
 			timespec ts;
 			ts.tv_sec =
 				static_cast<int64_t>(nmax<decltype(ts.tv_sec)>()) <

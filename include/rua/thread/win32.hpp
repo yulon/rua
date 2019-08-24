@@ -37,7 +37,7 @@ public:
 		_h(CreateThread(
 			nullptr,
 			0,
-			&_start,
+			&_call,
 			reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
 			0,
 			nullptr)) {}
@@ -126,9 +126,8 @@ public:
 private:
 	HANDLE _h;
 
-	static DWORD __stdcall _start(LPVOID lpThreadParameter) {
-		auto fn_ptr =
-			reinterpret_cast<std::function<void()> *>(lpThreadParameter);
+	static DWORD __stdcall _call(LPVOID param) {
+		auto fn_ptr = reinterpret_cast<std::function<void()> *>(param);
 		(*fn_ptr)();
 		delete fn_ptr;
 		return 0;
@@ -205,9 +204,12 @@ public:
 
 			return WaitForSingleObject(
 					   sig.as<signaler>()->native_handle(),
-					   static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
-						   ? nmax<DWORD>()
-						   : static_cast<DWORD>(timeout.count())) !=
+					   timeout == duration_max()
+						   ? INFINITE
+						   : (static_cast<int64_t>(nmax<DWORD>()) <
+									  timeout.count()
+								  ? nmax<DWORD>()
+								  : static_cast<DWORD>(timeout.count()))) !=
 				   WAIT_TIMEOUT;
 		}
 

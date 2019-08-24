@@ -202,7 +202,9 @@ public:
 
 			return !dispatch_semaphore_wait(
 				sig.as<signaler>()->native_handle(),
-				static_cast<dispatch_time_t>(timeout.extra_nanoseconds()));
+				timeout == duration_max() ? DISPATCH_TIME_FOREVER
+										  : static_cast<dispatch_time_t>(
+												timeout.extra_nanoseconds()));
 		}
 
 	private:
