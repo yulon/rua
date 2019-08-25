@@ -107,14 +107,9 @@ struct ucontext_t {
 };
 RUA_SASSERT(std::is_trivial<ucontext_t>::value);
 
-template <typename CodeBytes>
-inline any_ptr _code_init(CodeBytes &&cb) {
-	mem::protect(&cb, sizeof(cb), mem::protect_read | mem::protect_exec);
-	return &cb;
-}
+#include "switch_executable_section.h"
 
-inline bool get_ucontext(ucontext_t *ucp) {
-	static const uint8_t code[]{
+static const uint8_t _get_ucontext_code[] RUA_EXECUTABLE{
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/get_amd64_win.inc"
@@ -128,15 +123,9 @@ inline bool get_ucontext(ucontext_t *ucp) {
 #include "ucontext/get_i386.inc"
 #endif
 #endif
-	};
+};
 
-	static bool (*fn)(ucontext_t *) = _code_init(code);
-
-	return fn(ucp);
-}
-
-inline void set_ucontext(const ucontext_t *ucp) {
-	static const uint8_t code[]{
+static const uint8_t _set_ucontext_code[] RUA_EXECUTABLE{
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/set_amd64_win.inc"
@@ -150,15 +139,9 @@ inline void set_ucontext(const ucontext_t *ucp) {
 #include "ucontext/set_i386.inc"
 #endif
 #endif
-	};
+};
 
-	static void (*fn)(const ucontext_t *) = _code_init(code);
-
-	fn(ucp);
-}
-
-inline void swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
-	static const uint8_t code[]{
+static const uint8_t _swap_ucontext_code[] RUA_EXECUTABLE{
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/swap_amd64_win.inc"
@@ -172,12 +155,21 @@ inline void swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
 #include "ucontext/swap_i386.inc"
 #endif
 #endif
-	};
+};
 
-	static void (*fn)(ucontext_t *, const ucontext_t *) = _code_init(code);
+#include "switch_executable_section.h"
 
-	fn(oucp, ucp);
-}
+static bool (*get_ucontext)(ucontext_t *ucp) =
+	reinterpret_cast<bool (*)(ucontext_t *)>(
+		reinterpret_cast<uintptr_t>(&_get_ucontext_code));
+
+static void (*set_ucontext)(const ucontext_t *ucp) =
+	reinterpret_cast<void (*)(const ucontext_t *)>(
+		reinterpret_cast<uintptr_t>(&_set_ucontext_code));
+
+static void (*swap_ucontext)(ucontext_t *oucp, const ucontext_t *ucp) =
+	reinterpret_cast<void (*)(ucontext_t *, const ucontext_t *)>(
+		reinterpret_cast<uintptr_t>(&_swap_ucontext_code));
 
 inline void make_ucontext(
 	ucontext_t *ucp,
@@ -205,17 +197,14 @@ namespace rua {
 
 using ucontext_t = ::ucontext_t;
 
-inline bool get_ucontext(ucontext_t *ucp) {
+RUA_FORCE_INLINE bool get_ucontext(ucontext_t *ucp) {
 	return !getcontext(ucp);
 }
 
-inline void set_ucontext(const ucontext_t *ucp) {
-	setcontext(ucp);
-}
+static void (*set_ucontext)(const ucontext_t *ucp) = &setcontext;
 
-inline void swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
-	swapcontext(oucp, ucp);
-}
+static void (*swap_ucontext)(ucontext_t *oucp, const ucontext_t *ucp) =
+	&swapcontext;
 
 inline void make_ucontext(
 	ucontext_t *ucp,
