@@ -4,7 +4,7 @@
 #if defined(__APPLE__) && defined(__MACH__)
 #define RUA_EXECUTABLE __attribute__((section("__TEXT,__rua_text")))
 #else
-#define RUA_EXECUTABLE __attribute__((section(".text")))
+#define RUA_EXECUTABLE __attribute__((section(".text$_ZN3rua10text")))
 #endif
 #else
 #define RUA_EXECUTABLE

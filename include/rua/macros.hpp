@@ -170,6 +170,12 @@
 #define RUA_FORCE_INLINE inline
 #endif
 
+#ifdef _MSC_VER
+#define RUA_NO_INLINE __declspec(noinline)
+#elif defined(__GNUC__)
+#define RUA_NO_INLINE __attribute__((noinline))
+#endif
+
 #define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
 	T &operator=(const T &src) {                                               \
 		if (this == &src) {                                                    \

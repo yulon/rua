@@ -46,8 +46,8 @@ mov ecx, [edx]
 mov [eax+60], ecx
 
 ; fiber local storage
-mov ecx, [edx+010h]
-mov [eax+64], ecx
+; mov ecx, [edx+010h]
+; mov [eax+64], ecx
 
 mov eax, 1
 ret

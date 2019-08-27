@@ -52,8 +52,8 @@ mov rax, [r10]
 mov [rcx+176], rax
 
 ; fiber local storage
-mov rax, [r10+020h]
-mov [rcx+184], rax
+; mov rax, [r10+020h]
+; mov [rcx+184], rax
 
 ;;;;;
 
@@ -102,8 +102,8 @@ mov rax, [rdx+176]
 mov [r10], rax
 
 ; fiber local storage
-mov rax, [rdx+184]
-mov [r10+020h], rax
+; mov rax, [rdx+184]
+; mov [r10+020h], rax
 
 mov rcx, [rdx+16]
 mov rdx, [rdx+24]
