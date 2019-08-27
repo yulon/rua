@@ -7,6 +7,7 @@
 TEST_CASE("use ref for interface") {
 	struct animal {
 		virtual ~animal() = default;
+
 		virtual size_t age() const = 0;
 	};
 
@@ -14,9 +15,11 @@ TEST_CASE("use ref for interface") {
 
 	struct dog : animal {
 		virtual ~dog() = default;
+
 		virtual size_t age() const {
 			return 123;
 		}
+
 		size_t color() const {
 			return 321;
 		}
@@ -37,8 +40,8 @@ TEST_CASE("use ref for interface") {
 	animal_i aml5(dog{});						  // Impl &&
 	animal_i aml6(std::unique_ptr<dog>(new dog)); // std::unique_ptr<Impl> &&
 
-	// save pointer type same as source jeko
-	animal_i aml7(aml6); // jeko
+	// save pointer type same as source ref
+	animal_i aml7(aml6); // ref
 
 	// null
 	animal_i aml8;
