@@ -51,7 +51,7 @@ inline DWORD __stdcall _syswaiter(LPVOID lpThreadParameter) {
 			}
 			auto this_timeout = ms(it->end_ti - now_ti).count();
 			if (this_timeout < timeout) {
-				timeout = this_timeout;
+				timeout = static_cast<DWORD>(this_timeout);
 			}
 			if (i > c) {
 				++it;
