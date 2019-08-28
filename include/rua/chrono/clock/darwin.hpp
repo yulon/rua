@@ -17,12 +17,12 @@ inline time tick() {
 	return time(ns(static_cast<int64_t>(mach_absolute_time() - start)));
 }
 
-static const auto sys_time_begin = unix_time_begin;
+static const auto sys_start_date = unix_start_date;
 
 inline time now() {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
-	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_time_begin);
+	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_start_date);
 }
 
 } // namespace _chrono_clock

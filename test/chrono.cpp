@@ -20,10 +20,10 @@ TEST_CASE("duration to string") {
 
 TEST_CASE("date convert") {
 	auto t = rua::now();
-	auto d = t.end();
+	auto d = t.date();
 	auto d2 = rua::time(
 				  d,
-				  rua::date{
+				  rua::date_t{
 					  1995,
 					  12,
 					  14,
@@ -33,7 +33,7 @@ TEST_CASE("date convert") {
 					  0,
 					  9,
 				  })
-				  .end();
+				  .date();
 
 	REQUIRE(d.year == d2.year);
 	REQUIRE(d.month == d2.month);
@@ -50,7 +50,7 @@ TEST_CASE("now") {
 	auto c_ti = time(nullptr);
 	auto c_tm = *gmtime(&c_ti);
 
-	auto d = rua::now().end(0);
+	auto d = rua::now().date(0);
 
 	auto c_ti_2 = time(nullptr);
 	auto c_tm_2 = *gmtime(&c_ti_2);

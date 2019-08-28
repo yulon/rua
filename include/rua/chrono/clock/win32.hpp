@@ -40,7 +40,7 @@ inline time tick() {
 	return ms(GetTickCount());
 }
 
-static const date sys_time_begin{
+static const date_t sys_start_date{
 	1601,
 	1,
 	1,
@@ -57,7 +57,7 @@ inline time now() {
 	return time(
 		duration<100>(
 			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
-		sys_time_begin);
+		sys_start_date);
 }
 
 } // namespace _chrono_clock

@@ -11,7 +11,7 @@
 
 namespace rua {
 
-struct date {
+struct date_t {
 	int16_t year;
 	int8_t month;
 	int8_t day;
@@ -22,17 +22,17 @@ struct date {
 	int8_t zone;
 };
 
-inline bool operator==(const date &a, const date &b) {
+inline bool operator==(const date_t &a, const date_t &b) {
 	return a.year == b.year && a.month == b.month && a.day == b.day &&
 		   a.hour == b.hour && a.minute == b.minute && a.second == b.second &&
 		   a.nanoseconds == b.nanoseconds;
 }
 
-inline bool operator!=(const date &a, const date &b) {
+inline bool operator!=(const date_t &a, const date_t &b) {
 	return !(a == b);
 }
 
-static const date unix_time_begin{
+static const date_t unix_start_date{
 	1970,
 	1,
 	1,
@@ -65,24 +65,24 @@ static constexpr int16_t _days_before_month[]{
 
 class time {
 public:
-	constexpr time() : _ela(), _bgn(nullptr) {}
+	constexpr time() : _ela(), _start(nullptr) {}
 
-	time(duration_base elapsed, ref<const date> begin = nullptr) :
+	time(duration_base elapsed, ref<const date_t> start_date = nullptr) :
 		_ela(elapsed),
-		_bgn(std::move(begin)) {}
+		_start(std::move(start_date)) {}
 
-	time(const date &end, ref<const date> begin = unix_time_begin) :
-		_bgn(std::move(begin)) {
+	time(const date_t &end, ref<const date_t> start_date = unix_start_date) :
+		_start(std::move(start_date)) {
 
 		s secs;
-		if (end.year != _bgn->year) {
+		if (end.year != _start->year) {
 			int16_t y_begin, y_end;
-			if (end.year > _bgn->year) {
-				y_begin = _bgn->year;
+			if (end.year > _start->year) {
+				y_begin = _start->year;
 				y_end = end.year;
 			} else {
 				y_begin = end.year;
-				y_end = _bgn->year;
+				y_end = _start->year;
 			}
 			int16_t fst_ly = 0, lst_ly = 0;
 			for (int16_t i = y_begin; i < y_end; ++i) {
@@ -100,13 +100,13 @@ public:
 			auto lys = (lst_ly - fst_ly) / 4 + 1;
 			secs += y(y_end - y_begin - lys) + ly(lys);
 		}
-		secs += _date2s_exc_yr(end) - _date2s_exc_yr(*_bgn);
-		secs -= h(end.zone - _bgn->zone);
+		secs += _date2s_exc_yr(end) - _date2s_exc_yr(*_start);
+		secs -= h(end.zone - _start->zone);
 		_ela = duration_base(secs.count(), end.nanoseconds);
 	}
 
 	explicit operator bool() const {
-		return _bgn || _ela;
+		return _start || _ela;
 	}
 
 	template <RUA_DURATION_CONCEPT(Duration)>
@@ -118,34 +118,34 @@ public:
 		return _ela;
 	}
 
-	bool has_begin() const {
-		return _bgn;
+	bool has_start_date() const {
+		return _start;
 	}
 
-	ref<const date> begin() const {
-		return _bgn;
+	ref<const date_t> start_date() const {
+		return _start;
 	}
 
-	date end(int8_t zone = local_time_zone()) const {
-		assert(has_begin());
+	date_t date(int8_t zone = local_time_zone()) const {
+		assert(has_start_date());
 
-		date nd;
+		date_t nd;
 
 		// zone
 		nd.zone = zone;
 
-		auto ela_s =
-			_ela.total_seconds() + _date2s_exc_yr(*_bgn) - h(_bgn->zone - zone);
+		auto ela_s = _ela.total_seconds() + _date2s_exc_yr(*_start) -
+					 h(_start->zone - zone);
 
 		// nanosecond
-		ns ns_sum = _ela.extra_nanoseconds() + _bgn->nanoseconds;
+		ns ns_sum = _ela.extra_nanoseconds() + _start->nanoseconds;
 		ela_s += ns_sum.total_seconds();
 		nd.nanoseconds = ns_sum.extra_nanoseconds();
 
 		auto ela_days = d(ela_s);
 
 		// year
-		nd.year = _bgn->year;
+		nd.year = _start->year;
 
 		constexpr auto days_per_400_yrs = 400 * 1_y + 97_d;
 		auto ela_400_yrs = ela_days / days_per_400_yrs;
@@ -208,56 +208,61 @@ public:
 	}
 
 	time to_unix() const {
-		assert(has_begin());
+		assert(has_start_date());
 
-		if (*_bgn == unix_time_begin) {
+		if (*_start == unix_start_date) {
 			return *this;
 		}
-		return time(end(0));
+		return time(date(0));
 	}
 
 	void reset() {
 		_ela = duration_base();
-		_bgn = nullptr;
+		_start = nullptr;
 	}
 
 	bool operator==(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela == target.elapsed();
 		}
-		return _ela == time(target.end(), _bgn).elapsed();
+		return _ela == time(target.date(), _start).elapsed();
 	}
 
 	bool operator>(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela > target.elapsed();
 		}
-		return _ela > time(target.end(), _bgn).elapsed();
+		return _ela > time(target.date(), _start).elapsed();
 	}
 
 	bool operator>=(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela >= target.elapsed();
 		}
-		return _ela >= time(target.end(), _bgn).elapsed();
+		return _ela >= time(target.date(), _start).elapsed();
 	}
 
 	bool operator<(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela < target.elapsed();
 		}
-		return _ela < time(target.end(), _bgn).elapsed();
+		return _ela < time(target.date(), _start).elapsed();
 	}
 
 	bool operator<=(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela <= target.elapsed();
 		}
-		return _ela <= time(target.end(), _bgn).elapsed();
+		return _ela <= time(target.date(), _start).elapsed();
 	}
 
 	time operator+(duration_base dur) const {
-		return time(_ela + dur, _bgn);
+		return time(_ela + dur, _start);
 	}
 
 	time &operator+=(duration_base dur) {
@@ -266,18 +271,19 @@ public:
 	}
 
 	time operator-(duration_base dur) const {
-		return time(_ela - dur, _bgn);
+		return time(_ela - dur, _start);
 	}
 
 	duration_base operator-(const time &target) const {
-		if (!_bgn || !target.has_begin() || *_bgn == *target.begin()) {
+		if (!_start || !target.has_start_date() ||
+			*_start == *target.start_date()) {
 			return _ela - target.elapsed();
 		}
-		return _ela - time(target.end(), _bgn).elapsed();
+		return _ela - time(target.date(), _start).elapsed();
 	}
 
-	duration_base operator-(const date &d8) const {
-		return _ela - time(d8, _bgn).elapsed();
+	duration_base operator-(const date_t &d8) const {
+		return _ela - time(d8, _start).elapsed();
 	}
 
 	time &operator-=(duration_base dur) {
@@ -287,9 +293,9 @@ public:
 
 private:
 	duration_base _ela;
-	ref<const date> _bgn;
+	ref<const date_t> _start;
 
-	static s _date2s_exc_yr(const date &d8) {
+	static s _date2s_exc_yr(const date_t &d8) {
 		auto r = s(d(_days_before_month[d8.month - 1]));
 		if ((d8.month > 1 && is_leap_year(d8.year)) ||
 			(d8.month == 1 && d8.day == 29)) {
@@ -304,16 +310,16 @@ RUA_FORCE_INLINE time operator+(duration_base dur, const time &tim) {
 	return tim + dur;
 }
 
-RUA_FORCE_INLINE time time_max(ref<const date> begin = nullptr) {
-	return time(duration_max(), std::move(begin));
+RUA_FORCE_INLINE time time_max(ref<const date_t> start_date = nullptr) {
+	return time(duration_max(), std::move(start_date));
 }
 
-RUA_FORCE_INLINE time time_zero(ref<const date> begin = nullptr) {
-	return time(duration_zero(), std::move(begin));
+RUA_FORCE_INLINE time time_zero(ref<const date_t> start_date = nullptr) {
+	return time(duration_zero(), std::move(start_date));
 }
 
-RUA_FORCE_INLINE time time_min(ref<const date> begin = nullptr) {
-	return time(duration_min(), std::move(begin));
+RUA_FORCE_INLINE time time_min(ref<const date_t> start_date = nullptr) {
+	return time(duration_min(), std::move(start_date));
 }
 
 } // namespace rua
@@ -324,8 +330,8 @@ template <>
 struct hash<rua::time> {
 	RUA_FORCE_INLINE size_t operator()(const rua::time &t) const {
 		return _szt(
-			t.has_begin() ? t.to_unix().elapsed().total_seconds()
-						  : rua::ms(t.elapsed()).count());
+			t.has_start_date() ? t.to_unix().elapsed().total_seconds()
+							   : rua::ms(t.elapsed()).count());
 	}
 
 private:
