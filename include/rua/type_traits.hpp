@@ -8,6 +8,11 @@
 #include <string>
 #include <type_traits>
 
+#ifdef RUA_USING_RTTI
+#include <typeindex>
+#include <typeinfo>
+#endif
+
 namespace rua {
 
 // Compatibility and improvement of std::type_traits.
@@ -144,21 +149,119 @@ using enable_switched_t = typename enable_switched<Args...>::type;
 
 ////////////////////////////////////////////////////////////////////////
 
+struct type_info_t {
+	std::string &(*descriptor)();
+
+	RUA_FORCE_INLINE std::string &description() {
+		return descriptor();
+	};
+
+	RUA_FORCE_INLINE std::string &description() const {
+		return descriptor();
+	};
+
+	void (*destructor)(void *);
+
+	RUA_FORCE_INLINE void destruct(void *ptr) const {
+		if (!destructor) {
+			return;
+		}
+		destructor(ptr);
+	}
+
+	void (*deleter)(void *);
+
+	RUA_FORCE_INLINE void del(void *ptr) const {
+		if (!deleter) {
+			return;
+		}
+		deleter(ptr);
+	}
+
+#ifdef RUA_USING_RTTI
+
+	const std::type_info &(*std_id_getter)();
+
+	const std::type_info &std_id() const {
+		return std_id_getter();
+	}
+
+#endif
+};
+
 template <typename T>
-inline std::string &type_info() {
-	static std::string inf;
+inline typename std::enable_if<std::is_trivial<T>::value, type_info_t &>::type
+type_info() {
+	static type_info_t inf{[]() -> std::string & {
+							   static std::string desc;
+							   return desc;
+						   },
+						   nullptr,
+						   [](void *ptr) { delete reinterpret_cast<T *>(ptr); }
+#ifdef RUA_USING_RTTI
+						   ,
+						   []() -> const std::type_info & { return typeid(T); }
+#endif
+	};
 	return inf;
 }
 
-using type_id_t = std::string &(*)();
+template <typename T>
+inline typename std::enable_if<!std::is_trivial<T>::value, type_info_t &>::type
+type_info() {
+	static type_info_t inf{[]() -> std::string & {
+							   static std::string desc;
+							   return desc;
+						   },
+						   [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); },
+						   [](void *ptr) { delete reinterpret_cast<T *>(ptr); }
+#ifdef RUA_USING_RTTI
+						   ,
+						   []() -> const std::type_info & { return typeid(T); }
+#endif
+	};
+	return inf;
+}
+
+struct type_id_t {
+	type_info_t &(*info_gtter)();
+
+	type_info_t &info() const {
+		return info_gtter();
+	}
+};
+
+inline bool operator==(type_id_t a, type_id_t b) {
+	return a.info_gtter == b.info_gtter;
+}
+
+inline bool operator!=(type_id_t a, type_id_t b) {
+	return a.info_gtter != b.info_gtter;
+}
+
+#ifdef RUA_USING_RTTI
+
+inline bool operator==(type_id_t a, std::type_index b) {
+	return std::type_index(a.info().std_id()) == b;
+}
+
+inline bool operator!=(type_id_t a, std::type_index b) {
+	return std::type_index(a.info().std_id()) != b;
+}
+
+inline bool operator==(std::type_index a, type_id_t b) {
+	return a == std::type_index(b.info().std_id());
+}
+
+inline bool operator!=(std::type_index a, type_id_t b) {
+	return a != std::type_index(b.info().std_id());
+}
+
+#endif
 
 template <typename T>
 constexpr type_id_t type_id() {
-	return &type_info<T>;
-}
-
-inline std::string &type_info(type_id_t id) {
-	return id();
+	return type_id_t{&type_info<T>};
 }
 
 ////////////////////////////////////////////////////////////////////////
