@@ -2,6 +2,7 @@
 #define _RUA_ALWAYS_MOVE_HPP
 
 #include "macros.hpp"
+#include "type_traits.hpp"
 
 #include <utility>
 
@@ -12,6 +13,19 @@ class always_move {
 public:
 	always_move() {
 		new (&_val) T();
+	}
+
+	template <
+		typename... Args,
+		typename ArgsFront =
+			typename std::decay<argments_front_t<Args...>>::type,
+		typename = typename std::enable_if<
+			std::is_constructible<T, Args...>::value &&
+			(sizeof...(Args) > 1 ||
+			 (!std::is_base_of<T, ArgsFront>::value &&
+			  !std::is_base_of<always_move, ArgsFront>::value))>::type>
+	always_move(Args &&... args) {
+		new (&_val) T(std::forward<Args>(args)...);
 	}
 
 	always_move(T &&val) {
@@ -46,6 +60,18 @@ public:
 	}
 
 	const T &value() const & {
+		return _val;
+	}
+
+	T &&operator*() && {
+		return std::move(_val);
+	}
+
+	T &operator*() & {
+		return _val;
+	}
+
+	const T &operator*() const & {
 		return _val;
 	}
 
