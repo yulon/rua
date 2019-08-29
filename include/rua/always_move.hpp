@@ -1,60 +1,82 @@
 #ifndef _RUA_ALWAYS_MOVE_HPP
 #define _RUA_ALWAYS_MOVE_HPP
 
+#include "macros.hpp"
+
 #include <utility>
 
 namespace rua {
-	template <typename T>
-	class always_move {
-		public:
-			T value;
 
-			always_move() = default;
+template <typename T>
+class always_move {
+public:
+	always_move() {
+		new (&_val) T();
+	}
 
-			always_move(always_move<T> &&src) : value(std::move(src.value)) {}
+	always_move(T &&val) {
+		new (&_val) T(std::move(val));
+	}
 
-			always_move<T> &operator=(always_move<T> &&src) {
-				value = std::move(src.value);
-			}
+	always_move(T &val) : always_move(std::move(val)) {}
 
-			always_move(const always_move<T> &src) : value(std::move(src.value)) {}
+	always_move(const T &val) :
+		always_move(static_cast<T &&>(const_cast<T &>(val))) {}
 
-			always_move<T> &operator=(const always_move<T> &src) {
-				value = std::move(src.value);
-			}
+	~always_move() {
+		_val.~T();
+	}
 
-			always_move(T &&src_value) : value(std::move(src_value)) {}
+	always_move(always_move &&src) {
+		new (&_val) T(std::move(src._val));
+	}
 
-			always_move<T> &operator=(T &&src_value) {
-				value = std::move(src_value);
-			}
+	always_move(const always_move &src) :
+		always_move(
+			static_cast<always_move &&>(const_cast<always_move &>(src))) {}
 
-			always_move(const T &src_value) : value(std::move(src_value)) {}
+	RUA_OVERLOAD_ASSIGNMENT(always_move)
 
-			always_move<T> &operator=(const T &src_value) {
-				value = std::move(src_value);
-			}
+	T &&value() && {
+		return std::move(_val);
+	}
 
-			operator T &&() && {
-				return std::move(value);
-			}
+	T &value() & {
+		return _val;
+	}
 
-			operator T &() & {
-				return value;
-			}
+	const T &value() const & {
+		return _val;
+	}
 
-			operator const T &() const & {
-				return value;
-			}
+	operator T &&() && {
+		return std::move(_val);
+	}
 
-			T *operator->() {
-				return &value;
-			}
+	operator T &() & {
+		return _val;
+	}
 
-			const T *operator->() const {
-				return &value;
-			}
+	operator const T &() const & {
+		return _val;
+	}
+
+	T *operator->() {
+		return &_val;
+	}
+
+	const T *operator->() const {
+		return &_val;
+	}
+
+private:
+	struct _empty_t {};
+	union {
+		_empty_t _empty;
+		T _val;
 	};
-}
+};
+
+} // namespace rua
 
 #endif
