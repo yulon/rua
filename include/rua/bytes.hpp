@@ -71,7 +71,8 @@ public:
 
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
-	inline size_t copy_to(bytes_ref dest) const;
+	template <typename... DestArgs>
+	inline size_t copy_to(DestArgs &&... dest) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	const void *derel(ptrdiff_t pos = 0) const {
@@ -643,7 +644,8 @@ public:
 
 	inline bytes_ref operator()(ptrdiff_t begin_offset);
 
-	inline size_t copy_from(bytes_view src);
+	template <typename... SrcArgs>
+	inline size_t copy_from(SrcArgs &&... src) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	void *derel(ptrdiff_t pos = 0) {
@@ -997,18 +999,22 @@ inline bytes_ref bytes_base<Span>::operator()(ptrdiff_t begin_offset) {
 }
 
 template <typename Span>
-inline size_t const_bytes_base<Span>::copy_to(bytes_ref dest) const {
-	auto cp_sz = _this()->size() < dest.size() ? _this()->size() : dest.size();
+template <typename... DestArgs>
+inline size_t const_bytes_base<Span>::copy_to(DestArgs &&... dest) const {
+	bytes_ref dest_ref(std::forward<DestArgs>(dest)...);
+	auto cp_sz =
+		_this()->size() < dest_ref.size() ? _this()->size() : dest_ref.size();
 	if (!cp_sz) {
 		return 0;
 	}
-	memcpy(dest.data(), _this()->data(), cp_sz);
+	memcpy(dest_ref.data(), _this()->data(), cp_sz);
 	return cp_sz;
 }
 
 template <typename Span>
-inline size_t bytes_base<Span>::copy_from(bytes_view src) {
-	return src.copy_to(*_this());
+template <typename... SrcArgs>
+inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
+	return bytes_view(std::forward<SrcArgs>(src)...).copy_to(*_this());
 }
 
 inline bytes_ref as_bytes_ref(bytes_view src) {
@@ -1028,8 +1034,9 @@ public:
 		typename ArgsFront =
 			typename std::decay<argments_front_t<Args...>>::type,
 		typename = typename std::enable_if<
-			!std::is_base_of<bytes, ArgsFront>::value &&
-			!std::is_integral<ArgsFront>::value>::type>
+			(sizeof...(Args) > 1) ||
+			(!std::is_base_of<bytes, ArgsFront>::value &&
+			 !std::is_integral<ArgsFront>::value)>::type>
 	bytes(Args &&... copy_src) {
 		bytes_view v(std::forward<Args>(copy_src)...);
 		if (!v.size()) {
