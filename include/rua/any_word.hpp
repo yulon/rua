@@ -2,11 +2,11 @@
 #define _RUA_ANY_WORD_HPP
 
 #include "bit.hpp"
-#include "type_traits.hpp"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 
 namespace rua {
