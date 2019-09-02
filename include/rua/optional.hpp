@@ -1,8 +1,8 @@
 #ifndef _RUA_OPTIONAL_HPP
 #define _RUA_OPTIONAL_HPP
 
-#include "in_place.hpp"
 #include "macros.hpp"
+#include "type_traits/std_patch.hpp"
 
 #if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_optional)
 
@@ -21,7 +21,7 @@ RUA_MULTIDEF_VAR constexpr auto nullopt = std::nullopt;
 
 #else
 
-#include "type_traits.hpp"
+#include "type_traits/enable_copy_move.hpp"
 
 #include <cstdint>
 #include <initializer_list>
@@ -181,7 +181,7 @@ protected:
 };
 
 template <typename T>
-class optional : public _optional_base<T>, private enable_copy_move_from<T> {
+class optional : public _optional_base<T>, private enable_copy_move_like<T> {
 public:
 	constexpr optional() : _optional_base<T>(false) {}
 

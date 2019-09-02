@@ -176,6 +176,8 @@
 #define RUA_NO_INLINE __attribute__((noinline))
 #endif
 
+#include <utility>
+
 #define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
 	T &operator=(const T &src) {                                               \
 		if (this == &src) {                                                    \
