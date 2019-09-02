@@ -85,6 +85,22 @@ RUA_FORCE_INLINE bool operator!=(const type_info_t &a, type_id_t b) {
 
 #ifdef RUA_USING_RTTI
 
+RUA_FORCE_INLINE bool operator==(type_id_t a, const std::type_info &b) {
+	return a.info().std_id() == b;
+}
+
+RUA_FORCE_INLINE bool operator!=(type_id_t a, const std::type_info &b) {
+	return a.info().std_id() != b;
+}
+
+RUA_FORCE_INLINE bool operator==(const std::type_info &a, type_id_t b) {
+	return a == b.info().std_id();
+}
+
+RUA_FORCE_INLINE bool operator!=(const std::type_info &a, type_id_t b) {
+	return a != b.info().std_id();
+}
+
 RUA_FORCE_INLINE bool operator==(type_id_t a, std::type_index b) {
 	return std::type_index(a.info().std_id()) == b;
 }
@@ -99,6 +115,26 @@ RUA_FORCE_INLINE bool operator==(std::type_index a, type_id_t b) {
 
 RUA_FORCE_INLINE bool operator!=(std::type_index a, type_id_t b) {
 	return a != std::type_index(b.info().std_id());
+}
+
+RUA_FORCE_INLINE bool
+operator==(const type_info_t &a, const std::type_info &b) {
+	return a.std_id() == b;
+}
+
+RUA_FORCE_INLINE bool
+operator!=(const type_info_t &a, const std::type_info &b) {
+	return a.std_id() != b;
+}
+
+RUA_FORCE_INLINE bool
+operator==(const std::type_info &a, const type_info_t &b) {
+	return a == b.std_id();
+}
+
+RUA_FORCE_INLINE bool
+operator!=(const std::type_info &a, const type_info_t &b) {
+	return a != b.std_id();
 }
 
 RUA_FORCE_INLINE bool operator==(const type_info_t &a, std::type_index b) {
@@ -149,9 +185,7 @@ _type_dtor() {
 
 template <typename T>
 inline typename std::enable_if<
-	!std::is_void<T>::value && !std::is_integral<T>::value &&
-		!std::is_pointer<T>::value &&
-		!(size_of<T>::value <= sizeof(uintptr_t) && std::is_trivial<T>::value),
+	any_word::is_dynamic_allocation<T>::value,
 	void (*)(any_word)>::type
 _type_dtor_from_any_word() {
 	return [](any_word w) { w.destruct<T>(); };
@@ -159,9 +193,7 @@ _type_dtor_from_any_word() {
 
 template <typename T>
 inline typename std::enable_if<
-	std::is_void<T>::value || std::is_integral<T>::value ||
-		std::is_pointer<T>::value ||
-		(size_of<T>::value <= sizeof(uintptr_t) && std::is_trivial<T>::value),
+	!any_word::is_dynamic_allocation<T>::value,
 	void (*)(any_word)>::type
 _type_dtor_from_any_word() {
 	return nullptr;

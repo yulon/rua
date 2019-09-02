@@ -2,10 +2,13 @@
 #define _RUA_ANY_WORD_HPP
 
 #include "bit.hpp"
+#include "type_traits/size_of.hpp"
+#include "type_traits/std_patch.hpp"
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <type_traits>
 #include <utility>
 
@@ -13,6 +16,17 @@ namespace rua {
 
 class any_word {
 public:
+	template <typename T>
+	struct is_dynamic_allocation {
+		static constexpr auto value =
+			!std::is_void<T>::value &&
+			!(size_of<T>::value <= sizeof(uintptr_t) &&
+			  std::is_trivial<T>::value) &&
+			!std::is_base_of<any_word, T>::value;
+	};
+
+	////////////////////////////////////////////////////////////////////////
+
 	any_word() = default;
 
 	constexpr any_word(std::nullptr_t) : _val(0) {}
@@ -47,14 +61,39 @@ public:
 	template <
 		typename T,
 		typename DecayT = typename std::decay<T>::type,
-		typename = typename std::enable_if<
-			!std::is_integral<DecayT>::value &&
-			!std::is_pointer<DecayT>::value &&
-			!(sizeof(DecayT) <= sizeof(uintptr_t) &&
-			  std::is_trivial<DecayT>::value) &&
-			!std::is_base_of<any_word, DecayT>::value>::type>
+		typename =
+			typename std::enable_if<is_dynamic_allocation<DecayT>::value>::type>
 	any_word(T &&src) :
 		_val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
+
+	template <
+		typename T,
+		typename... Args,
+		typename =
+			typename std::enable_if<is_dynamic_allocation<T>::value>::type>
+	any_word(in_place_type_t<T>, Args &&... args) :
+		_val(reinterpret_cast<uintptr_t>(new T(std::forward<Args>(args)...))) {}
+
+	template <
+		typename T,
+		typename U,
+		typename... Args,
+		typename =
+			typename std::enable_if<is_dynamic_allocation<T>::value>::type>
+	any_word(in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) :
+		_val(reinterpret_cast<uintptr_t>(
+			new T(il, std::forward<Args>(args)...))) {}
+
+	template <
+		typename T,
+		typename... Args,
+		typename = typename std::enable_if<!std::is_same<T, void>::value>::type,
+		typename =
+			typename std::enable_if<!is_dynamic_allocation<T>::value>::type>
+	any_word(in_place_type_t<T>, Args &&... args) :
+		_val(T(std::forward<Args>(args)...)) {}
+
+	any_word(in_place_type_t<void>) : _val(0) {}
 
 	uintptr_t &value() {
 		return _val;
