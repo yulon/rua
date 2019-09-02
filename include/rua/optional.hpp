@@ -157,7 +157,7 @@ protected:
 	struct _empty_t {};
 	union {
 		_empty_t _empty;
-		T _val;
+		typename std::decay<T>::type _val;
 	};
 	bool _has_val;
 
@@ -189,6 +189,30 @@ public:
 
 	explicit optional(T &&val) : _optional_base<T>(true) {
 		this->_emplace(std::move(val));
+	}
+
+	template <
+		typename U,
+		typename = typename std::enable_if<
+			std::is_constructible<T, const U &>::value &&
+			!std::is_constructible<T, optional<U> &&>::value>::type>
+	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
+		if (!src.has_value()) {
+			return;
+		}
+		this->_emplace(src.value());
+	}
+
+	template <
+		typename U,
+		typename = typename std::enable_if<
+			std::is_constructible<T, U &&>::value &&
+			!std::is_constructible<T, optional<U> &&>::value>::type>
+	optional(optional<U> &&src) : _optional_base<T>(src.has_value()) {
+		if (!src.has_value()) {
+			return;
+		}
+		this->_emplace(std::move(src).value());
 	}
 
 	template <

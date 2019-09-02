@@ -2,12 +2,12 @@
 #define _RUA_REF_HPP
 
 #include "macros.hpp"
-#include "type_traits.hpp"
+#include "type_traits/macros.hpp"
+#include "type_traits/type_info.hpp"
 
 #include <cassert>
 #include <cstdint>
 #include <memory>
-#include <typeindex>
 
 namespace rua {
 

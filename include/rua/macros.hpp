@@ -176,6 +176,7 @@
 #define RUA_NO_INLINE __attribute__((noinline))
 #endif
 
+#include <new>
 #include <utility>
 
 #define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \

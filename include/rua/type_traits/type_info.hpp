@@ -42,9 +42,9 @@ struct type_info_t {
 
 	void (*const dtor_from_any_word)(any_word);
 
-	void (*const copy_ctor)(void *ptr, void *src);
+	void (*const copy_ctor)(void *ptr, const void *src);
 
-	void copy(void *dest, void *src) {
+	void copy(void *dest, const void *src) {
 		if (dtor) {
 			dtor(dest);
 		}
@@ -202,17 +202,18 @@ _type_dtor_from_any_word() {
 template <typename T>
 inline typename std::enable_if<
 	std::is_copy_constructible<T>::value,
-	void (*)(void *, void *)>::type
+	void (*)(void *, const void *)>::type
 _type_copy_ctor() {
-	return [](void *ptr, void *src) {
-		new (reinterpret_cast<T *>(ptr)) T(*reinterpret_cast<const T *>(src));
+	return [](void *ptr, const void *src) {
+		new (reinterpret_cast<typename std::remove_const<T>::type *>(ptr))
+			T(*reinterpret_cast<const T *>(src));
 	};
 }
 
 template <typename T>
 inline typename std::enable_if<
 	!std::is_copy_constructible<T>::value,
-	void (*)(void *, void *)>::type
+	void (*)(void *, const void *)>::type
 _type_copy_ctor() {
 	return nullptr;
 }
@@ -239,7 +240,7 @@ inline typename std::enable_if<
 	void (*)(void *, void *)>::type
 _type_move_ctor() {
 	return [](void *ptr, void *src) {
-		new (reinterpret_cast<T *>(ptr))
+		new (reinterpret_cast<typename std::remove_const<T>::type *>(ptr))
 			T(std::move(*reinterpret_cast<T *>(src)));
 	};
 }

@@ -3,6 +3,8 @@
 
 #include "../macros.hpp"
 
+#include <type_traits>
+
 namespace rua {
 
 template <bool IsCopyable, bool IsMovable>
@@ -53,8 +55,8 @@ public:
 
 template <typename T>
 using enable_copy_move_like = enable_copy_move<
-	std::is_copy_constructible<T>::value,
-	std::is_move_constructible<T>::value>;
+	std::is_copy_constructible<T>::value && !std::is_const<T>::value,
+	std::is_move_constructible<T>::value && !std::is_const<T>::value>;
 
 } // namespace rua
 
