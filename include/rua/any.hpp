@@ -71,8 +71,8 @@ public:
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
 				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
 			assert(_typ_inf->new_copy);
-			*reinterpret_cast<void **>(&_sto) =
-				_typ_inf->new_copy(*reinterpret_cast<void **>(&src._sto));
+			*reinterpret_cast<uintptr_t *>(&_sto) = _typ_inf->new_copy(
+				*reinterpret_cast<const void *const *>(&src._sto));
 			return;
 		}
 		_typ_inf->copy_ctor(&_sto, &src._sto);
