@@ -1,69 +1,101 @@
 #ifndef _RUA_ANY_HPP
 #define _RUA_ANY_HPP
 
-#include "any_word.hpp"
-#include "macros.hpp"
-#include "type_traits.hpp"
+#include "bit.hpp"
+#include "type_traits/measures.hpp"
+#include "type_traits/std_patch.hpp"
+#include "type_traits/type_info.hpp"
 
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <initializer_list>
+#include <type_traits>
+#include <utility>
 
 namespace rua {
 
-class any {
+#define _RUA_ANY_IS_DYNAMIC_ALLOCATION(val_len, val_align, sto_len, sto_align) \
+	(val_len > sto_len || val_align > sto_align)
+
+template <size_t StorageLen, size_t StorageAlign>
+class basic_any {
 public:
-	constexpr any() : _val(), _typ_inf(nullptr) {}
+	template <typename T>
+	struct is_dynamic_allocation {
+		static constexpr auto value = _RUA_ANY_IS_DYNAMIC_ALLOCATION(
+			size_of<T>::value, align_of<T>::value, StorageLen, StorageAlign);
+	};
+
+	template <typename T>
+	struct is_destructible {
+		static constexpr auto value =
+			is_dynamic_allocation<T>::value || !std::is_trivial<T>::value;
+	};
+
+	////////////////////////////////////////////////////////////////////////
+
+	constexpr basic_any() : _sto(), _typ_inf(nullptr) {}
 
 	template <
 		typename T,
-		typename DecayT = typename std::decay<T>::type,
-		typename =
-			typename std::enable_if<!std::is_base_of<any, DecayT>::value>::type>
-	any(T &&src) : _val(std::forward<T>(src)), _typ_inf(&type_info<DecayT>()) {}
-
-	template <
-		typename T,
-		typename... Args,
 		typename = typename std::enable_if<
-			!std::is_same<T, void>::value &&
-			!std::is_base_of<any, T>::value>::type>
-	any(in_place_type_t<T> iptt, Args &&... args) :
-		_val(iptt, std::forward<Args>(args)...),
-		_typ_inf(&type_info<T>()) {}
+			!std::is_base_of<basic_any, typename std::decay<T>::type>::value>::
+			type>
+	basic_any(T &&val) {
+		_emplace<typename std::decay<T>::type>(std::forward<T>(val));
+	}
 
-	template <
-		typename T,
-		typename U,
-		typename... Args,
-		typename = typename std::enable_if<
-			!std::is_same<T, void>::value &&
-			!std::is_base_of<any, T>::value>::type>
-	any(in_place_type_t<T> iptt, std::initializer_list<U> il, Args &&... args) :
-		_val(iptt, il, std::forward<Args>(args)...),
-		_typ_inf(&type_info<T>()) {}
+	template <typename T, typename... Args>
+	basic_any(in_place_type_t<T> ipt, Args &&... args) {
+		_emplace<T>(std::forward<Args>(args)...);
+	}
 
-	any(in_place_type_t<void>) : any() {}
+	template <typename T, typename U, typename... Args>
+	basic_any(
+		in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) {
+		_emplace<T>(il, std::forward<Args>(args)...);
+	}
 
-	~any() {
+	~basic_any() {
 		reset();
 	}
 
-	any(const any &src) : _typ_inf(src._typ_inf) {
+	basic_any(const basic_any &src) : _typ_inf(src._typ_inf) {
 		if (!_typ_inf) {
 			return;
 		}
-		assert(_typ_inf->copy_from_any_word);
-		_val = _typ_inf->copy_from_any_word(src._val);
-	}
 
-	any(any &&src) : _val(src._val), _typ_inf(src._typ_inf) {
-		if (!src._typ_inf) {
+		assert(_typ_inf->copy_ctor);
+
+		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
+			assert(_typ_inf->new_copy);
+			*reinterpret_cast<void **>(&_sto) =
+				_typ_inf->new_copy(*reinterpret_cast<void **>(&src._sto));
 			return;
 		}
-		assert(_typ_inf->move_ctor);
-		src._typ_inf = nullptr;
+		_typ_inf->copy_ctor(&_sto, &src._sto);
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(any)
+	basic_any(basic_any &&src) : _typ_inf(src._typ_inf) {
+		if (!_typ_inf) {
+			return;
+		}
+
+		assert(_typ_inf->move_ctor);
+
+		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
+			*reinterpret_cast<void **>(&_sto) =
+				*reinterpret_cast<void **>(&src._sto);
+			src._typ_inf = nullptr;
+			return;
+		}
+		_typ_inf->move_ctor(&_sto, &src._sto);
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT(basic_any)
 
 	bool has_value() const {
 		return !type_is<void>();
@@ -83,56 +115,94 @@ public:
 	}
 
 	template <typename T>
-	decltype(std::declval<any_word &>().as<T>()) as() & {
-		return _val.as<T>();
+	typename std::enable_if<
+		!is_dynamic_allocation<typename std::decay<T>::type>::value,
+		T &>::type
+	as() & {
+		assert(type_is<T>());
+		return *reinterpret_cast<T *>(&_sto);
 	}
 
 	template <typename T>
-	decltype(std::declval<any_word>().as<T>()) as() && {
-		return std::move(_val).as<T>();
+	typename std::enable_if<
+		is_dynamic_allocation<typename std::decay<T>::type>::value,
+		T &>::type
+	as() & {
+		assert(type_is<T>());
+		return **reinterpret_cast<T **>(&_sto);
 	}
 
 	template <typename T>
-	decltype(std::declval<const any_word &>().as<T>()) as() const & {
-		return _val.as<T>();
+	T &&as() && {
+		return std::move(as<T>());
 	}
 
-	template <
-		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<any, Args...>::value>::type>
+	template <typename T>
+	typename std::enable_if<
+		!is_dynamic_allocation<typename std::decay<T>::type>::value,
+		const T &>::type
+	as() const & {
+		assert(type_is<T>());
+		return *reinterpret_cast<const T *>(&_sto);
+	}
+
+	template <typename T>
+	typename std::enable_if<
+		is_dynamic_allocation<typename std::decay<T>::type>::value,
+		const T &>::type
+	as() const & {
+		assert(type_is<T>());
+		return **reinterpret_cast<const T *const *>(&_sto);
+	}
+
+	template <typename T, typename... Args>
 	void emplace(Args &&... args) {
 		reset();
-		new (this) any(std::forward<Args>(args)...);
+		_emplace<T>(std::forward<Args>(args)...);
 	}
 
-	template <
-		typename T,
-		typename U,
-		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<any, std::initializer_list<U>, Args...>::
-				value>::type>
-	void emplace(
-		in_place_type_t<T> iptt, std::initializer_list<U> il, Args &&... args) {
+	template <typename T, typename U, typename... Args>
+	void emplace(std::initializer_list<U> il, Args &&... args) {
 		reset();
-		new (this) any(iptt, il, std::forward<Args>(args)...);
+		_emplace<T>(il, std::forward<Args>(args)...);
 	}
 
 	void reset() {
 		if (!_typ_inf) {
 			return;
 		}
-		if (_typ_inf->dtor_from_any_word) {
-			_typ_inf->dtor_from_any_word(_val);
+		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
+			assert(_typ_inf->del);
+			_typ_inf->del(*reinterpret_cast<uintptr_t *>(&_sto));
+		} else if (_typ_inf->dtor) {
+			_typ_inf->dtor(reinterpret_cast<void *>(&_sto));
 		}
 		_typ_inf = nullptr;
 	}
 
 private:
-	any_word _val;
+	alignas(StorageAlign) char _sto[StorageLen];
 	const type_info_t *_typ_inf;
+
+	template <typename T, typename... Args>
+	RUA_FORCE_INLINE typename std::enable_if<
+		!is_dynamic_allocation<typename std::decay<T>::type>::value>::type
+	_emplace(Args &&... args) {
+		new (&_sto) T(std::forward<Args>(args)...);
+		_typ_inf = &type_info<T>();
+	}
+
+	template <typename T, typename... Args>
+	RUA_FORCE_INLINE typename std::enable_if<
+		is_dynamic_allocation<typename std::decay<T>::type>::value>::type
+	_emplace(Args &&... args) {
+		*reinterpret_cast<T **>(&_sto) = new T(std::forward<Args>(args)...);
+		_typ_inf = &type_info<T>();
+	}
 };
+
+using any = basic_any<sizeof(void *), alignof(void *)>;
 
 template <class T, class... Args>
 any make_any(Args &&... args) {

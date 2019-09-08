@@ -1,9 +1,8 @@
 #ifndef _RUA_TYPE_TRAITS_TYPE_INFO_HPP
 #define _RUA_TYPE_TRAITS_TYPE_INFO_HPP
 
-#include "size_of.hpp"
+#include "measures.hpp"
 
-#include "../any_word.hpp"
 #include "../macros.hpp"
 
 #include <cstdint>
@@ -34,13 +33,19 @@ RUA_FORCE_INLINE bool operator!=(type_id_t a, type_id_t b) {
 struct type_info_t {
 	const type_id_t id;
 
+	const size_t size;
+
+	const size_t align;
+
+	const bool is_trivial;
+
 	std::string &(*const desc)();
 
-	void (*const del)(void *);
+	void (*const del)(uintptr_t);
+
+	uintptr_t (*const new_copy)(const void *src);
 
 	void (*const dtor)(void *);
-
-	void (*const dtor_from_any_word)(any_word);
 
 	void (*const copy_ctor)(void *ptr, const void *src);
 
@@ -50,8 +55,6 @@ struct type_info_t {
 		}
 		copy_ctor(dest, src);
 	}
-
-	any_word (*const copy_from_any_word)(const any_word src);
 
 	void (*const move_ctor)(void *ptr, void *src);
 
@@ -156,15 +159,34 @@ RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info_t &b) {
 #endif
 
 template <typename T>
-inline typename std::enable_if<std::is_void<T>::value, void (*)(void *)>::type
-_type_del() {
+inline
+	typename std::enable_if<std::is_void<T>::value, void (*)(uintptr_t)>::type
+	_type_del() {
 	return nullptr;
 }
 
 template <typename T>
-inline typename std::enable_if<!std::is_void<T>::value, void (*)(void *)>::type
-_type_del() {
-	return [](void *ptr) { delete reinterpret_cast<T *>(ptr); };
+inline
+	typename std::enable_if<!std::is_void<T>::value, void (*)(uintptr_t)>::type
+	_type_del() {
+	return [](uintptr_t ptr) { delete reinterpret_cast<T *>(ptr); };
+}
+
+template <typename T>
+inline typename std::
+	enable_if<std::is_void<T>::value, uintptr_t (*)(const void *)>::type
+	_type_new_copy() {
+	return nullptr;
+}
+
+template <typename T>
+inline typename std::
+	enable_if<!std::is_void<T>::value, uintptr_t (*)(const void *)>::type
+	_type_new_copy() {
+	return [](const void *src) -> uintptr_t {
+		return reinterpret_cast<uintptr_t>(
+			new T(*reinterpret_cast<const T *>(src)));
+	};
 }
 
 template <typename T>
@@ -185,22 +207,6 @@ _type_dtor() {
 
 template <typename T>
 inline typename std::enable_if<
-	any_word::is_dynamic_allocation<T>::value,
-	void (*)(any_word)>::type
-_type_dtor_from_any_word() {
-	return [](any_word w) { w.destruct<T>(); };
-}
-
-template <typename T>
-inline typename std::enable_if<
-	!any_word::is_dynamic_allocation<T>::value,
-	void (*)(any_word)>::type
-_type_dtor_from_any_word() {
-	return nullptr;
-}
-
-template <typename T>
-inline typename std::enable_if<
 	std::is_copy_constructible<T>::value,
 	void (*)(void *, const void *)>::type
 _type_copy_ctor() {
@@ -215,22 +221,6 @@ inline typename std::enable_if<
 	!std::is_copy_constructible<T>::value,
 	void (*)(void *, const void *)>::type
 _type_copy_ctor() {
-	return nullptr;
-}
-
-template <typename T>
-inline typename std::enable_if<
-	std::is_copy_constructible<T>::value,
-	any_word (*)(const any_word)>::type
-_type_copy_from_any_word() {
-	return [](const any_word src) -> any_word { return any_word(src.as<T>()); };
-}
-
-template <typename T>
-inline typename std::enable_if<
-	!std::is_copy_constructible<T>::value,
-	any_word (*)(const any_word)>::type
-_type_copy_from_any_word() {
 	return nullptr;
 }
 
@@ -256,15 +246,17 @@ _type_move_ctor() {
 template <typename T>
 inline type_info_t &type_info() {
 	static type_info_t inf{type_id_t{&type_info<T>},
+						   size_of<T>::value,
+						   align_of<T>::value,
+						   std::is_trivial<T>::value,
 						   []() -> std::string & {
 							   static std::string desc;
 							   return desc;
 						   },
 						   _type_del<T>(),
+						   _type_new_copy<T>(),
 						   _type_dtor<T>(),
-						   _type_dtor_from_any_word<T>(),
 						   _type_copy_ctor<T>(),
-						   _type_copy_from_any_word<T>(),
 						   _type_move_ctor<T>()
 #ifdef RUA_USING_RTTI
 							   ,
