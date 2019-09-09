@@ -75,8 +75,8 @@ using type_identity_t = typename type_identity<T>::type;
 
 } // namespace rua
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_optional) ||                    \
-	defined(__cpp_lib_variant) || defined(__cpp_lib_any)
+#if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \
+	defined(__cpp_lib_any)
 
 #include <utility>
 

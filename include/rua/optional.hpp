@@ -4,7 +4,7 @@
 #include "macros.hpp"
 #include "type_traits/std_patch.hpp"
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_optional)
+#ifdef __cpp_lib_optional
 
 #include <optional>
 
