@@ -173,20 +173,22 @@ inline
 }
 
 template <typename T>
-inline typename std::
-	enable_if<std::is_void<T>::value, uintptr_t (*)(const void *)>::type
-	_type_new_copy() {
-	return nullptr;
-}
-
-template <typename T>
-inline typename std::
-	enable_if<!std::is_void<T>::value, uintptr_t (*)(const void *)>::type
-	_type_new_copy() {
+inline typename std::enable_if<
+	std::is_copy_constructible<T>::value,
+	uintptr_t (*)(const void *)>::type
+_type_new_copy() {
 	return [](const void *src) -> uintptr_t {
 		return reinterpret_cast<uintptr_t>(
 			new T(*reinterpret_cast<const T *>(src)));
 	};
+}
+
+template <typename T>
+inline typename std::enable_if<
+	!std::is_copy_constructible<T>::value,
+	uintptr_t (*)(const void *)>::type
+_type_new_copy() {
+	return nullptr;
 }
 
 template <typename T>
