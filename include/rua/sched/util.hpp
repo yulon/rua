@@ -5,23 +5,22 @@
 
 #include "../macros.hpp"
 #include "../thread.hpp"
-#include "../tls.hpp"
 
 #include <atomic>
 
 namespace rua {
 
-inline tls &_scheduler_storage() {
-	static tls s;
+inline thread_loc<scheduler_i> &_scheduler_storage() {
+	static thread_loc<scheduler_i> s;
 	return s;
 }
 
-inline scheduler_i _get_scheduler(tls &ss) {
-	auto p = ss.get().as<scheduler_i *>();
+inline scheduler_i _get_scheduler(thread_loc<scheduler_i> &ss) {
+	auto p = ss.value();
 	if (!p) {
-		return thread::scheduler::instance();
+		return thread_scheduler::instance();
 	}
-	return *p;
+	return p;
 }
 
 inline scheduler_i get_scheduler() {
@@ -32,33 +31,17 @@ class scheduler_guard {
 public:
 	scheduler_guard(scheduler_i s) {
 		auto &ss = _scheduler_storage();
-		auto p = ss.get().as<scheduler_i *>();
-		if (p) {
-			_previous = *p;
-			*p = std::move(s);
-			return;
-		}
-		p = new scheduler_i(std::move(s));
-		ss.set(p);
+		_previous = std::move(ss.value());
+		ss.emplace(std::move(s));
 	}
 
 	~scheduler_guard() {
-		auto &ss = _scheduler_storage();
-
-		auto p = ss.get().as<scheduler_i *>();
-		assert(p);
-
-		if (!_previous) {
-			delete p;
-			ss.set(nullptr);
-			return;
-		}
-		*p = std::move(_previous);
+		_scheduler_storage().emplace(std::move(_previous));
 	}
 
 	scheduler_i previous() {
 		if (!_previous) {
-			return thread::scheduler::instance();
+			return thread_scheduler::instance();
 		}
 		return _previous;
 	}
