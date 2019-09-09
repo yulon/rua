@@ -251,12 +251,12 @@ optional<typename std::decay<T>::type> make_optional(T &&val) {
 	return optional<typename std::decay<T>::type>(std::forward<T>(val));
 }
 
-template <class T, class... Args>
+template <typename T, typename... Args>
 optional<T> make_optional(Args &&... args) {
 	return optional<T>(in_place, std::forward<Args>(args)...);
 }
 
-template <class T, class U, class... Args>
+template <typename T, typename U, typename... Args>
 optional<T> make_optional(std::initializer_list<U> il, Args &&... args) {
 	return optional<T>(in_place, il, std::forward<Args>(args)...);
 }

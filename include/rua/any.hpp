@@ -1,7 +1,6 @@
 #ifndef _RUA_ANY_HPP
 #define _RUA_ANY_HPP
 
-#include "bit.hpp"
 #include "type_traits/measures.hpp"
 #include "type_traits/std_patch.hpp"
 #include "type_traits/type_info.hpp"
@@ -47,12 +46,12 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	basic_any(in_place_type_t<T>, Args &&... args) {
+	explicit basic_any(in_place_type_t<T>, Args &&... args) {
 		_emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
-	basic_any(
+	explicit basic_any(
 		in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) {
 		_emplace<T>(il, std::forward<Args>(args)...);
 	}
@@ -204,12 +203,12 @@ private:
 
 using any = basic_any<sizeof(void *), alignof(void *)>;
 
-template <class T, class... Args>
+template <typename T, typename... Args>
 any make_any(Args &&... args) {
 	return any(in_place_type_t<T>{}, std::forward<Args>(args)...);
 }
 
-template <class T, class U, class... Args>
+template <typename T, typename U, typename... Args>
 any make_any(std::initializer_list<U> il, Args &&... args) {
 	return any(in_place_type_t<T>{}, il, std::forward<Args>(args)...);
 }
