@@ -187,8 +187,14 @@ public:
 
 	constexpr optional(nullopt_t) : _optional_base<T>(false) {}
 
-	explicit optional(T &&val) : _optional_base<T>(true) {
-		this->_emplace(std::move(val));
+	template <
+		typename U = T,
+		typename = typename std::enable_if<
+			std::is_constructible<T, U &&>::value &&
+			!std::is_base_of<optional<T>, typename std::decay<U>::type>::
+				value>::type>
+	optional(U &&val) : _optional_base<T>(true) {
+		this->_emplace(std::forward<U>(val));
 	}
 
 	template <
