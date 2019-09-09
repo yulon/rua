@@ -145,7 +145,7 @@ public:
 		if (li.size() <= _ix) {
 			li.resize(_ix + 1);
 		}
-		li[_ix].emplace<T>(std::forward<Args>(args)...);
+		li[_ix].template emplace<T>(std::forward<Args>(args)...);
 	}
 
 	T &value() const {
@@ -155,9 +155,9 @@ public:
 		}
 		auto &sto = li[_ix];
 		if (!sto.has_value()) {
-			sto.emplace<T>();
+			sto.template emplace<T>();
 		}
-		return sto.as<T>();
+		return sto.template as<T>();
 	}
 
 	void reset() {
