@@ -63,8 +63,8 @@ inline DWORD __stdcall _syswaiter(LPVOID lpThreadParameter) {
 			++it;
 		}
 
-		auto r =
-			WaitForMultipleObjects(objs.size(), objs.data(), FALSE, timeout);
+		auto r = WaitForMultipleObjects(
+			static_cast<DWORD>(objs.size()), objs.data(), FALSE, timeout);
 
 		assert(r != WAIT_FAILED);
 

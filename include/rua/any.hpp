@@ -47,7 +47,7 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	basic_any(in_place_type_t<T> ipt, Args &&... args) {
+	basic_any(in_place_type_t<T>, Args &&... args) {
 		_emplace<T>(std::forward<Args>(args)...);
 	}
 
