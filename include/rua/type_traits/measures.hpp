@@ -85,6 +85,33 @@ template <typename... Types>
 inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
 #endif
 
+////////////////////////////////////////////////////////////////////////////
+
+RUA_MULTIDEF_VAR constexpr size_t nullindex = static_cast<size_t>(-1);
+
+template <size_t TypeCount, typename T, typename... Types>
+struct _index_of;
+
+template <size_t TypeCount, typename T>
+struct _index_of<TypeCount, T> {
+	static constexpr size_t value = nullindex;
+};
+
+template <size_t TypeCount, typename T, typename Cur, typename... Others>
+struct _index_of<TypeCount, T, Cur, Others...> {
+	static constexpr size_t value =
+		std::is_same<T, Cur>::value ? TypeCount - sizeof...(Others) - 1
+									: _index_of<TypeCount, T, Others...>::value;
+};
+
+template <typename T, typename... Types>
+struct index_of : _index_of<sizeof...(Types), T, Types...> {};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename T, typename... Types>
+inline constexpr auto index_of_v = index_of<T, Types...>::value;
+#endif
+
 } // namespace rua
 
 #endif
