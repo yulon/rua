@@ -4,7 +4,8 @@
 #include "scheduler.hpp"
 
 #include "../macros.hpp"
-#include "../thread.hpp"
+#include "../thread/thread_loc.hpp"
+#include "../thread/thread_scheduler.hpp"
 
 #include <atomic>
 
