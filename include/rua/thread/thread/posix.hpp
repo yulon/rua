@@ -1,13 +1,15 @@
 #ifndef _RUA_THREAD_THREAD_POSIX_HPP
 #define _RUA_THREAD_THREAD_POSIX_HPP
 
-#include "../../any_word.hpp"
 #include "../this_thread_id/posix.hpp"
 #include "../thread_id/posix.hpp"
+
+#include "../../any_word.hpp"
 
 #include <pthread.h>
 
 #include <functional>
+#include <memory>
 
 namespace rua { namespace posix {
 
@@ -17,7 +19,7 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr thread() : _id(0) {}
+	constexpr thread() : _id(0), _d() {}
 
 	explicit thread(std::function<void()> fn) {
 		thread_id_t id;
@@ -25,10 +27,9 @@ public:
 				&id,
 				nullptr,
 				[](void *p) -> void * {
-					auto f = reinterpret_cast<std::function<void()> *>(p);
-					(*f)();
-					delete f;
-					pthread_detach(this_thread_id());
+					std::unique_ptr<std::function<void()>> fp(
+						reinterpret_cast<std::function<void()> *>(p));
+					(*fp)();
 					return nullptr;
 				},
 				reinterpret_cast<void *>(
@@ -37,11 +38,12 @@ public:
 			return;
 		}
 		_id = id;
+		_d = std::make_shared<_detacher_t>(id);
 	}
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
-	explicit thread(thread_id_t id) : _id(id) {}
+	constexpr explicit thread(thread_id_t id) : _id(id), _d() {}
 
 	~thread() {
 		reset();
@@ -93,10 +95,25 @@ public:
 
 	void reset() {
 		_id = 0;
+		_d.reset();
 	}
 
 private:
 	pthread_t _id;
+
+	class _detacher_t {
+	public:
+		constexpr _detacher_t(pthread_t id) : _id(id) {}
+
+		~_detacher_t() {
+			pthread_detach(_id);
+		}
+
+	private:
+		pthread_t _id;
+	};
+
+	std::shared_ptr<_detacher_t> _d;
 };
 
 }} // namespace rua::posix
