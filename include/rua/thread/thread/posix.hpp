@@ -28,13 +28,13 @@ public:
 					auto f = reinterpret_cast<std::function<void()> *>(p);
 					(*f)();
 					delete f;
-					pthread_detach(id);
+					pthread_detach(this_thread_id());
 					return nullptr;
 				},
 				reinterpret_cast<void *>(
 					new std::function<void()>(std::move(fn))))) {
+			_id = 0;
 			return;
-			_id = nullptr;
 		}
 		_id = id;
 	}

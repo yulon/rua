@@ -1,6 +1,8 @@
 #ifndef _RUA_THREAD_THREAD_LOC_POSIX_HPP
 #define _RUA_THREAD_THREAD_LOC_POSIX_HPP
 
+#include "base.hpp"
+
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
 
@@ -28,7 +30,7 @@ public:
 	thread_loc_word(thread_loc_word &&src) :
 		_key(src._key),
 		_invalid(src._invalid) {
-		if (src) {
+		if (src.is_storable()) {
 			src._invalid = true;
 		}
 	}
@@ -48,7 +50,7 @@ public:
 	}
 
 private:
-	native_handle_t _key;
+	pthread_key_t _key;
 	bool _invalid;
 };
 
