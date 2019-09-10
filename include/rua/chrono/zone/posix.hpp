@@ -7,15 +7,15 @@
 
 namespace rua { namespace posix {
 
-namespace _chrono_zone {
+namespace _zone {
 
 inline int8_t local_time_zone() {
 	return 0;
 }
 
-} // namespace _chrono_zone
+} // namespace _zone
 
-using namespace _chrono_zone;
+using namespace _zone;
 
 }} // namespace rua::posix
 

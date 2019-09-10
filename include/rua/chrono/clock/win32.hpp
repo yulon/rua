@@ -12,7 +12,7 @@
 
 namespace rua { namespace win32 {
 
-namespace _chrono_clock {
+namespace _clock {
 
 inline time tick() {
 	static LARGE_INTEGER start, freq;
@@ -60,9 +60,9 @@ inline time now() {
 		sys_start_date);
 }
 
-} // namespace _chrono_clock
+} // namespace _clock
 
-using namespace _chrono_clock;
+using namespace _clock;
 
 }} // namespace rua::win32
 

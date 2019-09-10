@@ -6,7 +6,7 @@
 #include "sync/win32.hpp"
 
 namespace rua {
-using namespace win32::_sched_syswait_sync;
+using namespace win32::_syswait_sync;
 }
 
 #endif

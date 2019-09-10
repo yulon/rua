@@ -9,15 +9,15 @@
 
 namespace rua { namespace win32 {
 
-namespace _thread_this_thread_id {
+namespace _this_thread_id {
 
 RUA_FORCE_INLINE thread_id_t this_thread_id() {
 	return GetCurrentThreadId();
 }
 
-} // namespace _thread_this_thread_id
+} // namespace _this_thread_id
 
-using namespace _thread_this_thread_id;
+using namespace _this_thread_id;
 
 }} // namespace rua::win32
 

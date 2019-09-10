@@ -6,7 +6,7 @@
 #include "async/win32.hpp"
 
 namespace rua {
-using namespace win32::_sched_syswait_async;
+using namespace win32::_syswait_async;
 }
 
 #endif

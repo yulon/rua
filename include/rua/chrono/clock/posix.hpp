@@ -9,7 +9,7 @@
 
 namespace rua { namespace posix {
 
-namespace _chrono_clock {
+namespace _clock {
 
 inline time tick() {
 	struct timespec ts;
@@ -25,9 +25,9 @@ inline time now() {
 	return time(duration_base(tv.tv_sec, tv.tv_usec * 1000), unix_start_date);
 }
 
-} // namespace _chrono_clock
+} // namespace _clock
 
-using namespace _chrono_clock;
+using namespace _clock;
 
 }} // namespace rua::posix
 

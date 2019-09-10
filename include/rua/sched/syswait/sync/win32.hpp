@@ -9,7 +9,7 @@
 
 namespace rua { namespace win32 {
 
-namespace _sched_syswait_sync {
+namespace _syswait_sync {
 
 inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
@@ -17,7 +17,7 @@ inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	auto sch = get_scheduler();
 	auto sig = sch->make_signaler();
 	auto r_ptr = new bool;
-	_sched_syswait_async::syswait(handle, timeout, [=](bool r) {
+	_syswait_async::syswait(handle, timeout, [=](bool r) {
 		*r_ptr = r;
 		sig->signal();
 	});
@@ -27,9 +27,9 @@ inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	return r;
 }
 
-} // namespace _sched_syswait_sync
+} // namespace _syswait_sync
 
-using namespace _sched_syswait_sync;
+using namespace _syswait_sync;
 
 }} // namespace rua::win32
 

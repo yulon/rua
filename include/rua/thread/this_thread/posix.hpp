@@ -8,15 +8,15 @@
 
 namespace rua { namespace posix {
 
-namespace _thread_this_thread {
+namespace _this_thread {
 
 RUA_FORCE_INLINE thread this_thread() {
 	return thread(this_thread_id());
 }
 
-} // namespace _thread_this_thread
+} // namespace _this_thread
 
-using namespace _thread_this_thread;
+using namespace _this_thread;
 
 }} // namespace rua::posix
 

@@ -9,7 +9,7 @@
 
 namespace rua {
 
-using namespace win32::_chrono_zone;
+using namespace win32::_zone;
 
 } // namespace rua
 
@@ -19,7 +19,7 @@ using namespace win32::_chrono_zone;
 
 namespace rua {
 
-using namespace posix::_chrono_zone;
+using namespace posix::_zone;
 
 } // namespace rua
 

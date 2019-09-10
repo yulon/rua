@@ -46,14 +46,22 @@ TEST_CASE("date convert") {
 
 #include <ctime>
 
+#ifdef _MSC_VER
+#define _gmtime(tm, t) gmtime_s(tm, t)
+#else
+#define _gmtime(tm, t) (*tm = *gmtime(t))
+#endif
+
 TEST_CASE("now") {
 	auto c_ti = time(nullptr);
-	auto c_tm = *gmtime(&c_ti);
+	tm c_tm;
+	_gmtime(&c_tm, &c_ti);
 
 	auto d = rua::now().date(0);
 
 	auto c_ti_2 = time(nullptr);
-	auto c_tm_2 = *gmtime(&c_ti_2);
+	tm c_tm_2;
+	_gmtime(&c_tm_2, &c_ti_2);
 
 	if (c_tm_2.tm_year == c_tm.tm_year) {
 		CHECK(d.year == (c_tm.tm_year + 1900));

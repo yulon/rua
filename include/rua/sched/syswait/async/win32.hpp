@@ -92,7 +92,7 @@ inline DWORD __stdcall _syswaiter(LPVOID lpThreadParameter) {
 	return 0;
 }
 
-namespace _sched_syswait_async {
+namespace _syswait_async {
 
 inline void
 syswait(HANDLE handle, ms timeout, std::function<void(bool)> callback) {
@@ -122,9 +122,9 @@ RUA_FORCE_INLINE void syswait(HANDLE handle, std::function<void()> callback) {
 	syswait(handle, duration_max(), [callback](bool) { callback(); });
 }
 
-} // namespace _sched_syswait_async
+} // namespace _syswait_async
 
-using namespace _sched_syswait_async;
+using namespace _syswait_async;
 
 }} // namespace rua::win32
 

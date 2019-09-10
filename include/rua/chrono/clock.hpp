@@ -9,7 +9,7 @@
 
 namespace rua {
 
-using namespace win32::_chrono_clock;
+using namespace win32::_clock;
 
 } // namespace rua
 
@@ -19,7 +19,7 @@ using namespace win32::_chrono_clock;
 
 namespace rua {
 
-using namespace darwin::_chrono_clock;
+using namespace darwin::_clock;
 
 } // namespace rua
 
@@ -29,7 +29,7 @@ using namespace darwin::_chrono_clock;
 
 namespace rua {
 
-using namespace posix::_chrono_clock;
+using namespace posix::_clock;
 
 } // namespace rua
 
