@@ -4,6 +4,7 @@
 #include "../../util.hpp"
 #include "../async/win32.hpp"
 
+#include <cassert>
 #include <memory>
 
 namespace rua { namespace win32 {
@@ -11,6 +12,8 @@ namespace rua { namespace win32 {
 namespace _sched_syswait_sync {
 
 inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
+	assert(handle);
+
 	auto sch = get_scheduler();
 	auto sig = sch->make_signaler();
 	auto r_ptr = new bool;

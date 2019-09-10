@@ -96,15 +96,16 @@ namespace _sched_syswait_async {
 
 inline void
 syswait(HANDLE handle, ms timeout, std::function<void(bool)> callback) {
+	assert(handle);
+
 	static _syswaiter_ctx_t &ch_ref = ([]() -> _syswaiter_ctx_t & {
 		static _syswaiter_ctx_t ch;
 		ch.sig = CreateEventW(nullptr, false, false, nullptr);
-		auto th = CreateThread(nullptr, 0, &_syswaiter, &ch, 0, nullptr);
-		ch.tid = th ? GetThreadId(th) : 0;
+		assert(ch.sig);
+		CreateThread(nullptr, 0, &_syswaiter, &ch, 0, &ch.tid);
+		assert(ch.tid);
 		return ch;
 	})();
-
-	assert(ch_ref.sig && ch_ref.tid);
 
 	auto inf = _syswait_info_t{handle,
 							   timeout == duration_max() ? time_max()

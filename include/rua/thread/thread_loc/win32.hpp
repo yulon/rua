@@ -57,7 +57,8 @@ private:
 		if (!val_ptr) {
 			auto p = new any_word(0);
 			TlsSetValue(_ix, p);
-			auto h = OpenThread(THREAD_ALL_ACCESS, FALSE, GetCurrentThreadId());
+			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
+			assert(h);
 			auto dtor = _dtor;
 			syswait(h, [=]() {
 				dtor(*p);
