@@ -96,15 +96,25 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	void emplace(Args &&... args) {
+	T &emplace(Args &&... args) & {
 		reset();
-		_emplace<T>(std::forward<Args>(args)...);
+		return _emplace<T>(std::forward<Args>(args)...);
+	}
+
+	template <typename T, typename... Args>
+	T &&emplace(Args &&... args) && {
+		return std::move(emplace<T>(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename U, typename... Args>
-	void emplace(std::initializer_list<U> il, Args &&... args) {
+	T &emplace(std::initializer_list<U> il, Args &&... args) & {
 		reset();
-		_emplace<T>(il, std::forward<Args>(args)...);
+		return _emplace<T>(il, std::forward<Args>(args)...);
+	}
+
+	template <typename T, typename U, typename... Args>
+	T &&emplace(std::initializer_list<U> il, Args &&... args) && {
+		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
 	void reset() {
@@ -123,13 +133,13 @@ private:
 	const type_info_t *_typ_inf;
 
 	template <typename T, typename... Args>
-	void _emplace(Args &&... args) {
+	T &_emplace(Args &&... args) {
 		RUA_SPASSERT(
 			(index_of<typename std::decay<T>::type, Types...>::value !=
 			 nullindex));
 
-		new (&_sto) T(std::forward<Args>(args)...);
 		_typ_inf = &type_info<T>();
+		return *(new (&_sto) T(std::forward<Args>(args)...));
 	}
 };
 

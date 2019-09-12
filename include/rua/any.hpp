@@ -155,15 +155,25 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	void emplace(Args &&... args) {
+	T &emplace(Args &&... args) & {
 		reset();
-		_emplace<T>(std::forward<Args>(args)...);
+		return _emplace<T>(std::forward<Args>(args)...);
+	}
+
+	template <typename T, typename... Args>
+	T &&emplace(Args &&... args) && {
+		return std::move(emplace<T>(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename U, typename... Args>
-	void emplace(std::initializer_list<U> il, Args &&... args) {
+	T &emplace(std::initializer_list<U> il, Args &&... args) & {
 		reset();
-		_emplace<T>(il, std::forward<Args>(args)...);
+		return _emplace<T>(il, std::forward<Args>(args)...);
+	}
+
+	template <typename T, typename U, typename... Args>
+	T &&emplace(std::initializer_list<U> il, Args &&... args) && {
+		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
 	void reset() {
@@ -185,19 +195,20 @@ private:
 	const type_info_t *_typ_inf;
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE typename std::enable_if<
-		!is_dynamic_allocation<typename std::decay<T>::type>::value>::type
-	_emplace(Args &&... args) {
-		new (&_sto) T(std::forward<Args>(args)...);
+	RUA_FORCE_INLINE
+		typename std::enable_if<!is_dynamic_allocation<T>::value, T &>::type
+		_emplace(Args &&... args) {
 		_typ_inf = &type_info<T>();
+		return *(new (&_sto) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE typename std::enable_if<
-		is_dynamic_allocation<typename std::decay<T>::type>::value>::type
-	_emplace(Args &&... args) {
-		*reinterpret_cast<T **>(&_sto) = new T(std::forward<Args>(args)...);
+	RUA_FORCE_INLINE
+		typename std::enable_if<is_dynamic_allocation<T>::value, T &>::type
+		_emplace(Args &&... args) {
 		_typ_inf = &type_info<T>();
+		return *reinterpret_cast<T **>(&_sto) =
+				   new T(std::forward<Args>(args)...);
 	}
 };
 
