@@ -207,8 +207,9 @@ private:
 		typename std::enable_if<is_dynamic_allocation<T>::value, T &>::type
 		_emplace(Args &&... args) {
 		_typ_inf = &type_info<T>();
-		return *reinterpret_cast<T **>(&_sto) =
-				   new T(std::forward<Args>(args)...);
+		return *(
+			*reinterpret_cast<T **>(&_sto) =
+				new T(std::forward<Args>(args)...));
 	}
 };
 
