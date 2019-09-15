@@ -187,7 +187,7 @@ public:
 		if (li.size() <= _ix) {
 			return false;
 		}
-		return li[_ix].type_is<T>();
+		return li[_ix].template type_is<T>();
 	}
 
 	template <typename... Args>
