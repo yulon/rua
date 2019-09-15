@@ -11,39 +11,35 @@
 
 namespace rua {
 
-inline thread_loc<scheduler_i> &_scheduler_storage() {
-	static thread_loc<scheduler_i> s;
-	return s;
-}
-
-inline scheduler_i _get_scheduler(thread_loc<scheduler_i> &ss) {
-	auto p = ss.value();
-	if (!p) {
-		return thread_scheduler::instance();
+inline scheduler_i &_this_scheduler(scheduler_i (*make_default)() = nullptr) {
+	static thread_loc<scheduler_i> sto;
+	static scheduler_i (*mkdft)() =
+		make_default ? make_default : []() -> scheduler_i {
+		return std::make_shared<thread_scheduler>();
+	};
+	if (!sto.has_value()) {
+		return sto.emplace(mkdft());
 	}
-	return p;
+	return sto.value();
 }
 
-inline scheduler_i get_scheduler() {
-	return _get_scheduler(_scheduler_storage());
+RUA_FORCE_INLINE scheduler_i this_scheduler() {
+	return _this_scheduler();
 }
 
 class scheduler_guard {
 public:
 	scheduler_guard(scheduler_i s) {
-		auto &ss = _scheduler_storage();
-		_previous = std::move(ss.value());
-		ss.emplace(std::move(s));
+		auto &sch = _this_scheduler();
+		_previous = std::move(sch);
+		sch = std::move(s);
 	}
 
 	~scheduler_guard() {
-		_scheduler_storage().emplace(std::move(_previous));
+		_this_scheduler() = _previous;
 	}
 
 	scheduler_i previous() {
-		if (!_previous) {
-			return thread_scheduler::instance();
-		}
 		return _previous;
 	}
 
@@ -52,19 +48,19 @@ private:
 };
 
 RUA_FORCE_INLINE void yield() {
-	get_scheduler()->yield();
+	this_scheduler()->yield();
 }
 
 RUA_FORCE_INLINE void sleep(ms timeout) {
-	get_scheduler()->sleep(timeout);
+	this_scheduler()->sleep(timeout);
 }
 
 class secondary_signaler : public scheduler::signaler {
 public:
 	constexpr secondary_signaler() : _pri(nullptr), _state(false) {}
 
-	explicit secondary_signaler(scheduler::signaler_i main_sch) :
-		_pri(main_sch),
+	explicit secondary_signaler(scheduler::signaler_i primary_signaler) :
+		_pri(primary_signaler),
 		_state(false) {}
 
 	virtual ~secondary_signaler() = default;

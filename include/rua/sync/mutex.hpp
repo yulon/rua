@@ -29,7 +29,7 @@ public:
 			return false;
 		}
 
-		auto sch = get_scheduler();
+		auto sch = this_scheduler();
 		auto sig = sch->make_signaler();
 		auto it = _waiters.emplace_front(sig);
 
@@ -40,7 +40,7 @@ public:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->wait(sig, timeout)) {
+				if (sch->wait(timeout)) {
 					if (!_locked.exchange(true)) {
 						return true;
 					}
@@ -51,7 +51,7 @@ public:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->wait(sig, timeout);
+			auto r = sch->wait(timeout);
 			if (!_locked.exchange(true)) {
 				return true;
 			}

@@ -12,6 +12,11 @@ class scheduler {
 public:
 	virtual ~scheduler() = default;
 
+	scheduler(const scheduler &) = delete;
+	scheduler(scheduler &&) = delete;
+	scheduler &operator=(const scheduler &) = delete;
+	scheduler &operator=(scheduler &&) = delete;
+
 	virtual void yield() {
 		sleep(0);
 	}
@@ -28,6 +33,11 @@ public:
 		signaler() = default;
 		virtual ~signaler() = default;
 
+		signaler(const signaler &) = delete;
+		signaler(signaler &&) = delete;
+		signaler &operator=(const signaler &) = delete;
+		signaler &operator=(signaler &&) = delete;
+
 		virtual void signal() {}
 	};
 
@@ -38,13 +48,9 @@ public:
 		return wkr;
 	}
 
-	virtual bool wait(signaler_i wkr, ms timeout = duration_max()) {
-		if (wkr) {
-			yield();
-			return true;
-		}
-		sleep(timeout);
-		return false;
+	virtual bool wait(ms = duration_max()) {
+		yield();
+		return true;
 	}
 
 protected:

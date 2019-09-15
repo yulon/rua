@@ -14,14 +14,14 @@ namespace _syswait_sync {
 inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
 
-	auto sch = get_scheduler();
+	auto sch = this_scheduler();
 	auto sig = sch->make_signaler();
 	auto r_ptr = new bool;
 	_syswait_async::syswait(handle, timeout, [=](bool r) {
 		*r_ptr = r;
 		sig->signal();
 	});
-	sch->wait(sig);
+	sch->wait();
 	auto r = *r_ptr;
 	delete r_ptr;
 	return r;

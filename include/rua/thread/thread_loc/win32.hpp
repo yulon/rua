@@ -36,24 +36,42 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT_R(thread_loc_word)
 
+	using native_handle_t = DWORD;
+
+	native_handle_t native_handle() const {
+		return _ix;
+	}
+
 	bool is_storable() const {
 		return _ix != TLS_OUT_OF_INDEXES;
 	}
 
 	void set(any_word value) {
-		_get() = value;
+		_get(TlsGetValue(_ix)) = value;
 	}
 
 	any_word get() const {
-		return _get();
+		auto val_ptr = TlsGetValue(_ix);
+		if (!val_ptr) {
+			return 0;
+		}
+		return _get(val_ptr);
+	}
+
+	void reset() {
+		auto val = get();
+		if (!val) {
+			return;
+		}
+		_dtor(val);
+		set(0);
 	}
 
 private:
 	DWORD _ix;
 	void (*_dtor)(any_word);
 
-	any_word &_get() const {
-		auto val_ptr = TlsGetValue(_ix);
+	any_word &_get(LPVOID val_ptr) const {
 		if (!val_ptr) {
 			auto p = new any_word(0);
 			TlsSetValue(_ix, p);

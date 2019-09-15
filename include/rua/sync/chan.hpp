@@ -27,7 +27,7 @@ public:
 			return val_opt;
 		}
 
-		auto sch = get_scheduler();
+		auto sch = this_scheduler();
 		auto sig = sch->make_signaler();
 		auto it = _waiters.emplace_front(sig);
 
@@ -46,7 +46,7 @@ public:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->wait(sig, timeout)) {
+				if (sch->wait(timeout)) {
 					val_opt = _buf.pop_front();
 					if (val_opt) {
 						return val_opt;
@@ -58,7 +58,7 @@ public:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->wait(sig, timeout);
+			auto r = sch->wait(timeout);
 			val_opt = _buf.pop_front();
 			if (val_opt || !r) {
 				return val_opt;

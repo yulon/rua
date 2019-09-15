@@ -99,7 +99,7 @@ private:
 
 class fiber_driver {
 public:
-	fiber_driver() : _sch(scheduler(*this)) {
+	fiber_driver() : _sch(*this) {
 		get_ucontext(&_worker_uc_base);
 	}
 
@@ -181,7 +181,7 @@ public:
 						wake_ti = _slps.begin()->first;
 					}
 					if (wake_ti > now) {
-						orig_sch->wait(_orig_sig, wake_ti - now);
+						orig_sch->wait(wake_ti - now);
 					} else {
 						orig_sch->yield();
 					}
@@ -207,7 +207,7 @@ public:
 
 				auto wake_ti = _cws.begin()->first;
 				if (wake_ti > now) {
-					orig_sch->wait(_orig_sig, wake_ti - now);
+					orig_sch->wait(wake_ti - now);
 				} else {
 					orig_sch->yield();
 				}
@@ -271,16 +271,17 @@ public:
 			return _fib_dvr->_cur_fc->sig;
 		}
 
-		virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
-			assert(sig == _fib_dvr->_cur_fc->sig);
+		virtual bool wait(ms timeout = duration_max()) {
+			assert(_fib_dvr->_cur_fc->sig.type_is<signaler>());
+			assert(_fib_dvr->_cur_fc->sig.as<signaler>()->primary());
 
-			auto sig_impl = sig.as<signaler>();
-			auto state = sig_impl->state();
+			auto sig = _fib_dvr->_cur_fc->sig.as<signaler>();
+			auto state = sig->state();
 			if (!state) {
 				_sleep(_fib_dvr->_cws, timeout);
-				state = sig_impl->state();
+				state = sig->state();
 			}
-			sig_impl->reset();
+			sig->reset();
 			return state;
 		}
 
@@ -444,7 +445,7 @@ private:
 
 inline fiber::fiber(std::function<void()> func, size_t dur) :
 	fiber(fiber::not_auto_attach, std::move(func), dur) {
-	auto s = get_scheduler();
+	auto s = this_scheduler();
 	if (s) {
 		auto fs = s.as<fiber_driver::scheduler>();
 		if (fs) {

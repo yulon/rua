@@ -12,9 +12,10 @@ namespace rua { namespace posix {
 
 class thread_loc_word {
 public:
-	thread_loc_word(void (*dtor)(any_word)) {
-		_invalid =
-			pthread_key_create(&_key, reinterpret_cast<void (*)(void *)>(dtor));
+	thread_loc_word(void (*dtor)(any_word)) : _dtor(dtor) {
+		_invalid = pthread_key_create(
+			&_key,
+			reinterpret_cast<void (*)(void *)>(reinterpret_cast<void *>(dtor)));
 	}
 
 	~thread_loc_word() {
@@ -37,21 +38,37 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT_R(thread_loc_word)
 
+	using native_handle_t = pthread_key_t;
+
+	native_handle_t native_handle() const {
+		return _key;
+	}
+
 	bool is_storable() const {
 		return !_invalid;
 	}
 
-	bool set(any_word value) {
-		return pthread_setspecific(_key, value) == 0;
+	void set(any_word value) {
+		pthread_setspecific(_key, value);
 	}
 
 	any_word get() const {
 		return pthread_getspecific(_key);
 	}
 
+	void reset() {
+		auto val = get();
+		if (!val) {
+			return;
+		}
+		_dtor(val);
+		set(0);
+	}
+
 private:
 	pthread_key_t _key;
 	bool _invalid;
+	void (*_dtor)(any_word);
 };
 
 template <typename T>

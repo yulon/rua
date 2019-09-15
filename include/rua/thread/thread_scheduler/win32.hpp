@@ -14,12 +14,9 @@ namespace rua { namespace win32 {
 
 class thread_scheduler : public rua::scheduler {
 public:
-	static thread_scheduler &instance() {
-		static thread_scheduler ds;
-		return ds;
-	}
-
-	constexpr thread_scheduler(ms yield_dur = 0) : _yield_dur(yield_dur) {}
+	constexpr thread_scheduler(ms yield_dur = 0) :
+		_yield_dur(yield_dur),
+		_sig() {}
 
 	virtual ~thread_scheduler() = default;
 
@@ -49,8 +46,6 @@ public:
 	public:
 		using native_handle_t = HANDLE;
 
-		signaler(native_handle_t h) : _h(h) {}
-
 		signaler() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
 
 		virtual ~signaler() {
@@ -65,6 +60,10 @@ public:
 			return _h;
 		}
 
+		operator bool() const {
+			return _h;
+		}
+
 		virtual void signal() {
 			SetEvent(_h);
 		}
@@ -74,14 +73,16 @@ public:
 	};
 
 	virtual signaler_i make_signaler() {
-		return std::make_shared<signaler>();
+		if (!_sig) {
+			_sig = std::make_shared<signaler>();
+		}
+		return _sig;
 	}
 
-	virtual bool wait(signaler_i sig, ms timeout = duration_max()) {
-		assert(sig.type_is<signaler>());
-
+	virtual bool wait(ms timeout = duration_max()) {
+		assert(_sig);
 		return WaitForSingleObject(
-				   sig.as<signaler>()->native_handle(),
+				   _sig->native_handle(),
 				   timeout == duration_max()
 					   ? INFINITE
 					   : (static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
@@ -92,6 +93,7 @@ public:
 
 private:
 	ms _yield_dur;
+	std::shared_ptr<signaler> _sig;
 };
 
 }} // namespace rua::win32

@@ -42,7 +42,9 @@ private:
 
 class spare_thread_loc_word {
 public:
-	spare_thread_loc_word(void (*)(any_word)) : _ix(_ctx().ixer.alloc()) {}
+	spare_thread_loc_word(void (*dtor)(any_word)) :
+		_ix(_ctx().ixer.alloc()),
+		_dtor(dtor) {}
 
 	~spare_thread_loc_word() {
 		if (is_storable()) {
@@ -61,25 +63,44 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_loc_word)
 
+	using native_handle_t = size_t;
+
+	native_handle_t native_handle() const {
+		return _ix;
+	}
+
 	bool is_storable() const {
 		return _ix != static_cast<size_t>(-1);
 	}
 
-	bool set(any_word value) {
+	void set(any_word value) {
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex>(ctx.mtx);
 
 		auto it = ctx.map.find(this_thread_id());
 		if (it == ctx.map.end()) {
-			ctx.map.emplace(this_thread_id(), std::vector<uintptr_t>());
+			ctx.map.emplace(
+				this_thread_id(),
+				std::make_pair(
+					static_cast<size_t>(0), std::vector<uintptr_t>()));
 			it = ctx.map.find(this_thread_id());
 		}
-		auto &li = it->second;
+		auto &li = it->second.second;
 		if (li.size() <= _ix) {
+			if (!value) {
+				return;
+			}
+			++it->second.first;
 			li.resize(_ix + 1);
+		} else if (!li[_ix]) {
+			if (!value) {
+				return;
+			}
+			++it->second.first;
+		} else if (li[_ix] && !value) {
+			--it->second.first;
 		}
 		li[_ix] = value;
-		return true;
 	}
 
 	any_word get() const {
@@ -90,16 +111,40 @@ public:
 		if (it == ctx.map.end()) {
 			return 0;
 		}
-		if (it->second.size() <= _ix) {
+		auto &li = it->second.second;
+		if (li.size() <= _ix) {
 			return 0;
 		}
-		return it->second[_ix];
+		return li[_ix];
+	}
+
+	void reset() {
+		auto &ctx = _ctx();
+		std::lock_guard<std::mutex>(ctx.mtx);
+
+		auto it = ctx.map.find(this_thread_id());
+		if (it == ctx.map.end()) {
+			return;
+		}
+		auto &li = it->second.second;
+		if (li.size() <= _ix) {
+			return;
+		}
+		if (!li[_ix]) {
+			return;
+		}
+		_dtor(li[_ix]);
+		if (--it->second.first) {
+			ctx.map.erase(it);
+		}
 	}
 
 private:
 	size_t _ix;
+	void (*_dtor)(any_word);
 
-	using _map_t = std::unordered_map<thread_id_t, std::vector<uintptr_t>>;
+	using _map_t = std::
+		unordered_map<thread_id_t, std::pair<size_t, std::vector<uintptr_t>>>;
 
 	struct _ctx_t {
 		_thread_loc_indexer ixer;
@@ -119,10 +164,10 @@ template <
 	typename SpareThreadLocWord = spare_thread_loc_word>
 class basic_thread_loc {
 public:
-	basic_thread_loc() : _ix(_ctx().ixer.alloc()) {}
+	basic_thread_loc() : _ix(_ixer().alloc()) {}
 
 	~basic_thread_loc() {
-		_ctx().ixer.dealloc(_ix);
+		_ixer().dealloc(_ix);
 	}
 
 	basic_thread_loc(basic_thread_loc &&src) : _ix(src._ix) {
@@ -137,27 +182,27 @@ public:
 		return _ix != static_cast<size_t>(-1);
 	}
 
+	bool has_value() const {
+		auto &li = _li();
+		if (li.size() <= _ix) {
+			return false;
+		}
+		return li[_ix].type_is<T>();
+	}
+
 	template <typename... Args>
-	void emplace(Args &&... args) {
+	T &emplace(Args &&... args) {
 		RUA_SPASSERT((std::is_constructible<T, Args...>::value));
 
 		auto &li = _li();
 		if (li.size() <= _ix) {
 			li.resize(_ix + 1);
 		}
-		li[_ix].template emplace<T>(std::forward<Args>(args)...);
+		return li[_ix].template emplace<T>(std::forward<Args>(args)...);
 	}
 
 	T &value() const {
-		auto &li = _li();
-		if (li.size() <= _ix) {
-			li.resize(_ix + 1);
-		}
-		auto &sto = li[_ix];
-		if (!sto.has_value()) {
-			sto.template emplace<T>();
-		}
-		return sto.template as<T>();
+		return _li()[_ix].template as<T>();
 	}
 
 	void reset() {
@@ -165,6 +210,66 @@ public:
 		if (li.size() > _ix) {
 			li[_ix].reset();
 		}
+	}
+
+	class loc_word_wrapper {
+	public:
+		loc_word_wrapper() {
+			auto &word_sto = _word_sto();
+			if (word_sto.is_storable()) {
+				_owner = &word_sto;
+				_bind<ThreadLocWord>();
+				return;
+			}
+			auto &spare_word_sto = _spare_word_sto();
+			assert(spare_word_sto.is_storable());
+			_owner = &spare_word_sto;
+			_bind<SpareThreadLocWord>();
+		}
+
+		any_word native_handle() const {
+			return _nh(_owner);
+		}
+
+		void set(any_word val) {
+			return _set(_owner, val);
+		}
+
+		any_word get() const {
+			return _get(_owner);
+		}
+
+		void reset() {
+			_reset(_owner);
+		}
+
+	private:
+		void *_owner;
+		any_word (*_nh)(void *owner);
+		void (*_set)(void *owner, any_word);
+		any_word (*_get)(void *owner);
+		void (*_reset)(void *owner);
+
+		template <typename TLW>
+		void _bind() {
+			_nh = [](void *owner) -> any_word {
+				return reinterpret_cast<TLW *>(owner)->native_handle();
+			};
+			_set = [](void *owner, any_word val) {
+				reinterpret_cast<TLW *>(owner)->set(val);
+			};
+			_get = [](void *owner) -> any_word {
+				return reinterpret_cast<TLW *>(owner)->get();
+			};
+			_reset = [](void *owner) {
+				reinterpret_cast<TLW *>(owner)->reset();
+			};
+		}
+	};
+
+	static loc_word_wrapper &using_loc_word() {
+		static loc_word_wrapper inst;
+		return inst;
 	}
 
 private:
@@ -190,50 +295,17 @@ private:
 		return inst;
 	}
 
-	struct _ctx_t {
-		void *word_sto_ptr;
-		void (*set_word)(void *word_sto_ptr, any_word);
-		any_word (*get_word)(void *word_sto_ptr);
-		_thread_loc_indexer ixer;
-
-		_ctx_t() : ixer() {
-			auto &word_sto = _word_sto();
-			if (word_sto.is_storable()) {
-				word_sto_ptr = &word_sto;
-				set_word = [](void *word_sto_ptr, any_word val) {
-					reinterpret_cast<ThreadLocWord *>(word_sto_ptr)->set(val);
-				};
-				get_word = [](void *word_sto_ptr) -> any_word {
-					return reinterpret_cast<ThreadLocWord *>(word_sto_ptr)
-						->get();
-				};
-			} else {
-				auto &spare_word_sto = _spare_word_sto();
-				assert(spare_word_sto.is_storable());
-				word_sto_ptr = &spare_word_sto;
-				set_word = [](void *word_sto_ptr, any_word val) {
-					reinterpret_cast<SpareThreadLocWord *>(word_sto_ptr)
-						->set(val);
-				};
-				get_word = [](void *word_sto_ptr) -> any_word {
-					return reinterpret_cast<SpareThreadLocWord *>(word_sto_ptr)
-						->get();
-				};
-			}
-		}
-	};
-
-	static _ctx_t &_ctx() {
-		static _ctx_t inst;
+	static _thread_loc_indexer &_ixer() {
+		static _thread_loc_indexer inst;
 		return inst;
 	}
 
 	static std::vector<any> &_li() {
-		auto &ctx = _ctx();
-		auto w = ctx.get_word(ctx.word_sto_ptr);
+		auto &w_sto = using_loc_word();
+		auto w = w_sto.get();
 		if (!w) {
 			w = std::vector<any>();
-			ctx.set_word(ctx.word_sto_ptr, w);
+			w_sto.set(w);
 		}
 		return w.template as<std::vector<any>>();
 	}
