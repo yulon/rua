@@ -28,11 +28,11 @@
 
 namespace rua { namespace win32 {
 
+using pid_t = DWORD;
+
 class process {
 public:
 	using native_handle_t = HANDLE;
-
-	using id_t = DWORD;
 
 	////////////////////////////////////////////////////////////////
 
@@ -51,7 +51,7 @@ public:
 			if (wname == entry.szExeFile) {
 				CloseHandle(snapshot);
 				if (entry.th32ProcessID) {
-					return entry.th32ProcessID;
+					return process(entry.th32ProcessID);
 				}
 			}
 		} while (Process32NextW(snapshot, &entry));
@@ -69,14 +69,6 @@ public:
 			rua::sleep(interval);
 		}
 		return p;
-	}
-
-	static id_t current_id() {
-		return GetCurrentProcessId();
-	}
-
-	static process current() {
-		return current_id();
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -272,7 +264,7 @@ public:
 		}
 	}
 
-	process(id_t id) :
+	explicit process(pid_t id) :
 		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, FALSE, id) : nullptr),
 		_main_td_h(nullptr) {}
 
@@ -283,7 +275,7 @@ public:
 		typename = typename std::enable_if<std::is_same<
 			typename std::decay<T>::type,
 			native_handle_t>::value>::type>
-	process(T process) : _h(process), _main_td_h(nullptr) {}
+	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
 
 	~process() {
 		reset();
@@ -324,7 +316,7 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(process)
 
-	id_t id() const {
+	pid_t id() const {
 		return GetProcessId(_h);
 	}
 
@@ -407,7 +399,7 @@ public:
 			reset();
 		}
 
-		any_ptr ptr() const {
+		void *ptr() const {
 			return _ptr;
 		}
 
@@ -419,7 +411,8 @@ public:
 			SIZE_T sz;
 			WriteProcessMemory(
 				_owner->native_handle(),
-				ptr() + pos,
+				reinterpret_cast<void *>(
+					reinterpret_cast<uintptr_t>(_ptr) + pos),
 				data.data(),
 				data.size(),
 				&sz);
@@ -439,12 +432,13 @@ public:
 
 	private:
 		const process *_owner;
-		any_ptr _ptr;
+		void *_ptr;
 		size_t _sz;
 	};
 
 	bytes_view mem_image() const {
-		assert(*this == current());
+		assert(id() == GetCurrentProcessId());
+
 		MODULEINFO mi;
 		GetModuleInformation(
 			_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
@@ -469,11 +463,17 @@ public:
 		return data;
 	}
 
-	any_word call(any_ptr func, any_word param = nullptr) {
+	any_word call(void *func, any_word param = nullptr) {
 		HANDLE td;
 		DWORD tid;
 		td = CreateRemoteThread(
-			_h, nullptr, 0, func.as<LPTHREAD_START_ROUTINE>(), param, 0, &tid);
+			_h,
+			nullptr,
+			0,
+			reinterpret_cast<LPTHREAD_START_ROUTINE>(func),
+			param,
+			0,
+			&tid);
 		if (!td) {
 			return 0;
 		}
@@ -492,6 +492,14 @@ private:
 		_main_td_h = nullptr;
 	}
 };
+
+RUA_FORCE_INLINE pid_t this_process_id() {
+	return GetCurrentProcessId();
+}
+
+RUA_FORCE_INLINE process this_process() {
+	return process(this_process_id());
+}
 
 }} // namespace rua::win32
 

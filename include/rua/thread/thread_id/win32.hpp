@@ -5,7 +5,7 @@
 
 namespace rua { namespace win32 {
 
-using thread_id_t = DWORD;
+using tid_t = DWORD;
 
 }} // namespace rua::win32
 

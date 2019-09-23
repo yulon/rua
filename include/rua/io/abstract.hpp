@@ -1,7 +1,6 @@
 #ifndef _RUA_IO_ABSTRACT_HPP
 #define _RUA_IO_ABSTRACT_HPP
 
-#include "../any_ptr.hpp"
 #include "../bytes.hpp"
 #include "../limits.hpp"
 #include "../ref.hpp"

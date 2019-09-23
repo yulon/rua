@@ -143,8 +143,8 @@ private:
 	size_t _ix;
 	void (*_dtor)(any_word);
 
-	using _map_t = std::
-		unordered_map<thread_id_t, std::pair<size_t, std::vector<uintptr_t>>>;
+	using _map_t =
+		std::unordered_map<tid_t, std::pair<size_t, std::vector<uintptr_t>>>;
 
 	struct _ctx_t {
 		_thread_loc_indexer ixer;

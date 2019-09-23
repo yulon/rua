@@ -13,7 +13,7 @@ namespace rua { namespace posix {
 
 namespace _this_thread_id {
 
-RUA_FORCE_INLINE thread_id_t this_thread_id() {
+RUA_FORCE_INLINE tid_t this_thread_id() {
 	return pthread_self();
 }
 

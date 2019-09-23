@@ -5,7 +5,7 @@
 
 namespace rua { namespace posix {
 
-using thread_id_t = pthread_t;
+using tid_t = pthread_t;
 
 }} // namespace rua::posix
 

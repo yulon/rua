@@ -8,7 +8,7 @@
 #include "thread_id/win32.hpp"
 
 namespace rua {
-using thread_id_t = win32::thread_id_t;
+using tid_t = win32::tid_t;
 }
 
 #elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
@@ -16,7 +16,7 @@ using thread_id_t = win32::thread_id_t;
 #include "thread_id/posix.hpp"
 
 namespace rua {
-using thread_id_t = posix::thread_id_t;
+using tid_t = posix::tid_t;
 }
 
 #endif

@@ -33,7 +33,7 @@ public:
 			&_id);
 	}
 
-	explicit thread(thread_id_t id) :
+	explicit thread(tid_t id) :
 		_h(id ? OpenThread(SYNCHRONIZE, FALSE, id) : nullptr),
 		_id(id) {}
 
@@ -69,14 +69,14 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(thread)
 
-	thread_id_t id() {
+	tid_t id() {
 		if (!_id) {
 			_id = _get_id(_h);
 		}
 		return _id;
 	}
 
-	thread_id_t id() const {
+	tid_t id() const {
 		return _id ? _id : _get_id(_h);
 	}
 

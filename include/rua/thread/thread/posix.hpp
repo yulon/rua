@@ -22,7 +22,7 @@ public:
 	constexpr thread() : _id(0), _d() {}
 
 	explicit thread(std::function<void()> fn) {
-		thread_id_t id;
+		tid_t id;
 		if (pthread_create(
 				&id,
 				nullptr,
@@ -43,13 +43,13 @@ public:
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
-	constexpr explicit thread(thread_id_t id) : _id(id), _d() {}
+	constexpr explicit thread(tid_t id) : _id(id), _d() {}
 
 	~thread() {
 		reset();
 	}
 
-	thread_id_t id() const {
+	tid_t id() const {
 		return _id;
 	}
 
