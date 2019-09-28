@@ -193,13 +193,13 @@ public:
 		calc_hash(size_t &h, const byte *begin, bool is_update = false) const {
 			auto end = begin + _n;
 			if (is_update) {
-				h -= std::to_integer(*(--begin));
-				h += std::to_integer(*(--end));
+				h -= *(--begin);
+				h += *(--end);
 				return;
 			}
 			h = 0;
 			for (auto it = begin; it != end; ++it) {
-				h += std::to_integer(*it);
+				h += *it;
 			}
 		}
 

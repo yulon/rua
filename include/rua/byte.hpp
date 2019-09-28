@@ -4,31 +4,36 @@
 #include "macros.hpp"
 
 #if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_byte)
-
 #include <cstddef>
+#endif
 
 namespace rua {
 
-using byte = std::byte;
+class byte {
+public:
+	byte() = default;
 
-} // namespace rua
+	RUA_FORCE_INLINE constexpr byte(unsigned char n) : _n(n) {}
 
-#else
+	RUA_FORCE_INLINE constexpr operator unsigned char() const {
+		return _n;
+	}
 
-namespace rua {
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_lib_byte)
 
-enum class byte : unsigned char {};
+	RUA_FORCE_INLINE constexpr byte(std::byte b) :
+		_n(static_cast<unsigned char>(b)) {}
 
-} // namespace rua
-
-namespace std {
-
-inline unsigned char to_integer(rua::byte b) {
-	return static_cast<unsigned char>(b);
-}
-
-} // namespace std
+	RUA_FORCE_INLINE constexpr operator std::byte() const {
+		return std::byte{_n};
+	}
 
 #endif
+
+private:
+	unsigned char _n;
+};
+
+} // namespace rua
 
 #endif
