@@ -57,12 +57,12 @@ public:
 			}
 			if (_1st_chr_is_cr) {
 				_1st_chr_is_cr = false;
-				if (_buf[0] == static_cast<uint8_t>('\n')) {
+				if (_buf[0] == static_cast<byte>('\n')) {
 					_buf = _buf(1);
 				}
 			}
 			for (size_t i = 0; i < sz; ++i) {
-				if (_buf[i] == static_cast<uint8_t>('\r')) {
+				if (_buf[i] == static_cast<byte>('\r')) {
 					_cache += std::string(
 						reinterpret_cast<const char *>(_buf.data()), i);
 					if (i == sz - 1) {
@@ -71,7 +71,7 @@ public:
 					}
 
 					auto end = i + 1;
-					if (_buf[i + 1] == static_cast<uint8_t>('\n')) {
+					if (_buf[i + 1] == static_cast<byte>('\n')) {
 						_1st_chr_is_cr = true;
 						end = i + 1;
 					} else {
@@ -84,7 +84,7 @@ public:
 						_buf.size() - end);
 					return r;
 
-				} else if (_buf[i] == static_cast<uint8_t>('\n')) {
+				} else if (_buf[i] == static_cast<byte>('\n')) {
 					_cache += std::string(
 						reinterpret_cast<const char *>(_buf.data()), i);
 					return std::move(_cache);

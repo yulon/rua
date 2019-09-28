@@ -57,8 +57,8 @@ public:
 		return *reinterpret_cast<const T *>(_this()->data())[ix];
 	}
 
-	RUA_FORCE_INLINE const uint8_t &operator[](ptrdiff_t offset) const {
-		return reinterpret_cast<const uint8_t *>(_this()->data())[offset];
+	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
+		return reinterpret_cast<const byte *>(_this()->data())[offset];
 	}
 
 	inline bytes_view
@@ -104,7 +104,7 @@ public:
 				size_t>::type value;
 			uint8_t size = sizeof(CmpUnit);
 
-			RUA_FORCE_INLINE size_t eq(const uint8_t *begin) const {
+			RUA_FORCE_INLINE size_t eq(const byte *begin) const {
 				if (size == sizeof(CmpUnit)) {
 					return bit_get<CmpUnit>(&value) == bit_get<CmpUnit>(begin)
 							   ? sizeof(CmpUnit)
@@ -189,17 +189,17 @@ public:
 			return _h;
 		}
 
-		RUA_FORCE_INLINE void calc_hash(
-			size_t &h, const uint8_t *begin, bool is_update = false) const {
+		RUA_FORCE_INLINE void
+		calc_hash(size_t &h, const byte *begin, bool is_update = false) const {
 			auto end = begin + _n;
 			if (is_update) {
-				h -= *(--begin);
-				h += *(--end);
+				h -= std::to_integer(*(--begin));
+				h += std::to_integer(*(--end));
 				return;
 			}
 			h = 0;
 			for (auto it = begin; it != end; ++it) {
-				h += *it;
+				h += std::to_integer(*it);
 			}
 		}
 
@@ -313,7 +313,7 @@ public:
 				return !mask;
 			}
 
-			RUA_FORCE_INLINE size_t eq(const uint8_t *target) const {
+			RUA_FORCE_INLINE size_t eq(const byte *target) const {
 				if (size == sizeof(CmpUnit)) {
 					if (is_void()) {
 						return size;
@@ -416,7 +416,7 @@ public:
 		}
 
 		static RUA_FORCE_INLINE void
-		calc_hash(size_t &, const uint8_t *, bool = false) {}
+		calc_hash(size_t &, const byte *, bool = false) {}
 
 		std::vector<size_t> void_block_poss(size_t base = 0) const {
 			std::vector<size_t> vbposs(_void_block_poss);
@@ -491,11 +491,11 @@ public:
 			return search_result{npos};
 		}
 
-		auto begin = &(*_this())[0];
-		const uint8_t *end = begin + _this()->size() - byts.size();
+		auto begin = _this()->data();
+		auto end = begin + _this()->size() - byts.size();
 
 		size_t h = 0;
-		const uint8_t *cmp_ptr = nullptr;
+		const byte *cmp_ptr = nullptr;
 
 		for (auto it = begin; it != end; ++it) {
 			byts.calc_hash(h, it, it != begin);
@@ -616,12 +616,12 @@ public:
 		return *reinterpret_cast<T *>(_this()->data())[ix];
 	}
 
-	RUA_FORCE_INLINE const uint8_t &operator[](ptrdiff_t offset) const {
-		return reinterpret_cast<const uint8_t *>(_this()->data())[offset];
+	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
+		return reinterpret_cast<const byte *>(_this()->data())[offset];
 	}
 
-	RUA_FORCE_INLINE uint8_t &operator[](ptrdiff_t offset) {
-		return reinterpret_cast<uint8_t *>(_this()->data())[offset];
+	RUA_FORCE_INLINE byte &operator[](ptrdiff_t offset) {
+		return reinterpret_cast<byte *>(_this()->data())[offset];
 	}
 
 	inline bytes_view
@@ -673,7 +673,7 @@ public:
 		return rel_ptr;
 	}
 
-	template <typename T = uint8_t>
+	template <typename T = byte>
 	void reverse() {
 		auto n = _this()->size() / sizeof(T);
 		std::vector<T> r(n);
@@ -702,19 +702,20 @@ public:
 
 	constexpr bytes_view(std::nullptr_t) : bytes_view() {}
 
-	constexpr bytes_view(const byte *ptr, size_t size) :
-		_p(ptr),
+	bytes_view(const byte *ptr, size_t size) :
+		_p(reinterpret_cast<const char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
 	template <
 		typename T,
 		typename = typename std::enable_if<
-			!std::is_same<T, byte>::value &&
-			!std::is_convertible<const T *, string_view>::value &&
-			!std::is_convertible<const T *, wstring_view>::value &&
+			!std::is_same<T, const byte>::value &&
+			!std::is_convertible<T *, string_view>::value &&
+			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>::type>
-	bytes_view(const T *ptr, size_t size = sizeof(T)) :
-		bytes_view(reinterpret_cast<const byte *>(ptr), size) {}
+	bytes_view(T *ptr, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<const char *>(ptr)),
+		_n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -724,23 +725,23 @@ public:
 
 	template <typename R, typename... A>
 	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
-		_p(reinterpret_cast<const byte *>(ptr)),
+		_p(reinterpret_cast<const char *>(ptr)),
 		_n(size) {}
 
-	bytes_view(const char *c_str, size_t size) :
-		_p(reinterpret_cast<const byte *>(c_str)),
+	constexpr bytes_view(const char *c_str, size_t size) :
+		_p(c_str),
 		_n(size) {}
 
-	bytes_view(const char *c_str) :
-		_p(reinterpret_cast<const byte *>(c_str)),
+	RUA_CONSTEXPR_14 bytes_view(const char *c_str) :
+		_p(c_str),
 		_n(c_str ? strlen(c_str) : 0) {}
 
 	bytes_view(const wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<const byte *>(c_wstr)),
+		_p(reinterpret_cast<const char *>(c_wstr)),
 		_n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
-		_p(reinterpret_cast<const byte *>(c_wstr)),
+		_p(reinterpret_cast<const char *>(c_wstr)),
 		_n(c_wstr ? strlen(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
@@ -749,22 +750,9 @@ public:
 			!std::is_convertible<T &, string_view>::value &&
 			!std::is_convertible<T &, wstring_view>::value &&
 			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value &&
-			!is_span<T>::value &&
-			!std::is_member_function_pointer<T>::value>::type>
+			!is_span<T>::value>::type>
 	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
 		bytes_view(&const_val_ref, size) {}
-
-	template <
-		typename T,
-		typename = typename std::enable_if<
-			!std::is_convertible<T &, string_view>::value &&
-			!std::is_convertible<T &, wstring_view>::value &&
-			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value &&
-			!is_span<T>::value>::type,
-		typename = typename std::enable_if<
-			std::is_member_function_pointer<T>::value>::type>
-	bytes_view(const T &mbr_fn_ref, size_t size = nmax<size_t>()) :
-		bytes_view(reinterpret_cast<const void *>(mbr_fn_ref), size) {}
 
 	template <
 		typename T,
@@ -779,8 +767,8 @@ public:
 		return _p;
 	}
 
-	constexpr const byte *data() const {
-		return _p;
+	const byte *data() const {
+		return reinterpret_cast<const byte *>(_p);
 	}
 
 	constexpr size_t size() const {
@@ -814,7 +802,7 @@ public:
 	}
 
 private:
-	const byte *_p;
+	const char *_p;
 	size_t _n;
 };
 
@@ -824,7 +812,9 @@ public:
 
 	constexpr bytes_ref(std::nullptr_t) : bytes_ref() {}
 
-	constexpr bytes_ref(byte *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+	bytes_ref(byte *ptr, size_t size) :
+		_p(reinterpret_cast<char *>(ptr)),
+		_n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -834,7 +824,8 @@ public:
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>::type>
 	bytes_ref(T *ptr, size_t size = sizeof(T)) :
-		bytes_ref(reinterpret_cast<byte *>(ptr), size) {}
+		_p(reinterpret_cast<char *>(ptr)),
+		_n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -845,20 +836,18 @@ public:
 				typename std::decay<CArray>::type>::type>::value>::type>
 	bytes_ref(T &&c_array_ref) : bytes_ref(&c_array_ref, sizeof(CArray)) {}
 
-	bytes_ref(char *c_str, size_t size) :
-		_p(reinterpret_cast<byte *>(c_str)),
-		_n(size) {}
+	constexpr bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
 
-	bytes_ref(char *c_str) :
-		_p(reinterpret_cast<byte *>(c_str)),
+	RUA_CONSTEXPR_14 bytes_ref(char *c_str) :
+		_p(c_str),
 		_n(c_str ? strlen(c_str) : 0) {}
 
 	bytes_ref(wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<byte *>(c_wstr)),
+		_p(reinterpret_cast<char *>(c_wstr)),
 		_n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
-		_p(reinterpret_cast<byte *>(c_wstr)),
+		_p(reinterpret_cast<char *>(c_wstr)),
 		_n(strlen(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
@@ -876,12 +865,12 @@ public:
 		return _p;
 	}
 
-	constexpr const byte *data() const {
-		return _p;
+	const byte *data() const {
+		return reinterpret_cast<const byte *>(_p);
 	}
 
-	RUA_CONSTEXPR_14 byte *data() {
-		return _p;
+	byte *data() {
+		return reinterpret_cast<byte *>(_p);
 	}
 
 	constexpr size_t size() const {
@@ -915,7 +904,7 @@ public:
 	}
 
 private:
-	byte *_p;
+	char *_p;
 	size_t _n;
 };
 
@@ -1121,7 +1110,7 @@ class bytes_block
 	: public bytes_block_base<bytes_block<Size>, Size>,
 	  public bytes_base<bytes_block_base<bytes_block<Size>, Size>> {
 private:
-	uint8_t _raw[Size];
+	char _raw[Size];
 };
 
 template <size_t Sz = nmax<size_t>()>

@@ -15,13 +15,19 @@ using byte = std::byte;
 
 #else
 
-#include <cstddef>
-
 namespace rua {
 
 enum class byte : unsigned char {};
 
 } // namespace rua
+
+namespace std {
+
+inline unsigned char to_integer(rua::byte b) {
+	return static_cast<unsigned char>(b);
+}
+
+} // namespace std
 
 #endif
 

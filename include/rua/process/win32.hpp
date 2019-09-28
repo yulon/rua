@@ -493,6 +493,8 @@ private:
 	}
 };
 
+namespace _this_process {
+
 RUA_FORCE_INLINE pid_t this_process_id() {
 	return GetCurrentProcessId();
 }
@@ -500,6 +502,10 @@ RUA_FORCE_INLINE pid_t this_process_id() {
 RUA_FORCE_INLINE process this_process() {
 	return process(this_process_id());
 }
+
+} // namespace _this_process
+
+using namespace _this_process;
 
 }} // namespace rua::win32
 

@@ -4,9 +4,11 @@
 #include "../bytes.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
+#include "../string/strlen.hpp"
 #include "../string/to_string.hpp"
 
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 
 namespace rua {
@@ -506,10 +508,9 @@ using namespace duration_literals;
 // ".12345") into the tail of buf, omitting trailing zeros. It omits the decimal
 // point too when the fraction is 0. It returns the index where the
 // output bytes begin and the value v/10**prec.
-inline void
-_duration_to_string_fmt_frac(bytes_ref buf, ns v, int prec, int *nw, ns *nv) {
+inline void _duration_to_string_fmt_frac(
+	char *buf, size_t w, ns v, int prec, int *nw, ns *nv) {
 	// Omit trailing zeros up to and including decimal point.
-	auto w = static_cast<int>(buf.size());
 	auto print = false;
 	for (auto i = 0; i < prec; i++) {
 		auto digit = v.count() % 10;
@@ -530,8 +531,7 @@ _duration_to_string_fmt_frac(bytes_ref buf, ns v, int prec, int *nw, ns *nv) {
 
 // _duration_to_string_fmt_int formats v into the tail of buf.
 // It returns the index where the output begins.
-inline int _duration_to_string_fmt_int(bytes_ref buf, ns v) {
-	auto w = static_cast<int>(buf.size());
+inline int _duration_to_string_fmt_int(char *buf, size_t w, ns v) {
 	if (v == 0) {
 		w--;
 		buf[w] = '0';
@@ -551,9 +551,9 @@ inline int _duration_to_string_fmt_int(bytes_ref buf, ns v) {
 // that the leading digit is non-zero. The zero duration formats as 0s.
 inline std::string to_string(ns dur) {
 	// Largest time is 2540400h10m10.000000000s
-	char b[32];
-	int w = sizeof(b);
-	bytes_ref buf(b, w);
+	char buf[32];
+	int buf_sz = static_cast<int>(sizeof(buf));
+	auto w = buf_sz;
 
 	auto u = dur;
 	auto neg = dur < 0;
@@ -579,29 +579,29 @@ inline std::string to_string(ns dur) {
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
 			w--; // Need room for two bytes.
-			buf(w).copy_from("µ");
+			memcpy(buf + w, "µ", strlen("µ"));
 		} else {
 			// print ms
 			prec = 6;
 			buf[w] = 'm';
 		}
-		_duration_to_string_fmt_frac(buf(0, w), u, prec, &w, &u);
-		w = _duration_to_string_fmt_int(buf(0, w), u);
+		_duration_to_string_fmt_frac(buf, w, u, prec, &w, &u);
+		w = _duration_to_string_fmt_int(buf, w, u);
 	} else {
 		w--;
 		buf[w] = 's';
 
-		_duration_to_string_fmt_frac(buf(0, w), u, 9, &w, &u);
+		_duration_to_string_fmt_frac(buf, w, u, 9, &w, &u);
 
 		// u is now integer s
-		w = _duration_to_string_fmt_int(buf(0, w), u % 60);
+		w = _duration_to_string_fmt_int(buf, w, u % 60);
 		u /= 60;
 
 		// u is now integer m
 		if (u > 0) {
 			w--;
 			buf[w] = 'm';
-			w = _duration_to_string_fmt_int(buf(0, w), u % 60);
+			w = _duration_to_string_fmt_int(buf, w, u % 60);
 			u /= 60;
 
 			// u is now integer h
@@ -609,7 +609,7 @@ inline std::string to_string(ns dur) {
 			if (u > 0) {
 				w--;
 				buf[w] = 'h';
-				w = _duration_to_string_fmt_int(buf(0, w), u);
+				w = _duration_to_string_fmt_int(buf, w, u);
 			}
 		}
 	}
@@ -619,8 +619,7 @@ inline std::string to_string(ns dur) {
 		buf[w] = '-';
 	}
 
-	buf = buf(w);
-	return std::string(   reinterpret_cast<const char *>(buf.data()),buf.size());
+	return std::string(buf + w, buf_sz - w);
 }
 
 } // namespace rua
