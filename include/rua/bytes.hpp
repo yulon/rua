@@ -42,18 +42,18 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref() const {
+	RUA_FORCE_INLINE const T &at() const {
 		return *reinterpret_cast<const T *>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref(ptrdiff_t offset) const {
+	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
 		return *reinterpret_cast<const T *>(
 			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref_aligned(ptrdiff_t ix) const {
+	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
 		return *reinterpret_cast<const T *>(_this()->data())[ix];
 	}
 
@@ -89,7 +89,7 @@ public:
 			_input(byt_vals);
 		}
 
-		find_pattern(std::initializer_list<uint8_t> byt_vals) {
+		find_pattern(std::initializer_list<byte> byt_vals) {
 			_input(byt_vals);
 		}
 
@@ -102,7 +102,7 @@ public:
 				sizeof(CmpUnit) >= sizeof(size_t),
 				CmpUnit,
 				size_t>::type value;
-			uint8_t size = sizeof(CmpUnit);
+			byte size = sizeof(CmpUnit);
 
 			RUA_FORCE_INLINE size_t eq(const byte *begin) const {
 				if (size == sizeof(CmpUnit)) {
@@ -121,8 +121,7 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 7:
-					if (bit_get<uint8_t>(&value, 6) !=
-						bit_get<uint8_t>(begin, 6)) {
+					if (bit_get<byte>(&value, 6) != bit_get<byte>(begin, 6)) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -138,8 +137,7 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 5:
-					if (bit_get<uint8_t>(&value, 4) !=
-						bit_get<uint8_t>(begin, 4)) {
+					if (bit_get<byte>(&value, 4) != bit_get<byte>(begin, 4)) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -151,8 +149,7 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 3:
-					if (bit_get<uint8_t>(&value, 2) !=
-						bit_get<uint8_t>(begin, 2)) {
+					if (bit_get<byte>(&value, 2) != bit_get<byte>(begin, 2)) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -164,14 +161,14 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 1:
-					return bit_get<uint8_t>(&value) == bit_get<uint8_t>(begin);
+					return bit_get<byte>(&value) == bit_get<byte>(begin);
 
 					////////////////////////////////////////////////////////////
 
 				default:
 					for (size_t i = 0; i < size; ++i) {
-						if (bit_get<uint8_t>(&value, i) !=
-							bit_get<uint8_t>(begin, i)) {
+						if (bit_get<byte>(&value, i) !=
+							bit_get<byte>(begin, i)) {
 							return 0;
 						}
 					}
@@ -233,18 +230,18 @@ public:
 					last_sz = 0;
 					++wi;
 				}
-				bit_set<uint8_t>(
+				bit_set<byte>(
 					&_words[wi].value,
 					last_sz,
-					static_cast<uint8_t>(byt_vals.begin()[i]));
+					static_cast<byte>(byt_vals.begin()[i]));
 				++last_sz;
 
-				_h += static_cast<size_t>(
-					static_cast<uint8_t>(byt_vals.begin()[i]));
+				_h +=
+					static_cast<size_t>(static_cast<byte>(byt_vals.begin()[i]));
 			}
 
 			if (sz_rmdr) {
-				_words.back().size = static_cast<uint8_t>(sz_rmdr);
+				_words.back().size = static_cast<byte>(sz_rmdr);
 			}
 		}
 	};
@@ -261,8 +258,8 @@ public:
 			_input(byt_vals);
 		}
 
-		match_pattern(std::initializer_list<std::initializer_list<uint8_t>>
-						  byt_val_spls) {
+		match_pattern(
+			std::initializer_list<std::initializer_list<byte>> byt_val_spls) {
 			std::vector<uint16_t> byt_vals;
 
 			auto sz = rua::nmax<size_t>();
@@ -274,7 +271,7 @@ public:
 			}
 
 			for (size_t i = 0; i < sz; ++i) {
-				const uint8_t *b = nullptr;
+				const byte *b = nullptr;
 				bool same = true;
 				for (auto it = byt_val_spls.begin(); it != byt_val_spls.end();
 					 ++it) {
@@ -307,7 +304,7 @@ public:
 				sizeof(CmpUnit) >= sizeof(size_t),
 				CmpUnit,
 				size_t>::type value = 0;
-			uint8_t size = sizeof(CmpUnit);
+			byte size = sizeof(CmpUnit);
 
 			bool is_void() const {
 				return !mask;
@@ -337,9 +334,8 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 7:
-					if (bit_get<uint8_t>(&value, 6) !=
-						(bit_get<uint8_t>(target + 6) &
-						 bit_get<uint8_t>(&mask, 6))) {
+					if (bit_get<byte>(&value, 6) !=
+						(bit_get<byte>(target + 6) & bit_get<byte>(&mask, 6))) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -358,9 +354,8 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 5:
-					if (bit_get<uint8_t>(&value, 4) !=
-						(bit_get<uint8_t>(target + 4) &
-						 bit_get<uint8_t>(&mask, 4))) {
+					if (bit_get<byte>(&value, 4) !=
+						(bit_get<byte>(target + 4) & bit_get<byte>(&mask, 4))) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -373,9 +368,8 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 3:
-					if (bit_get<uint8_t>(&value, 2) !=
-						(bit_get<uint8_t>(target + 2) &
-						 bit_get<uint8_t>(&mask, 2))) {
+					if (bit_get<byte>(&value, 2) !=
+						(bit_get<byte>(target + 2) & bit_get<byte>(&mask, 2))) {
 						return 0;
 					}
 					RUA_FALLTHROUGH;
@@ -388,16 +382,16 @@ public:
 					////////////////////////////////////////////////////////////
 
 				case 1:
-					return bit_get<uint8_t>(&value) ==
-						   (bit_get<uint8_t>(target) & bit_get<uint8_t>(&mask));
+					return bit_get<byte>(&value) ==
+						   (bit_get<byte>(target) & bit_get<byte>(&mask));
 
 					////////////////////////////////////////////////////////////
 
 				default:
 					for (size_t i = 0; i < size; ++i) {
-						if (bit_get<uint8_t>(&value, i) !=
-							(bit_get<uint8_t>(target + i) &
-							 bit_get<uint8_t>(&mask, i))) {
+						if (bit_get<byte>(&value, i) !=
+							(bit_get<byte>(target + i) &
+							 bit_get<byte>(&mask, i))) {
 							return 0;
 						}
 					}
@@ -454,11 +448,11 @@ public:
 					if (in_void) {
 						in_void = false;
 					}
-					bit_set<uint8_t>(&_words.back().mask, last_sz, 255);
-					bit_set<uint8_t>(
+					bit_set<byte>(&_words.back().mask, last_sz, 255);
+					bit_set<byte>(
 						&_words.back().value,
 						last_sz,
-						static_cast<uint8_t>(byt_vals.begin()[i]));
+						static_cast<byte>(byt_vals.begin()[i]));
 				} else {
 					if (!in_void) {
 						in_void = true;
@@ -470,7 +464,7 @@ public:
 
 			auto sz_rmdr = byt_vals.size() % sizeof(CmpUnit);
 			if (sz_rmdr) {
-				_words.back().size = static_cast<uint8_t>(sz_rmdr);
+				_words.back().size = static_cast<byte>(sz_rmdr);
 			}
 		}
 	};
@@ -585,34 +579,34 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref() const {
+	RUA_FORCE_INLINE const T &at() const {
 		return *reinterpret_cast<const T *>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &get_ref() {
+	RUA_FORCE_INLINE T &at() {
 		return *reinterpret_cast<T *>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref(ptrdiff_t offset) const {
+	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
 		return *reinterpret_cast<const T *>(
 			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &get_ref(ptrdiff_t offset) {
+	RUA_FORCE_INLINE T &at(ptrdiff_t offset) {
 		return *reinterpret_cast<T *>(
 			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &get_ref_aligned(ptrdiff_t ix) const {
+	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
 		return *reinterpret_cast<const T *>(_this()->data())[ix];
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &get_ref_aligned(ptrdiff_t ix) {
+	RUA_FORCE_INLINE T &at_aligned(ptrdiff_t ix) {
 		return *reinterpret_cast<T *>(_this()->data())[ix];
 	}
 
