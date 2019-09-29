@@ -17,6 +17,7 @@
 #include <cstddef>
 
 namespace rua { namespace mem {
+
 #ifdef RUA_UNIX
 static constexpr int protect_none = PROT_NONE;
 static constexpr int protect_read = PROT_READ;
@@ -62,12 +63,11 @@ inline bool protect(
 	}
 	return VirtualProtect(ptr, size, new_protect, &old_protect);
 #elif defined(RUA_UNIX)
-	return mprotect(
-			   generic_ptr((ptr.value() >> PAGE_SHIFT) << PAGE_SHIFT),
-			   size,
-			   flags) == 0;
+	return mprotect((ptr.value() >> PAGE_SHIFT) << PAGE_SHIFT, size, flags) ==
+		   0;
 #endif
 }
+
 }} // namespace rua::mem
 
 #endif

@@ -4,6 +4,8 @@
 #include "encoding/base.hpp"
 #include "string_view.hpp"
 
+#include "../generic_ptr.hpp"
+
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
@@ -65,6 +67,10 @@ inline typename std::enable_if<
 	std::string>::type
 to_string(P *val) {
 	return val ? to_hex(reinterpret_cast<uintptr_t>(val)) : to_string(nullptr);
+}
+
+inline std::string to_string(generic_ptr ptr) {
+	return ptr ? to_hex(ptr.integer()) : to_string(nullptr);
 }
 
 inline const char *to_string(bool val) {

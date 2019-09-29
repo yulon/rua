@@ -7,7 +7,6 @@
 
 #include "any_word.hpp"
 #include "bytes.hpp"
-#include "mem/protect.hpp"
 
 #include <cstdint>
 #include <type_traits>
