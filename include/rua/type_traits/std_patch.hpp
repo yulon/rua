@@ -70,8 +70,8 @@ struct type_identity {
 
 #endif
 
-template <typename T>
-using type_identity_t = typename type_identity<T>::type;
+template <typename...>
+using void_t = void;
 
 } // namespace rua
 
