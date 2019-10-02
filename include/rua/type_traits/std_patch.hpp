@@ -154,7 +154,7 @@ using is_null_pointer = std::is_null_pointer<T>;
 #else
 
 template <typename T>
-struct is_null_pointer : std::is_same<remove_cv_t<T>::type, std::nullptr_t> {};
+struct is_null_pointer : std::is_same<remove_cv_t<T>, std::nullptr_t> {};
 
 #endif
 
