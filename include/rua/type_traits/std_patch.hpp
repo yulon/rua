@@ -73,6 +73,18 @@ struct type_identity {
 template <typename...>
 using void_t = void;
 
+template <typename T>
+struct is_bounded_array : std::false_type {};
+
+template <typename T, size_t N>
+struct is_bounded_array<T[N]> : std::true_type {};
+
+template <typename T>
+struct is_unbounded_array : std::false_type {};
+
+template <typename T>
+struct is_unbounded_array<T[]> : std::true_type {};
+
 } // namespace rua
 
 #if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \

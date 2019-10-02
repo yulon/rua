@@ -5,7 +5,6 @@
 #include "byte.hpp"
 #include "limits.hpp"
 #include "macros.hpp"
-#include "stldata.hpp"
 #include "string/string_view.hpp"
 #include "string/strlen.hpp"
 #include "type_traits.hpp"
@@ -700,28 +699,6 @@ public:
 		_p(reinterpret_cast<const char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
-	template <
-		typename T,
-		typename = typename std::enable_if<
-			!std::is_same<T, const byte>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>::type>
-	bytes_view(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<const char *>(ptr)),
-		_n(ptr ? size : 0) {}
-
-	template <
-		typename T,
-		typename CArray = typename std::remove_reference<T>::type,
-		typename = typename std::enable_if<std::is_array<CArray>::value>::type>
-	bytes_view(T &&c_array_ref) : bytes_view(&c_array_ref, sizeof(CArray)) {}
-
-	template <typename R, typename... A>
-	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
-		_p(reinterpret_cast<const char *>(ptr)),
-		_n(size) {}
-
 	constexpr bytes_view(const char *c_str, size_t size) :
 		_p(c_str),
 		_n(size) {}
@@ -741,10 +718,26 @@ public:
 	template <
 		typename T,
 		typename = typename std::enable_if<
-			!std::is_convertible<T &, string_view>::value &&
-			!std::is_convertible<T &, wstring_view>::value &&
-			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value &&
-			!is_span<T>::value>::type>
+			!std::is_same<T, const byte>::value &&
+			!std::is_convertible<T *, string_view>::value &&
+			!std::is_convertible<T *, wstring_view>::value &&
+			!std::is_function<T>::value>::type>
+	bytes_view(T *ptr, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<const char *>(ptr)),
+		_n(ptr ? size : 0) {}
+
+	template <typename R, typename... A>
+	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
+		_p(reinterpret_cast<const char *>(ptr)),
+		_n(size) {}
+
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_convertible<const T &, string_view>::value &&
+			!std::is_convertible<const T &, wstring_view>::value &&
+			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value>::
+			type>
 	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
 		bytes_view(&const_val_ref, size) {}
 
@@ -753,9 +746,12 @@ public:
 		typename = typename std::enable_if<
 			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value>::
 			type,
-		typename SpanElem = get_span_element_t<const T>>
-	bytes_view(const T &span) :
-		bytes_view(span.data(), span.size() * sizeof(SpanElem)) {}
+		typename SpanTraits = span_traits<T &&>>
+	bytes_view(T &&span) :
+		bytes_view(
+			span_data_of(std::forward<T>(span)),
+			span_size_of(std::forward<T>(span)) *
+				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
 		return _p;
@@ -810,26 +806,6 @@ public:
 		_p(reinterpret_cast<char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
-	template <
-		typename T,
-		typename = typename std::enable_if<
-			!std::is_const<T>::value && !std::is_same<T, byte>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>::type>
-	bytes_ref(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<char *>(ptr)),
-		_n(ptr ? size : 0) {}
-
-	template <
-		typename T,
-		typename CArray = typename std::remove_reference<T>::type,
-		typename = typename std::enable_if<
-			std::is_array<CArray>::value &&
-			!std::is_const<typename std::remove_pointer<
-				typename std::decay<CArray>::type>::type>::value>::type>
-	bytes_ref(T &&c_array_ref) : bytes_ref(&c_array_ref, sizeof(CArray)) {}
-
 	constexpr bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
 
 	RUA_CONSTEXPR_14 bytes_ref(char *c_str) :
@@ -847,13 +823,38 @@ public:
 	template <
 		typename T,
 		typename = typename std::enable_if<
+			!std::is_const<T>::value && !std::is_same<T, byte>::value &&
+			!std::is_convertible<T *, string_view>::value &&
+			!std::is_convertible<T *, wstring_view>::value &&
+			!std::is_function<T>::value>::type>
+	bytes_ref(T *ptr, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<char *>(ptr)),
+		_n(ptr ? size : 0) {}
+
+	template <
+		typename T,
+		typename = typename std::enable_if<
+			!std::is_const<T>::value &&
+			!std::is_convertible<T &, string_view>::value &&
+			!std::is_convertible<T &, wstring_view>::value &&
+			!std::is_base_of<bytes_ref, typename std::decay<T>::type>::value>::
+			type>
+	bytes_ref(T &val_ref, size_t size = sizeof(T)) :
+		bytes_ref(&val_ref, size) {}
+
+	template <
+		typename T,
+		typename = typename std::enable_if<
 			!std::is_base_of<bytes_ref, typename std::decay<T>::type>::value>::
 			type,
-		typename SpanElem = get_span_element_t<T>,
-		typename =
-			typename std::enable_if<!std::is_const<SpanElem>::value>::type>
-	bytes_ref(T &span) :
-		bytes_ref(stldata(span), span.size() * sizeof(SpanElem)) {}
+		typename SpanTraits = span_traits<T &&>,
+		typename = typename std::enable_if<
+			!std::is_const<typename SpanTraits::element_type>::value>::type>
+	bytes_ref(T &&span) :
+		bytes_ref(
+			span_data_of(std::forward<T>(span)),
+			span_size_of(std::forward<T>(span)) *
+				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
 		return _p;
