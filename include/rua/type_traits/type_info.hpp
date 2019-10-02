@@ -213,7 +213,7 @@ inline typename std::enable_if<
 	void (*)(void *, const void *)>::type
 _type_copy_ctor() {
 	return [](void *ptr, const void *src) {
-		new (reinterpret_cast<typename std::remove_const<T>::type *>(ptr))
+		new (reinterpret_cast<typename std::remove_cv<T>::type *>(ptr))
 			T(*reinterpret_cast<const T *>(src));
 	};
 }
@@ -232,7 +232,7 @@ inline typename std::enable_if<
 	void (*)(void *, void *)>::type
 _type_move_ctor() {
 	return [](void *ptr, void *src) {
-		new (reinterpret_cast<typename std::remove_const<T>::type *>(ptr))
+		new (reinterpret_cast<typename std::remove_cv<T>::type *>(ptr))
 			T(std::move(*reinterpret_cast<T *>(src)));
 	};
 }

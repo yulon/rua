@@ -14,7 +14,7 @@ namespace rua {
 
 // bit_get from generic_ptr
 
-template <typename To, typename NCTo = typename std::remove_const<To>::type>
+template <typename To, typename NCTo = typename std::remove_cv<To>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value && !std::is_same<NCTo, char>::value &&
 		!std::is_same<NCTo, unsigned char>::value,
@@ -25,7 +25,7 @@ bit_get(generic_ptr ptr) {
 	return reinterpret_cast<To &>(sto);
 }
 
-template <typename To, typename NCTo = typename std::remove_const<To>::type>
+template <typename To, typename NCTo = typename std::remove_cv<To>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value && (std::is_same<NCTo, char>::value ||
 								   std::is_same<NCTo, unsigned char>::value),
@@ -34,7 +34,7 @@ bit_get(generic_ptr ptr) {
 	return *ptr.as<To *>();
 }
 
-template <typename To, typename NCTo = typename std::remove_const<To>::type>
+template <typename To, typename NCTo = typename std::remove_cv<To>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value,
 	typename std::conditional<
@@ -46,7 +46,7 @@ bit_get(generic_ptr ptr, ptrdiff_t offset) {
 	return bit_get<To>(ptr + offset);
 }
 
-template <typename To, typename NCTo = typename std::remove_const<To>::type>
+template <typename To, typename NCTo = typename std::remove_cv<To>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value,
 	typename std::conditional<
@@ -74,7 +74,7 @@ bit_get(From *ptr) {
 template <
 	typename To,
 	typename From,
-	typename NCFrom = typename std::remove_const<From>::type>
+	typename NCFrom = typename std::remove_cv<From>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value && size_of<To>::value == sizeof(char) &&
 		align_of<To>::value == alignof(char) &&
@@ -88,8 +88,8 @@ bit_get(From *ptr) {
 template <
 	typename To,
 	typename From,
-	typename NCTo = typename std::remove_const<To>::type,
-	typename NCFrom = typename std::remove_const<From>::type>
+	typename NCTo = typename std::remove_cv<To>::type,
+	typename NCFrom = typename std::remove_cv<From>::type>
 RUA_FORCE_INLINE typename std::enable_if<
 	std::is_trivial<To>::value &&
 		(std::is_same<NCTo, char>::value ||
