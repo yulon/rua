@@ -4,10 +4,11 @@
 #include "line.hpp"
 #include "string_view.hpp"
 
+#include "../type_traits/std_patch.hpp"
+
 #include <cstdint>
 #include <initializer_list>
 #include <string>
-#include <type_traits>
 
 namespace rua {
 
@@ -16,9 +17,8 @@ static constexpr uint32_t strjoin_multi_line = 0x000000F0;
 
 template <
 	typename StrList,
-	typename = typename std::enable_if<
-		std::is_convertible<typename StrList::value_type, string_view>::value>::
-		type>
+	typename = enable_if_t<
+		std::is_convertible<typename StrList::value_type, string_view>::value>>
 inline void strjoin(
 	std::string &buf,
 	const StrList &strs,
@@ -86,9 +86,8 @@ inline void strjoin(
 
 template <
 	typename StrList,
-	typename = typename std::enable_if<
-		std::is_convertible<typename StrList::value_type, string_view>::value>::
-		type>
+	typename = enable_if_t<
+		std::is_convertible<typename StrList::value_type, string_view>::value>>
 inline std::string strjoin(
 	const StrList &strs,
 	string_view sep = "",

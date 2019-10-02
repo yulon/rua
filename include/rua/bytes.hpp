@@ -97,10 +97,8 @@ public:
 		}
 
 		struct word {
-			typename std::conditional<
-				sizeof(CmpUnit) >= sizeof(size_t),
-				CmpUnit,
-				size_t>::type value;
+			conditional_t<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>
+				value;
 			byte size = sizeof(CmpUnit);
 
 			RUA_FORCE_INLINE size_t eq(const byte *begin) const {
@@ -299,10 +297,8 @@ public:
 
 		struct word {
 			CmpUnit mask = 0;
-			typename std::conditional<
-				sizeof(CmpUnit) >= sizeof(size_t),
-				CmpUnit,
-				size_t>::type value = 0;
+			conditional_t<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>
+				value = 0;
 			byte size = sizeof(CmpUnit);
 
 			bool is_void() const {
@@ -717,11 +713,11 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			!std::is_same<T, const byte>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>::type>
+			!std::is_function<T>::value>>
 	bytes_view(T *ptr, size_t size = sizeof(T)) :
 		_p(reinterpret_cast<const char *>(ptr)),
 		_n(ptr ? size : 0) {}
@@ -733,19 +729,16 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			!std::is_convertible<const T &, string_view>::value &&
 			!std::is_convertible<const T &, wstring_view>::value &&
-			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value>::
-			type>
+			!std::is_base_of<bytes_view, decay_t<T>>::value>>
 	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
 		bytes_view(&const_val_ref, size) {}
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
-			!std::is_base_of<bytes_view, typename std::decay<T>::type>::value>::
-			type,
+		typename = enable_if_t<!std::is_base_of<bytes_view, decay_t<T>>::value>,
 		typename SpanTraits = span_traits<T &&>>
 	bytes_view(T &&span) :
 		bytes_view(
@@ -822,34 +815,31 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			!std::is_const<T>::value && !std::is_same<T, byte>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>::type>
+			!std::is_function<T>::value>>
 	bytes_ref(T *ptr, size_t size = sizeof(T)) :
 		_p(reinterpret_cast<char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			!std::is_const<T>::value &&
 			!std::is_convertible<T &, string_view>::value &&
 			!std::is_convertible<T &, wstring_view>::value &&
-			!std::is_base_of<bytes_ref, typename std::decay<T>::type>::value>::
-			type>
+			!std::is_base_of<bytes_ref, decay_t<T>>::value>>
 	bytes_ref(T &val_ref, size_t size = sizeof(T)) :
 		bytes_ref(&val_ref, size) {}
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
-			!std::is_base_of<bytes_ref, typename std::decay<T>::type>::value>::
-			type,
+		typename = enable_if_t<!std::is_base_of<bytes_ref, decay_t<T>>::value>,
 		typename SpanTraits = span_traits<T &&>,
-		typename = typename std::enable_if<
-			!std::is_const<typename SpanTraits::element_type>::value>::type>
+		typename = enable_if_t<
+			!std::is_const<typename SpanTraits::element_type>::value>>
 	bytes_ref(T &&span) :
 		bytes_ref(
 			span_data_of(std::forward<T>(span)),
@@ -1015,12 +1005,11 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront =
-			typename std::decay<argments_front_t<Args...>>::type,
-		typename = typename std::enable_if<
+		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename = enable_if_t<
 			(sizeof...(Args) > 1) ||
 			(!std::is_base_of<bytes, ArgsFront>::value &&
-			 !std::is_integral<ArgsFront>::value)>::type>
+			 !std::is_integral<ArgsFront>::value)>>
 	bytes(Args &&... copy_src) {
 		bytes_view v(std::forward<Args>(copy_src)...);
 		if (!v.size()) {

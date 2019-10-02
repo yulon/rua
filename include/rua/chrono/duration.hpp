@@ -6,10 +6,10 @@
 #include "../macros.hpp"
 #include "../string/strlen.hpp"
 #include "../string/to_string.hpp"
+#include "../type_traits/std_patch.hpp"
 
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
 
 namespace rua {
 
@@ -214,9 +214,7 @@ RUA_FORCE_INLINE constexpr duration_base duration_min() {
 	return duration_base(nmin<int64_t>(), -999999999);
 }
 
-template <
-	int64_t Multiple,
-	typename = typename std::enable_if<(Multiple > 0)>::type>
+template <int64_t Multiple, typename = enable_if_t<(Multiple > 0)>>
 class duration : public duration_base {
 public:
 	static constexpr int64_t multiple = Multiple;
@@ -280,14 +278,12 @@ private:
 	struct _div_s {};
 	struct _mul_n {};
 
-	using _in_attr = typename std::conditional<
+	using _in_attr = conditional_t<
 		Multiple >= 1000000000,
-		typename std::
-			conditional<Multiple % 1000000000 == 0, _exa_div_s, _div_s>::type,
-		_mul_n>::type;
+		conditional_t<Multiple % 1000000000 == 0, _exa_div_s, _div_s>,
+		_mul_n>;
 
-	using _out_attr =
-		typename std::conditional<Multiple >= 1000000000, _div_s, _mul_n>::type;
+	using _out_attr = conditional_t<Multiple >= 1000000000, _div_s, _mul_n>;
 
 	static constexpr duration_base _in(int64_t c, _exa_div_s &&) {
 		return duration_base(c * (Multiple / 1000000000));
@@ -320,39 +316,39 @@ private:
 
 #define RUA_DURATION_CONCEPT(Duration)                                         \
 	typename Duration,                                                         \
-		typename = typename std::enable_if <                                   \
-					   std::is_base_of<duration_base, Duration>::value &&      \
-				   !std::is_same<duration_base, Duration>::value > ::type
+		typename =                                                             \
+			enable_if_t < std::is_base_of<duration_base, Duration>::value &&   \
+			!std::is_same<duration_base, Duration>::value >
 
 #define RUA_DURATION_EXPR_CONCEPT(First, Second, FirstDuration)                \
 	typename First, typename Second,                                           \
                                                                                \
-		typename = typename std::enable_if <                                   \
-					   (std::is_base_of<duration_base, First>::value &&        \
-						!std::is_same<duration_base, First>::value &&          \
-						std::is_convertible<Second, First>::value) ||          \
-				   (std::is_base_of<duration_base, Second>::value &&           \
-					!std::is_same<duration_base, Second>::value &&             \
-					std::is_convertible<First, Second>::value) > ::type,       \
+		typename =                                                             \
+			enable_if_t < (std::is_base_of<duration_base, First>::value &&     \
+						   !std::is_same<duration_base, First>::value &&       \
+						   std::is_convertible<Second, First>::value) ||       \
+			(std::is_base_of<duration_base, Second>::value &&                  \
+			 !std::is_same<duration_base, Second>::value &&                    \
+			 std::is_convertible<First, Second>::value) >,                     \
                                                                                \
-		typename FirstDuration = typename std::conditional<                    \
+		typename FirstDuration = conditional_t<                                \
 			(std::is_base_of<duration_base, First>::value &&                   \
 			 !std::is_same<duration_base, First>::value &&                     \
 			 std::is_convertible<Second, First>::value),                       \
 			First,                                                             \
-			Second>::type
+			Second>
 
 #define RUA_DURATION_PAIR_CONCEPT(FirstDuration, SecondDuration)               \
 	typename FirstDuration, typename SecondDuration,                           \
                                                                                \
 		typename =                                                             \
-			typename std::enable_if <                                          \
+			enable_if_t <                                                      \
 				(std::is_base_of<duration_base, FirstDuration>::value &&       \
 				 !std::is_same<duration_base, FirstDuration>::value &&         \
 				 std::is_base_of<duration_base, SecondDuration>::value) ||     \
 			(std::is_base_of<duration_base, SecondDuration>::value &&          \
 			 !std::is_same<duration_base, SecondDuration>::value &&            \
-			 std::is_base_of<duration_base, FirstDuration>::value) > ::type
+			 std::is_base_of<duration_base, FirstDuration>::value) >
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {

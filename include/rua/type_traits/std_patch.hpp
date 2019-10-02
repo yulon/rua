@@ -8,22 +8,15 @@
 
 namespace rua {
 
-// Compatibility and improvement of <type_traits>.
-
-#ifdef __cpp_lib_bool_constant
-
-template <bool Cond>
-using bool_constant = std::bool_constant<Cond>;
-
-#else
-
-template <bool Cond>
-using bool_constant = std::integral_constant<bool, Cond>;
-
-#endif
+// Improvement
 
 template <bool Cond, typename... T>
 struct enable_if;
+
+template <>
+struct enable_if<true> {
+	using type = void;
+};
 
 template <typename T>
 struct enable_if<true, T> {
@@ -37,6 +30,9 @@ struct enable_if<true, T, TArgs...> {
 
 template <typename... T>
 struct enable_if<false, T...> {};
+
+template <bool Cond, typename... T>
+using enable_if_t = typename enable_if<Cond, T...>::type;
 
 template <bool Cond, typename T, typename... F>
 struct conditional;
@@ -56,19 +52,84 @@ struct conditional<false, T, F, FArgs...> {
 	using type = typename F::template rebind<FArgs...>::type;
 };
 
-#ifdef __cpp_lib_type_identity
+template <bool Cond, typename T, typename... F>
+using conditional_t = typename conditional<Cond, T, F...>::type;
 
-template <typename T>
-using type_identity = std::type_identity<T>;
+// Alias
+
+#ifdef __cpp_lib_bool_constant
+
+template <bool Cond>
+using bool_constant = std::bool_constant<Cond>;
 
 #else
 
-template <typename T>
-struct type_identity {
-	using type = T;
-};
+template <bool Cond>
+using bool_constant = std::integral_constant<bool, Cond>;
 
 #endif
+
+template <typename T>
+using remove_cv_t = typename std::remove_cv<T>::type;
+
+template <typename T>
+using remove_const_t = typename std::remove_const<T>::type;
+
+template <typename T>
+using remove_volatile_t = typename std::remove_volatile<T>::type;
+
+template <typename T>
+using add_cv_t = typename std::add_cv<T>::type;
+
+template <typename T>
+using add_const_t = typename std::add_const<T>::type;
+
+template <typename T>
+using add_volatile_t = typename std::add_volatile<T>::type;
+
+template <typename T>
+using remove_reference_t = typename std::remove_reference<T>::type;
+
+template <typename T>
+using add_lvalue_reference_t = typename std::add_lvalue_reference<T>::type;
+
+template <typename T>
+using add_rvalue_reference_t = typename std::add_rvalue_reference<T>::type;
+
+template <typename T>
+using remove_pointer_t = typename std::remove_pointer<T>::type;
+
+template <typename T>
+using add_pointer_t = typename std::add_pointer<T>::type;
+
+template <typename T>
+using make_signed_t = typename std::make_signed<T>::type;
+
+template <typename T>
+using make_unsigned_t = typename std::make_unsigned<T>::type;
+
+template <typename T>
+using remove_extent_t = typename std::remove_extent<T>::type;
+
+template <typename T>
+using remove_all_extents_t = typename std::remove_all_extents<T>::type;
+
+template <std::size_t Len, std::size_t Align = Len>
+using aligned_storage_t = typename std::aligned_storage<Len, Align>::type;
+
+template <std::size_t Len, class... Types>
+using aligned_union_t = typename std::aligned_union<Len, Types...>::type;
+
+template <typename T>
+using decay_t = typename std::decay<T>::type;
+
+template <typename... T>
+using common_type_t = typename std::common_type<T...>::type;
+
+template <typename T>
+using underlying_type_t = typename std::underlying_type<T>::type;
+
+// Compatibility
 
 template <typename...>
 using void_t = void;
@@ -93,10 +154,41 @@ using is_null_pointer = std::is_null_pointer<T>;
 #else
 
 template <typename T>
-struct is_null_pointer
-	: std::is_same<typename std::remove_cv<T>::type, std::nullptr_t> {};
+struct is_null_pointer : std::is_same<remove_cv_t<T>::type, std::nullptr_t> {};
 
 #endif
+
+#ifdef __cpp_lib_type_identity
+
+template <typename T>
+using type_identity = std::type_identity<T>;
+
+#else
+
+template <typename T>
+struct type_identity {
+	using type = T;
+};
+
+#endif
+
+template <typename T>
+using type_identity_t = typename type_identity<T>::type;
+
+#ifdef __cpp_lib_remove_cvref
+
+template <typename T>
+using remove_cvref = std::remove_cvref<T>;
+
+#else
+
+template <typename T>
+struct remove_cvref : std::remove_cv<remove_reference_t<T> > {};
+
+#endif
+
+template <typename T>
+using remove_cvref_t = typename remove_cvref<T>::type;
 
 } // namespace rua
 

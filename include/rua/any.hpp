@@ -9,7 +9,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-#include <type_traits>
 #include <utility>
 
 namespace rua {
@@ -38,11 +37,9 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
-			!std::is_base_of<basic_any, typename std::decay<T>::type>::value>::
-			type>
+		typename = enable_if_t<!std::is_base_of<basic_any, decay_t<T>>::value>>
 	basic_any(T &&val) {
-		_emplace<typename std::decay<T>::type>(std::forward<T>(val));
+		_emplace<decay_t<T>>(std::forward<T>(val));
 	}
 
 	template <typename T, typename... Args>
@@ -114,19 +111,13 @@ public:
 	}
 
 	template <typename T>
-	typename std::enable_if<
-		!is_dynamic_allocation<typename std::decay<T>::type>::value,
-		T &>::type
-	as() & {
+	enable_if_t<!is_dynamic_allocation<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
 		return *reinterpret_cast<T *>(&_sto);
 	}
 
 	template <typename T>
-	typename std::enable_if<
-		is_dynamic_allocation<typename std::decay<T>::type>::value,
-		T &>::type
-	as() & {
+	enable_if_t<is_dynamic_allocation<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
 		return **reinterpret_cast<T **>(&_sto);
 	}
@@ -137,18 +128,14 @@ public:
 	}
 
 	template <typename T>
-	typename std::enable_if<
-		!is_dynamic_allocation<typename std::decay<T>::type>::value,
-		const T &>::type
+	enable_if_t<!is_dynamic_allocation<decay_t<T>>::value, const T &>
 	as() const & {
 		assert(type_is<T>());
 		return *reinterpret_cast<const T *>(&_sto);
 	}
 
 	template <typename T>
-	typename std::enable_if<
-		is_dynamic_allocation<typename std::decay<T>::type>::value,
-		const T &>::type
+	enable_if_t<is_dynamic_allocation<decay_t<T>>::value, const T &>
 	as() const & {
 		assert(type_is<T>());
 		return **reinterpret_cast<const T *const *>(&_sto);
@@ -195,17 +182,15 @@ private:
 	const type_info_t *_typ_inf;
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE
-		typename std::enable_if<!is_dynamic_allocation<T>::value, T &>::type
-		_emplace(Args &&... args) {
+	RUA_FORCE_INLINE enable_if_t<!is_dynamic_allocation<T>::value, T &>
+	_emplace(Args &&... args) {
 		_typ_inf = &type_info<T>();
 		return *(new (&_sto) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE
-		typename std::enable_if<is_dynamic_allocation<T>::value, T &>::type
-		_emplace(Args &&... args) {
+	RUA_FORCE_INLINE enable_if_t<is_dynamic_allocation<T>::value, T &>
+	_emplace(Args &&... args) {
 		_typ_inf = &type_info<T>();
 		return *(
 			*reinterpret_cast<T **>(&_sto) =

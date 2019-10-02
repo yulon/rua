@@ -3,6 +3,7 @@
 
 #include "macros.hpp"
 #include "type_traits/macros.hpp"
+#include "type_traits/std_patch.hpp"
 #include "type_traits/type_info.hpp"
 
 #include <cassert>
@@ -198,8 +199,8 @@ public:
 	}
 
 	template <
-		typename = typename std::enable_if<
-			std::is_class<T>::value || std::is_union<T>::value>::type>
+		typename =
+			enable_if_t<std::is_class<T>::value || std::is_union<T>::value>>
 	T *operator->() const {
 		assert(_raw_ptr);
 		return _raw_ptr;

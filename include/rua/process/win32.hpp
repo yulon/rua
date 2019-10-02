@@ -12,6 +12,7 @@
 #include "../string/encoding/base/win32.hpp"
 #include "../string/string_view.hpp"
 #include "../thread.hpp"
+#include "../type_traits/std_patch.hpp"
 
 #include <psapi.h>
 #include <tlhelp32.h>
@@ -23,7 +24,6 @@
 #include <memory>
 #include <sstream>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 namespace rua { namespace win32 {
@@ -272,9 +272,8 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<std::is_same<
-			typename std::decay<T>::type,
-			native_handle_t>::value>::type>
+		typename =
+			enable_if_t<std::is_same<decay_t<T>, native_handle_t>::value>>
 	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
 
 	~process() {

@@ -2,8 +2,7 @@
 #define _RUA_TYPE_TRAITS_TYPE_MATCH_HPP
 
 #include "rebind_if.hpp"
-
-#include <type_traits>
+#include "std_patch.hpp"
 
 namespace rua {
 
@@ -22,8 +21,8 @@ struct type_match<Expected, Comparison, ResultOfMatched, ResultOfUnmatched> {
 
 	static constexpr bool is_matched_v = is_matched::value;
 
-	using type = typename std::
-		conditional<is_matched_v, ResultOfMatched, ResultOfUnmatched>::type;
+	using type =
+		conditional_t<is_matched_v, ResultOfMatched, ResultOfUnmatched>;
 
 	template <typename... Args>
 	struct rebind {
@@ -60,7 +59,7 @@ template <typename... Args>
 using type_switch_t = typename type_switch<Args...>::type;
 
 template <typename type_match_result>
-struct _enable_matched : std::enable_if<
+struct _enable_matched : enable_if<
 							 type_match_result::is_matched_v,
 							 typename type_match_result::type> {};
 

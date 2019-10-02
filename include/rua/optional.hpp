@@ -98,18 +98,18 @@ public:
 
 	template <
 		typename U,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			std::is_convertible<U, T>::value>::type>
+			std::is_convertible<U, T>::value>>
 	T value_or(U &&default_value) const & {
 		return _has_val ? _val : static_cast<T>(std::forward<U>(default_value));
 	}
 
 	template <
 		typename U,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_move_constructible<T>::value &&
-			std::is_convertible<U, T>::value>::type>
+			std::is_convertible<U, T>::value>>
 	T value_or(U &&default_value) && {
 		return _has_val ? std::move(_val)
 						: static_cast<T>(std::forward<U>(default_value));
@@ -133,8 +133,7 @@ public:
 
 	template <
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, Args...>::value>::type>
+		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	void emplace(Args &&... args) {
 		reset();
 		_emplace(std::forward<Args>(args)...);
@@ -144,9 +143,8 @@ public:
 	template <
 		typename U,
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, std::initializer_list<U>, Args...>::
-				value>::type>
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	void emplace(std::initializer_list<U> il, Args &&... args) {
 		reset();
 		_emplace(il, std::forward<Args>(args)...);
@@ -157,14 +155,13 @@ protected:
 	struct _empty_t {};
 	union {
 		_empty_t _empty;
-		typename std::decay<T>::type _val;
+		decay_t<T> _val;
 	};
 	bool _has_val;
 
 	template <
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, Args...>::value>::type>
+		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	void _emplace(Args &&... args) {
 		new (&_val) T(std::forward<Args>(args)...);
 	}
@@ -172,9 +169,8 @@ protected:
 	template <
 		typename U,
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, std::initializer_list<U>, Args...>::
-				value>::type>
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	void _emplace(std::initializer_list<U> il, Args &&... args) {
 		new (&_val) T(il, std::forward<Args>(args)...);
 	}
@@ -189,19 +185,18 @@ public:
 
 	template <
 		typename U = T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
-			!std::is_base_of<optional<T>, typename std::decay<U>::type>::
-				value>::type>
+			!std::is_base_of<optional<T>, decay_t<U>>::value>>
 	optional(U &&val) : _optional_base<T>(true) {
 		this->_emplace(std::forward<U>(val));
 	}
 
 	template <
 		typename U,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>::type>
+			!std::is_constructible<T, optional<U> &&>::value>>
 	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
@@ -211,9 +206,9 @@ public:
 
 	template <
 		typename U,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>::type>
+			!std::is_constructible<T, optional<U> &&>::value>>
 	optional(optional<U> &&src) : _optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
@@ -223,8 +218,7 @@ public:
 
 	template <
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, Args...>::value>::type>
+		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	explicit optional(in_place_t, Args &&... args) : _optional_base<T>(true) {
 		this->_emplace(std::forward<Args>(args)...);
 	}
@@ -232,9 +226,8 @@ public:
 	template <
 		typename U,
 		typename... Args,
-		typename = typename std::enable_if<
-			std::is_constructible<T, std::initializer_list<U>, Args...>::
-				value>::type>
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	explicit optional(
 		in_place_t, std::initializer_list<U> il, Args &&... args) :
 		_optional_base<T>(true) {
@@ -247,14 +240,13 @@ public:
 #endif
 
 #include <initializer_list>
-#include <type_traits>
 #include <utility>
 
 namespace rua {
 
 template <typename T>
-optional<typename std::decay<T>::type> make_optional(T &&val) {
-	return optional<typename std::decay<T>::type>(std::forward<T>(val));
+optional<decay_t<T>> make_optional(T &&val) {
+	return optional<decay_t<T>>(std::forward<T>(val));
 }
 
 template <typename T, typename... Args>

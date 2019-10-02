@@ -16,6 +16,9 @@ struct rebind_if<false, T, Args...> {
 	using type = T;
 };
 
+template <bool Cond, typename T, typename... Args>
+using rebind_if_t = typename rebind_if<Cond, T, Args...>::type;
+
 } // namespace rua
 
 #endif

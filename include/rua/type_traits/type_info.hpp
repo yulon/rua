@@ -2,12 +2,12 @@
 #define _RUA_TYPE_TRAITS_TYPE_INFO_HPP
 
 #include "measures.hpp"
+#include "std_patch.hpp"
 
 #include "../macros.hpp"
 
 #include <cstdint>
 #include <string>
-#include <type_traits>
 
 #ifdef RUA_USING_RTTI
 #include <typeindex>
@@ -159,23 +159,19 @@ RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info_t &b) {
 #endif
 
 template <typename T>
-inline
-	typename std::enable_if<std::is_void<T>::value, void (*)(uintptr_t)>::type
-	_type_del() {
+inline enable_if_t<std::is_void<T>::value, void (*)(uintptr_t)> _type_del() {
 	return nullptr;
 }
 
 template <typename T>
-inline
-	typename std::enable_if<!std::is_void<T>::value, void (*)(uintptr_t)>::type
-	_type_del() {
+inline enable_if_t<!std::is_void<T>::value, void (*)(uintptr_t)> _type_del() {
 	return [](uintptr_t ptr) { delete reinterpret_cast<T *>(ptr); };
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	std::is_copy_constructible<T>::value,
-	uintptr_t (*)(const void *)>::type
+	uintptr_t (*)(const void *)>
 _type_new_copy() {
 	return [](const void *src) -> uintptr_t {
 		return reinterpret_cast<uintptr_t>(
@@ -184,63 +180,63 @@ _type_new_copy() {
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_copy_constructible<T>::value,
-	uintptr_t (*)(const void *)>::type
+	uintptr_t (*)(const void *)>
 _type_new_copy() {
 	return nullptr;
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	std::is_void<T>::value || std::is_trivial<T>::value,
-	void (*)(void *)>::type
+	void (*)(void *)>
 _type_dtor() {
 	return nullptr;
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_void<T>::value && !std::is_trivial<T>::value,
-	void (*)(void *)>::type
+	void (*)(void *)>
 _type_dtor() {
 	return [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); };
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	std::is_copy_constructible<T>::value,
-	void (*)(void *, const void *)>::type
+	void (*)(void *, const void *)>
 _type_copy_ctor() {
 	return [](void *ptr, const void *src) {
-		new (reinterpret_cast<typename std::remove_cv<T>::type *>(ptr))
+		new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 			T(*reinterpret_cast<const T *>(src));
 	};
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_copy_constructible<T>::value,
-	void (*)(void *, const void *)>::type
+	void (*)(void *, const void *)>
 _type_copy_ctor() {
 	return nullptr;
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	std::is_move_constructible<T>::value,
-	void (*)(void *, void *)>::type
+	void (*)(void *, void *)>
 _type_move_ctor() {
 	return [](void *ptr, void *src) {
-		new (reinterpret_cast<typename std::remove_cv<T>::type *>(ptr))
+		new (reinterpret_cast<std::remove_cv_t<T> *>(ptr))
 			T(std::move(*reinterpret_cast<T *>(src)));
 	};
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_move_constructible<T>::value,
-	void (*)(void *, void *)>::type
+	void (*)(void *, void *)>
 _type_move_ctor() {
 	return nullptr;
 }

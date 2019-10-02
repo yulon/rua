@@ -5,20 +5,19 @@
 #include "string_view.hpp"
 
 #include "../generic_ptr.hpp"
+#include "../type_traits/std_patch.hpp"
 
 #include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>
-#include <type_traits>
 
 namespace rua {
 
 template <typename T>
-inline typename std::enable_if<
-	!std::is_same<typename std::decay<T>::type, bool>::value,
-	decltype(
-		std::to_string(std::declval<typename std::decay<T>::type>()))>::type
+inline enable_if_t<
+	!std::is_same<decay_t<T>, bool>::value,
+	decltype(std::to_string(std::declval<decay_t<T>>()))>
 to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
@@ -33,9 +32,8 @@ inline std::string to_string(string_view sv) {
 }
 
 template <typename Str>
-inline typename std::
-	enable_if<std::is_same<Str, std::string>::value, std::string>::type
-	to_string(Str &&s) {
+inline enable_if_t<std::is_same<Str, std::string>::value, std::string>
+to_string(Str &&s) {
 	return std::move(s);
 }
 
@@ -45,9 +43,7 @@ inline std::string to_string(wstring_view wsv) {
 
 template <
 	typename T,
-	typename = typename std::enable_if<
-		!std::is_same<typename std::decay<T>::type, unsigned char>::value>::
-		type>
+	typename = enable_if_t<!std::is_same<decay_t<T>, unsigned char>::value>>
 inline std::string to_hex(T val, size_t width = sizeof(T) * 2) {
 	std::stringstream ss;
 	ss << "0x" << std::hex << std::uppercase << std::setw(width)
@@ -61,10 +57,10 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 }
 
 template <typename P>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_convertible<P *, string_view>::value &&
 		!std::is_convertible<P *, wstring_view>::value,
-	std::string>::type
+	std::string>
 to_string(P *val) {
 	return val ? to_hex(reinterpret_cast<uintptr_t>(val)) : to_string(nullptr);
 }
@@ -86,21 +82,21 @@ inline string_view to_temp_string(string_view sv) {
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_convertible<T, string_view>::value &&
 		!std::is_same<decltype(to_string(std::declval<T>())), const char *>::
 			value,
-	std::string>::type
+	std::string>
 to_temp_string(T &&src) {
 	return to_string(std::forward<T>(src));
 }
 
 template <typename T>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_convertible<T, string_view>::value &&
 		std::is_same<decltype(to_string(std::declval<T>())), const char *>::
 			value,
-	const char *>::type
+	const char *>
 to_temp_string(T &&src) {
 	return to_string(std::forward<T>(src));
 }

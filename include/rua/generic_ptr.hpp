@@ -2,10 +2,10 @@
 #define _RUA_GENERIC_PTR_HPP
 
 #include "macros.hpp"
+#include "type_traits/std_patch.hpp"
 
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 #include <utility>
 
 namespace rua {
@@ -22,8 +22,7 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
-			std::is_member_function_pointer<T>::value>::type>
+		typename = enable_if_t<std::is_member_function_pointer<T>::value>>
 	RUA_FORCE_INLINE generic_ptr(const T &src) :
 		generic_ptr(*reinterpret_cast<const void *const *>(&src)) {}
 
@@ -39,23 +38,21 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE typename std::enable_if<std::is_pointer<T>::value, T>::type
-	as() const {
+	RUA_FORCE_INLINE enable_if_t<std::is_pointer<T>::value, T> as() const {
 		return reinterpret_cast<T>(_val);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE typename std::
-		enable_if<std::is_member_function_pointer<T>::value, T>::type
-		as() const {
+	RUA_FORCE_INLINE enable_if_t<std::is_member_function_pointer<T>::value, T>
+	as() const {
 		return *reinterpret_cast<T *>(&_val);
 	}
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
+		typename = enable_if_t<
 			std::is_pointer<T>::value ||
-			std::is_member_function_pointer<T>::value>::type>
+			std::is_member_function_pointer<T>::value>>
 	RUA_FORCE_INLINE operator T() const {
 		return as<T>();
 	}
@@ -115,10 +112,9 @@ public:
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator+(Int &&target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator+(Int &&target) const {
 		return generic_ptr(_val + static_cast<uintptr_t>(target));
 	}
 
@@ -127,42 +123,37 @@ public:
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator<<(Int &&target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator<<(Int &&target) const {
 		return generic_ptr(_val << static_cast<uintptr_t>(target));
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator>>(Int &&target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator>>(Int &&target) const {
 		return generic_ptr(_val >> static_cast<uintptr_t>(target));
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator|(const generic_ptr target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator|(const generic_ptr target) const {
 		return generic_ptr(_val | target._val);
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator&(const generic_ptr target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator&(const generic_ptr target) const {
 		return generic_ptr(_val & target._val);
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator^(const generic_ptr target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator^(const generic_ptr target) const {
 		return generic_ptr(_val ^ target._val);
 	}
 
@@ -171,45 +162,40 @@ public:
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr>::type
-	operator-(Int &&target) const {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr>
+		operator-(Int &&target) const {
 		return generic_ptr(_val - static_cast<uintptr_t>(target));
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr &>::type
-	operator+=(Int &&target) {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
+		operator+=(Int &&target) {
 		_val += static_cast<uintptr_t>(target);
 		return *this;
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr &>::type
-	operator-=(Int &&target) {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
+		operator-=(Int &&target) {
 		_val -= static_cast<uintptr_t>(target);
 		return *this;
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr &>::type
-	operator<<=(Int &&target) {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
+		operator<<=(Int &&target) {
 		_val <<= static_cast<uintptr_t>(target);
 		return *this;
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE typename std::enable_if<
-		std::is_integral<typename std::decay<Int>::type>::value,
-		generic_ptr &>::type
-	operator>>=(Int &&target) {
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
+		operator>>=(Int &&target) {
 		_val >>= static_cast<uintptr_t>(target);
 		return *this;
 	}

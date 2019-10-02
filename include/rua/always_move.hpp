@@ -2,7 +2,7 @@
 #define _RUA_ALWAYS_MOVE_HPP
 
 #include "macros.hpp"
-#include "type_traits.hpp"
+#include "type_traits/std_patch.hpp"
 
 #include <utility>
 
@@ -17,13 +17,12 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront =
-			typename std::decay<argments_front_t<Args...>>::type,
-		typename = typename std::enable_if<
+		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename = enable_if_t<
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
 			 (!std::is_base_of<T, ArgsFront>::value &&
-			  !std::is_base_of<always_move, ArgsFront>::value))>::type>
+			  !std::is_base_of<always_move, ArgsFront>::value))>>
 	always_move(Args &&... args) {
 		new (&_val) T(std::forward<Args>(args)...);
 	}

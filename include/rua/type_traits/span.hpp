@@ -10,16 +10,14 @@ namespace rua {
 
 template <
 	typename T,
-	typename DecayT = typename std::decay<T>::type,
-	typename = typename std::enable_if<std::is_class<DecayT>::value>::type,
+	typename DecayT = decay_t<T>,
+	typename = enable_if_t<std::is_class<DecayT>::value>,
 	typename R = decltype(std::declval<T &&>().data()),
-	typename Pointer = typename std::remove_reference<R>::type,
-	typename = typename std::enable_if<
-		std::is_pointer<Pointer>::value &&
-		!is_null_pointer<Pointer>::value>::type,
-	typename Element = typename std::remove_pointer<Pointer>::type,
-	typename =
-		typename std::enable_if<!std::is_void<Element>::value, void>::type>
+	typename Pointer = remove_reference_t<R>,
+	typename = enable_if_t<
+		std::is_pointer<Pointer>::value && !is_null_pointer<Pointer>::value>,
+	typename Element = remove_pointer_t<Pointer>,
+	typename = enable_if_t<!std::is_void<Element>::value, void>>
 RUA_FORCE_INLINE Pointer span_data_of(T &&target) {
 	return std::forward<T>(target).data();
 }
@@ -47,11 +45,11 @@ RUA_FORCE_INLINE constexpr T *span_data_of(T (&inst)[N]) {
 
 template <
 	typename T,
-	typename DecayT = typename std::decay<T>::type,
-	typename = typename std::enable_if<std::is_class<DecayT>::value>::type,
+	typename DecayT = decay_t<T>,
+	typename = enable_if_t<std::is_class<DecayT>::value>,
 	typename R = decltype(std::declval<T &&>().size()),
-	typename DecayR = typename std::decay<R>::type,
-	typename = typename std::enable_if<std::is_integral<DecayR>::value>::type>
+	typename DecayR = decay_t<R>,
+	typename = enable_if_t<std::is_integral<DecayR>::value>>
 RUA_FORCE_INLINE DecayR span_size_of(T &&target) {
 	return std::forward<T>(target).size();
 }
@@ -63,11 +61,11 @@ RUA_FORCE_INLINE constexpr size_t span_size_of(T (&)[N]) {
 
 template <
 	typename T,
-	typename Pointer = typename std::remove_reference<decltype(
-		span_data_of(std::declval<T>()))>::type,
-	typename Element = typename std::remove_pointer<Pointer>::type,
-	typename Index = typename std::remove_reference<decltype(
-		span_size_of(std::declval<T>()))>::type>
+	typename Pointer =
+		remove_reference_t<decltype(span_data_of(std::declval<T>()))>,
+	typename Element = remove_pointer_t<Pointer>,
+	typename Index =
+		remove_reference_t<decltype(span_size_of(std::declval<T>()))>>
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;
@@ -89,8 +87,8 @@ struct is_readonly_span : std::false_type {};
 template <typename T>
 struct is_readonly_span<
 	T,
-	void_t<typename std::enable_if<
-		std::is_const<typename span_traits<T>::element_type>::value>::type>>
+	void_t<enable_if_t<
+		std::is_const<typename span_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
 #if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
@@ -104,8 +102,8 @@ struct is_writeable_span : std::false_type {};
 template <typename T>
 struct is_writeable_span<
 	T,
-	void_t<typename std::enable_if<
-		!std::is_const<typename span_traits<T>::element_type>::value>::type>>
+	void_t<enable_if_t<
+		!std::is_const<typename span_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
 #if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)

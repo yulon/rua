@@ -9,7 +9,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-#include <type_traits>
 #include <utility>
 
 namespace rua {
@@ -21,11 +20,10 @@ public:
 
 	template <
 		typename T,
-		typename = typename std::enable_if<
-			index_of<typename std::decay<T>::type, Types...>::value !=
-			nullindex>::type>
+		typename =
+			enable_if_t<index_of<decay_t<T>, Types...>::value != nullindex>>
 	variant(T &&val) {
-		_emplace<typename std::decay<T>::type>(std::forward<T>(val));
+		_emplace<decay_t<T>>(std::forward<T>(val));
 	}
 
 	template <typename T, typename... Args>
@@ -134,9 +132,7 @@ private:
 
 	template <typename T, typename... Args>
 	T &_emplace(Args &&... args) {
-		RUA_SPASSERT(
-			(index_of<typename std::decay<T>::type, Types...>::value !=
-			 nullindex));
+		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullindex));
 
 		_typ_inf = &type_info<T>();
 		return *(new (&_sto) T(std::forward<Args>(args)...));
