@@ -69,7 +69,7 @@ template <
 	typename Index = typename std::remove_reference<decltype(
 		span_size_of(std::declval<T>()))>::type>
 struct span_traits {
-	using pointer_type = Pointer;
+	using pointer = Pointer;
 	using element_type = Element;
 	using index_type = Index;
 };
