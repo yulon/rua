@@ -228,7 +228,7 @@ inline enable_if_t<
 	void (*)(void *, void *)>
 _type_move_ctor() {
 	return [](void *ptr, void *src) {
-		new (reinterpret_cast<std::remove_cv_t<T> *>(ptr))
+		new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 			T(std::move(*reinterpret_cast<T *>(src)));
 	};
 }
