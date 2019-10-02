@@ -5,7 +5,7 @@
 
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
-#include "../../sched/syswait/async.hpp"
+#include "../../sched/sys_wait/async.hpp"
 
 #include <windows.h>
 
@@ -78,7 +78,7 @@ private:
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
 			auto dtor = _dtor;
-			syswait(h, [=]() {
+			sys_wait(h, [=]() {
 				dtor(*p);
 				delete p;
 				CloseHandle(h);

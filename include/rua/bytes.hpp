@@ -5,8 +5,8 @@
 #include "byte.hpp"
 #include "limits.hpp"
 #include "macros.hpp"
+#include "string/str_len.hpp"
 #include "string/string_view.hpp"
-#include "string/strlen.hpp"
 #include "type_traits.hpp"
 
 #include <cassert>
@@ -701,7 +701,7 @@ public:
 
 	RUA_CONSTEXPR_14 bytes_view(const char *c_str) :
 		_p(c_str),
-		_n(c_str ? strlen(c_str) : 0) {}
+		_n(c_str ? str_len(c_str) : 0) {}
 
 	bytes_view(const wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<const char *>(c_wstr)),
@@ -709,7 +709,7 @@ public:
 
 	bytes_view(const wchar_t *c_wstr) :
 		_p(reinterpret_cast<const char *>(c_wstr)),
-		_n(c_wstr ? strlen(c_wstr) * sizeof(wchar_t) : 0) {}
+		_n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
 		typename T,
@@ -803,7 +803,7 @@ public:
 
 	RUA_CONSTEXPR_14 bytes_ref(char *c_str) :
 		_p(c_str),
-		_n(c_str ? strlen(c_str) : 0) {}
+		_n(c_str ? str_len(c_str) : 0) {}
 
 	bytes_ref(wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<char *>(c_wstr)),
@@ -811,7 +811,7 @@ public:
 
 	bytes_ref(wchar_t *c_wstr) :
 		_p(reinterpret_cast<char *>(c_wstr)),
-		_n(strlen(c_wstr) * sizeof(wchar_t)) {}
+		_n(str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
 		typename T,

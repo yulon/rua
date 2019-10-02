@@ -1,5 +1,5 @@
-#ifndef _RUA_SCHED_SYSWAIT_SYNC_WIN32_HPP
-#define _RUA_SCHED_SYSWAIT_SYNC_WIN32_HPP
+#ifndef _RUA_SCHED_SYS_WAIT_SYNC_WIN32_HPP
+#define _RUA_SCHED_SYS_WAIT_SYNC_WIN32_HPP
 
 #include "../../util.hpp"
 #include "../async/win32.hpp"
@@ -9,15 +9,15 @@
 
 namespace rua { namespace win32 {
 
-namespace _syswait_sync {
+namespace _sys_wait_sync {
 
-inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
+inline bool sys_wait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
 
 	auto sch = this_scheduler();
 	auto sig = sch->get_signaler();
 	auto r_ptr = new bool;
-	_syswait_async::syswait(handle, timeout, [=](bool r) {
+	_sys_wait_async::sys_wait(handle, timeout, [=](bool r) {
 		*r_ptr = r;
 		sig->signal();
 	});
@@ -27,9 +27,9 @@ inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	return r;
 }
 
-} // namespace _syswait_sync
+} // namespace _sys_wait_sync
 
-using namespace _syswait_sync;
+using namespace _sys_wait_sync;
 
 }} // namespace rua::win32
 

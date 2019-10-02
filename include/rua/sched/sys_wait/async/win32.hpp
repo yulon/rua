@@ -1,5 +1,5 @@
-#ifndef _RUA_SCHED_SYSWAIT_ASYNC_WIN32_HPP
-#define _RUA_SCHED_SYSWAIT_ASYNC_WIN32_HPP
+#ifndef _RUA_SCHED_SYS_WAIT_ASYNC_WIN32_HPP
+#define _RUA_SCHED_SYS_WAIT_ASYNC_WIN32_HPP
 
 #include "../../../chrono.hpp"
 #include "../../../sync/lf_forward_list.hpp"
@@ -14,24 +14,24 @@
 
 namespace rua { namespace win32 {
 
-struct _syswait_info_t {
+struct _sys_wait_info_t {
 	HANDLE obj;
 	time end_ti;
 	std::function<void(bool)> cb;
 };
 
-struct _syswaiter_ctx_t {
+struct _sys_waiter_ctx_t {
 	DWORD tid;
 	HANDLE sig;
-	lf_forward_list<_syswait_info_t> waits;
-	std::list<_syswait_info_t> waitings;
+	lf_forward_list<_sys_wait_info_t> waits;
+	std::list<_sys_wait_info_t> waitings;
 };
 
-inline DWORD __stdcall _syswaiter(LPVOID lpThreadParameter) {
-	auto &ctx = *reinterpret_cast<_syswaiter_ctx_t *>(lpThreadParameter);
+inline DWORD __stdcall _sys_waiter(LPVOID lpThreadParameter) {
+	auto &ctx = *reinterpret_cast<_sys_waiter_ctx_t *>(lpThreadParameter);
 
 	std::vector<HANDLE> objs{ctx.sig};
-	std::vector<typename std::list<_syswait_info_t>::iterator> its{
+	std::vector<typename std::list<_sys_wait_info_t>::iterator> its{
 		ctx.waitings.end()};
 
 	for (;;) {
@@ -92,25 +92,25 @@ inline DWORD __stdcall _syswaiter(LPVOID lpThreadParameter) {
 	return 0;
 }
 
-namespace _syswait_async {
+namespace _sys_wait_async {
 
 inline void
-syswait(HANDLE handle, ms timeout, std::function<void(bool)> callback) {
+sys_wait(HANDLE handle, ms timeout, std::function<void(bool)> callback) {
 	assert(handle);
 
-	static _syswaiter_ctx_t &ch_ref = ([]() -> _syswaiter_ctx_t & {
-		static _syswaiter_ctx_t ch;
+	static _sys_waiter_ctx_t &ch_ref = ([]() -> _sys_waiter_ctx_t & {
+		static _sys_waiter_ctx_t ch;
 		ch.sig = CreateEventW(nullptr, false, false, nullptr);
 		assert(ch.sig);
-		CreateThread(nullptr, 0, &_syswaiter, &ch, 0, &ch.tid);
+		CreateThread(nullptr, 0, &_sys_waiter, &ch, 0, &ch.tid);
 		assert(ch.tid);
 		return ch;
 	})();
 
-	auto inf = _syswait_info_t{handle,
-							   timeout == duration_max() ? time_max()
-														 : tick() + timeout,
-							   std::move(callback)};
+	auto inf = _sys_wait_info_t{handle,
+								timeout == duration_max() ? time_max()
+														  : tick() + timeout,
+								std::move(callback)};
 	if (GetCurrentThreadId() == ch_ref.tid) {
 		ch_ref.waitings.emplace_back(std::move(inf));
 	}
@@ -118,13 +118,13 @@ syswait(HANDLE handle, ms timeout, std::function<void(bool)> callback) {
 	SetEvent(ch_ref.sig);
 }
 
-RUA_FORCE_INLINE void syswait(HANDLE handle, std::function<void()> callback) {
-	syswait(handle, duration_max(), [callback](bool) { callback(); });
+RUA_FORCE_INLINE void sys_wait(HANDLE handle, std::function<void()> callback) {
+	sys_wait(handle, duration_max(), [callback](bool) { callback(); });
 }
 
-} // namespace _syswait_async
+} // namespace _sys_wait_async
 
-using namespace _syswait_async;
+using namespace _sys_wait_async;
 
 }} // namespace rua::win32
 

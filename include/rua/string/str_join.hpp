@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_STRJOIN_HPP
-#define _RUA_STRING_STRJOIN_HPP
+#ifndef _RUA_STRING_STR_JOIN_HPP
+#define _RUA_STRING_STR_JOIN_HPP
 
 #include "line.hpp"
 #include "string_view.hpp"
@@ -12,14 +12,14 @@
 
 namespace rua {
 
-static constexpr uint32_t strjoin_ignore_empty = 0x0000000F;
-static constexpr uint32_t strjoin_multi_line = 0x000000F0;
+static constexpr uint32_t str_join_ignore_empty = 0x0000000F;
+static constexpr uint32_t str_join_multi_line = 0x000000F0;
 
 template <
 	typename StrList,
 	typename = enable_if_t<
 		std::is_convertible<typename StrList::value_type, string_view>::value>>
-inline void strjoin(
+inline void str_join(
 	std::string &buf,
 	const StrList &strs,
 	string_view sep = "",
@@ -41,8 +41,8 @@ inline void strjoin(
 		return;
 	}
 
-	bool is_ignore_empty = flags & strjoin_ignore_empty;
-	bool is_multi_line = flags & strjoin_multi_line;
+	bool is_ignore_empty = flags & str_join_ignore_empty;
+	bool is_multi_line = flags & str_join_multi_line;
 
 	size_t len = 0;
 	bool bf_is_eol = true;
@@ -88,13 +88,13 @@ template <
 	typename StrList,
 	typename = enable_if_t<
 		std::is_convertible<typename StrList::value_type, string_view>::value>>
-inline std::string strjoin(
+inline std::string str_join(
 	const StrList &strs,
 	string_view sep = "",
 	uint32_t flags = 0,
 	size_t pre_reserved_size = 0) {
 	std::string r;
-	strjoin(r, strs, sep, flags, pre_reserved_size);
+	str_join(r, strs, sep, flags, pre_reserved_size);
 	return r;
 }
 
@@ -102,8 +102,8 @@ template <
 	typename... Strs,
 	typename StrList = std::initializer_list<string_view>,
 	typename = decltype(StrList{std::declval<Strs>()...})>
-inline std::string strjoin(Strs &&... strs) {
-	return strjoin(StrList{strs...});
+inline std::string str_join(Strs &&... strs) {
+	return str_join(StrList{strs...});
 }
 
 } // namespace rua

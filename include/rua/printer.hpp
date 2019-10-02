@@ -45,11 +45,11 @@ public:
 		if (!_w) {
 			return;
 		}
-		strjoin(
+		str_join(
 			_buf,
 			std::initializer_list<string_view>{to_temp_string(args)...},
 			" ",
-			strjoin_multi_line);
+			str_join_multi_line);
 		_w->write_all(_buf);
 		_buf.resize(0);
 	}

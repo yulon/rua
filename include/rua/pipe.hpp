@@ -45,7 +45,7 @@ inline pipe_accessors make_pipe() {
 
 inline sys_stream make_pipe(string_view name, size_t timeout = nmax<size_t>()) {
 	auto h = CreateNamedPipeW(
-		u8_to_w(strjoin("\\\\.\\pipe\\", name)).data(),
+		u8_to_w(str_join("\\\\.\\pipe\\", name)).data(),
 		PIPE_ACCESS_INBOUND | PIPE_ACCESS_OUTBOUND,
 		PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 		PIPE_UNLIMITED_INSTANCES,
@@ -63,7 +63,7 @@ inline sys_stream make_pipe(string_view name, size_t timeout = nmax<size_t>()) {
 }
 
 inline sys_stream open_pipe(string_view name, size_t timeout = nmax<size_t>()) {
-	auto fmt_name = u8_to_w(strjoin("\\\\.\\pipe\\", name));
+	auto fmt_name = u8_to_w(str_join("\\\\.\\pipe\\", name));
 
 	if (!WaitNamedPipeW(fmt_name.c_str(), static_cast<DWORD>(timeout))) {
 		return nullptr;

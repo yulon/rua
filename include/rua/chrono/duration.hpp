@@ -4,7 +4,7 @@
 #include "../bytes.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
-#include "../string/strlen.hpp"
+#include "../string/str_len.hpp"
 #include "../string/to_string.hpp"
 #include "../type_traits/std_patch.hpp"
 
@@ -575,7 +575,7 @@ inline std::string to_string(ns dur) {
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
 			w--; // Need room for two bytes.
-			memcpy(buf + w, "µ", strlen("µ"));
+			memcpy(buf + w, "µ", str_len("µ"));
 		} else {
 			// print ms
 			prec = 6;

@@ -6,7 +6,7 @@
 
 #include "../../any_word.hpp"
 #include "../../dylib/win32.hpp"
-#include "../../sched/syswait/sync/win32.hpp"
+#include "../../sched/sys_wait/sync/win32.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -108,7 +108,7 @@ public:
 		if (!_h) {
 			return 0;
 		}
-		syswait(_h);
+		sys_wait(_h);
 		DWORD exit_code;
 		GetExitCodeThread(_h, &exit_code);
 		reset();

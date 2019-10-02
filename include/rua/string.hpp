@@ -3,9 +3,9 @@
 
 #include "string/encoding.hpp"
 #include "string/line.hpp"
+#include "string/str_join.hpp"
+#include "string/str_len.hpp"
 #include "string/string_view.hpp"
-#include "string/strjoin.hpp"
-#include "string/strlen.hpp"
 #include "string/to_string.hpp"
 
 #include <string>
