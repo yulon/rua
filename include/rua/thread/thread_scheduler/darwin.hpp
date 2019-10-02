@@ -68,7 +68,7 @@ public:
 		dispatch_semaphore_t _sem;
 	};
 
-	virtual signaler_i make_signaler() {
+	virtual signaler_i get_signaler() {
 		if (!_sig) {
 			_sig = std::make_shared<signaler>();
 		}

@@ -43,7 +43,7 @@ public:
 
 	using signaler_i = ref<signaler>;
 
-	virtual signaler_i make_signaler() {
+	virtual signaler_i get_signaler() {
 		static signaler wkr;
 		return wkr;
 	}

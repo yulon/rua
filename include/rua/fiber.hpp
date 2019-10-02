@@ -153,7 +153,7 @@ public:
 
 		scheduler_guard sg(_sch);
 		auto orig_sch = sg.previous();
-		_orig_sig = orig_sch->make_signaler();
+		_orig_sig = orig_sch->get_signaler();
 
 		auto now = tick();
 
@@ -259,7 +259,7 @@ public:
 
 		using signaler = rua::secondary_signaler;
 
-		virtual signaler_i make_signaler() {
+		virtual signaler_i get_signaler() {
 			assert(_fib_dvr->_cur_fc);
 
 			if (!_fib_dvr->_cur_fc->sig.type_is<signaler>() ||

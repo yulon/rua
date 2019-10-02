@@ -72,7 +72,7 @@ public:
 		bool _need_close;
 	};
 
-	virtual signaler_i make_signaler() {
+	virtual signaler_i get_signaler() {
 		if (!_sig) {
 			_sig = std::make_shared<signaler>();
 		}

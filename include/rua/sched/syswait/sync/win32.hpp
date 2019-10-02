@@ -15,7 +15,7 @@ inline bool syswait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
 
 	auto sch = this_scheduler();
-	auto sig = sch->make_signaler();
+	auto sig = sch->get_signaler();
 	auto r_ptr = new bool;
 	_syswait_async::syswait(handle, timeout, [=](bool r) {
 		*r_ptr = r;

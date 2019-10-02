@@ -28,7 +28,7 @@ public:
 		}
 
 		auto sch = this_scheduler();
-		auto sig = sch->make_signaler();
+		auto sig = sch->get_signaler();
 		auto it = _waiters.emplace_front(sig);
 
 		if (it.is_back()) {
