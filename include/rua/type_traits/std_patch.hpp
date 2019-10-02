@@ -85,6 +85,19 @@ struct is_unbounded_array : std::false_type {};
 template <typename T>
 struct is_unbounded_array<T[]> : std::true_type {};
 
+#ifdef __cpp_lib_is_null_pointer
+
+template <typename T>
+using is_null_pointer = std::is_null_pointer<T>;
+
+#else
+
+template <typename T>
+struct is_null_pointer
+	: std::is_same<typename std::remove_cv<T>::type, std::nullptr_t> {};
+
+#endif
+
 } // namespace rua
 
 #if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \

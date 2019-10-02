@@ -16,7 +16,7 @@ template <
 	typename Pointer = typename std::remove_reference<R>::type,
 	typename = typename std::enable_if<
 		std::is_pointer<Pointer>::value &&
-		!std::is_null_pointer<Pointer>::value>::type,
+		!is_null_pointer<Pointer>::value>::type,
 	typename Element = typename std::remove_pointer<Pointer>::type,
 	typename =
 		typename std::enable_if<!std::is_void<Element>::value, void>::type>
