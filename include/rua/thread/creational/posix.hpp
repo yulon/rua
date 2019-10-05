@@ -1,10 +1,10 @@
-#ifndef _RUA_THREAD_THREAD_POSIX_HPP
-#define _RUA_THREAD_THREAD_POSIX_HPP
+#ifndef _RUA_THREAD_CREATIONAL_POSIX_HPP
+#define _RUA_THREAD_CREATIONAL_POSIX_HPP
 
-#include "../this_thread_id/posix.hpp"
-#include "../thread_id/posix.hpp"
+#include "../id/posix.hpp"
 
 #include "../../any_word.hpp"
+#include "../../macros.hpp"
 
 #include <pthread.h>
 
@@ -81,17 +81,7 @@ public:
 		reset();
 	}
 
-	any_word wait_for_exit() {
-		if (!_id) {
-			return nullptr;
-		}
-		void *retval;
-		if (pthread_join(_id, &retval)) {
-			return nullptr;
-		}
-		reset();
-		return retval;
-	}
+	inline any_word wait_for_exit();
 
 	void reset() {
 		_id = 0;
@@ -115,6 +105,16 @@ private:
 
 	std::shared_ptr<_detacher_t> _d;
 };
+
+namespace _this_thread {
+
+RUA_FORCE_INLINE thread this_thread() {
+	return thread(this_thread_id());
+}
+
+} // namespace _this_thread
+
+using namespace _this_thread;
 
 }} // namespace rua::posix
 

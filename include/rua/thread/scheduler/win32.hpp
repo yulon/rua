@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_THREAD_SCHEDULER_WIN32_HPP
-#define _RUA_THREAD_THREAD_SCHEDULER_WIN32_HPP
+#ifndef _RUA_THREAD_SCHEDULER_WIN32_HPP
+#define _RUA_THREAD_SCHEDULER_WIN32_HPP
 
 #include "../../limits.hpp"
 #include "../../macros.hpp"

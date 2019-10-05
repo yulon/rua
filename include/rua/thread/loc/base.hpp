@@ -1,7 +1,7 @@
-#ifndef _RUA_THREAD_THREAD_LOC_BASE_HPP
-#define _RUA_THREAD_THREAD_LOC_BASE_HPP
+#ifndef _RUA_THREAD_LOC_BASE_HPP
+#define _RUA_THREAD_LOC_BASE_HPP
 
-#include "../this_thread_id.hpp"
+#include "../id.hpp"
 
 #include "../../any.hpp"
 #include "../../any_word.hpp"

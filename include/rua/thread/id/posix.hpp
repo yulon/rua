@@ -1,15 +1,13 @@
-#ifndef _RUA_THREAD_THIS_THREAD_ID_POSIX_HPP
-#define _RUA_THREAD_THIS_THREAD_ID_POSIX_HPP
-
-#include "../thread_id/posix.hpp"
+#ifndef _RUA_THREAD_ID_POSIX_HPP
+#define _RUA_THREAD_ID_POSIX_HPP
 
 #include "../../macros.hpp"
 
 #include <pthread.h>
 
-#include <functional>
-
 namespace rua { namespace posix {
+
+using tid_t = pthread_t;
 
 namespace _this_thread_id {
 

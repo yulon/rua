@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_THREAD_LOC_UNI_HPP
-#define _RUA_THREAD_THREAD_LOC_UNI_HPP
+#ifndef _RUA_THREAD_LOC_UNI_HPP
+#define _RUA_THREAD_LOC_UNI_HPP
 
 #include "base.hpp"
 

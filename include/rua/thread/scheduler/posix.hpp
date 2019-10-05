@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_THREAD_SCHEDULER_POSIX_HPP
-#define _RUA_THREAD_THREAD_SCHEDULER_POSIX_HPP
+#ifndef _RUA_THREAD_SCHEDULER_POSIX_HPP
+#define _RUA_THREAD_SCHEDULER_POSIX_HPP
 
 #include "../../limits.hpp"
 #include "../../sched/scheduler.hpp"

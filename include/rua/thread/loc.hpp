@@ -1,11 +1,11 @@
-#ifndef _RUA_THREAD_THREAD_LOCAL_STORAGE_HPP
-#define _RUA_THREAD_THREAD_LOCAL_STORAGE_HPP
+#ifndef _RUA_THREAD_LOC_HPP
+#define _RUA_THREAD_LOC_HPP
 
 #include "../macros.hpp"
 
 #ifdef _WIN32
 
-#include "thread_loc/win32.hpp"
+#include "loc/win32.hpp"
 
 namespace rua {
 
@@ -18,7 +18,7 @@ using thread_loc = win32::thread_loc<T>;
 
 #elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
 
-#include "thread_loc/posix.hpp"
+#include "loc/posix.hpp"
 
 namespace rua {
 
@@ -31,7 +31,7 @@ using thread_loc = posix::thread_loc<T>;
 
 #else
 
-#include "thread_loc/uni.hpp"
+#include "loc/uni.hpp"
 
 namespace rua {
 

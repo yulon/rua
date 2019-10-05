@@ -1,12 +1,11 @@
-#ifndef _RUA_THREAD_THREAD_WIN32_HPP
-#define _RUA_THREAD_THREAD_WIN32_HPP
+#ifndef _RUA_THREAD_CREATIONAL_WIN32_HPP
+#define _RUA_THREAD_CREATIONAL_WIN32_HPP
 
-#include "../this_thread_id/win32.hpp"
-#include "../thread_id/win32.hpp"
+#include "../id/win32.hpp"
 
 #include "../../any_word.hpp"
 #include "../../dylib/win32.hpp"
-#include "../../sched/sys_wait/sync/win32.hpp"
+#include "../../macros.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -104,16 +103,7 @@ public:
 		reset();
 	}
 
-	any_word wait_for_exit() {
-		if (!_h) {
-			return 0;
-		}
-		sys_wait(_h);
-		DWORD exit_code;
-		GetExitCodeThread(_h, &exit_code);
-		reset();
-		return static_cast<int>(exit_code);
-	}
+	inline any_word wait_for_exit();
 
 	void reset() {
 		if (_h) {
@@ -168,6 +158,16 @@ private:
 		return 0;
 	}
 };
+
+namespace _this_thread {
+
+RUA_FORCE_INLINE thread this_thread() {
+	return thread(this_thread_id());
+}
+
+} // namespace _this_thread
+
+using namespace _this_thread;
 
 }} // namespace rua::win32
 

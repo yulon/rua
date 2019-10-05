@@ -5,19 +5,27 @@
 
 #ifdef _WIN32
 
-#include "thread_id/win32.hpp"
+#include "id/win32.hpp"
 
 namespace rua {
+
 using tid_t = win32::tid_t;
-}
+
+using namespace win32::_this_thread_id;
+
+} // namespace rua
 
 #elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
 
-#include "thread_id/posix.hpp"
+#include "id/posix.hpp"
 
 namespace rua {
+
 using tid_t = posix::tid_t;
-}
+
+using namespace posix::_this_thread_id;
+
+} // namespace rua
 
 #endif
 

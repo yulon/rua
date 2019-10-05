@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_THREAD_SCHEDULER_DARWIN_HPP
-#define _RUA_THREAD_THREAD_SCHEDULER_DARWIN_HPP
+#ifndef _RUA_THREAD_SCHEDULER_DARWIN_HPP
+#define _RUA_THREAD_SCHEDULER_DARWIN_HPP
 
 #include "../../limits.hpp"
 #include "../../sched/scheduler.hpp"
