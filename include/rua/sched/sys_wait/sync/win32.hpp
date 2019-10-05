@@ -17,10 +17,13 @@ inline bool sys_wait(HANDLE handle, ms timeout = duration_max()) {
 	auto sch = this_scheduler();
 	auto sig = sch->get_signaler();
 	auto r_ptr = new bool;
-	_sys_wait_async::sys_wait(handle, timeout, [=](bool r) {
-		*r_ptr = r;
-		sig->signal();
-	});
+	_sys_wait_async::sys_wait(
+		handle,
+		[=](bool r) {
+			*r_ptr = r;
+			sig->signal();
+		},
+		timeout);
 	sch->wait();
 	auto r = *r_ptr;
 	delete r_ptr;

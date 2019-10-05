@@ -78,11 +78,11 @@ private:
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
 			auto dtor = _dtor;
-			sys_wait(h, [=]() {
+			sys_wait(h, [=](bool) {
 				dtor(*p);
 				delete p;
-				CloseHandle(h);
 			});
+			CloseHandle(h);
 			val_ptr = p;
 		}
 		return *reinterpret_cast<any_word *>(val_ptr);
