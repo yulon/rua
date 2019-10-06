@@ -5,7 +5,7 @@
 
 #include "../chrono/clock.hpp"
 #include "../optional.hpp"
-#include "../sched.hpp"
+#include "../sched/util.hpp"
 
 #include <queue>
 #include <utility>
@@ -77,15 +77,14 @@ public:
 	}
 
 	template <typename... Args>
-	void emplace(Args &&... args) {
-		if (!_buf.emplace_front(std::forward<Args>(args)...).is_back()) {
-			return;
-		}
+	bool emplace(Args &&... args) {
+		_buf.emplace_front(std::forward<Args>(args)...);
 		auto waiter_opt = _waiters.pop_back();
 		if (!waiter_opt) {
-			return;
+			return false;
 		}
 		waiter_opt.value()->signal();
+		return true;
 	}
 
 private:

@@ -4,7 +4,7 @@
 #include "lf_forward_list.hpp"
 
 #include "../chrono/clock.hpp"
-#include "../sched.hpp"
+#include "../sched/util.hpp"
 
 #include <atomic>
 #include <cassert>

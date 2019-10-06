@@ -4,7 +4,7 @@
 #include "bytes.hpp"
 #include "chrono.hpp"
 #include "limits.hpp"
-#include "sched.hpp"
+#include "sched/util.hpp"
 #include "ucontext.hpp"
 
 #include <array>
@@ -285,7 +285,7 @@ public:
 			return state;
 		}
 
-		fiber_driver *get_fiber_pool() {
+		fiber_driver *get_fiber_driver() {
 			return _fib_dvr;
 		}
 
@@ -361,6 +361,8 @@ private:
 			_idle_stks.emplace_back(std::move(_cur_stk));
 		}
 		_cur_stk = std::move(_cur_fc->stk);
+		assert(!_cur_fc->stk);
+		assert(_cur_stk);
 		make_ucontext(&_worker_uc_base, &_worker, this, _cur_stk);
 	}
 
@@ -378,7 +380,9 @@ private:
 		auto &fib_dvr = *p.as<fiber_driver *>();
 
 		while (fib_dvr._fcs.size()) {
+			assert(fib_dvr._fcs.front());
 			fib_dvr._cur_fc = std::move(fib_dvr._fcs.front());
+			assert(!fib_dvr._fcs.front());
 			fib_dvr._fcs.pop();
 
 			if (fib_dvr._cur_fc->stk) {
@@ -419,7 +423,13 @@ private:
 			if (_idle_stks.empty()) {
 				_cur_stk.reset(8 * 1024 * 1024);
 			} else {
+				assert(_idle_stks.back());
+				assert(_idle_stks.back().data());
+				assert(_idle_stks.back().size() == 8 * 1024 * 1024);
 				_cur_stk = std::move(_idle_stks.back());
+				assert(!_idle_stks.back());
+				assert(!_idle_stks.back().data());
+				assert(!_idle_stks.back().size());
 				_idle_stks.pop_back();
 			}
 			make_ucontext(&_worker_uc_base, &_worker, this, _cur_stk);
@@ -445,11 +455,11 @@ private:
 
 inline fiber::fiber(std::function<void()> func, size_t dur) :
 	fiber(fiber::not_auto_attach, std::move(func), dur) {
-	auto s = this_scheduler();
-	if (s) {
-		auto fs = s.as<fiber_driver::scheduler>();
-		if (fs) {
-			fs->get_fiber_pool()->attach(*this);
+	auto sch = this_scheduler();
+	if (sch) {
+		auto fsch = sch.as<fiber_driver::scheduler>();
+		if (fsch) {
+			fsch->get_fiber_driver()->attach(*this);
 			return;
 		}
 	}

@@ -732,7 +732,7 @@ public:
 		typename = enable_if_t<
 			!std::is_convertible<const T &, string_view>::value &&
 			!std::is_convertible<const T &, wstring_view>::value &&
-			!std::is_base_of<bytes_view, decay_t<T>>::value>>
+			!is_span<decay_t<T>>::value>>
 	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
 		bytes_view(&const_val_ref, size) {}
 
@@ -830,7 +830,7 @@ public:
 			!std::is_const<T>::value &&
 			!std::is_convertible<T &, string_view>::value &&
 			!std::is_convertible<T &, wstring_view>::value &&
-			!std::is_base_of<bytes_ref, decay_t<T>>::value>>
+			!is_span<decay_t<T>>::value>>
 	bytes_ref(T &val_ref, size_t size = sizeof(T)) :
 		bytes_ref(&val_ref, size) {}
 
@@ -883,7 +883,7 @@ public:
 
 	template <typename... Args>
 	void reset(Args &&... args) {
-		RUA_SASSERT((std::is_constructible<bytes_view, Args...>::value));
+		RUA_SASSERT((std::is_constructible<bytes_ref, Args...>::value));
 
 		*this = bytes_ref(std::forward<Args>(args)...);
 	}
@@ -1039,6 +1039,11 @@ public:
 			return;
 		}
 		if (!data()) {
+			reset(size);
+			return;
+		}
+		if (this->size() > size) {
+			bytes_ref::resize(size);
 			return;
 		}
 		bytes new_byts(size);
@@ -1056,7 +1061,7 @@ public:
 
 	template <typename... Args>
 	void reset(Args &&... args) {
-		RUA_SASSERT((std::is_constructible<bytes_view, Args...>::value));
+		RUA_SASSERT((std::is_constructible<bytes, Args...>::value));
 
 		*this = bytes(std::forward<Args>(args)...);
 	}
