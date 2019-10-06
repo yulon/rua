@@ -217,7 +217,8 @@ private:
 		if (!old_node) {
 			return nullptr;
 		}
-		while (!slot.compare_exchange_weak(old_node, old_node->after.load()))
+		while (!slot.compare_exchange_weak(old_node, old_node->after.load()) &&
+			   old_node)
 			;
 		return old_node;
 	}
