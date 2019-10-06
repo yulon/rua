@@ -133,14 +133,12 @@ private:
 			auto r = WaitForMultipleObjects(
 				static_cast<DWORD>(i), waiting_objs.data(), FALSE, timeout);
 
-			assert(r != WAIT_FAILED);
-
-			if (is_receiving && r == WAIT_OBJECT_0) {
+			if (is_receiving && (r == WAIT_OBJECT_0 || r == WAIT_FAILED)) {
 				need_recv = true;
 				continue;
 			}
 
-			if (r == WAIT_TIMEOUT) {
+			if (r == WAIT_TIMEOUT || r != WAIT_FAILED) {
 				continue;
 			}
 
