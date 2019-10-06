@@ -7,6 +7,7 @@
 
 #include "any_word.hpp"
 #include "bytes.hpp"
+#include "code_fn.hpp"
 
 #include <cstdint>
 #include <type_traits>
@@ -106,9 +107,7 @@ struct ucontext_t {
 };
 RUA_SASSERT(std::is_trivial<ucontext_t>::value);
 
-#include "switch_executable_section.h"
-
-static const uint8_t _get_ucontext_code[] RUA_EXECUTABLE{
+RUA_CODE(_get_ucontext_code){
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/get_amd64_win.inc"
@@ -124,7 +123,7 @@ static const uint8_t _get_ucontext_code[] RUA_EXECUTABLE{
 #endif
 };
 
-static const uint8_t _set_ucontext_code[] RUA_EXECUTABLE{
+RUA_CODE(_set_ucontext_code){
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/set_amd64_win.inc"
@@ -140,7 +139,7 @@ static const uint8_t _set_ucontext_code[] RUA_EXECUTABLE{
 #endif
 };
 
-static const uint8_t _swap_ucontext_code[] RUA_EXECUTABLE{
+RUA_CODE(_swap_ucontext_code){
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/swap_amd64_win.inc"
@@ -156,19 +155,17 @@ static const uint8_t _swap_ucontext_code[] RUA_EXECUTABLE{
 #endif
 };
 
-#include "switch_executable_section.h"
+RUA_CODE_FN(bool, get_ucontext, (ucontext_t * ucp), (ucp), _get_ucontext_code)
 
-static bool (*get_ucontext)(ucontext_t *ucp) =
-	reinterpret_cast<bool (*)(ucontext_t *)>(
-		reinterpret_cast<uintptr_t>(&_get_ucontext_code));
+RUA_CODE_FN(
+	void, set_ucontext, (const ucontext_t *ucp), (ucp), _set_ucontext_code)
 
-static void (*set_ucontext)(const ucontext_t *ucp) =
-	reinterpret_cast<void (*)(const ucontext_t *)>(
-		reinterpret_cast<uintptr_t>(&_set_ucontext_code));
-
-static void (*swap_ucontext)(ucontext_t *oucp, const ucontext_t *ucp) =
-	reinterpret_cast<void (*)(ucontext_t *, const ucontext_t *)>(
-		reinterpret_cast<uintptr_t>(&_swap_ucontext_code));
+RUA_CODE_FN(
+	void,
+	swap_ucontext,
+	(ucontext_t * oucp, const ucontext_t *ucp),
+	(oucp, ucp),
+	_swap_ucontext_code)
 
 inline void make_ucontext(
 	ucontext_t *ucp,

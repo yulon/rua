@@ -1,6 +1,7 @@
 #ifndef _RUA_MEMORY_HPP
 #define _RUA_MEMORY_HPP
 
+#include "bytes.hpp"
 #include "generic_ptr.hpp"
 #include "macros.hpp"
 
@@ -75,6 +76,11 @@ RUA_FORCE_INLINE bool mem_chmod(
 #endif
 
 	return false;
+}
+
+RUA_FORCE_INLINE bool
+mem_chmod(bytes_view data, int flags = mem_read | mem_write | mem_exec) {
+	return mem_chmod(data.data(), data.size(), flags);
 }
 
 } // namespace rua
