@@ -1,6 +1,7 @@
 #ifndef _RUA_DYLIB_WIN32_HPP
 #define _RUA_DYLIB_WIN32_HPP
 
+#include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../string/encoding/base/win32.hpp"
 #include "../string/string_view.hpp"
@@ -59,10 +60,8 @@ public:
 		return _h && _need_unload;
 	}
 
-	template <typename FuncPtr>
-	FuncPtr get(string_view name) const {
-		return reinterpret_cast<FuncPtr>(
-			reinterpret_cast<void *>(GetProcAddress(_h, name.data())));
+	generic_ptr get(string_view name) const {
+		return GetProcAddress(_h, name.data());
 	}
 
 	void unload() {

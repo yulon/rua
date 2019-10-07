@@ -1,6 +1,7 @@
 #ifndef _RUA_DYLIB_POSIX_HPP
 #define _RUA_DYLIB_POSIX_HPP
 
+#include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../string/string_view.hpp"
 
@@ -56,9 +57,8 @@ public:
 		return _h && _need_unload;
 	}
 
-	template <typename FuncPtr>
-	FuncPtr get(string_view name) const {
-		return reinterpret_cast<FuncPtr>(dlsym(_h, name.data()));
+	generic_ptr get(string_view name) const {
+		return dlsym(_h, name.data());
 	}
 
 	void unload() {
