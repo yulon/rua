@@ -9,7 +9,7 @@
 
 namespace rua {
 
-chan<std::function<void()>> &_block_call_que() {
+inline chan<std::function<void()>> &_block_call_que() {
 	static chan<std::function<void()>> que;
 	return que;
 }
