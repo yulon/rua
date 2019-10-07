@@ -105,7 +105,7 @@ private:
 			waiting_objs.resize(c);
 			waiting_its.resize(waiting_objs.size());
 
-			auto timeout = INFINITE;
+			ms timeout(duration_max());
 			auto now_ti = now();
 
 			size_t i = 0;
@@ -120,9 +120,9 @@ private:
 					it = waitings.erase(it);
 					continue;
 				}
-				auto this_timeout = ms(it->end_ti - now_ti).count();
+				auto this_timeout = it->end_ti - now_ti;
 				if (this_timeout < timeout) {
-					timeout = static_cast<DWORD>(this_timeout);
+					timeout = this_timeout;
 				}
 				waiting_objs[i] = it->obj;
 				waiting_its[i] = it;
@@ -131,7 +131,12 @@ private:
 			}
 
 			auto r = WaitForMultipleObjects(
-				static_cast<DWORD>(i), waiting_objs.data(), FALSE, timeout);
+				static_cast<DWORD>(i),
+				waiting_objs.data(),
+				FALSE,
+				static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
+					? nmax<DWORD>()
+					: static_cast<DWORD>(timeout.count()));
 
 			if (is_receiving && (r == WAIT_OBJECT_0 || r == WAIT_FAILED)) {
 				need_recv = true;
