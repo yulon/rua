@@ -99,7 +99,9 @@ private:
 
 class fiber_driver {
 public:
-	fiber_driver() : _sch(*this) {
+	fiber_driver(size_t stack_size = 20 * 1024) :
+		_stk_sz(stack_size),
+		_sch(*this) {
 		get_ucontext(&_worker_uc_base);
 	}
 
@@ -353,6 +355,7 @@ private:
 
 	ucontext_t _orig_uc, _worker_uc_base;
 
+	size_t _stk_sz;
 	bytes _cur_stk;
 	std::vector<bytes> _idle_stks;
 
@@ -421,11 +424,10 @@ private:
 	void _swap_worker_uc(ucontext_t *oucp) {
 		if (!_cur_stk) {
 			if (_idle_stks.empty()) {
-				_cur_stk.reset(8 * 1024 * 1024);
+				_cur_stk.reset(_stk_sz);
 			} else {
 				assert(_idle_stks.back());
 				assert(_idle_stks.back().data());
-				assert(_idle_stks.back().size() == 8 * 1024 * 1024);
 				_cur_stk = std::move(_idle_stks.back());
 				assert(!_idle_stks.back());
 				assert(!_idle_stks.back().data());

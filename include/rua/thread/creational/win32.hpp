@@ -22,10 +22,10 @@ public:
 
 	constexpr thread() : _h(nullptr), _id(0) {}
 
-	explicit thread(std::function<void()> fn) {
+	explicit thread(std::function<void()> fn, size_t stack_size = 0) {
 		_h = CreateThread(
 			nullptr,
-			0,
+			stack_size,
 			&_call,
 			reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
 			0,

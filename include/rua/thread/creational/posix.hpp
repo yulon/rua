@@ -19,31 +19,46 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr thread() : _id(0), _d() {}
+	constexpr thread() : _id(0), _res() {}
 
-	explicit thread(std::function<void()> fn) {
-		tid_t id;
-		if (pthread_create(
-				&id,
-				nullptr,
-				[](void *p) -> void * {
-					std::unique_ptr<std::function<void()>> fp(
-						reinterpret_cast<std::function<void()> *>(p));
-					(*fp)();
-					return nullptr;
-				},
-				reinterpret_cast<void *>(
-					new std::function<void()>(std::move(fn))))) {
+	explicit thread(std::function<void()> fn, size_t stack_size = 0) {
+		_res = std::make_shared<_res_t>();
+		if (pthread_attr_init(&_res->attr)) {
+			_res->id = 0;
+			_res.reset();
 			_id = 0;
 			return;
 		}
-		_id = id;
-		_d = std::make_shared<_detacher_t>(id);
+		if (stack_size && pthread_attr_setstacksize(&_res->attr, stack_size)) {
+			pthread_attr_destroy(&_res->attr);
+			_res->id = 0;
+			_res.reset();
+			_id = 0;
+			return;
+		}
+		_res->fn = std::move(fn);
+		if (pthread_create(
+				&_res->id,
+				&_res->attr,
+				[](void *p) -> void * {
+					std::unique_ptr<std::shared_ptr<_res_t>> res_ptr(
+						reinterpret_cast<std::shared_ptr<_res_t> *>(p));
+					(*res_ptr)->fn();
+					return nullptr;
+				},
+				reinterpret_cast<void *>(new std::shared_ptr<_res_t>(_res)))) {
+			pthread_attr_destroy(&_res->attr);
+			_res->id = 0;
+			_res.reset();
+			_id = 0;
+			return;
+		}
+		_id = _res->id;
 	}
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
-	constexpr explicit thread(tid_t id) : _id(id), _d() {}
+	constexpr explicit thread(tid_t id) : _id(id), _res() {}
 
 	~thread() {
 		reset();
@@ -53,20 +68,20 @@ public:
 		return _id;
 	}
 
-	bool operator==(const thread &target) const {
-		return _id == target._id;
-	}
-
-	bool operator!=(const thread &target) const {
-		return _id != target._id;
-	}
-
 	native_handle_t native_handle() const {
 		return _id;
 	}
 
 	explicit operator bool() const {
 		return _id;
+	}
+
+	bool operator==(const thread &target) const {
+		return _id == target._id;
+	}
+
+	bool operator!=(const thread &target) const {
+		return _id != target._id;
 	}
 
 	void exit(any_word retval = nullptr) {
@@ -84,26 +99,43 @@ public:
 	inline any_word wait_for_exit();
 
 	void reset() {
-		_id = 0;
-		_d.reset();
+		if (_id) {
+			_id = 0;
+		}
+		_res.reset();
 	}
 
 private:
 	pthread_t _id;
 
-	class _detacher_t {
-	public:
-		constexpr _detacher_t(pthread_t id) : _id(id) {}
+	struct _res_t {
+		pthread_t id;
+		pthread_attr_t attr;
+		std::function<void()> fn;
 
-		~_detacher_t() {
-			pthread_detach(_id);
+		_res_t() = default;
+
+		~_res_t() {
+			if (!id) {
+				return;
+			}
+			pthread_detach(id);
+			pthread_attr_destroy(&attr);
 		}
 
-	private:
-		pthread_t _id;
+		_res_t(_res_t &&src) :
+			id(src.id),
+			attr(src.attr),
+			fn(std::move(src.fn)) {
+			if (src.id) {
+				src.id = 0;
+			}
+		}
+
+		RUA_OVERLOAD_ASSIGNMENT_R(_res_t)
 	};
 
-	std::shared_ptr<_detacher_t> _d;
+	std::shared_ptr<_res_t> _res;
 };
 
 namespace _this_thread {
