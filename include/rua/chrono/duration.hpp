@@ -505,7 +505,7 @@ using namespace duration_literals;
 // point too when the fraction is 0. It returns the index where the
 // output bytes begin and the value v/10**prec.
 inline void _duration_to_string_fmt_frac(
-	char *buf, size_t w, ns v, int prec, int *nw, ns *nv) {
+	char *buf, int w, ns v, int prec, int *nw, ns *nv) {
 	// Omit trailing zeros up to and including decimal point.
 	auto print = false;
 	for (auto i = 0; i < prec; i++) {
@@ -527,7 +527,7 @@ inline void _duration_to_string_fmt_frac(
 
 // _duration_to_string_fmt_int formats v into the tail of buf.
 // It returns the index where the output begins.
-inline int _duration_to_string_fmt_int(char *buf, size_t w, ns v) {
+inline int _duration_to_string_fmt_int(char *buf, int w, ns v) {
 	if (v == 0) {
 		w--;
 		buf[w] = '0';
