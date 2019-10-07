@@ -138,7 +138,7 @@ private:
 				continue;
 			}
 
-			if (r == WAIT_TIMEOUT || r != WAIT_FAILED) {
+			if (r == WAIT_TIMEOUT || r == WAIT_FAILED) {
 				continue;
 			}
 
