@@ -27,8 +27,11 @@ template <
 	typename Callee,
 	typename... Args,
 	typename Ret =
-		decay_t<decltype(std::declval<Callee &>()(std::declval<Args &>()...))>>
-enable_if_t<std::is_same<Ret, void>::value, Ret>
+		decltype(std::declval<Callee &>()(std::declval<Args &>()...))>
+enable_if_t<
+	!std::is_function<remove_reference_t<Callee>>::value &&
+		std::is_same<Ret, void>::value,
+	Ret>
 block_call(Callee &&callee, Args &&... args) {
 	auto sch = this_scheduler();
 	if (sch.type_is<thread_scheduler>()) {
@@ -49,8 +52,11 @@ template <
 	typename Callee,
 	typename... Args,
 	typename Ret =
-		decay_t<decltype(std::declval<Callee &>()(std::declval<Args &>()...))>>
-enable_if_t<!std::is_same<Ret, void>::value, Ret>
+		decltype(std::declval<Callee &>()(std::declval<Args &>()...))>
+enable_if_t<
+	!std::is_function<remove_reference_t<Callee>>::value &&
+		!std::is_same<Ret, void>::value,
+	Ret>
 block_call(Callee &&callee, Args &&... args) {
 	auto sch = this_scheduler();
 	if (sch.type_is<thread_scheduler>()) {
@@ -68,6 +74,11 @@ block_call(Callee &&callee, Args &&... args) {
 	auto r = *r_ptr;
 	delete r_ptr;
 	return r;
+}
+
+template <typename Ret, typename... Params, typename... Args>
+Ret block_call(Ret (&callee)(Params...), Args &&... args) {
+	return block_call(&callee, std::forward<Args>(args)...);
 }
 
 } // namespace rua
