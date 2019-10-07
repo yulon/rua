@@ -69,6 +69,7 @@ template <
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;
+	using value_type = remove_cv_t<Element>;
 	using index_type = Index;
 };
 

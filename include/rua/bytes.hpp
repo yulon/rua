@@ -730,16 +730,19 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			!std::is_convertible<const T &, string_view>::value &&
-			!std::is_convertible<const T &, wstring_view>::value &&
-			!is_span<decay_t<T>>::value>>
-	bytes_view(const T &const_val_ref, size_t size = sizeof(T)) :
-		bytes_view(&const_val_ref, size) {}
+			!std::is_convertible<T &&, string_view>::value &&
+			!std::is_convertible<T &&, wstring_view>::value &&
+			!is_span<T &&>::value>>
+	bytes_view(T &&ref, size_t size = sizeof(T)) : bytes_view(&ref, size) {}
 
 	template <
 		typename T,
-		typename = enable_if_t<!std::is_base_of<bytes_view, decay_t<T>>::value>,
-		typename SpanTraits = span_traits<T &&>>
+		typename SpanTraits = span_traits<T &&>,
+		typename = enable_if_t<
+			!std::is_base_of<bytes_view, decay_t<T>>::value &&
+			(!std::is_array<remove_reference_t<T>>::value ||
+			 (!std::is_same<typename SpanTraits::value_type, char>::value &&
+			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_view(T &&span) :
 		bytes_view(
 			span_data_of(std::forward<T>(span)),
@@ -827,19 +830,21 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			!std::is_const<T>::value &&
-			!std::is_convertible<T &, string_view>::value &&
-			!std::is_convertible<T &, wstring_view>::value &&
-			!is_span<decay_t<T>>::value>>
-	bytes_ref(T &val_ref, size_t size = sizeof(T)) :
-		bytes_ref(&val_ref, size) {}
+			!std::is_const<remove_reference_t<T>>::value &&
+			!std::is_convertible<T &&, string_view>::value &&
+			!std::is_convertible<T &&, wstring_view>::value &&
+			!is_span<T &&>::value>>
+	bytes_ref(T &&ref, size_t size = sizeof(T)) : bytes_ref(&ref, size) {}
 
 	template <
 		typename T,
-		typename = enable_if_t<!std::is_base_of<bytes_ref, decay_t<T>>::value>,
 		typename SpanTraits = span_traits<T &&>,
 		typename = enable_if_t<
-			!std::is_const<typename SpanTraits::element_type>::value>>
+			!std::is_base_of<bytes_ref, decay_t<T>>::value &&
+			!std::is_const<typename SpanTraits::element_type>::value &&
+			(!std::is_array<remove_reference_t<T>>::value ||
+			 (!std::is_same<typename SpanTraits::value_type, char>::value &&
+			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_ref(T &&span) :
 		bytes_ref(
 			span_data_of(std::forward<T>(span)),
