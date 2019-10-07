@@ -14,6 +14,15 @@ inline chan<std::function<void()>> &_block_call_que() {
 	return que;
 }
 
+RUA_FORCE_INLINE void _make_block_caller() {
+	thread([]() {
+		auto &que = _block_call_que();
+		for (;;) {
+			que.pop()();
+		}
+	});
+}
+
 template <
 	typename Callee,
 	typename... Args,
@@ -31,12 +40,7 @@ block_call(Callee &&callee, Args &&... args) {
 			callee(args...);
 			sig->signal();
 		})) {
-		thread([]() {
-			auto &que = _block_call_que();
-			for (;;) {
-				que.pop()();
-			}
-		});
+		_make_block_caller();
 	}
 	sch->wait();
 }
@@ -58,12 +62,7 @@ block_call(Callee &&callee, Args &&... args) {
 			*r_ptr = callee(args...);
 			sig->signal();
 		})) {
-		thread([]() {
-			auto &que = _block_call_que();
-			for (;;) {
-				que.pop()();
-			}
-		});
+		_make_block_caller();
 	}
 	sch->wait();
 	auto r = *r_ptr;
