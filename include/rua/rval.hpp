@@ -1,5 +1,5 @@
-#ifndef _RUA_ALWAYS_MOVE_HPP
-#define _RUA_ALWAYS_MOVE_HPP
+#ifndef _RUA_RVAL_HPP
+#define _RUA_RVAL_HPP
 
 #include "macros.hpp"
 #include "type_traits/std_patch.hpp"
@@ -9,9 +9,9 @@
 namespace rua {
 
 template <typename T>
-class always_move {
+class rval {
 public:
-	always_move() {
+	rval() {
 		new (&_val) T();
 	}
 
@@ -22,33 +22,30 @@ public:
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
 			 (!std::is_base_of<T, ArgsFront>::value &&
-			  !std::is_base_of<always_move, ArgsFront>::value))>>
-	always_move(Args &&... args) {
+			  !std::is_base_of<rval, ArgsFront>::value))>>
+	rval(Args &&... args) {
 		new (&_val) T(std::forward<Args>(args)...);
 	}
 
-	always_move(T &&val) {
+	rval(T &&val) {
 		new (&_val) T(std::move(val));
 	}
 
-	always_move(T &val) : always_move(std::move(val)) {}
+	rval(T &val) : rval(std::move(val)) {}
 
-	always_move(const T &val) :
-		always_move(static_cast<T &&>(const_cast<T &>(val))) {}
+	rval(const T &val) : rval(static_cast<T &&>(const_cast<T &>(val))) {}
 
-	~always_move() {
+	~rval() {
 		_val.~T();
 	}
 
-	always_move(always_move &&src) {
+	rval(rval &&src) {
 		new (&_val) T(std::move(src._val));
 	}
 
-	always_move(const always_move &src) :
-		always_move(
-			static_cast<always_move &&>(const_cast<always_move &>(src))) {}
+	rval(const rval &src) : rval(std::move(const_cast<rval &>(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT(always_move)
+	RUA_OVERLOAD_ASSIGNMENT(rval)
 
 	T &&value() && {
 		return std::move(_val);
