@@ -8,6 +8,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <functional>
 
 namespace rua {
 
@@ -337,6 +338,14 @@ struct hash<rua::time> {
 private:
 	static RUA_FORCE_INLINE size_t _szt(int64_t c) {
 		return static_cast<size_t>(c >= 0 ? c : 0);
+	}
+};
+
+template <>
+class less<rua::time> {
+public:
+	bool operator()(const rua::time &lhs, const rua::time &rhs) const {
+		return lhs < rhs;
 	}
 };
 

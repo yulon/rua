@@ -66,7 +66,7 @@ to_string(P *val) {
 }
 
 inline std::string to_string(generic_ptr ptr) {
-	return ptr ? to_hex(ptr.integer()) : to_string(nullptr);
+	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
 }
 
 inline const char *to_string(bool val) {
