@@ -128,8 +128,7 @@ private:
 
 	static DWORD _get_id(HANDLE h) {
 		static dylib kernel32("KERNEL32.DLL", false);
-		static decltype(&GetThreadId) GetThreadId_ptr =
-			kernel32.get("GetThreadId");
+		static decltype(&GetThreadId) GetThreadId_ptr = kernel32["GetThreadId"];
 
 		if (GetThreadId_ptr) {
 			return GetThreadId_ptr(h);

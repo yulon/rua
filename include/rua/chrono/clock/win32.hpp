@@ -33,7 +33,7 @@ inline time tick() {
 	}
 	static dylib kernel32("KERNEL32.DLL", false);
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
-		kernel32.get("GetTickCount64");
+		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {
 		return ms(GetTickCount64_ptr());
 	}

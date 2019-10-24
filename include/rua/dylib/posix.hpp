@@ -61,6 +61,10 @@ public:
 		return dlsym(_h, name.data());
 	}
 
+	generic_ptr operator[](string_view name) const {
+		return get(name);
+	}
+
 	void unload() {
 		if (!_h) {
 			return;
