@@ -42,22 +42,21 @@ public:
 
 	template <typename T>
 	RUA_FORCE_INLINE const T &at() const {
-		return *reinterpret_cast<const T *>(_this()->data());
+		return *_this()->data().template as<const T *>();
 	}
 
 	template <typename T>
 	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
-		return *reinterpret_cast<const T *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
+		return *(_this()->data() + offset).template as<const T *>();
 	}
 
 	template <typename T>
 	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
-		return *reinterpret_cast<const T *>(_this()->data())[ix];
+		return _this()->data().template as<const T *>()[ix];
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return reinterpret_cast<const byte *>(_this()->data())[offset];
+		return *at<const byte *>(offset);
 	}
 
 	inline bytes_view
@@ -73,11 +72,19 @@ public:
 	template <typename... DestArgs>
 	inline size_t copy_to(DestArgs &&... dest) const;
 
+	RUA_FORCE_INLINE operator string_view() const {
+		return string_view(
+			_this()->data().template as<const char *>(), _this()->size());
+	}
+
+	RUA_FORCE_INLINE operator std::string() const {
+		return std::string(
+			_this()->data().template as<const char *>(), _this()->size());
+	}
+
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
-	const void *derel(ptrdiff_t pos = 0) const {
-		return reinterpret_cast<void *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + pos + SlotSize +
-			get<RelPtr>(pos));
+	generic_ptr derel(ptrdiff_t pos = 0) const {
+		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
 	template <typename CmpUnit = uintmax_t>
@@ -480,7 +487,7 @@ public:
 			return search_result{npos};
 		}
 
-		auto begin = _this()->data();
+		const byte *begin = _this()->data();
 		auto end = begin + _this()->size() - byts.size();
 
 		size_t h = 0;
@@ -585,32 +592,32 @@ public:
 
 	template <typename T>
 	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
-		return *reinterpret_cast<const T *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
+		return *(_this()->data() + offset).template as<const T *>();
 	}
 
 	template <typename T>
 	RUA_FORCE_INLINE T &at(ptrdiff_t offset) {
-		return *reinterpret_cast<T *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + offset);
+		return *(_this()->data() + offset).template as<T *>();
 	}
 
 	template <typename T>
 	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
-		return *reinterpret_cast<const T *>(_this()->data())[ix];
+		return _this()->data().template as<const T *>()[ix];
 	}
 
 	template <typename T>
 	RUA_FORCE_INLINE T &at_aligned(ptrdiff_t ix) {
-		return *reinterpret_cast<T *>(_this()->data())[ix];
+		return _this()->data().template as<T *>()[ix];
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return reinterpret_cast<const byte *>(_this()->data())[offset];
+		return *at<const byte *>(offset);
+		;
 	}
 
 	RUA_FORCE_INLINE byte &operator[](ptrdiff_t offset) {
-		return reinterpret_cast<byte *>(_this()->data())[offset];
+		return *at<byte *>(offset);
+		;
 	}
 
 	inline bytes_view
@@ -637,27 +644,9 @@ public:
 	inline size_t copy_from(SrcArgs &&... src) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
-	void *derel(ptrdiff_t pos = 0) {
-		return reinterpret_cast<void *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + pos + SlotSize +
-			this->template get<RelPtr>(pos));
-	}
-
-	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
-	const void *derel(ptrdiff_t pos = 0) const {
-		return reinterpret_cast<void *>(
-			reinterpret_cast<uintptr_t>(_this()->data()) + pos + SlotSize +
-			this->template get<RelPtr>(pos));
-	}
-
-	template <
-		typename RelPtr,
-		size_t SlotSize = sizeof(RelPtr),
-		typename AbsPoint>
-	RelPtr enrel(AbsPoint *abs_ptr, ptrdiff_t pos = 0) {
-		auto rel_ptr = static_cast<RelPtr>(
-			abs_ptr -
-			(reinterpret_cast<uintptr_t>(_this()->data()) + pos + SlotSize));
+	RelPtr enrel(generic_ptr abs_ptr, ptrdiff_t pos = 0) {
+		auto rel_ptr =
+			static_cast<RelPtr>(abs_ptr - (_this()->data() + pos + SlotSize));
 		this->template set<RelPtr>(pos, rel_ptr);
 		return rel_ptr;
 	}
@@ -691,17 +680,17 @@ public:
 
 	constexpr bytes_view(std::nullptr_t) : bytes_view() {}
 
+	constexpr bytes_view(generic_ptr ptr, size_t size) :
+		_p(ptr),
+		_n(ptr ? size : 0) {}
+
 	bytes_view(const byte *ptr, size_t size) :
 		_p(reinterpret_cast<const char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
-	constexpr bytes_view(const char *c_str, size_t size) :
-		_p(c_str),
-		_n(size) {}
+	bytes_view(const char *c_str, size_t size) : _p(c_str), _n(size) {}
 
-	RUA_CONSTEXPR_14 bytes_view(const char *c_str) :
-		_p(c_str),
-		_n(c_str ? str_len(c_str) : 0) {}
+	bytes_view(const char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
 
 	bytes_view(const wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<const char *>(c_wstr)),
@@ -745,16 +734,16 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_view(T &&span) :
 		bytes_view(
-			span_data_of(std::forward<T>(span)),
-			span_size_of(std::forward<T>(span)) *
+			rua::data(std::forward<T>(span)),
+			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
 		return _p;
 	}
 
-	const byte *data() const {
-		return reinterpret_cast<const byte *>(_p);
+	generic_ptr data() const {
+		return _p;
 	}
 
 	constexpr size_t size() const {
@@ -788,7 +777,7 @@ public:
 	}
 
 private:
-	const char *_p;
+	generic_ptr _p;
 	size_t _n;
 };
 
@@ -798,15 +787,17 @@ public:
 
 	constexpr bytes_ref(std::nullptr_t) : bytes_ref() {}
 
+	constexpr bytes_ref(generic_ptr ptr, size_t size) :
+		_p(ptr),
+		_n(ptr ? size : 0) {}
+
 	bytes_ref(byte *ptr, size_t size) :
 		_p(reinterpret_cast<char *>(ptr)),
 		_n(ptr ? size : 0) {}
 
-	constexpr bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
+	bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
 
-	RUA_CONSTEXPR_14 bytes_ref(char *c_str) :
-		_p(c_str),
-		_n(c_str ? str_len(c_str) : 0) {}
+	bytes_ref(char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
 
 	bytes_ref(wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<char *>(c_wstr)),
@@ -847,20 +838,16 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_ref(T &&span) :
 		bytes_ref(
-			span_data_of(std::forward<T>(span)),
-			span_size_of(std::forward<T>(span)) *
+			rua::data(std::forward<T>(span)),
+			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
 		return _p;
 	}
 
-	const byte *data() const {
-		return reinterpret_cast<const byte *>(_p);
-	}
-
-	byte *data() {
-		return reinterpret_cast<byte *>(_p);
+	generic_ptr data() const {
+		return _p;
 	}
 
 	constexpr size_t size() const {
@@ -894,7 +881,7 @@ public:
 	}
 
 private:
-	char *_p;
+	generic_ptr _p;
 	size_t _n;
 };
 
@@ -997,7 +984,7 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
 }
 
 inline bytes_ref as_bytes_ref(bytes_view src) {
-	return bytes_ref(const_cast<byte *>(src.data()), src.size());
+	return bytes_ref(src.data().as<byte *>(), src.size());
 }
 
 class bytes : public bytes_ref {
@@ -1060,7 +1047,7 @@ public:
 		if (!data()) {
 			return;
 		}
-		delete data();
+		delete data().as<byte *>();
 		bytes_ref::reset();
 	}
 

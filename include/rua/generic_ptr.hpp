@@ -82,6 +82,10 @@ public:
 		return _val == target._val;
 	}
 
+	RUA_FORCE_INLINE constexpr bool operator!=(const generic_ptr target) const {
+		return _val != target._val;
+	}
+
 	RUA_FORCE_INLINE generic_ptr &operator++() {
 		++_val;
 		return *this;

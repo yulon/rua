@@ -25,8 +25,7 @@ public:
 			auto rsz = _lr->read(_buf);
 			if (!rsz) {
 				if (_data_sz) {
-					_cache = loc_to_u8(std::string(
-						reinterpret_cast<const char *>(_buf.data()), _data_sz));
+					_cache = loc_to_u8(_buf(0, _data_sz));
 				}
 				break;
 			}
@@ -36,8 +35,7 @@ public:
 				if (static_cast<char>(_buf[static_cast<size_t>(i)]) >= 0) {
 					auto valid_sz = static_cast<size_t>(i + 1);
 
-					_cache = loc_to_u8(std::string(
-						reinterpret_cast<const char *>(_buf.data()), valid_sz));
+					_cache = loc_to_u8(_buf(0, valid_sz));
 
 					_data_sz -= valid_sz;
 					_buf = _buf(valid_sz);
@@ -66,8 +64,7 @@ public:
 	virtual ~u8_to_loc_writer() = default;
 
 	virtual size_t write(bytes_view p) {
-		_lw->write_all(u8_to_loc(
-			std::string(reinterpret_cast<const char *>(p.data()), p.size())));
+		_lw->write_all(u8_to_loc(p));
 		return p.size();
 	}
 

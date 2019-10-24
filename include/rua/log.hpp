@@ -23,13 +23,7 @@ public:
 		_ico(icon) {}
 
 	virtual size_t write(bytes_view p) {
-		MessageBoxW(
-			0,
-			u8_to_w(
-				std::string(reinterpret_cast<const char *>(p.data()), p.size()))
-				.c_str(),
-			_tit.c_str(),
-			_ico);
+		MessageBoxW(0, u8_to_w(p).c_str(), _tit.c_str(), _ico);
 		return p.size();
 	}
 

@@ -163,7 +163,7 @@
 		reinterpret_cast<void *>(GetProcAddress(dll_handle, #name)))
 
 #ifdef _MSC_VER
-#define RUA_FORCE_INLINE __forceinline
+#define RUA_FORCE_INLINE inline __forceinline
 #elif defined(__GNUC__)
 #define RUA_FORCE_INLINE inline __attribute__((always_inline))
 #else

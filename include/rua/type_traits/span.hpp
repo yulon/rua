@@ -3,8 +3,10 @@
 
 #include "std_patch.hpp"
 
+#include "../byte.hpp"
+#include "../generic_ptr.hpp"
+
 #include <string>
-#include <type_traits>
 
 namespace rua {
 
@@ -15,16 +17,15 @@ template <
 	typename R = decltype(std::declval<T &&>().data()),
 	typename Pointer = remove_reference_t<R>,
 	typename = enable_if_t<
-		std::is_pointer<Pointer>::value && !is_null_pointer<Pointer>::value>,
-	typename Element = remove_pointer_t<Pointer>,
-	typename = enable_if_t<!std::is_void<Element>::value, void>>
-RUA_FORCE_INLINE Pointer span_data_of(T &&target) {
+		std::is_pointer<Pointer>::value ||
+		std::is_convertible<Pointer, void *>::value>>
+RUA_FORCE_INLINE Pointer data(T &&target) {
 	return std::forward<T>(target).data();
 }
 
 template <typename CharT, typename Traits, typename Allocator>
 RUA_FORCE_INLINE CharT *
-span_data_of(std::basic_string<CharT, Traits, Allocator> &target) {
+data(std::basic_string<CharT, Traits, Allocator> &target) {
 #if RUA_CPP >= RUA_CPP_17
 	return target.data();
 #else
@@ -34,13 +35,18 @@ span_data_of(std::basic_string<CharT, Traits, Allocator> &target) {
 
 template <typename CharT, typename Traits, typename Allocator>
 RUA_FORCE_INLINE CharT *
-span_data_of(std::basic_string<CharT, Traits, Allocator> &&target) {
-	return span_data_of(target);
+data(std::basic_string<CharT, Traits, Allocator> &&target) {
+	return data(target);
 }
 
 template <typename T, size_t N>
-RUA_FORCE_INLINE constexpr T *span_data_of(T (&inst)[N]) {
+RUA_FORCE_INLINE constexpr T *data(T (&inst)[N]) {
 	return inst;
+}
+
+template <class E>
+RUA_FORCE_INLINE constexpr const E *data(std::initializer_list<E> il) {
+	return il.begin();
 }
 
 template <
@@ -50,28 +56,79 @@ template <
 	typename R = decltype(std::declval<T &&>().size()),
 	typename DecayR = decay_t<R>,
 	typename = enable_if_t<std::is_integral<DecayR>::value>>
-RUA_FORCE_INLINE DecayR span_size_of(T &&target) {
+RUA_FORCE_INLINE DecayR size(T &&target) {
 	return std::forward<T>(target).size();
 }
 
 template <typename T, size_t N>
-RUA_FORCE_INLINE constexpr size_t span_size_of(T (&)[N]) {
+RUA_FORCE_INLINE constexpr size_t size(T (&)[N]) {
 	return N;
 }
 
 template <
 	typename T,
-	typename Pointer =
-		remove_reference_t<decltype(span_data_of(std::declval<T>()))>,
-	typename Element = remove_pointer_t<Pointer>,
-	typename Index =
-		remove_reference_t<decltype(span_size_of(std::declval<T>()))>>
+	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Element = conditional_t<
+		std::is_pointer<Pointer>::value,
+		remove_pointer_t<Pointer>,
+		byte>,
+	typename Value = remove_cv_t<Element>,
+	typename Index = remove_reference_t<decltype(size(std::declval<T>()))>>
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;
-	using value_type = remove_cv_t<Element>;
+	using value_type = Value;
 	using index_type = Index;
 };
+
+template <
+	typename T,
+	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>>
+struct span_pointer {
+	using type = Pointer;
+};
+
+template <typename T>
+using span_pointer_t = typename span_pointer<T>::type;
+
+template <
+	typename T,
+	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Element = conditional_t<
+		std::is_pointer<Pointer>::value,
+		remove_pointer_t<Pointer>,
+		byte>>
+struct span_element {
+	using type = Element;
+};
+
+template <typename T>
+using span_element_t = typename span_element<T>::type;
+
+template <
+	typename T,
+	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Element = conditional_t<
+		std::is_pointer<Pointer>::value,
+		remove_pointer_t<Pointer>,
+		byte>,
+	typename Value = remove_cv_t<Element>>
+struct span_value {
+	using type = Value;
+};
+
+template <typename T>
+using span_value_t = typename span_value<T>::type;
+
+template <
+	typename T,
+	typename Index = remove_reference_t<decltype(size(std::declval<T>()))>>
+struct span_index {
+	using type = Index;
+};
+
+template <typename T>
+using span_index_t = typename span_index<T>::type;
 
 template <typename, typename = void>
 struct is_span : std::false_type {};
