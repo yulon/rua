@@ -1060,7 +1060,7 @@ public:
 	}
 
 	size_t capacity() const {
-		return bit_get<size_t>(data() - sizeof(size_t));
+		return data() ? _capacity() : 0;
 	}
 
 	void resize(size_t size = 0) {
@@ -1068,7 +1068,7 @@ public:
 			reset(size);
 			return;
 		}
-		if (capacity() > size) {
+		if (_capacity() > size) {
 			bytes_ref::resize(size);
 			return;
 		}
@@ -1090,7 +1090,7 @@ public:
 			reset();
 			return;
 		}
-		if (data() && capacity() > size) {
+		if (capacity() > size) {
 			bytes_ref::resize(size);
 			return;
 		}
@@ -1118,7 +1118,7 @@ public:
 	}
 
 	void reset(bytes &&src) {
-		if (!data()) {
+		if (!data() || _capacity() > src.capacity()) {
 			bytes_ref::reset(src.data(), src.size());
 			static_cast<bytes_ref &>(src).reset();
 			return;
@@ -1127,10 +1127,14 @@ public:
 	}
 
 private:
-	void _alloc(size_t size) {
+	RUA_FORCE_INLINE void _alloc(size_t size) {
 		bytes_ref::reset(
 			new char[sizeof(size_t) + size] + sizeof(size_t), size);
 		bit_set<size_t>(data() - sizeof(size_t), size);
+	}
+
+	RUA_FORCE_INLINE size_t _capacity() const {
+		return bit_get<size_t>(data() - sizeof(size_t));
 	}
 };
 
@@ -1185,12 +1189,8 @@ operator+(A &&a, B &&b) {
 template <typename Derived, size_t Size = nmax<size_t>()>
 class bytes_block_base {
 public:
-	void *data() {
-		return static_cast<Derived *>(this);
-	}
-
-	const void *data() const {
-		return static_cast<const Derived *>(this);
+	generic_ptr data() const {
+		return this;
 	}
 
 	static constexpr size_t size() {
@@ -1209,12 +1209,12 @@ protected:
 	constexpr enable_bytes_accessor_from_this() = default;
 };
 
-template <size_t Size>
+template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block
 	: public bytes_block_base<bytes_block<Size>, Size>,
 	  public bytes_base<bytes_block_base<bytes_block<Size>, Size>> {
 private:
-	char _raw[Size];
+	alignas(Align) char _raw[Size];
 };
 
 template <size_t Sz = nmax<size_t>()>
