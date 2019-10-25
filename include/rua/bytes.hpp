@@ -1109,7 +1109,7 @@ public:
 			 !std::is_integral<DecayArgsFront>::value)>>
 	void reset(Args &&... copy_src) {
 		bytes_view v(std::forward<Args>(copy_src)...);
-		if (v.size()) {
+		if (!v.size()) {
 			reset();
 			return;
 		}
@@ -1118,12 +1118,21 @@ public:
 	}
 
 	void reset(bytes &&src) {
-		if (!data() || _capacity() > src.capacity()) {
-			bytes_ref::reset(src.data(), src.size());
-			static_cast<bytes_ref &>(src).reset();
+		if (!src.size()) {
+			reset();
+			src.reset();
 			return;
 		}
-		reset(bytes_view(src));
+		if (data() && _capacity() >= src.size() &&
+			_capacity() < src._capacity()) {
+			bytes_ref::resize(src.size());
+			copy_from(src);
+			src.reset();
+			return;
+		}
+		reset();
+		bytes_ref::reset(src.data(), src.size());
+		static_cast<bytes_ref &>(src).reset();
 	}
 
 private:
