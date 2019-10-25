@@ -72,14 +72,19 @@ public:
 	template <typename... DestArgs>
 	inline size_t copy_to(DestArgs &&... dest) const;
 
-	RUA_FORCE_INLINE operator string_view() const {
-		return string_view(
-			_this()->data().template as<const char *>(), _this()->size());
+	template <typename CharT, typename Traits>
+	RUA_FORCE_INLINE operator basic_string_view<CharT, Traits>() const {
+		return basic_string_view<CharT, Traits>(
+			_this()->data().template as<const CharT *>(),
+			_this()->size() / sizeof(CharT));
 	}
 
-	RUA_FORCE_INLINE operator std::string() const {
-		return std::string(
-			_this()->data().template as<const char *>(), _this()->size());
+	template <typename CharT, typename Traits, typename Allocator>
+	RUA_FORCE_INLINE
+	operator std::basic_string<CharT, Traits, Allocator>() const {
+		return std::basic_string<CharT, Traits, Allocator>(
+			_this()->data().template as<const CharT *>(),
+			_this()->size() / sizeof(CharT));
 	}
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
@@ -993,7 +998,12 @@ public:
 
 	constexpr bytes(std::nullptr_t) : bytes() {}
 
-	bytes(size_t size) : bytes_ref(size ? new char[size] : nullptr, size) {}
+	explicit bytes(size_t size) {
+		if (!size) {
+			return;
+		}
+		_alloc(size);
+	}
 
 	template <
 		typename... Args,
@@ -1007,7 +1017,7 @@ public:
 		if (!v.size()) {
 			return;
 		}
-		bytes_ref::reset(new char[v.size()], v.size());
+		_alloc(v.size());
 		copy_from(v);
 	}
 
@@ -1023,18 +1033,42 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(bytes)
+	RUA_FORCE_INLINE bytes &operator=(const bytes &val) {
+		reset(val);
+		return *this;
+	}
+
+	RUA_FORCE_INLINE bytes &operator=(bytes &&val) {
+		reset(std::move(val));
+		return *this;
+	}
+
+	template <typename T>
+	RUA_FORCE_INLINE enable_if_t<
+		!std::is_base_of<bytes, decay_t<T>>::value &&
+			std::is_convertible<T &&, bytes_view>::value,
+		bytes &>
+	operator=(T &&val) {
+		reset(bytes_view(std::forward<T>(val)));
+		return *this;
+	}
+
+	RUA_FORCE_INLINE bytes &operator+=(bytes_view tail) {
+		resize(size() + tail.size());
+		slice(size()).copy_from(tail);
+		return *this;
+	}
+
+	size_t capacity() const {
+		return bit_get<size_t>(data() - sizeof(size_t));
+	}
 
 	void resize(size_t size = 0) {
-		if (!size) {
-			reset();
-			return;
-		}
 		if (!data()) {
 			reset(size);
 			return;
 		}
-		if (this->size() > size) {
+		if (capacity() > size) {
 			bytes_ref::resize(size);
 			return;
 		}
@@ -1047,17 +1081,106 @@ public:
 		if (!data()) {
 			return;
 		}
-		delete data().as<byte *>();
+		delete (data().as<char *>() - sizeof(size_t));
 		bytes_ref::reset();
 	}
 
-	template <typename... Args>
-	void reset(Args &&... args) {
-		RUA_SASSERT((std::is_constructible<bytes, Args...>::value));
+	void reset(size_t size) {
+		if (!size) {
+			reset();
+			return;
+		}
+		if (data() && capacity() > size) {
+			bytes_ref::resize(size);
+			return;
+		}
+		reset();
+		_alloc(size);
+	}
 
-		*this = bytes(std::forward<Args>(args)...);
+	template <
+		typename... Args,
+		typename ArgsFront = argments_front_t<Args...>,
+		typename DecayArgsFront = decay_t<ArgsFront>,
+		typename = enable_if_t<
+			(sizeof...(Args) > 1) ||
+			(!(std::is_base_of<bytes, DecayArgsFront>::value &&
+			   std::is_rvalue_reference<ArgsFront>::value) &&
+			 !std::is_integral<DecayArgsFront>::value)>>
+	void reset(Args &&... copy_src) {
+		bytes_view v(std::forward<Args>(copy_src)...);
+		if (v.size()) {
+			reset();
+			return;
+		}
+		reset(v.size());
+		copy_from(v);
+	}
+
+	void reset(bytes &&src) {
+		if (!data()) {
+			bytes_ref::reset(src.data(), src.size());
+			static_cast<bytes_ref &>(src).reset();
+			return;
+		}
+		reset(bytes_view(src));
+	}
+
+private:
+	void _alloc(size_t size) {
+		bytes_ref::reset(
+			new char[sizeof(size_t) + size] + sizeof(size_t), size);
+		bit_set<size_t>(data() - sizeof(size_t), size);
 	}
 };
+
+template <
+	typename A,
+	typename B,
+	typename DecayA = decay_t<A>,
+	typename DecayB = decay_t<B>>
+RUA_FORCE_INLINE enable_if_t<
+	(std::is_base_of<bytes_view, DecayA>::value ||
+	 std::is_base_of<bytes_ref, DecayA>::value) &&
+		(std::is_base_of<bytes_view, DecayB>::value ||
+		 std::is_base_of<bytes_ref, DecayB>::value),
+	bytes>
+operator+(A &&a, B &&b) {
+	bytes r(a.size() + b.size());
+	r.copy_from(a);
+	r.slice(a.size()).copy_from(b);
+	return r;
+}
+
+template <
+	typename A,
+	typename B,
+	typename DecayA = decay_t<A>,
+	typename DecayB = decay_t<B>>
+RUA_FORCE_INLINE enable_if_t<
+	(std::is_base_of<bytes_view, DecayA>::value ||
+	 std::is_base_of<bytes_ref, DecayA>::value) &&
+		(!std::is_base_of<bytes_view, DecayB>::value &&
+		 !std::is_base_of<bytes_ref, DecayB>::value),
+	bytes>
+operator+(A &&a, B &&b) {
+	return a + bytes_view(std::forward<B>(b));
+}
+
+template <
+	typename A,
+	typename B,
+	typename DecayA = decay_t<A>,
+	typename DecayB = decay_t<B>>
+RUA_FORCE_INLINE enable_if_t<
+	(!std::is_base_of<bytes_view, DecayA>::value &&
+	 !std::is_base_of<bytes_ref, DecayA>::value) &&
+		(std::is_base_of<bytes_view, DecayB>::value ||
+		 std::is_base_of<bytes_ref, DecayB>::value),
+	bytes>
+operator+(A &&a, B &&b) {
+	return bytes_view(std::forward<A>(a)) + b;
+}
 
 template <typename Derived, size_t Size = nmax<size_t>()>
 class bytes_block_base {

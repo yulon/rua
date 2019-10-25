@@ -47,13 +47,16 @@ public:
 	line_reader(reader_i r) : _r(std::move(r)), _1st_chr_is_cr(false) {}
 
 	std::string read_line(size_t buf_sz = 256) {
+		std::string r;
 		for (;;) {
 			_buf.resize(buf_sz);
 			auto sz = _r->read(_buf);
 			if (!sz) {
 				_r = nullptr;
 				_1st_chr_is_cr = false;
-				return std::move(_cache);
+				r = static_cast<std::string>(_cache);
+				_cache.resize(0);
+				return r;
 			}
 			if (_1st_chr_is_cr) {
 				_1st_chr_is_cr = false;
@@ -63,10 +66,12 @@ public:
 			}
 			for (size_t i = 0; i < sz; ++i) {
 				if (_buf[i] == static_cast<byte>('\r')) {
-					_cache += static_cast<std::string>(_buf(0, i));
+					_cache += _buf(0, i);
 					if (i == sz - 1) {
 						_1st_chr_is_cr = true;
-						return std::move(_cache);
+						r = static_cast<std::string>(_cache);
+						_cache.resize(0);
+						return r;
 					}
 
 					auto end = i + 1;
@@ -77,21 +82,22 @@ public:
 						end = i;
 					}
 
-					std::string r(std::move(_cache));
-					_cache =
-						static_cast<std::string>(_buf(end, _buf.size() - end));
+					r = static_cast<std::string>(_cache);
+					_cache = _buf(end);
 					return r;
 
 				} else if (_buf[i] == static_cast<byte>('\n')) {
-					_cache += static_cast<std::string>(_buf(0, i));
-					return std::move(_cache);
+					_cache += _buf(0, i);
+					r = static_cast<std::string>(_cache);
+					_cache.resize(0);
+					return r;
 				}
 			}
 			if (_buf) {
-				_cache += static_cast<std::string>(_buf(0, sz));
+				_cache += _buf(0, sz);
 			}
 		}
-		return "";
+		return r;
 	}
 
 	operator bool() const {
@@ -116,8 +122,7 @@ public:
 private:
 	reader_i _r;
 	bool _1st_chr_is_cr;
-	bytes _buf;
-	std::string _cache;
+	bytes _buf, _cache;
 };
 
 } // namespace rua
