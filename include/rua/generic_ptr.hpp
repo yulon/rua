@@ -233,19 +233,9 @@ private:
 namespace std {
 
 template <>
-class hash<rua::generic_ptr> {
-public:
+struct hash<rua::generic_ptr> {
 	constexpr size_t operator()(rua::generic_ptr p) const {
 		return static_cast<size_t>(p.uintptr());
-	}
-};
-
-template <>
-class less<rua::generic_ptr> {
-public:
-	constexpr bool
-	operator()(rua::generic_ptr lhs, rua::generic_ptr rhs) const {
-		return lhs < rhs;
 	}
 };
 

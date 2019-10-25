@@ -341,14 +341,6 @@ private:
 	}
 };
 
-template <>
-class less<rua::time> {
-public:
-	bool operator()(const rua::time &lhs, const rua::time &rhs) const {
-		return lhs < rhs;
-	}
-};
-
 } // namespace std
 
 #endif
