@@ -1,9 +1,14 @@
 #ifndef _RUA_CODE_FN_HPP
 #define _RUA_CODE_FN_HPP
 
-#include "bytes.hpp"
+#include "byte.hpp"
 #include "macros.hpp"
+
+#ifndef __GNUC__
 #include "memory.hpp"
+#endif
+
+#include <cstdint>
 
 namespace rua {
 
@@ -18,14 +23,15 @@ namespace rua {
 #define RUA_CODE(name) static const byte name[] _RUA_EXECUTABLE_CODE
 
 #define RUA_CODE_FN(ret, name, params, args, code)                             \
-	static ret(*name) params = reinterpret_cast<ret(*) params>(&code[0]);
+	static ret(*name) params = reinterpret_cast<ret(*) params>(                \
+		reinterpret_cast<uintptr_t>(&code[0]));
 
 #else
 
 template <typename T, size_t N>
 RUA_FORCE_INLINE T _to_executable_code(const byte (&code)[N]) {
 	mem_chmod(&code[0], N, mem_read | mem_exec);
-	return reinterpret_cast<T>(&code[0]);
+	return reinterpret_cast<T>(reinterpret_cast<uintptr_t>(&code[0]));
 }
 
 #define RUA_CODE(name) RUA_MULTIDEF_VAR const byte name[]
