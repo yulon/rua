@@ -173,10 +173,8 @@ inline void make_ucontext(
 	any_word func_param,
 	bytes_ref stack) {
 
-	auto stk_end =
-		(stack.data() + stack.size() - stack.size() % sizeof(uintptr_t))
-			.uintptr();
-	ucp->mcontext.sp = stk_end - 1 * sizeof(uintptr_t);
+	auto stk_end = (stack.data() + stack.size()).uintptr();
+	ucp->mcontext.sp = stk_end - 5 * sizeof(uintptr_t);
 	ucp->mcontext.caller_param() = func_param;
 	ucp->mcontext.caller_ip = reinterpret_cast<uintptr_t>(func);
 #ifdef _WIN32
