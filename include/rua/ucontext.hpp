@@ -179,7 +179,7 @@ inline void make_ucontext(
 	ucp->mcontext.caller_ip = reinterpret_cast<uintptr_t>(func);
 #ifdef _WIN32
 	ucp->oscontext.stack_limit = stack.data().uintptr();
-	ucp->oscontext.stack_base = stk_end - 1;
+	ucp->oscontext.stack_base = stk_end;
 #endif
 }
 
