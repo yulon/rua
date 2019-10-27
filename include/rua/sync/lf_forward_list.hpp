@@ -2,7 +2,7 @@
 #define _RUA_SYNC_LF_FORWARD_LIST_HPP
 
 #include "../macros.hpp"
-#include "../optional.hpp"
+#include "../opt.hpp"
 
 #include <atomic>
 #include <forward_list>
@@ -97,7 +97,7 @@ public:
 		return iterator(new_front);
 	}
 
-	optional<T> pop_front() {
+	opt<T> pop_front() {
 		return _release_node(_pop_node(_front));
 	}
 
@@ -140,7 +140,7 @@ public:
 		return iterator(new_back);
 	}
 
-	optional<T> pop_back() {
+	opt<T> pop_back() {
 		_node_t *before, *old_back;
 		_pop_back_node(before, old_back);
 		if (old_back) {
@@ -149,17 +149,17 @@ public:
 		return nullopt;
 	}
 
-	optional<iterator> erase_back() {
+	opt<iterator> erase_back() {
 		_node_t *before, *old_back;
 		_pop_back_node(before, old_back);
 		if (old_back) {
 			delete old_back;
-			return make_optional(iterator(before));
+			return make_opt(iterator(before));
 		}
 		return nullopt;
 	}
 
-	optional<iterator> erase(iterator it) {
+	opt<iterator> erase(iterator it) {
 		_node_t *before = nullptr, *n = _front.load();
 		while (n) {
 			while (n != it._node) {
@@ -178,7 +178,7 @@ public:
 				;
 			if (slot_val == n) {
 				delete n;
-				return make_optional(iterator(before));
+				return make_opt(iterator(before));
 			}
 			if (!slot_val) {
 				return nullopt;
@@ -252,12 +252,12 @@ private:
 		}
 	}
 
-	static optional<T> _release_node(_node_t *node) {
-		optional<T> r;
+	static opt<T> _release_node(_node_t *node) {
+		opt<T> r;
 		if (!node) {
 			return r;
 		}
-		r = optional<T>(std::move(node->val));
+		r = opt<T>(std::move(node->val));
 		delete node;
 		return r;
 	}

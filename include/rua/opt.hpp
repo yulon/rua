@@ -1,5 +1,5 @@
-#ifndef _RUA_OPTIONAL_HPP
-#define _RUA_OPTIONAL_HPP
+#ifndef _RUA_OPT_HPP
+#define _RUA_OPT_HPP
 
 #include "macros.hpp"
 #include "type_traits/std_patch.hpp"
@@ -11,7 +11,7 @@
 namespace rua {
 
 template <typename T>
-using optional = std::optional<T>;
+using opt = std::optional<T>;
 
 using nullopt_t = std::nullopt_t;
 
@@ -34,26 +34,26 @@ struct nullopt_t {};
 RUA_MULTIDEF_VAR constexpr nullopt_t nullopt;
 
 template <typename T>
-class _optional_base {
+class _opt_base {
 public:
 	using value_type = T;
 
-	constexpr _optional_base() = default;
+	constexpr _opt_base() = default;
 
-	constexpr _optional_base(bool has_val) : _empty(), _has_val(has_val) {}
+	constexpr _opt_base(bool has_val) : _empty(), _has_val(has_val) {}
 
-	~_optional_base() {
+	~_opt_base() {
 		reset();
 	}
 
-	_optional_base(const _optional_base &src) : _has_val(src._has_val) {
+	_opt_base(const _opt_base &src) : _has_val(src._has_val) {
 		if (!src._has_val) {
 			return;
 		}
 		new (&_val) T(src._val);
 	}
 
-	_optional_base(_optional_base &&src) : _has_val(src._has_val) {
+	_opt_base(_opt_base &&src) : _has_val(src._has_val) {
 		if (!src._has_val) {
 			return;
 		}
@@ -62,7 +62,7 @@ public:
 		src._has_val = false;
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(_optional_base)
+	RUA_OVERLOAD_ASSIGNMENT(_opt_base)
 
 	bool has_value() const {
 		return _has_val;
@@ -177,18 +177,18 @@ protected:
 };
 
 template <typename T>
-class optional : public _optional_base<T>, private enable_copy_move_like<T> {
+class opt : public _opt_base<T>, private enable_copy_move_like<T> {
 public:
-	constexpr optional() : _optional_base<T>(false) {}
+	constexpr opt() : _opt_base<T>(false) {}
 
-	constexpr optional(nullopt_t) : _optional_base<T>(false) {}
+	constexpr opt(nullopt_t) : _opt_base<T>(false) {}
 
 	template <
 		typename U = T,
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
-			!std::is_base_of<optional<T>, decay_t<U>>::value>>
-	optional(U &&val) : _optional_base<T>(true) {
+			!std::is_base_of<opt<T>, decay_t<U>>::value>>
+	opt(U &&val) : _opt_base<T>(true) {
 		this->_emplace(std::forward<U>(val));
 	}
 
@@ -196,8 +196,8 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
+			!std::is_constructible<T, opt<U> &&>::value>>
+	opt(const opt<U> &src) : _opt_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}
@@ -208,8 +208,8 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(optional<U> &&src) : _optional_base<T>(src.has_value()) {
+			!std::is_constructible<T, opt<U> &&>::value>>
+	opt(opt<U> &&src) : _opt_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}
@@ -219,7 +219,7 @@ public:
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
-	explicit optional(in_place_t, Args &&... args) : _optional_base<T>(true) {
+	explicit opt(in_place_t, Args &&... args) : _opt_base<T>(true) {
 		this->_emplace(std::forward<Args>(args)...);
 	}
 
@@ -228,9 +228,8 @@ public:
 		typename... Args,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	explicit optional(
-		in_place_t, std::initializer_list<U> il, Args &&... args) :
-		_optional_base<T>(true) {
+	explicit opt(in_place_t, std::initializer_list<U> il, Args &&... args) :
+		_opt_base<T>(true) {
 		this->_emplace(il, std::forward<Args>(args)...);
 	}
 };
@@ -245,18 +244,18 @@ public:
 namespace rua {
 
 template <typename T>
-optional<decay_t<T>> make_optional(T &&val) {
-	return optional<decay_t<T>>(std::forward<T>(val));
+opt<decay_t<T>> make_opt(T &&val) {
+	return opt<decay_t<T>>(std::forward<T>(val));
 }
 
 template <typename T, typename... Args>
-optional<T> make_optional(Args &&... args) {
-	return optional<T>(in_place, std::forward<Args>(args)...);
+opt<T> make_opt(Args &&... args) {
+	return opt<T>(in_place, std::forward<Args>(args)...);
 }
 
 template <typename T, typename U, typename... Args>
-optional<T> make_optional(std::initializer_list<U> il, Args &&... args) {
-	return optional<T>(in_place, il, std::forward<Args>(args)...);
+opt<T> make_opt(std::initializer_list<U> il, Args &&... args) {
+	return opt<T>(in_place, il, std::forward<Args>(args)...);
 }
 
 } // namespace rua

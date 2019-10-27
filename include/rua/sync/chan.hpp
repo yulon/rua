@@ -4,7 +4,7 @@
 #include "lf_forward_list.hpp"
 
 #include "../chrono/clock.hpp"
-#include "../optional.hpp"
+#include "../opt.hpp"
 #include "../sched/util.hpp"
 
 #include <queue>
@@ -21,7 +21,7 @@ public:
 
 	chan &operator=(const chan &) = delete;
 
-	rua::optional<T> try_pop(ms timeout = 0) {
+	rua::opt<T> try_pop(ms timeout = 0) {
 		auto val_opt = _buf.pop_front();
 		if (val_opt || !timeout) {
 			return val_opt;
