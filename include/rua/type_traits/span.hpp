@@ -12,25 +12,22 @@ namespace rua {
 
 template <
 	typename T,
-	typename DecayT = decay_t<T>,
-	typename = enable_if_t<std::is_class<DecayT>::value>,
-	typename R = decltype(std::declval<T &&>().data()),
-	typename Pointer = remove_reference_t<R>,
-	typename = enable_if_t<
-		std::is_pointer<Pointer>::value ||
-		std::is_convertible<Pointer, void *>::value>>
-RUA_FORCE_INLINE Pointer data(T &&target) {
+	typename = enable_if_t<std::is_class<decay_t<T>>::value>,
+	typename Pointer = decltype(std::declval<T &&>().data())>
+RUA_FORCE_INLINE enable_if_t<
+	std::is_convertible<Pointer, generic_ptr>::value &&
+		!std::is_null_pointer<decay_t<Pointer>>::value,
+	Pointer>
+data(T &&target) {
 	return std::forward<T>(target).data();
 }
+
+#if RUA_CPP < RUA_CPP_17
 
 template <typename CharT, typename Traits, typename Allocator>
 RUA_FORCE_INLINE CharT *
 data(std::basic_string<CharT, Traits, Allocator> &target) {
-#if RUA_CPP >= RUA_CPP_17
-	return target.data();
-#else
 	return const_cast<CharT *>(target.data());
-#endif
 }
 
 template <typename CharT, typename Traits, typename Allocator>
@@ -39,29 +36,32 @@ data(std::basic_string<CharT, Traits, Allocator> &&target) {
 	return data(target);
 }
 
-template <typename T, size_t N>
-RUA_FORCE_INLINE constexpr T *data(T (&inst)[N]) {
-	return inst;
+#endif
+
+template <typename E, size_t N>
+RUA_FORCE_INLINE constexpr E *data(E (&c_ary)[N]) {
+	return c_ary;
 }
 
 template <class E>
-RUA_FORCE_INLINE constexpr const E *data(std::initializer_list<E> il) {
+RUA_FORCE_INLINE RUA_CONSTEXPR_14 const E *data(std::initializer_list<E> il) {
 	return il.begin();
 }
 
 template <
 	typename T,
-	typename DecayT = decay_t<T>,
-	typename = enable_if_t<std::is_class<DecayT>::value>,
-	typename R = decltype(std::declval<T &&>().size()),
-	typename DecayR = decay_t<R>,
-	typename = enable_if_t<std::is_integral<DecayR>::value>>
-RUA_FORCE_INLINE DecayR size(T &&target) {
+	typename = enable_if_t<std::is_class<decay_t<T>>::value>,
+	typename Index = decltype(std::declval<T &&>().size())>
+RUA_FORCE_INLINE enable_if_t<
+	std::is_integral<remove_reference_t<Index>>::value ||
+		std::is_convertible<Index, size_t>::value,
+	Index>
+size(T &&target) {
 	return std::forward<T>(target).size();
 }
 
-template <typename T, size_t N>
-RUA_FORCE_INLINE constexpr size_t size(T (&)[N]) {
+template <typename E, size_t N>
+RUA_FORCE_INLINE constexpr size_t size(E (&)[N]) {
 	return N;
 }
 
@@ -71,13 +71,18 @@ template <
 	typename Element = conditional_t<
 		std::is_pointer<Pointer>::value,
 		remove_pointer_t<Pointer>,
-		byte>,
+		conditional_t<std::is_const<decay_t<T>>::value, const byte, byte>>,
 	typename Value = remove_cv_t<Element>,
+	typename DecayElement = conditional_t<
+		std::is_void<Value>::value,
+		conditional_t<std::is_const<Element>::value, const byte, byte>,
+		Element>,
+	typename DecayValue = remove_cv_t<DecayElement>,
 	typename Index = remove_reference_t<decltype(size(std::declval<T>()))>>
 struct span_traits {
 	using pointer = Pointer;
-	using element_type = Element;
-	using value_type = Value;
+	using element_type = DecayElement;
+	using value_type = DecayValue;
 	using index_type = Index;
 };
 
@@ -93,13 +98,18 @@ using span_pointer_t = typename span_pointer<T>::type;
 
 template <
 	typename T,
-	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Pointer = span_pointer_t<T>,
 	typename Element = conditional_t<
 		std::is_pointer<Pointer>::value,
 		remove_pointer_t<Pointer>,
-		byte>>
+		conditional_t<std::is_const<decay_t<T>>::value, const byte, byte>>,
+	typename Value = remove_cv_t<Element>,
+	typename DecayElement = conditional_t<
+		std::is_void<Value>::value,
+		conditional_t<std::is_const<Element>::value, const byte, byte>,
+		Element>>
 struct span_element {
-	using type = Element;
+	using type = DecayElement;
 };
 
 template <typename T>
@@ -107,11 +117,7 @@ using span_element_t = typename span_element<T>::type;
 
 template <
 	typename T,
-	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
-	typename Element = conditional_t<
-		std::is_pointer<Pointer>::value,
-		remove_pointer_t<Pointer>,
-		byte>,
+	typename Element = span_element_t<T>,
 	typename Value = remove_cv_t<Element>>
 struct span_value {
 	using type = Value;
