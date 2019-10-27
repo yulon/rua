@@ -16,7 +16,7 @@ template <
 	typename Pointer = decltype(std::declval<T &&>().data())>
 RUA_FORCE_INLINE enable_if_t<
 	std::is_convertible<Pointer, generic_ptr>::value &&
-		!std::is_null_pointer<decay_t<Pointer>>::value,
+		!is_null_pointer<decay_t<Pointer>>::value,
 	Pointer>
 data(T &&target) {
 	return std::forward<T>(target).data();
