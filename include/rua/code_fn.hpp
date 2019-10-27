@@ -3,6 +3,7 @@
 
 #include "byte.hpp"
 #include "macros.hpp"
+#include "type_traits/std_patch.hpp"
 
 #ifndef __GNUC__
 #include "memory.hpp"
@@ -22,9 +23,13 @@ namespace rua {
 
 #define RUA_CODE(name) static const byte name[] _RUA_EXECUTABLE_CODE
 
-#define RUA_CODE_FN(ret, name, params, args, code)                             \
-	static ret(*name) params = reinterpret_cast<ret(*) params>(                \
-		reinterpret_cast<uintptr_t>(&code[0]));
+#define RUA_CODE_FN(type, name, code)                                          \
+	using _##name##_t = conditional_t<                                         \
+		std::is_function<type>::value,                                         \
+		add_pointer_t<type>,                                                   \
+		type>;                                                                 \
+	static _##name##_t name =                                                  \
+		reinterpret_cast<_##name##_t>(reinterpret_cast<uintptr_t>(&code[0]));
 
 #else
 
@@ -36,8 +41,11 @@ RUA_FORCE_INLINE T _to_executable_code(const byte (&code)[N]) {
 
 #define RUA_CODE(name) RUA_MULTIDEF_VAR const byte name[]
 
-#define RUA_CODE_FN(ret, name, params, args, code)                             \
-	using _##name##_t = ret(*) params;                                         \
+#define RUA_CODE_FN(type, name, code)                                          \
+	using _##name##_t = conditional_t<                                         \
+		std::is_function<type>::value,                                         \
+		add_pointer_t<type>,                                                   \
+		type>;                                                                 \
 	RUA_FORCE_INLINE _##name##_t _##name() {                                   \
 		static _##name##_t f = _to_executable_code<_##name##_t>(code);         \
 		return f;                                                              \

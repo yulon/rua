@@ -155,16 +155,13 @@ RUA_CODE(_swap_ucontext_code){
 #endif
 };
 
-RUA_CODE_FN(bool, get_ucontext, (ucontext_t * ucp), (ucp), _get_ucontext_code)
+RUA_CODE_FN(bool(ucontext_t *ucp), get_ucontext, _get_ucontext_code)
+
+RUA_CODE_FN(void(const ucontext_t *ucp), set_ucontext, _set_ucontext_code)
 
 RUA_CODE_FN(
-	void, set_ucontext, (const ucontext_t *ucp), (ucp), _set_ucontext_code)
-
-RUA_CODE_FN(
-	void,
+	void(ucontext_t *oucp, const ucontext_t *ucp),
 	swap_ucontext,
-	(ucontext_t * oucp, const ucontext_t *ucp),
-	(oucp, ucp),
 	_swap_ucontext_code)
 
 inline void make_ucontext(
