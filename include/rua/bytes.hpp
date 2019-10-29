@@ -1118,18 +1118,6 @@ public:
 	}
 
 	void reset(bytes &&src) {
-		if (!src.size()) {
-			reset();
-			src.reset();
-			return;
-		}
-		if (data() && _capacity() >= src.size() &&
-			_capacity() < src._capacity()) {
-			bytes_ref::resize(src.size());
-			copy_from(src);
-			src.reset();
-			return;
-		}
 		reset();
 		bytes_ref::reset(src.data(), src.size());
 		static_cast<bytes_ref &>(src).reset();
