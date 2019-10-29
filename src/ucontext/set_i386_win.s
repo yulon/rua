@@ -2,16 +2,13 @@ use32
 
 mov eax, [esp+4]
 
-mov eax, [esp+4]
 mov ebx, [eax+4]
-mov esi, [eax+16]
-mov edi, [eax+20]
 mov esp, [eax+24]
 mov ebp, [eax+28]
 
-; caller_ip
-mov ecx, [eax+32]
-mov [esp], ecx
+; ip
+mov edx, [eax+32]
+mov [esp], edx
 
 ; flags
 ; mov ecx, [eax+36]
@@ -21,29 +18,16 @@ mov [esp], ecx
 ldmxcsr [eax+40]
 fldcw [eax+44]
 
-; load NT_TIB
-mov ecx, 018h
-mov edx, [fs:ecx]
+; NT_TIB
+mov edx, 018h
+mov edi, [fs:edx]
 
-; deallocation stack
-mov ecx, [eax+48]
-mov [edx+0e0ch], ecx
+add edi, 4
+lea esi, [eax+48]
+mov ecx, 2
+rep movsd
 
-; stack limit
-mov ecx, [eax+52]
-mov [edx+08h], ecx
-
-; stack base
-mov ecx, [eax+56]
-mov [edx+04h], ecx
-
-; exception list
-mov ecx, [eax+60]
-mov [edx], ecx
-
-; fiber local storage
-; mov ecx, [eax+64]
-; mov [edx+010h], ecx
-
+mov esi, [eax+16]
+mov edi, [eax+20]
 mov eax, 0
 ret

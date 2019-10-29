@@ -9,7 +9,7 @@ mov [rcx+40], rdi
 mov [rcx+48], rsp
 mov [rcx+56], rbp
 
-; caller_ip
+; ip
 mov rax, [rsp]
 mov [rcx+64], rax
 
@@ -30,30 +30,18 @@ mov [rcx+136], r15
 stmxcsr [rcx+144]
 fnstcw [rcx+148]
 
-; load NT_TIB
+; NT_TIB
 ; mov r10, [gs:030h] ; I'm using FASM was unable to output correct code.
 mov rax, 030h
-mov r10, [gs:rax]
+mov rsi, [gs:rax]
 
-; deallocation stack
-mov rax, [r10+01478h]
-mov [rcx+152], rax
+add rsi, 8
+lea rdi, [rcx+152]
+mov rax, rcx
+mov rcx, 2
+rep movsq
 
-; stack limit
-mov rax, [r10+010h]
-mov [rcx+160], rax
-
-; stack base
-mov rax, [r10+008h]
-mov [rcx+168], rax
-
-; exception list
-mov rax, [r10]
-mov [rcx+176], rax
-
-; fiber local storage
-; mov rax, [r10+020h]
-; mov [rcx+184], rax
-
+mov rsi, [rax+32]
+mov rdi, [rax+40]
 mov rax, 1
 ret

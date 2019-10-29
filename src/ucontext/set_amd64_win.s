@@ -1,17 +1,15 @@
 use64
 
 mov rbx, [rcx+8]
-mov rsi, [rcx+32]
-mov rdi, [rcx+40]
 mov rsp, [rcx+48]
 mov rbp, [rcx+56]
 
-; caller_ip
+; ip
 mov rax, [rcx+64]
 mov [rsp], rax
 
 ; flags
-; mov rax, [rdi+192]
+; mov rax, [rcx+192]
 ; push rax
 ; popfq
 
@@ -23,32 +21,19 @@ mov r15, [rcx+136]
 ldmxcsr [rcx+144]
 fldcw [rcx+148]
 
-; load NT_TIB
+; NT_TIB
 ; mov r10, [gs:030h] ; I'm using FASM was unable to output correct code.
 mov rax, 030h
-mov r10, [gs:rax]
+mov rdi, [gs:rax]
 
-; deallocation stack
-mov rax, [rcx+152]
-mov [r10+01478h], rax
+add rdi, 8
+lea rsi, [rcx+152]
+mov rax, rcx
+mov rcx, 2
+rep movsq
 
-; stack limit
-mov rax, [rcx+160]
-mov [r10+010h], rax
-
-; stack base
-mov rax, [rcx+168]
-mov [r10+008h], rax
-
-; exception list
-mov rax, [rcx+176]
-mov [r10], rax
-
-; fiber local storage
-; mov rax, [rcx+184]
-; mov [r10+020h], rax
-
-mov rcx, [rcx+16]
-mov rdx, [rcx+24]
+mov rcx, [rax+16]
+mov rsi, [rax+32]
+mov rdi, [rax+40]
 mov rax, 0
 ret

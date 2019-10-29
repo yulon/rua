@@ -8,7 +8,7 @@ mov edi, [eax+20]
 mov esp, [eax+24]
 mov ebp, [eax+28]
 
-; caller_ip
+; ip
 mov ecx, [eax+32]
 mov [esp], ecx
 

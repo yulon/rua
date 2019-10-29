@@ -9,7 +9,7 @@ mov [rdi+40], rdi
 mov [rdi+48], rsp
 mov [rdi+56], rbp
 
-; caller_ip
+; ip
 mov rax, [rsp]
 mov [rdi+64], rax
 
@@ -29,6 +29,10 @@ mov [rdi+136], r15
 
 stmxcsr [rdi+144]
 fnstcw [rdi+148]
+
+mov rax, 0
+mov [rdi+152], rax
+mov [rdi+160], rax
 
 mov rax, 1
 ret

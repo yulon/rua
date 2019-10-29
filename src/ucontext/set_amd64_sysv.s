@@ -4,7 +4,7 @@ mov rbx, [rdi+8]
 mov rsp, [rdi+48]
 mov rbp, [rdi+56]
 
-; caller_ip
+; ip
 mov rax, [rdi+64]
 mov [rsp], rax
 
@@ -22,6 +22,5 @@ ldmxcsr [rdi+144]
 fldcw [rdi+148]
 
 mov rdi, [rdi+40]
-mov rsi, [rdi+32]
 mov rax, 0
 ret
