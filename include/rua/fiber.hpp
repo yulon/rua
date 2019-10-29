@@ -83,7 +83,8 @@ private:
 		}
 
 		ucontext_t uc;
-		bytes stk;
+		int stk_ix;
+		bytes stk_data;
 
 		bool is_slept;
 
@@ -99,11 +100,10 @@ private:
 
 class fiber_driver {
 public:
-	fiber_driver(size_t stack_size = 20 * 1024) :
+	fiber_driver(size_t stack_size = 8 * 1024 * 1024) :
 		_stk_sz(stack_size),
-		_sch(*this) {
-		get_ucontext(&_worker_uc_base);
-	}
+		_stk_ix(0),
+		_sch(*this) {}
 
 	fiber attach(std::function<void()> func, size_t dur = 0) {
 		fiber f(fiber::not_auto_attach, std::move(func), dur);
@@ -241,18 +241,22 @@ public:
 				wake_ti = tick() + timeout;
 			}
 
-			auto &fc =
-				*slp_map.emplace(wake_ti, std::move(_fib_dvr->_cur_fc))->second;
+			auto &fc = *slp_map.emplace(wake_ti, _fib_dvr->_cur_fc)->second;
 
 			fc.is_slept = true;
+			fc.stk_ix = _fib_dvr->_stk_ix;
 
-			fc.stk = std::move(_fib_dvr->_cur_stk);
+			_fib_dvr->_prev_fc = std::move(_fib_dvr->_cur_fc);
 
 			if (_fib_dvr->_fcs.size()) {
-				_fib_dvr->_swap_worker_uc(&fc.uc);
-				return;
+				if (!_fib_dvr->_try_resume_fcs_front()) {
+					_fib_dvr->_swap_new_worker_uc(&fc.uc);
+				}
+			} else {
+				swap_ucontext(&fc.uc, &_fib_dvr->_orig_uc);
 			}
-			swap_ucontext(&fc.uc, &_fib_dvr->_orig_uc);
+
+			_fib_dvr->_save_prev_fc_stk_data();
 		}
 
 		virtual void sleep(ms timeout) {
@@ -299,35 +303,9 @@ public:
 		return _sch;
 	}
 
-	size_t fiber_count() const {
-		auto c = _slps.size() + _cws.size();
-		if (_cur_stk) {
-			++c;
-		}
-		return c;
-	}
-
-	size_t stack_count() const {
-		auto c = _idle_stks.size();
-		if (_cur_stk) {
-			++c;
-		}
-		for (auto &pr : _slps) {
-			if (pr.second->stk) {
-				++c;
-			}
-		}
-		for (auto &pr : _cws) {
-			if (pr.second->stk) {
-				++c;
-			}
-		}
-		return c;
-	}
-
 private:
 	std::queue<fiber::_ctx_ptr_t> _fcs;
-	fiber::_ctx_ptr_t _cur_fc;
+	fiber::_ctx_ptr_t _cur_fc, _prev_fc;
 
 	std::multimap<time, fiber::_ctx_ptr_t> _slps;
 	std::multimap<time, fiber::_ctx_ptr_t> _cws;
@@ -353,45 +331,74 @@ private:
 		}
 	}
 
-	ucontext_t _orig_uc, _worker_uc_base;
+	ucontext_t _orig_uc;
 
 	size_t _stk_sz;
-	bytes _cur_stk;
-	std::vector<bytes> _idle_stks;
+	int _stk_ix;
+	bytes _stks[2];
+	ucontext_t _new_worker_ucs[2];
 
-	void _resume_cur_stk() {
-		if (_cur_stk) {
-			_idle_stks.emplace_back(std::move(_cur_stk));
+	bytes &_cur_stk() {
+		return _stks[_stk_ix];
+	}
+
+	ucontext_t &_cur_new_worker_uc() {
+		return _new_worker_ucs[_stk_ix];
+	}
+
+	void _save_prev_fc_stk_data() {
+		if (!_prev_fc) {
+			return;
 		}
-		_cur_stk = std::move(_cur_fc->stk);
-		assert(!_cur_fc->stk);
-		assert(_cur_stk);
-		make_ucontext(&_worker_uc_base, &_worker, this, _cur_stk);
+		assert(!_prev_fc->stk_data.size());
+		auto &stk = _stks[_prev_fc->stk_ix];
+		_prev_fc->stk_data =
+			stk(_prev_fc->uc.regs.sp + sizeof(void *) - stk.data());
+		_prev_fc.reset();
 	}
 
-	void _resume_cur_fc() {
-		_resume_cur_stk();
-		set_ucontext(&_cur_fc->uc);
-	}
+	bool _try_resume_fcs_front(ucontext_t *oucp = nullptr) {
+		if (!_fcs.front()->stk_data.size()) {
+			return false;
+		}
 
-	void _resume_cur_fc(ucontext_t *oucp) {
-		_resume_cur_stk();
+		if (oucp != &_orig_uc && _fcs.front()->stk_ix == _stk_ix) {
+			if (!oucp) {
+				set_ucontext(&_orig_uc);
+				return true;
+			}
+			swap_ucontext(oucp, &_orig_uc);
+			return true;
+		}
+
+		_cur_fc = std::move(_fcs.front());
+		_fcs.pop();
+
+		_stk_ix = _cur_fc->stk_ix;
+		_cur_stk()(_cur_stk().size() - _cur_fc->stk_data.size())
+			.copy_from(_cur_fc->stk_data);
+		_cur_fc->stk_data.reset();
+
+		if (!oucp) {
+			set_ucontext(&_cur_fc->uc);
+			return true;
+		}
 		swap_ucontext(oucp, &_cur_fc->uc);
+		return true;
 	}
 
 	static void _worker(any_word p) {
 		auto &fib_dvr = *p.as<fiber_driver *>();
 
+		fib_dvr._save_prev_fc_stk_data();
+
 		while (fib_dvr._fcs.size()) {
 			assert(fib_dvr._fcs.front());
+			fib_dvr._try_resume_fcs_front();
+
 			fib_dvr._cur_fc = std::move(fib_dvr._fcs.front());
 			assert(!fib_dvr._fcs.front());
 			fib_dvr._fcs.pop();
-
-			if (fib_dvr._cur_fc->stk) {
-				fib_dvr._resume_cur_fc();
-				continue;
-			}
 
 			if (fib_dvr._cur_fc->is_stoped) {
 				continue;
@@ -421,32 +428,25 @@ private:
 		set_ucontext(&fib_dvr._orig_uc);
 	}
 
-	void _swap_worker_uc(ucontext_t *oucp) {
-		if (!_cur_stk) {
-			if (_idle_stks.empty()) {
-				_cur_stk.reset(_stk_sz);
-			} else {
-				assert(_idle_stks.back());
-				assert(_idle_stks.back().data());
-				_cur_stk = std::move(_idle_stks.back());
-				assert(!_idle_stks.back());
-				assert(!_idle_stks.back().data());
-				assert(!_idle_stks.back().size());
-				_idle_stks.pop_back();
-			}
-			make_ucontext(&_worker_uc_base, &_worker, this, _cur_stk);
+	void _swap_new_worker_uc(ucontext_t *oucp) {
+		if (oucp != &_orig_uc) {
+			_stk_ix = !_stk_ix;
 		}
-		swap_ucontext(oucp, &_worker_uc_base);
+		if (!_cur_stk()) {
+			_cur_stk().reset(_stk_sz);
+			get_ucontext(&_cur_new_worker_uc());
+			make_ucontext(&_cur_new_worker_uc(), &_worker, this, _cur_stk());
+		}
+		swap_ucontext(oucp, &_cur_new_worker_uc());
 	}
 
 	void _work() {
-		if (_fcs.front()->stk) {
-			_cur_fc = std::move(_fcs.front());
-			_fcs.pop();
-			_resume_cur_fc(&_orig_uc);
-			return;
+		while (_fcs.size()) {
+			if (!_try_resume_fcs_front(&_orig_uc)) {
+				_swap_new_worker_uc(&_orig_uc);
+			}
+			_save_prev_fc_stk_data();
 		}
-		_swap_worker_uc(&_orig_uc);
 	}
 
 	friend scheduler;
