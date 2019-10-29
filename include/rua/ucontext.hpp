@@ -8,6 +8,7 @@
 #include "any_word.hpp"
 #include "bytes.hpp"
 #include "code_fn.hpp"
+#include "generic_ptr.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -59,8 +60,8 @@ RUA_SASSERT(sizeof(uc_regs_t) == 48);
 #endif
 
 struct uc_stack_t {
-	uintptr_t base;
-	uintptr_t limit;
+	generic_ptr base;
+	generic_ptr limit;
 };
 
 struct ucontext_t {
@@ -131,8 +132,10 @@ inline void make_ucontext(
 	any_word func_param,
 	bytes_ref stack) {
 
-	auto stk_end = stack.data() + stack.size();
-	ucp->regs.sp = stk_end.uintptr() - 5 * sizeof(uintptr_t);
+	ucp->stack.base = stack.data() + stack.size();
+	ucp->stack.limit = stack.data();
+
+	ucp->regs.sp = ucp->stack.base.uintptr() - 5 * sizeof(uintptr_t);
 	ucp->regs.ip = reinterpret_cast<uintptr_t>(func);
 
 #ifdef RUA_AMD64
@@ -145,9 +148,6 @@ inline void make_ucontext(
 	reinterpret_cast<uintptr_t *>(ucp->regs.sp)[2]
 #endif
 		= func_param;
-
-	ucp->stack.base = stk_end;
-	ucp->stack.limit = stack.data();
 }
 
 } // namespace rua
