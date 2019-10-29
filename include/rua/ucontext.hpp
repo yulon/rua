@@ -34,9 +34,9 @@ struct uc_regs_t {
 	uintptr_t d;	 // 12, 24
 	uintptr_t si;	// 16, 32
 	uintptr_t di;	// 20, 40
-	uintptr_t sp;	// 24, 48
-	uintptr_t bp;	// 28, 56
-	uintptr_t ip;	// 32, 64
+	generic_ptr sp;  // 24, 48
+	generic_ptr bp;  // 28, 56
+	generic_ptr ip;  // 32, 64
 	uintptr_t flags; // 36, 72
 #ifdef RUA_AMD64
 	uintptr_t r8;  // 80
@@ -135,8 +135,8 @@ inline void make_ucontext(
 	ucp->stack.base = stack.data() + stack.size();
 	ucp->stack.limit = stack.data();
 
-	ucp->regs.sp = ucp->stack.base.uintptr() - 5 * sizeof(uintptr_t);
-	ucp->regs.ip = reinterpret_cast<uintptr_t>(func);
+	ucp->regs.sp = ucp->stack.base - 5 * sizeof(uintptr_t);
+	ucp->regs.ip = func;
 
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
@@ -145,7 +145,7 @@ inline void make_ucontext(
 	ucp->regs.di
 #endif
 #elif defined(RUA_I386)
-	reinterpret_cast<uintptr_t *>(ucp->regs.sp)[2]
+	ucp->regs.sp.as<uintptr_t *>()[2]
 #endif
 		= func_param;
 }
