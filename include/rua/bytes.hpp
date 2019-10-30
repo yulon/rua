@@ -689,20 +689,14 @@ public:
 		_p(ptr),
 		_n(ptr ? size : 0) {}
 
-	bytes_view(const byte *ptr, size_t size) :
-		_p(reinterpret_cast<const char *>(ptr)),
-		_n(ptr ? size : 0) {}
-
 	bytes_view(const char *c_str, size_t size) : _p(c_str), _n(size) {}
 
 	bytes_view(const char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
 
-	bytes_view(const wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<const char *>(c_wstr)),
-		_n(size) {}
+	bytes_view(const wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
-		_p(reinterpret_cast<const char *>(c_wstr)),
+		_p(c_wstr),
 		_n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
@@ -712,13 +706,11 @@ public:
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>>
-	bytes_view(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<const char *>(ptr)),
-		_n(ptr ? size : 0) {}
+	bytes_view(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
 
 	template <typename R, typename... A>
 	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
-		_p(reinterpret_cast<const char *>(ptr)),
+		_p(ptr),
 		_n(size) {}
 
 	template <
@@ -796,20 +788,14 @@ public:
 		_p(ptr),
 		_n(ptr ? size : 0) {}
 
-	bytes_ref(byte *ptr, size_t size) :
-		_p(reinterpret_cast<char *>(ptr)),
-		_n(ptr ? size : 0) {}
-
 	bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
 
 	bytes_ref(char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
 
-	bytes_ref(wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<char *>(c_wstr)),
-		_n(size) {}
+	bytes_ref(wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
-		_p(reinterpret_cast<char *>(c_wstr)),
+		_p(c_wstr),
 		_n(str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
@@ -819,9 +805,7 @@ public:
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>>
-	bytes_ref(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<char *>(ptr)),
-		_n(ptr ? size : 0) {}
+	bytes_ref(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
 
 	template <
 		typename T,
