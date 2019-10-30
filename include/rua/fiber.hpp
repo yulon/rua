@@ -100,7 +100,7 @@ private:
 
 class fiber_driver {
 public:
-	fiber_driver(size_t stack_size = 8 * 1024 * 1024) :
+	fiber_driver(size_t stack_size = 0x100000) :
 		_stk_sz(stack_size),
 		_stk_ix(0),
 		_sch(*this) {}
