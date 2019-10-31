@@ -86,8 +86,7 @@ private:
 		int stk_ix;
 		bytes stk_data;
 
-		bool is_slept;
-
+		bool has_yielded;
 		scheduler::signaler_i sig;
 	};
 
@@ -143,7 +142,7 @@ public:
 		}
 
 		scheduler_guard sg(_sch);
-		_work();
+		_switch_to_worker_uc();
 	}
 
 	// May block the current context.
@@ -167,9 +166,7 @@ public:
 		}
 
 		for (;;) {
-			if (_fcs.size()) {
-				_work();
-			}
+			_switch_to_worker_uc();
 
 			now = tick();
 
@@ -226,7 +223,7 @@ public:
 	public:
 		scheduler() = default;
 
-		scheduler(fiber_driver &fib_dvr) : _fib_dvr(&fib_dvr) {}
+		scheduler(fiber_driver &fib_dvr) : _fd(&fib_dvr) {}
 
 		virtual ~scheduler() = default;
 
@@ -240,51 +237,45 @@ public:
 			} else {
 				wake_ti = tick() + timeout;
 			}
+			_fd->_cur_fc->has_yielded = true;
+			_fd->_cur_fc->stk_ix = _fd->_stk_ix;
+			slp_map.emplace(wake_ti, _fd->_cur_fc);
 
-			auto &fc = *slp_map.emplace(wake_ti, _fib_dvr->_cur_fc)->second;
-
-			fc.is_slept = true;
-			fc.stk_ix = _fib_dvr->_stk_ix;
-
-			_fib_dvr->_prev_fc = std::move(_fib_dvr->_cur_fc);
-
-			if (_fib_dvr->_fcs.size()) {
-				if (!_fib_dvr->_try_resume_fcs_front()) {
-					_fib_dvr->_swap_new_worker_uc(&fc.uc);
+			_fd->_prev_fc = std::move(_fd->_cur_fc);
+			if (_fd->_fcs.size()) {
+				if (!_fd->_try_resume_fcs_front()) {
+					_fd->_swap_new_worker_uc(&_fd->_prev_fc->uc);
 				}
 			} else {
-				swap_ucontext(&fc.uc, &_fib_dvr->_orig_uc);
+				swap_ucontext(&_fd->_prev_fc->uc, &_fd->_orig_uc);
 			}
-
-			_fib_dvr->_save_prev_fc_stk_data();
+			_fd->_save_prev_fc_stk_data();
 		}
 
 		virtual void sleep(ms timeout) {
-			_sleep(_fib_dvr->_slps, timeout);
+			_sleep(_fd->_slps, timeout);
 		}
 
 		using signaler = rua::secondary_signaler;
 
 		virtual signaler_i get_signaler() {
-			assert(_fib_dvr->_cur_fc);
+			assert(_fd->_cur_fc);
 
-			if (!_fib_dvr->_cur_fc->sig.type_is<signaler>() ||
-				_fib_dvr->_cur_fc->sig.as<signaler>()->primary() !=
-					_fib_dvr->_orig_sig) {
-				_fib_dvr->_cur_fc->sig =
-					std::make_shared<signaler>(_fib_dvr->_orig_sig);
+			if (!_fd->_cur_fc->sig.type_is<signaler>() ||
+				_fd->_cur_fc->sig.as<signaler>()->primary() != _fd->_orig_sig) {
+				_fd->_cur_fc->sig = std::make_shared<signaler>(_fd->_orig_sig);
 			}
-			return _fib_dvr->_cur_fc->sig;
+			return _fd->_cur_fc->sig;
 		}
 
 		virtual bool wait(ms timeout = duration_max()) {
-			assert(_fib_dvr->_cur_fc->sig.type_is<signaler>());
-			assert(_fib_dvr->_cur_fc->sig.as<signaler>()->primary());
+			assert(_fd->_cur_fc->sig.type_is<signaler>());
+			assert(_fd->_cur_fc->sig.as<signaler>()->primary());
 
-			auto sig = _fib_dvr->_cur_fc->sig.as<signaler>();
+			auto sig = _fd->_cur_fc->sig.as<signaler>();
 			auto state = sig->state();
 			if (!state) {
-				_sleep(_fib_dvr->_cws, timeout);
+				_sleep(_fd->_cws, timeout);
 				state = sig->state();
 			}
 			sig->reset();
@@ -292,11 +283,11 @@ public:
 		}
 
 		fiber_driver *get_fiber_driver() {
-			return _fib_dvr;
+			return _fd;
 		}
 
 	private:
-		fiber_driver *_fib_dvr;
+		fiber_driver *_fd;
 	};
 
 	scheduler &get_scheduler() {
@@ -387,45 +378,46 @@ private:
 		return true;
 	}
 
-	static void _worker(any_word p) {
-		auto &fib_dvr = *p.as<fiber_driver *>();
+	void _work() {
+		_save_prev_fc_stk_data();
 
-		fib_dvr._save_prev_fc_stk_data();
+		while (_fcs.size()) {
+			assert(_fcs.front());
+			_try_resume_fcs_front();
 
-		while (fib_dvr._fcs.size()) {
-			assert(fib_dvr._fcs.front());
-			fib_dvr._try_resume_fcs_front();
+			_cur_fc = std::move(_fcs.front());
+			assert(!_fcs.front());
+			_fcs.pop();
 
-			fib_dvr._cur_fc = std::move(fib_dvr._fcs.front());
-			assert(!fib_dvr._fcs.front());
-			fib_dvr._fcs.pop();
-
-			if (fib_dvr._cur_fc->is_stoped) {
+			if (_cur_fc->is_stoped) {
 				continue;
 			}
 
 			for (;;) {
-				fib_dvr._cur_fc->fn();
+				_cur_fc->fn();
 
-				if (fib_dvr._cur_fc->is_stoped) {
+				if (_cur_fc->is_stoped) {
 					break;
 				}
 
-				if (fib_dvr._cur_fc->end_ti <= tick()) {
-					fib_dvr._cur_fc->is_stoped = false;
+				if (_cur_fc->end_ti <= tick()) {
+					_cur_fc->is_stoped = false;
 					break;
 				}
 
-				if (!fib_dvr._cur_fc->is_slept) {
-					fib_dvr._slps.emplace(
-						time_zero(), std::move(fib_dvr._cur_fc));
+				if (!_cur_fc->has_yielded) {
+					_slps.emplace(time_zero(), std::move(_cur_fc));
 					break;
 				}
-				fib_dvr._cur_fc->is_slept = false;
+				_cur_fc->has_yielded = false;
 			}
 		}
 
-		set_ucontext(&fib_dvr._orig_uc);
+		set_ucontext(&_orig_uc);
+	}
+
+	static void _worker(any_word th1s) {
+		th1s.as<fiber_driver *>()->_work();
 	}
 
 	void _swap_new_worker_uc(ucontext_t *oucp) {
@@ -440,7 +432,7 @@ private:
 		swap_ucontext(oucp, &_cur_new_worker_uc());
 	}
 
-	void _work() {
+	void _switch_to_worker_uc() {
 		while (_fcs.size()) {
 			if (!_try_resume_fcs_front(&_orig_uc)) {
 				_swap_new_worker_uc(&_orig_uc);
