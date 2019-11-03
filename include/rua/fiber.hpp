@@ -83,8 +83,8 @@ private:
 		}
 
 		ucontext_t uc;
-		int stk_ix;
-		bytes stk_data;
+		int using_stk_ix;
+		bytes used_stk_cp;
 
 		bool has_yielded;
 		scheduler::signaler_i sig;
@@ -238,7 +238,7 @@ public:
 				wake_ti = tick() + timeout;
 			}
 			_fd->_cur_fc->has_yielded = true;
-			_fd->_cur_fc->stk_ix = _fd->_stk_ix;
+			_fd->_cur_fc->using_stk_ix = _fd->_stk_ix;
 			slp_map.emplace(wake_ti, _fd->_cur_fc);
 
 			_fd->_prev_fc = std::move(_fd->_cur_fc);
@@ -249,7 +249,7 @@ public:
 			} else {
 				swap_ucontext(&_fd->_prev_fc->uc, &_fd->_orig_uc);
 			}
-			_fd->_save_prev_fc_stk_data();
+			_fd->_clear_prev_fc();
 		}
 
 		virtual void sleep(ms timeout) {
@@ -337,23 +337,37 @@ private:
 		return _new_worker_ucs[_stk_ix];
 	}
 
-	void _save_prev_fc_stk_data() {
+	void _clear_prev_fc() {
 		if (!_prev_fc) {
 			return;
 		}
-		assert(!_prev_fc->stk_data.size());
-		auto &stk = _stks[_prev_fc->stk_ix];
-		_prev_fc->stk_data =
-			stk(_prev_fc->uc.regs.sp + sizeof(void *) - stk.data());
+
+		assert(!_prev_fc->used_stk_cp.size());
+
+		auto &using_stk = _stks[_prev_fc->using_stk_ix];
+		auto used_stk =
+			using_stk(_prev_fc->uc.regs.sp + sizeof(void *) - using_stk.data());
+
+		auto rmdr = used_stk.size() % 1024;
+		_prev_fc->used_stk_cp.resize(
+			used_stk.size() + (rmdr ? 1024 - rmdr : 0));
+#ifndef NDEBUG
+		auto p = _prev_fc->used_stk_cp.data();
+#endif
+		_prev_fc->used_stk_cp = used_stk;
+#ifndef NDEBUG
+		assert(p == _prev_fc->used_stk_cp.data());
+#endif
+
 		_prev_fc.reset();
 	}
 
 	bool _try_resume_fcs_front(ucontext_t *oucp = nullptr) {
-		if (!_fcs.front()->stk_data.size()) {
+		if (!_fcs.front()->used_stk_cp.size()) {
 			return false;
 		}
 
-		if (oucp != &_orig_uc && _fcs.front()->stk_ix == _stk_ix) {
+		if (oucp != &_orig_uc && _fcs.front()->using_stk_ix == _stk_ix) {
 			if (!oucp) {
 				set_ucontext(&_orig_uc);
 				return true;
@@ -365,10 +379,11 @@ private:
 		_cur_fc = std::move(_fcs.front());
 		_fcs.pop();
 
-		_stk_ix = _cur_fc->stk_ix;
-		_cur_stk()(_cur_stk().size() - _cur_fc->stk_data.size())
-			.copy_from(_cur_fc->stk_data);
-		_cur_fc->stk_data.reset();
+		_stk_ix = _cur_fc->using_stk_ix;
+		auto &cur_stk = _cur_stk();
+		cur_stk(cur_stk.size() - _cur_fc->used_stk_cp.size())
+			.copy_from(_cur_fc->used_stk_cp);
+		_cur_fc->used_stk_cp.resize(0);
 
 		if (!oucp) {
 			set_ucontext(&_cur_fc->uc);
@@ -379,7 +394,7 @@ private:
 	}
 
 	void _work() {
-		_save_prev_fc_stk_data();
+		_clear_prev_fc();
 
 		while (_fcs.size()) {
 			assert(_fcs.front());
@@ -424,10 +439,11 @@ private:
 		if (oucp != &_orig_uc) {
 			_stk_ix = !_stk_ix;
 		}
-		if (!_cur_stk()) {
-			_cur_stk().reset(_stk_sz);
+		auto &cur_stk = _cur_stk();
+		if (!cur_stk) {
+			cur_stk.reset(_stk_sz);
 			get_ucontext(&_cur_new_worker_uc());
-			make_ucontext(&_cur_new_worker_uc(), &_worker, this, _cur_stk());
+			make_ucontext(&_cur_new_worker_uc(), &_worker, this, cur_stk);
 		}
 		swap_ucontext(oucp, &_cur_new_worker_uc());
 	}
@@ -437,7 +453,7 @@ private:
 			if (!_try_resume_fcs_front(&_orig_uc)) {
 				_swap_new_worker_uc(&_orig_uc);
 			}
-			_save_prev_fc_stk_data();
+			_clear_prev_fc();
 		}
 	}
 
