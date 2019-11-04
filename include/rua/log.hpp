@@ -58,7 +58,7 @@ RUA_FORCE_INLINE void log(Args &&... args) {
 	log_printer().println(std::forward<Args>(args)...);
 }
 
-inline printer &error_log_printer() {
+inline printer &err_log_printer() {
 #ifdef _WIN32
 	static auto &p = ([]() -> printer & {
 		static printer p;
@@ -79,8 +79,8 @@ inline printer &error_log_printer() {
 }
 
 template <typename... Args>
-RUA_FORCE_INLINE void error_log(Args &&... args) {
-	error_log_printer().println(std::forward<Args>(args)...);
+RUA_FORCE_INLINE void err_log(Args &&... args) {
+	err_log_printer().println(std::forward<Args>(args)...);
 }
 
 } // namespace rua

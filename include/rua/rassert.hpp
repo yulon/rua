@@ -9,7 +9,7 @@
 #define RUA_RASSERT(_exp)                                                      \
 	{                                                                          \
 		if (!(_exp)) {                                                         \
-			rua::error_log(                                                    \
+			rua::err_log(                                                      \
 				"Assertion failed!",                                           \
 				rua::eol::sys,                                                 \
 				"File:",                                                       \
