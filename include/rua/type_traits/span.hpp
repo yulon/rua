@@ -15,7 +15,8 @@ template <
 	typename = enable_if_t<std::is_class<decay_t<T>>::value>,
 	typename Pointer = decltype(std::declval<T &&>().data())>
 RUA_FORCE_INLINE enable_if_t<
-	std::is_convertible<Pointer, generic_ptr>::value &&
+	(std::is_convertible<Pointer, void *>::value ||
+	 std::is_convertible<Pointer, const void *>::value) &&
 		!is_null_pointer<decay_t<Pointer>>::value,
 	Pointer>
 data(T &&target) {
@@ -67,34 +68,13 @@ RUA_FORCE_INLINE constexpr size_t size(E (&)[N]) {
 
 template <
 	typename T,
-	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
-	typename Element = conditional_t<
-		std::is_pointer<Pointer>::value,
-		remove_pointer_t<Pointer>,
-		conditional_t<std::is_const<decay_t<T>>::value, const byte, byte>>,
-	typename Value = remove_cv_t<Element>,
-	typename DecayElement = conditional_t<
-		std::is_void<Value>::value,
-		conditional_t<std::is_const<Element>::value, const byte, byte>,
-		Element>,
-	typename DecayValue = remove_cv_t<DecayElement>,
-	typename Index = remove_reference_t<decltype(size(std::declval<T>()))>>
-struct span_traits {
-	using pointer = Pointer;
-	using element_type = DecayElement;
-	using value_type = DecayValue;
-	using index_type = Index;
-};
-
-template <
-	typename T,
 	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>>
 struct span_pointer {
 	using type = Pointer;
 };
 
-template <typename T>
-using span_pointer_t = typename span_pointer<T>::type;
+template <typename T, typename... Others>
+using span_pointer_t = typename span_pointer<T, Others...>::type;
 
 template <
 	typename T,
@@ -102,7 +82,14 @@ template <
 	typename Element = conditional_t<
 		std::is_pointer<Pointer>::value,
 		remove_pointer_t<Pointer>,
-		conditional_t<std::is_const<decay_t<T>>::value, const byte, byte>>,
+		conditional_t<
+			(!std::is_base_of<generic_ptr, remove_cv_t<Pointer>>::value &&
+			 !std::is_convertible<Pointer, void *>::value &&
+			 std::is_convertible<Pointer, const void *>::value) ||
+				std::is_const<Pointer>::value ||
+				std::is_const<decay_t<T>>::value,
+			const byte,
+			byte>>,
 	typename Value = remove_cv_t<Element>,
 	typename DecayElement = conditional_t<
 		std::is_void<Value>::value,
@@ -112,8 +99,8 @@ struct span_element {
 	using type = DecayElement;
 };
 
-template <typename T>
-using span_element_t = typename span_element<T>::type;
+template <typename T, typename... Others>
+using span_element_t = typename span_element<T, Others...>::type;
 
 template <
 	typename T,
@@ -123,8 +110,8 @@ struct span_value {
 	using type = Value;
 };
 
-template <typename T>
-using span_value_t = typename span_value<T>::type;
+template <typename T, typename... Others>
+using span_value_t = typename span_value<T, Others...>::type;
 
 template <
 	typename T,
@@ -133,8 +120,21 @@ struct span_index {
 	using type = Index;
 };
 
-template <typename T>
-using span_index_t = typename span_index<T>::type;
+template <typename T, typename... Others>
+using span_index_t = typename span_index<T, Others...>::type;
+
+template <
+	typename T,
+	typename Pointer = span_pointer_t<T>,
+	typename Element = span_element_t<T, Pointer>,
+	typename Value = span_value_t<T, Element>,
+	typename Index = span_index_t<T>>
+struct span_traits {
+	using pointer = Pointer;
+	using element_type = Element;
+	using value_type = Value;
+	using index_type = Index;
+};
 
 template <typename, typename = void>
 struct is_span : std::false_type {};
