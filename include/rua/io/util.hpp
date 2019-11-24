@@ -78,7 +78,7 @@ public:
 	void add(reader_i r) {
 		++_c;
 		thread([this, r]() {
-			bytes buf(_buf_sz);
+			bytes buf(_buf_sz.load());
 			for (;;) {
 				auto sz = r->read(buf);
 				if (!sz) {
