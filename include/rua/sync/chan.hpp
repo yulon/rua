@@ -22,7 +22,7 @@ public:
 	chan &operator=(const chan &) = delete;
 
 	rua::opt<T> try_pop(ms timeout = 0) {
-		auto val_opt = _buf.pop_front();
+		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout) {
 			return val_opt;
 		}
@@ -32,7 +32,7 @@ public:
 		auto it = _waiters.emplace_front(sig);
 
 		if (it.is_back()) {
-			val_opt = _buf.pop_front();
+			val_opt = _buf.pop_back();
 			if (val_opt) {
 				if (!_waiters.erase(it) && !_buf.is_empty()) {
 					auto waiter_opt = _waiters.pop_back();
@@ -47,7 +47,7 @@ public:
 		if (timeout == duration_max()) {
 			for (;;) {
 				if (sch->wait(timeout)) {
-					val_opt = _buf.pop_front();
+					val_opt = _buf.pop_back();
 					if (val_opt) {
 						return val_opt;
 					}
@@ -59,7 +59,7 @@ public:
 		for (;;) {
 			auto t = tick();
 			auto r = sch->wait(timeout);
-			val_opt = _buf.pop_front();
+			val_opt = _buf.pop_back();
 			if (val_opt || !r) {
 				return val_opt;
 			}
