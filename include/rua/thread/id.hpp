@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_THREAD_ID_HPP
-#define _RUA_THREAD_THREAD_ID_HPP
+#ifndef _RUA_THREAD_ID_HPP
+#define _RUA_THREAD_ID_HPP
 
 #include "../macros.hpp"
 

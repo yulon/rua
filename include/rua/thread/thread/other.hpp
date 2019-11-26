@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_OTHER_HPP
-#define _RUA_THREAD_OTHER_HPP
+#ifndef _RUA_THREAD_THREAD_OTHER_HPP
+#define _RUA_THREAD_THREAD_OTHER_HPP
 
 #include "../macros.hpp"
 

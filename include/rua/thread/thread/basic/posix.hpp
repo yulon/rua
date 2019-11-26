@@ -1,10 +1,10 @@
-#ifndef _RUA_THREAD_CREATIONAL_POSIX_HPP
-#define _RUA_THREAD_CREATIONAL_POSIX_HPP
+#ifndef _RUA_THREAD_THREAD_BASIC_POSIX_HPP
+#define _RUA_THREAD_THREAD_BASIC_POSIX_HPP
 
-#include "../id/posix.hpp"
+#include "../../id/posix.hpp"
 
-#include "../../any_word.hpp"
-#include "../../macros.hpp"
+#include "../../../any_word.hpp"
+#include "../../../macros.hpp"
 
 #include <pthread.h>
 

@@ -1,11 +1,11 @@
-#ifndef _RUA_THREAD_CREATIONAL_HPP
-#define _RUA_THREAD_CREATIONAL_HPP
+#ifndef _RUA_THREAD_THREAD_BASIC_HPP
+#define _RUA_THREAD_THREAD_BASIC_HPP
 
 #include "../macros.hpp"
 
 #ifdef _WIN32
 
-#include "creational/win32.hpp"
+#include "basic/win32.hpp"
 
 namespace rua {
 
@@ -17,7 +17,7 @@ using namespace win32::_this_thread_id;
 
 #elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
 
-#include "creational/posix.hpp"
+#include "basic/posix.hpp"
 
 namespace rua {
 

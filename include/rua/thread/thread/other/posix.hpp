@@ -1,9 +1,9 @@
-#ifndef _RUA_THREAD_OTHER_POSIX_HPP
-#define _RUA_THREAD_OTHER_POSIX_HPP
+#ifndef _RUA_THREAD_THREAD_OTHER_POSIX_HPP
+#define _RUA_THREAD_THREAD_OTHER_POSIX_HPP
 
-#include "../creational/posix.hpp"
+#include "../basic/posix.hpp"
 
-#include "../../sched/block_call.hpp"
+#include "../../../sched/block_call.hpp"
 
 #include <pthread.h>
 
