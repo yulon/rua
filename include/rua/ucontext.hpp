@@ -7,7 +7,6 @@
 
 #include "any_word.hpp"
 #include "bytes.hpp"
-#include "code_fn.hpp"
 #include "generic_ptr.hpp"
 
 #ifdef _WIN32
@@ -69,6 +68,8 @@ struct ucontext_t {
 	uc_stack_t stack;
 };
 
+#include "switch_code_seg.h"
+
 RUA_CODE(_get_ucontext_code){
 #ifdef RUA_AMD64
 #ifdef RUA_MS64_FASTCALL
@@ -117,13 +118,16 @@ RUA_CODE(_swap_ucontext_code){
 #endif
 };
 
-RUA_CODE_FN(bool(ucontext_t *ucp), get_ucontext, _get_ucontext_code)
+#include "switch_code_seg.h"
 
-RUA_CODE_FN(void(const ucontext_t *ucp), set_ucontext, _set_ucontext_code)
+RUA_CODE_FN(bool, get_ucontext, (ucontext_t * ucp), _get_ucontext_code)
+
+RUA_CODE_FN(void, set_ucontext, (const ucontext_t *ucp), _set_ucontext_code)
 
 RUA_CODE_FN(
-	void(ucontext_t *oucp, const ucontext_t *ucp),
+	void,
 	swap_ucontext,
+	(ucontext_t * oucp, const ucontext_t *ucp),
 	_swap_ucontext_code)
 
 inline void make_ucontext(
