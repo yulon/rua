@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_THREAD_OTHER_HPP
 #define _RUA_THREAD_THREAD_OTHER_HPP
 
-#include "../macros.hpp"
+#include "../../macros.hpp"
 
 #ifdef _WIN32
 
