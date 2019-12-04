@@ -37,7 +37,8 @@ TEST_CASE("memory find") {
 	rua::log("bytes::find:", rua::tick() - tp);
 
 	REQUIRE(fr);
-	REQUIRE(fr.pos == pat_pos);
+	REQUIRE(fr.data() - dat.data() == pat_pos);
+	REQUIRE(fr.size() == 8);
 
 	// bytes::match
 
@@ -47,9 +48,11 @@ TEST_CASE("memory find") {
 
 	rua::log("bytes::match:", rua::tick() - tp);
 
-	REQUIRE(mr);
-	REQUIRE(mr.pos == pat_pos);
-	REQUIRE(mr[0] == pat_pos + 1);
+	REQUIRE(mr.size() == 2);
+	REQUIRE(mr[0].data() - dat.data() == pat_pos);
+	REQUIRE(mr[0].size() == 8);
+	REQUIRE(mr[1].data() - dat.data() == pat_pos + 1);
+	REQUIRE(mr[1].size() == 1);
 
 	// std::string::find
 
