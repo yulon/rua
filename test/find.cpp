@@ -28,9 +28,20 @@ TEST_CASE("memory find") {
 
 	dat(pat_pos).copy_from(&pat[0]);
 
-	// bytes::find
+	// bytes::find_pos
 
 	auto tp = rua::tick();
+
+	auto fpo = dat.find_pos({255, 255, 255, 255, 255, 6, 7, 255});
+
+	rua::log("bytes::find_pos:", rua::tick() - tp);
+
+	REQUIRE(fpo);
+	REQUIRE(fpo.value() == pat_pos);
+
+	// bytes::find
+
+	tp = rua::tick();
 
 	auto fr = dat.find({255, 255, 255, 255, 255, 6, 7, 255});
 

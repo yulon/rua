@@ -5,6 +5,7 @@
 #include "byte.hpp"
 #include "limits.hpp"
 #include "macros.hpp"
+#include "opt.hpp"
 #include "string/str_len.hpp"
 #include "string/string_view.hpp"
 #include "type_traits.hpp"
@@ -19,378 +20,11 @@
 
 namespace rua {
 
-template <typename CmpUnit = uintmax_t>
-class bytes_find_pattern {
-public:
-	template <typename Container>
-	bytes_find_pattern(const Container &byt_vals) {
-		_input(byt_vals);
-	}
-
-	bytes_find_pattern(std::initializer_list<byte> byt_vals) {
-		_input(byt_vals);
-	}
-
-	size_t size() const {
-		return _n;
-	}
-
-	struct word {
-		conditional_t<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t> value;
-		byte size = sizeof(CmpUnit);
-
-		RUA_FORCE_INLINE size_t eq(const byte *begin) const {
-			if (size == sizeof(CmpUnit)) {
-				return bit_get<CmpUnit>(&value) == bit_get<CmpUnit>(begin)
-						   ? sizeof(CmpUnit)
-						   : 0;
-			}
-
-			switch (size) {
-			case 8:
-				if (bit_get<uint64_t>(&value) == bit_get<uint64_t>(begin)) {
-					return size;
-				}
-				return 0;
-
-				////////////////////////////////////////////////////////////
-
-			case 7:
-				if (bit_get<byte>(&value, 6) != bit_get<byte>(begin, 6)) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 6:
-				if (bit_get<uint32_t>(&value) == bit_get<uint32_t>(begin) &&
-					bit_get<uint16_t>(&value, 4) ==
-						bit_get<uint16_t>(begin, 4)) {
-					return size;
-				}
-				return 0;
-
-				////////////////////////////////////////////////////////////
-
-			case 5:
-				if (bit_get<byte>(&value, 4) != bit_get<byte>(begin, 4)) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 4:
-				return bit_get<uint32_t>(&value) == bit_get<uint32_t>(begin);
-
-				////////////////////////////////////////////////////////////
-
-			case 3:
-				if (bit_get<byte>(&value, 2) != bit_get<byte>(begin, 2)) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 2:
-				return bit_get<uint16_t>(&value) == bit_get<uint16_t>(begin);
-
-				////////////////////////////////////////////////////////////
-
-			case 1:
-				return bit_get<byte>(&value) == bit_get<byte>(begin);
-
-				////////////////////////////////////////////////////////////
-
-			default:
-				for (size_t i = 0; i < size; ++i) {
-					if (bit_get<byte>(&value, i) != bit_get<byte>(begin, i)) {
-						return 0;
-					}
-				}
-			}
-
-			return size;
-		}
-	};
-
-	RUA_FORCE_INLINE const std::vector<word> &words() const {
-		return _words;
-	}
-
-	RUA_FORCE_INLINE size_t hash() const {
-		return _h;
-	}
-
-	RUA_FORCE_INLINE void
-	calc_hash(size_t &h, const byte *begin, bool is_update = false) const {
-		auto end = begin + _n;
-		if (is_update) {
-			h -= *(--begin);
-			h += *(--end);
-			return;
-		}
-		h = 0;
-		for (auto it = begin; it != end; ++it) {
-			h += *it;
-		}
-	}
-
-private:
-	size_t _n;
-	std::vector<word> _words;
-	size_t _h;
-
-	template <typename Container>
-	void _input(const Container &byt_vals) {
-		_n = byt_vals.size();
-
-		if (!_n) {
-			return;
-		}
-
-		auto sz_rmdr = byt_vals.size() % sizeof(CmpUnit);
-
-		if (sz_rmdr) {
-			_words.resize(byt_vals.size() / sizeof(CmpUnit) + 1);
-		} else {
-			_words.resize(byt_vals.size() / sizeof(CmpUnit));
-		}
-
-		size_t wi = 0;
-		size_t last_sz = 0;
-		_h = 0;
-
-		for (size_t i = 0; i < _n; ++i) {
-			if (last_sz == sizeof(CmpUnit)) {
-				last_sz = 0;
-				++wi;
-			}
-			bit_set<byte>(
-				&_words[wi].value,
-				last_sz,
-				static_cast<byte>(byt_vals.begin()[i]));
-			++last_sz;
-
-			_h += static_cast<size_t>(static_cast<byte>(byt_vals.begin()[i]));
-		}
-
-		if (sz_rmdr) {
-			_words.back().size = static_cast<byte>(sz_rmdr);
-		}
-	}
-};
-
-template <typename CmpUnit = uintmax_t>
-class bytes_match_pattern {
-public:
-	template <typename Container>
-	bytes_match_pattern(const Container &byt_vals) {
-		_input(byt_vals);
-	}
-
-	bytes_match_pattern(std::initializer_list<uint16_t> byt_vals) {
-		_input(byt_vals);
-	}
-
-	bytes_match_pattern(
-		std::initializer_list<std::initializer_list<byte>> byt_val_spls) {
-		std::vector<uint16_t> byt_vals;
-
-		auto sz = rua::nmax<size_t>();
-		for (auto it = byt_val_spls.begin(); it != byt_val_spls.end(); ++it) {
-			if (it->size() < sz) {
-				sz = it->size();
-			}
-		}
-
-		for (size_t i = 0; i < sz; ++i) {
-			const byte *b = nullptr;
-			bool same = true;
-			for (auto it = byt_val_spls.begin(); it != byt_val_spls.end();
-				 ++it) {
-				if (!b) {
-					b = &it->begin()[i];
-					continue;
-				}
-				if (*b != it->begin()[i]) {
-					same = false;
-					break;
-				}
-			}
-			if (same) {
-				byt_vals.emplace_back(*b);
-			} else {
-				byt_vals.emplace_back(1111);
-			}
-		}
-
-		_input(byt_vals);
-	}
-
-	size_t size() const {
-		return _n;
-	}
-
-	struct word {
-		CmpUnit mask = 0;
-		conditional_t<sizeof(CmpUnit) >= sizeof(size_t), CmpUnit, size_t>
-			value = 0;
-		byte size = sizeof(CmpUnit);
-
-		bool is_void() const {
-			return !mask;
-		}
-
-		RUA_FORCE_INLINE size_t eq(const byte *target) const {
-			if (size == sizeof(CmpUnit)) {
-				if (is_void()) {
-					return size;
-				}
-				return bit_get<CmpUnit>(&value) ==
-							   (bit_get<CmpUnit>(target) & mask)
-						   ? sizeof(CmpUnit)
-						   : 0;
-			}
-
-			if (is_void()) {
-				return size;
-			}
-
-			switch (size) {
-			case 8:
-				return bit_get<uint64_t>(&value) ==
-					   (bit_get<uint64_t>(target) & bit_get<uint64_t>(&mask));
-
-				////////////////////////////////////////////////////////////
-
-			case 7:
-				if (bit_get<byte>(&value, 6) !=
-					(bit_get<byte>(target + 6) & bit_get<byte>(&mask, 6))) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 6:
-				if (bit_get<uint32_t>(&value) == (bit_get<uint32_t>(target) &
-												  bit_get<uint32_t>(&mask)) &&
-					bit_get<uint16_t>(&value, 4) ==
-						(bit_get<uint16_t>(target + 4) &
-						 bit_get<uint16_t>(&mask, 4))) {
-					return size;
-				}
-				return 0;
-
-				////////////////////////////////////////////////////////////
-
-			case 5:
-				if (bit_get<byte>(&value, 4) !=
-					(bit_get<byte>(target + 4) & bit_get<byte>(&mask, 4))) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 4:
-				return bit_get<uint32_t>(&value) ==
-					   (bit_get<uint32_t>(target) & bit_get<uint32_t>(&mask));
-
-				////////////////////////////////////////////////////////////
-
-			case 3:
-				if (bit_get<byte>(&value, 2) !=
-					(bit_get<byte>(target + 2) & bit_get<byte>(&mask, 2))) {
-					return 0;
-				}
-				RUA_FALLTHROUGH;
-
-			case 2:
-				return bit_get<uint16_t>(&value) ==
-					   (bit_get<uint16_t>(target) & bit_get<uint16_t>(&mask));
-
-				////////////////////////////////////////////////////////////
-
-			case 1:
-				return bit_get<byte>(&value) ==
-					   (bit_get<byte>(target) & bit_get<byte>(&mask));
-
-				////////////////////////////////////////////////////////////
-
-			default:
-				for (size_t i = 0; i < size; ++i) {
-					if (bit_get<byte>(&value, i) !=
-						(bit_get<byte>(target + i) & bit_get<byte>(&mask, i))) {
-						return 0;
-					}
-				}
-			}
-
-			return size;
-		}
-	};
-
-	RUA_FORCE_INLINE const std::vector<word> &words() const {
-		return _words;
-	}
-
-	static RUA_FORCE_INLINE constexpr size_t hash() {
-		return 0;
-	}
-
-	static RUA_FORCE_INLINE void
-	calc_hash(size_t &, const byte *, bool = false) {}
-
-	struct sub_t {
-		size_t offset, size;
-	};
-
-	const std::vector<sub_t> &subs() const {
-		return _subs;
-	}
-
-private:
-	size_t _n;
-	size_t _h;
-	std::vector<word> _words;
-	std::vector<sub_t> _subs;
-
-	template <typename Container>
-	void _input(const Container &byt_vals) {
-		_n = byt_vals.size();
-		if (!_n) {
-			return;
-		}
-		bool in_void = false;
-		size_t last_sz = sizeof(CmpUnit);
-		size_t i;
-		for (i = 0; i < _n; ++i) {
-			if (last_sz == sizeof(CmpUnit)) {
-				last_sz = 0;
-				_words.emplace_back();
-			}
-			if (byt_vals.begin()[i] < 256) {
-				if (in_void) {
-					in_void = false;
-					_subs.back().size = i - _subs.back().offset;
-				}
-				bit_set<byte>(&_words.back().mask, last_sz, 255);
-				bit_set<byte>(
-					&_words.back().value,
-					last_sz,
-					static_cast<byte>(byt_vals.begin()[i]));
-			} else if (!in_void) {
-				in_void = true;
-				_subs.emplace_back(sub_t{i, 0});
-			}
-			++last_sz;
-		}
-		if (in_void) {
-			_subs.back().size = i - _subs.back().offset;
-		}
-		auto sz_rmdr = byt_vals.size() % sizeof(CmpUnit);
-		if (sz_rmdr) {
-			_words.back().size = static_cast<byte>(sz_rmdr);
-		}
-	}
-};
-
 class bytes_view;
 class bytes_ref;
+class bytes;
+
+class bytes_pattern;
 
 template <typename Span>
 class const_bytes_base {
@@ -426,7 +60,7 @@ public:
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return *at<const byte *>(offset);
+		return at<const byte>(offset);
 	}
 
 	inline bytes_view
@@ -462,15 +96,15 @@ public:
 		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
-	template <typename Pattern>
-	inline bytes_view search(const Pattern &pat) const;
+	inline opt<size_t> find_pos(bytes_view) const;
 
-	template <typename CmpUnit = uintmax_t>
-	inline bytes_view find(const bytes_find_pattern<CmpUnit> &byts) const;
+	inline opt<size_t>
+	find_pos(bytes_view sep, bytes_view mask, bool sep_is_clear = false) const;
 
-	template <typename CmpUnit = uintmax_t>
-	inline std::vector<bytes_view>
-	match(const bytes_match_pattern<CmpUnit> &pat) const;
+	template <typename... Others>
+	inline bytes_view find(bytes_view sep, Others &&... others) const;
+
+	inline std::vector<bytes_view> match(const bytes_pattern &) const;
 
 protected:
 	const_bytes_base() = default;
@@ -530,12 +164,12 @@ public:
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return *at<const byte *>(offset);
+		return at<const byte>(offset);
 		;
 	}
 
 	RUA_FORCE_INLINE byte &operator[](ptrdiff_t offset) {
-		return *at<byte *>(offset);
+		return at<byte>(offset);
 		;
 	}
 
@@ -583,25 +217,15 @@ public:
 		}
 	}
 
-	template <typename Pattern>
-	inline bytes_view search(const Pattern &pat) const;
+	template <typename... Others>
+	inline bytes_view find(bytes_view sep, Others &&... others) const;
 
-	template <typename CmpUnit = uintmax_t>
-	inline bytes_view find(const bytes_find_pattern<CmpUnit> &byts) const;
+	template <typename... Others>
+	inline bytes_ref find(bytes_view sep, Others &&... others);
 
-	template <typename CmpUnit = uintmax_t>
-	inline std::vector<bytes_view>
-	match(const bytes_match_pattern<CmpUnit> &pat) const;
+	inline std::vector<bytes_view> match(const bytes_pattern &) const;
 
-	template <typename Pattern>
-	inline bytes_ref search(const Pattern &pat);
-
-	template <typename CmpUnit = uintmax_t>
-	inline bytes_ref find(const bytes_find_pattern<CmpUnit> &byts);
-
-	template <typename CmpUnit = uintmax_t>
-	inline std::vector<bytes_ref>
-	match(const bytes_match_pattern<CmpUnit> &pat);
+	inline std::vector<bytes_ref> match(const bytes_pattern &);
 
 private:
 	RUA_FORCE_INLINE Span *_this() {
@@ -622,6 +246,10 @@ public:
 	constexpr bytes_view(generic_ptr ptr, size_t size) :
 		_p(ptr),
 		_n(ptr ? size : 0) {}
+
+	bytes_view(std::initializer_list<const byte> il) :
+		_p(il.begin()),
+		_n(il.size()) {}
 
 	bytes_view(const char *c_str, size_t size) : _p(c_str), _n(size) {}
 
@@ -740,63 +368,87 @@ operator()(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-template <typename Pattern>
-inline bytes_view const_bytes_base<Span>::search(const Pattern &pat) const {
-	if (!pat.size() || _this()->size() < pat.size()) {
-		return nullptr;
+inline opt<size_t> const_bytes_base<Span>::find_pos(bytes_view sep) const {
+	auto sz = _this()->size();
+	auto sep_sz = sep.size();
+	if (sz < sep_sz) {
+		return nullopt;
 	}
 
 	const byte *begin = _this()->data();
-	auto end = begin + _this()->size() - pat.size();
+	const byte *sep_begin = sep.data();
+	if (sz == sep_sz) {
+		if (bit_eq(begin, sep_begin, sz)) {
+			return 0;
+		}
+		return nullopt;
+	}
+	auto end = begin + _this()->size() - sep_sz;
+	auto sep_back_ix = sep_sz - 1;
 
+	size_t sep_h = 0;
+	for (size_t i = 0; i < sep_sz; ++i) {
+		sep_h += sep_begin[i];
+	}
 	size_t h = 0;
-	const byte *cmp_ptr = nullptr;
-
 	for (auto it = begin; it != end; ++it) {
-		pat.calc_hash(h, it, it != begin);
-		if (h == pat.hash()) {
-			cmp_ptr = it;
-			for (auto &wd : pat.words()) {
-				size_t sz = wd.eq(cmp_ptr);
-				if (!sz) {
-					cmp_ptr = nullptr;
-					break;
-				}
-				cmp_ptr += sz;
+		if (it == begin) {
+			for (size_t j = 0; j < sep_sz; ++j) {
+				h += it[j];
 			}
-			if (cmp_ptr) {
-				auto off = it - begin;
-				return slice(off, off + pat.size());
-			}
+		} else {
+			h -= it[-1];
+			h += it[sep_back_ix];
+		}
+		if (h != sep_h) {
+			continue;
+		}
+		if (bit_eq(it, sep_begin, sep_sz)) {
+			return it - begin;
 		}
 	}
-
-	return nullptr;
+	return nullopt;
 }
 
 template <typename Span>
-template <typename CmpUnit>
+inline opt<size_t> const_bytes_base<Span>::find_pos(
+	bytes_view sep, bytes_view mask, bool sep_is_clear) const {
+
+	auto sz = _this()->size();
+	auto sep_sz = sep.size();
+	if (sz < sep_sz) {
+		return nullopt;
+	}
+	assert(sep_sz == mask.size());
+
+	const byte *begin = _this()->data();
+	const byte *sep_begin = sep.data();
+	const byte *mask_begin = mask.data();
+	if (sz == sep_sz) {
+		if (sep_is_clear ? bit_has(begin, sep_begin, mask_begin, sz)
+						 : bit_eq(begin, sep_begin, mask_begin, sz)) {
+			return 0;
+		}
+		return nullopt;
+	}
+	auto end = begin + _this()->size() - sep_sz;
+
+	for (auto it = begin; it != end; ++it) {
+		if (sep_is_clear ? bit_has(it, sep_begin, mask_begin, sep_sz)
+						 : bit_eq(it, sep_begin, mask_begin, sep_sz)) {
+			return it - begin;
+		}
+	}
+	return nullopt;
+}
+
+template <typename Span>
+template <typename... Others>
 inline bytes_view
-const_bytes_base<Span>::find(const bytes_find_pattern<CmpUnit> &byts) const {
-	return search(byts);
-}
-
-template <typename Span>
-template <typename CmpUnit>
-inline std::vector<bytes_view>
-const_bytes_base<Span>::match(const bytes_match_pattern<CmpUnit> &pat) const {
-	std::vector<bytes_view> mr;
-	auto fr = search(pat);
-	if (!fr) {
-		return mr;
-	}
-	const auto &subs = pat.subs();
-	mr.reserve(1 + subs.size());
-	mr.emplace_back(fr);
-	for (auto &sub : subs) {
-		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
-	}
-	return mr;
+const_bytes_base<Span>::find(bytes_view sep, Others &&... others) const {
+	auto pos_opt = find_pos(sep, std::forward<Others>(others)...);
+	return pos_opt ? bytes_view(_this()->data() + pos_opt.value(), sep.size())
+				   : nullptr;
 }
 
 class bytes_ref : public bytes_base<bytes_ref> {
@@ -808,6 +460,8 @@ public:
 	constexpr bytes_ref(generic_ptr ptr, size_t size) :
 		_p(ptr),
 		_n(ptr ? size : 0) {}
+
+	bytes_ref(std::initializer_list<byte> il) : _p(il.begin()), _n(il.size()) {}
 
 	bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
 
@@ -971,54 +625,22 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
 }
 
 template <typename Span>
-template <typename Pattern>
-inline bytes_view bytes_base<Span>::search(const Pattern &pat) const {
-	return const_bytes_base<Span>::search(pat);
-}
-
-template <typename Span>
-template <typename CmpUnit>
+template <typename... Others>
 inline bytes_view
-bytes_base<Span>::find(const bytes_find_pattern<CmpUnit> &byts) const {
-	return search(byts);
+bytes_base<Span>::find(bytes_view sep, Others &&... others) const {
+	auto pos_opt =
+		const_bytes_base<Span>::find_pos(sep, std::forward<Others>(others)...);
+	return pos_opt ? bytes_view(_this()->data() + pos_opt.value(), sep.size())
+				   : nullptr;
 }
 
 template <typename Span>
-template <typename CmpUnit>
-inline std::vector<bytes_view>
-bytes_base<Span>::match(const bytes_match_pattern<CmpUnit> &pat) const {
-	return const_bytes_base<Span>::match(pat);
-}
-
-template <typename Span>
-template <typename Pattern>
-inline bytes_ref bytes_base<Span>::search(const Pattern &pat) {
-	return as_bytes_ref(const_bytes_base<Span>::search(pat));
-}
-
-template <typename Span>
-template <typename CmpUnit>
-inline bytes_ref
-bytes_base<Span>::find(const bytes_find_pattern<CmpUnit> &byts) {
-	return search(byts);
-}
-
-template <typename Span>
-template <typename CmpUnit>
-inline std::vector<bytes_ref>
-bytes_base<Span>::match(const bytes_match_pattern<CmpUnit> &pat) {
-	std::vector<bytes_ref> mr;
-	auto fr = search(pat);
-	if (!fr) {
-		return mr;
-	}
-	const auto &subs = pat.subs();
-	mr.reserve(1 + subs.size());
-	mr.emplace_back(fr);
-	for (auto &sub : subs) {
-		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
-	}
-	return mr;
+template <typename... Others>
+inline bytes_ref bytes_base<Span>::find(bytes_view sep, Others &&... others) {
+	auto pos_opt =
+		const_bytes_base<Span>::find_pos(sep, std::forward<Others>(others)...);
+	return pos_opt ? bytes_ref(_this()->data() + pos_opt.value(), sep.size())
+				   : nullptr;
 }
 
 class bytes : public bytes_ref {
@@ -1049,6 +671,9 @@ public:
 		_alloc(v.size());
 		copy_from(v);
 	}
+
+	bytes(std::initializer_list<const byte> il) :
+		bytes(il.begin(), il.size()) {}
 
 	~bytes() {
 		reset();
@@ -1210,6 +835,116 @@ RUA_FORCE_INLINE enable_if_t<
 	bytes>
 operator+(A &&a, B &&b) {
 	return bytes_view(std::forward<A>(a)) + b;
+}
+
+class bytes_pattern {
+public:
+	template <typename Container>
+	bytes_pattern(const Container &sep) {
+		_input(sep);
+	}
+
+	bytes_pattern(std::initializer_list<uint16_t> sep) {
+		_input(sep);
+	}
+
+	size_t size() const {
+		return _n;
+	}
+
+	bytes_view sep() const {
+		return _sep;
+	}
+
+	bytes_view mask() const {
+		return _mask;
+	}
+
+	struct sub_t {
+		size_t offset, size;
+	};
+
+	const std::vector<sub_t> &subs() const {
+		return _subs;
+	}
+
+private:
+	size_t _n;
+	bytes _sep, _mask;
+	std::vector<sub_t> _subs;
+
+	template <typename Container>
+	void _input(const Container &sep) {
+		_n = sep.size();
+		_sep.reset(_n);
+		_mask.reset(_n);
+		auto begin = sep.begin();
+		auto in_vb = false;
+		size_t i;
+		for (i = 0; i < _n; ++i) {
+			auto val = begin[i];
+			if (val < 256) {
+				if (in_vb) {
+					in_vb = false;
+					_subs.back().size = i - _subs.back().offset;
+				}
+				assert(i < _n);
+				_sep[i] = static_cast<byte>(val);
+				_mask[i] = 255;
+			} else {
+				if (!in_vb) {
+					in_vb = true;
+					_subs.emplace_back(sub_t{i, 0});
+				}
+				assert(i < _n);
+				_sep[i] = 0;
+				_mask[i] = 0;
+			}
+		}
+		if (in_vb) {
+			_subs.back().size = i - _subs.back().offset;
+		}
+	}
+};
+
+template <typename Span>
+inline std::vector<bytes_view>
+const_bytes_base<Span>::match(const bytes_pattern &pat) const {
+	std::vector<bytes_view> mr;
+	auto fr = find(pat.sep(), pat.mask(), true);
+	if (!fr) {
+		return mr;
+	}
+	const auto &subs = pat.subs();
+	mr.reserve(1 + subs.size());
+	mr.emplace_back(fr);
+	for (auto &sub : subs) {
+		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
+	}
+	return mr;
+}
+
+template <typename Span>
+inline std::vector<bytes_view>
+bytes_base<Span>::match(const bytes_pattern &pat) const {
+	return const_bytes_base<Span>::match(pat);
+}
+
+template <typename Span>
+inline std::vector<bytes_ref>
+bytes_base<Span>::match(const bytes_pattern &pat) {
+	std::vector<bytes_ref> mr;
+	auto fr = find(pat.sep(), pat.mask(), true);
+	if (!fr) {
+		return mr;
+	}
+	const auto &subs = pat.subs();
+	mr.reserve(1 + subs.size());
+	mr.emplace_back(fr);
+	for (auto &sub : subs) {
+		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
+	}
+	return mr;
 }
 
 template <typename Derived, size_t Size = nmax<size_t>()>
