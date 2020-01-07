@@ -118,10 +118,14 @@
 #define RUA_FALLTHROUGH
 #endif
 
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__unix__) || defined(unix) || defined(__unix) ||                   \
+	defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE) ||                        \
+	(defined(__APPLE__) && defined(__MACH__))
+
 #define RUA_UNIX
 
 #if defined(__APPLE__) && defined(__MACH__)
+
 #define RUA_DARWIN
 
 #ifdef __ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__
@@ -129,7 +133,13 @@
 #else
 #define RUA_MACOS
 #endif
+
+#else
+
+#define RUA_POSIX
+
 #endif
+
 #endif
 
 #if defined(_AMD64_) || (defined(_M_AMD64_) && _M_AMD64_ == 100) ||            \
@@ -146,6 +156,7 @@
 	defined(__INTEL__) || defined(_WIN32)
 
 #define RUA_I386
+
 #endif
 
 #if defined(_WIN64) || (defined(RUA_AMD64) && defined(__CYGWIN__))
