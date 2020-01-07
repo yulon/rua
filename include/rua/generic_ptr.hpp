@@ -234,7 +234,7 @@ namespace std {
 
 template <>
 struct hash<rua::generic_ptr> {
-	constexpr size_t operator()(rua::generic_ptr p) const {
+	RUA_FORCE_INLINE constexpr size_t operator()(rua::generic_ptr p) const {
 		return static_cast<size_t>(p.uintptr());
 	}
 };

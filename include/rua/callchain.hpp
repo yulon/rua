@@ -12,7 +12,7 @@ public:
 	_callchain_base() = default;
 };
 
-template <typename Ret, typename... Args>
+template <typename>
 class callchain;
 
 template <typename... Args>

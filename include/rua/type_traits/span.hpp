@@ -115,25 +115,25 @@ using span_value_t = typename span_value<T, Others...>::type;
 
 template <
 	typename T,
-	typename Index = remove_reference_t<decltype(size(std::declval<T>()))>>
-struct span_index {
-	using type = Index;
+	typename Size = remove_reference_t<decltype(size(std::declval<T>()))>>
+struct span_size {
+	using type = Size;
 };
 
 template <typename T, typename... Others>
-using span_index_t = typename span_index<T, Others...>::type;
+using span_size_t = typename span_size<T, Others...>::type;
 
 template <
 	typename T,
 	typename Pointer = span_pointer_t<T>,
 	typename Element = span_element_t<T, Pointer>,
 	typename Value = span_value_t<T, Element>,
-	typename Index = span_index_t<T>>
+	typename Size = span_size_t<T>>
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;
 	using value_type = Value;
-	using index_type = Index;
+	using size_type = Size;
 };
 
 template <typename, typename = void>
