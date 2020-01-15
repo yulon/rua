@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 namespace rua {
@@ -163,296 +164,97 @@ bit_cast(const From &src) {
 
 // bit_eq
 
-template <typename APtr, typename BPtr>
-RUA_FORCE_INLINE enable_if_t<
-	std::is_convertible<APtr, generic_ptr>::value &&
-		std::is_convertible<BPtr, generic_ptr>::value,
-	bool>
-bit_eq(APtr a, BPtr b, size_t size) {
+RUA_FORCE_INLINE bool bit_eq(const byte *a, const byte *b, size_t size) {
 	size_t i = 0;
-	while (i < size) {
-		auto left_sz = size - i;
-
-		if (left_sz > sizeof(uintmax_t)) {
-			if (bit_get<uintmax_t>(a, i) != bit_get<uintmax_t>(b, i)) {
+	if (size >= sizeof(uintptr_t)) {
+		for (;;) {
+			if (bit_get<uintptr_t>(a + i) != bit_get<uintptr_t>(b + i)) {
 				return false;
 			}
-			i += sizeof(uintmax_t);
-			continue;
-		}
-
-		switch (left_sz) {
-		case 8:
-			if (bit_get<uint64_t>(a, i) != bit_get<uint64_t>(b, i)) {
-				return false;
-			}
-			break;
-
-		case 7:
-			if (bit_get<byte>(a, i + 6) != bit_get<byte>(b, i + 6)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 6:
-			if (bit_get<uint32_t>(a, i) != bit_get<uint32_t>(b, i) ||
-				bit_get<uint16_t>(a, i + 4) != bit_get<uint16_t>(b, i + 4)) {
-				return false;
-			}
-			break;
-
-		case 5:
-			if (bit_get<byte>(a, i + 4) != bit_get<byte>(b, i + 4)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 4:
-			if (bit_get<uint32_t>(a, i) != bit_get<uint32_t>(b, i)) {
-				return false;
-			}
-			break;
-
-		case 3:
-			if (bit_get<byte>(a, i + 2) != bit_get<byte>(b, i + 2)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 2:
-			if (bit_get<uint16_t>(a, i) != bit_get<uint16_t>(b, i)) {
-				return false;
-			}
-			break;
-
-		case 1:
-			if (bit_get<byte>(a, i) != bit_get<byte>(b, i)) {
-				return false;
-			}
-			break;
-
-		default:
-			for (size_t j = 0; j < left_sz; ++j) {
-				if (bit_get<byte>(a, i + j) != bit_get<byte>(b, i + j)) {
-					return false;
-				}
+			i += sizeof(uintptr_t);
+			if (size - i < sizeof(uintptr_t)) {
+				break;
 			}
 		}
-
-		i += left_sz;
+	}
+	for (; i < size; ++i) {
+		if (a[i] != b[i]) {
+			return false;
+		}
 	}
 	return true;
 }
 
-template <typename APtr, typename BPtr, typename MaskPtr>
-RUA_FORCE_INLINE enable_if_t<
-	std::is_convertible<APtr, generic_ptr>::value &&
-		std::is_convertible<BPtr, generic_ptr>::value &&
-		std::is_convertible<MaskPtr, generic_ptr>::value,
-	bool>
-bit_eq(APtr a, BPtr b, MaskPtr mask, size_t size) {
+RUA_FORCE_INLINE bool bit_eq(generic_ptr a, generic_ptr b, size_t size) {
+	return bit_eq(a.as<const byte *>(), b.as<const byte *>(), size);
+}
+
+RUA_FORCE_INLINE bool
+bit_eq(const byte *a, const byte *b, const byte *mask, size_t size) {
 	size_t i = 0;
-	while (i < size) {
-		auto left_sz = size - i;
-
-		if (left_sz > sizeof(uintmax_t)) {
-			auto m = bit_get<uintmax_t>(mask, i);
-			if ((bit_get<uintmax_t>(a, i) & m) !=
-				(bit_get<uintmax_t>(b, i) & m)) {
+	if (size >= sizeof(uintptr_t)) {
+		for (;;) {
+			auto m = bit_get<uintptr_t>(mask + i);
+			if ((bit_get<uintptr_t>(a + i) & m) !=
+				(bit_get<uintptr_t>(b + i) & m)) {
 				return false;
 			}
-			i += sizeof(uintmax_t);
-			continue;
-		}
-
-		switch (left_sz) {
-		case 8: {
-			auto m = bit_get<uint64_t>(mask, i);
-			if ((bit_get<uint64_t>(a, i) & m) !=
-				(bit_get<uint64_t>(b, i) & m)) {
-				return false;
-			}
-			break;
-		}
-
-		case 7: {
-			auto m = bit_get<byte>(mask, i + 6);
-			if ((bit_get<byte>(a, i + 6) & m) !=
-				(bit_get<byte>(b, i + 6) & m)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-		}
-
-		case 6: {
-			auto m = bit_get<uint32_t>(mask, i);
-			if ((bit_get<uint32_t>(a, i) & m) !=
-				(bit_get<uint32_t>(b, i) & m)) {
-				return false;
-			}
-			m = bit_get<uint16_t>(mask, i + 4);
-			if ((bit_get<uint16_t>(a, i + 4) & m) !=
-				(bit_get<uint16_t>(b, i + 4) & m)) {
-				return false;
-			}
-			break;
-		}
-
-		case 5: {
-			auto m = bit_get<byte>(mask, i + 4);
-			if ((bit_get<byte>(a, i + 4) & m) !=
-				(bit_get<byte>(b, i + 4) & m)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-		}
-
-		case 4: {
-			auto m = bit_get<uint32_t>(mask, i);
-			if ((bit_get<uint32_t>(a, i) & m) !=
-				(bit_get<uint32_t>(b, i) & m)) {
-				return false;
-			}
-			break;
-		}
-
-		case 3: {
-			auto m = bit_get<byte>(mask, i + 2);
-			if ((bit_get<byte>(a, i + 2) & m) !=
-				(bit_get<byte>(b, i + 2) & m)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-		}
-
-		case 2: {
-			auto m = bit_get<uint16_t>(mask, i);
-			if ((bit_get<uint16_t>(a, i) & m) !=
-				(bit_get<uint16_t>(b, i) & m)) {
-				return false;
-			}
-			break;
-		}
-
-		case 1: {
-			auto m = bit_get<byte>(mask, i);
-			if ((bit_get<byte>(a, i) & m) != (bit_get<byte>(b, i) & m)) {
-				return false;
-			}
-			break;
-		}
-
-		default:
-			for (size_t j = 0; j < left_sz; ++j) {
-				auto m = bit_get<byte>(mask, i + j);
-				if ((bit_get<byte>(a, i + j) & m) !=
-					(bit_get<byte>(b, i + j) & m)) {
-					return false;
-				}
+			i += sizeof(uintptr_t);
+			if (size - i < sizeof(uintptr_t)) {
+				break;
 			}
 		}
-
-		i += left_sz;
+	}
+	for (; i < size; ++i) {
+		if ((a[i] & mask[i]) != (b[i] & mask[i])) {
+			return false;
+		}
 	}
 	return true;
+}
+
+RUA_FORCE_INLINE bool
+bit_eq(generic_ptr a, generic_ptr b, generic_ptr mask, size_t size) {
+	return bit_eq(
+		a.as<const byte *>(),
+		b.as<const byte *>(),
+		mask.as<const byte *>(),
+		size);
 }
 
 // bit_has
 
-template <typename FromPtr, typename ValPtr, typename ValMaskPtr>
-RUA_FORCE_INLINE enable_if_t<
-	std::is_convertible<FromPtr, generic_ptr>::value &&
-		std::is_convertible<ValPtr, generic_ptr>::value &&
-		std::is_convertible<ValMaskPtr, generic_ptr>::value,
-	bool>
-bit_has(FromPtr from, ValPtr val, ValMaskPtr val_mask, size_t size) {
+RUA_FORCE_INLINE bool
+bit_has(const byte *src, const byte *masked, const byte *mask, size_t size) {
 	size_t i = 0;
-	while (i < size) {
-		auto left_sz = size - i;
-
-		if (left_sz > sizeof(uintmax_t)) {
-			if ((bit_get<uintmax_t>(from, i) &
-				 bit_get<uintmax_t>(val_mask, i)) !=
-				bit_get<uintmax_t>(val, i)) {
+	if (size >= sizeof(uintptr_t)) {
+		for (;;) {
+			if ((bit_get<uintptr_t>(src + i) &
+				 bit_get<uintptr_t>(mask + i)) !=
+				bit_get<uintptr_t>(masked + i)) {
 				return false;
 			}
-			i += sizeof(uintmax_t);
-			continue;
-		}
-
-		switch (left_sz) {
-		case 8:
-			if ((bit_get<uint64_t>(from, i) & bit_get<uint64_t>(val_mask, i)) !=
-				bit_get<uint64_t>(val, i)) {
-				return false;
-			}
-			break;
-
-		case 7:
-			if ((bit_get<byte>(from, i + 6) & bit_get<byte>(val_mask, i + 6)) !=
-				bit_get<byte>(val, i + 6)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 6:
-			if ((bit_get<uint32_t>(from, i) & bit_get<uint32_t>(val_mask, i)) !=
-					bit_get<uint32_t>(val, i) ||
-				(bit_get<uint16_t>(from, i + 4) &
-				 bit_get<uint16_t>(val_mask, i + 4)) !=
-					bit_get<uint16_t>(val, i + 4)) {
-				return false;
-			}
-			break;
-
-		case 5:
-			if ((bit_get<byte>(from, i + 4) & bit_get<byte>(val_mask, i + 4)) !=
-				bit_get<byte>(val, i + 4)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 4:
-			if ((bit_get<uint32_t>(from, i) & bit_get<uint32_t>(val_mask, i)) !=
-				bit_get<uint32_t>(val, i)) {
-				return false;
-			}
-			break;
-
-		case 3:
-			if ((bit_get<byte>(from, i + 2) & bit_get<byte>(val_mask, i + 2)) !=
-				bit_get<byte>(val, i + 2)) {
-				return false;
-			}
-			RUA_FALLTHROUGH;
-
-		case 2:
-			if ((bit_get<uint16_t>(from, i) & bit_get<uint16_t>(val_mask, i)) !=
-				bit_get<uint16_t>(val, i)) {
-				return false;
-			}
-			break;
-
-		case 1:
-			if ((bit_get<byte>(from, i) & bit_get<byte>(val_mask, i)) !=
-				bit_get<byte>(val, i)) {
-				return false;
-			}
-			break;
-
-		default:
-			for (size_t j = 0; j < left_sz; ++j) {
-				if ((bit_get<byte>(from, i + j) &
-					 bit_get<byte>(val_mask, i + j)) !=
-					bit_get<byte>(val, i + j)) {
-					return false;
-				}
+			i += sizeof(uintptr_t);
+			if (size - i < sizeof(uintptr_t)) {
+				break;
 			}
 		}
-
-		i += left_sz;
+	}
+	for (; i < size; ++i) {
+		if ((src[i] & mask[i]) != masked[i]) {
+			return false;
+		}
 	}
 	return true;
+}
+
+RUA_FORCE_INLINE bool
+bit_has(generic_ptr src, generic_ptr masked, generic_ptr mask, size_t size) {
+	return bit_eq(
+		src.as<const byte *>(),
+		masked.as<const byte *>(),
+		mask.as<const byte *>(),
+		size);
 }
 
 } // namespace rua

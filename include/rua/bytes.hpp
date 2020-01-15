@@ -23,8 +23,7 @@ namespace rua {
 class bytes_view;
 class bytes_ref;
 class bytes;
-
-class bytes_pattern;
+class masked_bytes;
 
 template <typename Span>
 class const_bytes_base {
@@ -96,15 +95,19 @@ public:
 		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
+	inline bool eq(bytes_view) const;
+
+	inline bool operator==(bytes_view) const;
+
+	inline bool has(const masked_bytes &) const;
+
 	inline opt<size_t> find_pos(bytes_view) const;
 
-	inline opt<size_t>
-	find_pos(bytes_view sep, bytes_view mask, bool sep_is_clear = false) const;
+	inline bytes_view find(bytes_view) const;
 
-	template <typename... Others>
-	inline bytes_view find(bytes_view sep, Others &&... others) const;
+	inline opt<size_t> match_pos(const masked_bytes &) const;
 
-	inline std::vector<bytes_view> match(const bytes_pattern &) const;
+	inline std::vector<bytes_view> match(const masked_bytes &) const;
 
 protected:
 	const_bytes_base() = default;
@@ -217,15 +220,13 @@ public:
 		}
 	}
 
-	template <typename... Others>
-	inline bytes_view find(bytes_view sep, Others &&... others) const;
+	inline bytes_view find(bytes_view target) const;
 
-	template <typename... Others>
-	inline bytes_ref find(bytes_view sep, Others &&... others);
+	inline bytes_ref find(bytes_view target);
 
-	inline std::vector<bytes_view> match(const bytes_pattern &) const;
+	inline std::vector<bytes_view> match(const masked_bytes &) const;
 
-	inline std::vector<bytes_ref> match(const bytes_pattern &);
+	inline std::vector<bytes_ref> match(const masked_bytes &);
 
 private:
 	RUA_FORCE_INLINE Span *_this() {
@@ -368,42 +369,64 @@ operator()(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-inline opt<size_t> const_bytes_base<Span>::find_pos(bytes_view sep) const {
+inline bool const_bytes_base<Span>::eq(bytes_view target) const {
 	auto sz = _this()->size();
-	auto sep_sz = sep.size();
-	if (sz < sep_sz) {
+	if (sz != target.size()) {
+		return false;
+	}
+	const byte *a = _this()->data();
+	const byte *b = target.data();
+	if (a == b) {
+		return true;
+	}
+	if (!a || !b) {
+		return false;
+	}
+	return bit_eq(a, b);
+}
+
+template <typename Span>
+inline bool const_bytes_base<Span>::operator==(bytes_view target) const {
+	return eq(target);
+}
+
+template <typename Span>
+inline opt<size_t> const_bytes_base<Span>::find_pos(bytes_view target) const {
+	auto sz = _this()->size();
+	auto tg_sz = target.size();
+	if (sz < tg_sz) {
 		return nullopt;
 	}
 
 	const byte *begin = _this()->data();
-	const byte *sep_begin = sep.data();
-	if (sz == sep_sz) {
-		if (bit_eq(begin, sep_begin, sz)) {
+	const byte *tg_begin = target.data();
+	if (sz == tg_sz) {
+		if (bit_eq(begin, tg_begin, sz)) {
 			return 0;
 		}
 		return nullopt;
 	}
-	auto end = begin + _this()->size() - sep_sz;
-	auto sep_back_ix = sep_sz - 1;
+	auto end = begin + _this()->size() - tg_sz;
+	auto tg_back_ix = tg_sz - 1;
 
-	size_t sep_h = 0;
-	for (size_t i = 0; i < sep_sz; ++i) {
-		sep_h += sep_begin[i];
+	size_t tg_h = 0;
+	for (size_t i = 0; i < tg_sz; ++i) {
+		tg_h += tg_begin[i];
 	}
 	size_t h = 0;
 	for (auto it = begin; it != end; ++it) {
 		if (it == begin) {
-			for (size_t j = 0; j < sep_sz; ++j) {
+			for (size_t j = 0; j < tg_sz; ++j) {
 				h += it[j];
 			}
 		} else {
 			h -= it[-1];
-			h += it[sep_back_ix];
+			h += it[tg_back_ix];
 		}
-		if (h != sep_h) {
+		if (h != tg_h) {
 			continue;
 		}
-		if (bit_eq(it, sep_begin, sep_sz)) {
+		if (bit_eq(it, tg_begin, tg_sz)) {
 			return it - begin;
 		}
 	}
@@ -411,44 +434,11 @@ inline opt<size_t> const_bytes_base<Span>::find_pos(bytes_view sep) const {
 }
 
 template <typename Span>
-inline opt<size_t> const_bytes_base<Span>::find_pos(
-	bytes_view sep, bytes_view mask, bool sep_is_clear) const {
-
-	auto sz = _this()->size();
-	auto sep_sz = sep.size();
-	if (sz < sep_sz) {
-		return nullopt;
-	}
-	assert(sep_sz == mask.size());
-
-	const byte *begin = _this()->data();
-	const byte *sep_begin = sep.data();
-	const byte *mask_begin = mask.data();
-	if (sz == sep_sz) {
-		if (sep_is_clear ? bit_has(begin, sep_begin, mask_begin, sz)
-						 : bit_eq(begin, sep_begin, mask_begin, sz)) {
-			return 0;
-		}
-		return nullopt;
-	}
-	auto end = begin + _this()->size() - sep_sz;
-
-	for (auto it = begin; it != end; ++it) {
-		if (sep_is_clear ? bit_has(it, sep_begin, mask_begin, sep_sz)
-						 : bit_eq(it, sep_begin, mask_begin, sep_sz)) {
-			return it - begin;
-		}
-	}
-	return nullopt;
-}
-
-template <typename Span>
-template <typename... Others>
-inline bytes_view
-const_bytes_base<Span>::find(bytes_view sep, Others &&... others) const {
-	auto pos_opt = find_pos(sep, std::forward<Others>(others)...);
-	return pos_opt ? bytes_view(_this()->data() + pos_opt.value(), sep.size())
-				   : nullptr;
+inline bytes_view const_bytes_base<Span>::find(bytes_view target) const {
+	auto pos_opt = find_pos(target);
+	return pos_opt
+			   ? bytes_view(_this()->data() + pos_opt.value(), target.size())
+			   : nullptr;
 }
 
 class bytes_ref : public bytes_base<bytes_ref> {
@@ -625,21 +615,17 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
 }
 
 template <typename Span>
-template <typename... Others>
-inline bytes_view
-bytes_base<Span>::find(bytes_view sep, Others &&... others) const {
-	auto pos_opt =
-		const_bytes_base<Span>::find_pos(sep, std::forward<Others>(others)...);
-	return pos_opt ? bytes_view(_this()->data() + pos_opt.value(), sep.size())
-				   : nullptr;
+inline bytes_view bytes_base<Span>::find(bytes_view target) const {
+	auto pos_opt = const_bytes_base<Span>::find_pos(target);
+	return pos_opt
+			   ? bytes_view(_this()->data() + pos_opt.value(), target.size())
+			   : nullptr;
 }
 
 template <typename Span>
-template <typename... Others>
-inline bytes_ref bytes_base<Span>::find(bytes_view sep, Others &&... others) {
-	auto pos_opt =
-		const_bytes_base<Span>::find_pos(sep, std::forward<Others>(others)...);
-	return pos_opt ? bytes_ref(_this()->data() + pos_opt.value(), sep.size())
+inline bytes_ref bytes_base<Span>::find(bytes_view target) {
+	auto pos_opt = const_bytes_base<Span>::find_pos(target);
+	return pos_opt ? bytes_ref(_this()->data() + pos_opt.value(), target.size())
 				   : nullptr;
 }
 
@@ -837,23 +823,18 @@ operator+(A &&a, B &&b) {
 	return bytes_view(std::forward<A>(a)) + b;
 }
 
-class bytes_pattern {
+class masked_bytes : public bytes {
 public:
-	template <typename Container>
-	bytes_pattern(const Container &sep) {
-		_input(sep);
-	}
-
-	bytes_pattern(std::initializer_list<uint16_t> sep) {
-		_input(sep);
+	masked_bytes(std::initializer_list<uint16_t> decl_ary) {
+		_input(decl_ary);
 	}
 
 	size_t size() const {
 		return _n;
 	}
 
-	bytes_view sep() const {
-		return _sep;
+	bytes_view masked() const {
+		return _masked;
 	}
 
 	bytes_view mask() const {
@@ -870,15 +851,15 @@ public:
 
 private:
 	size_t _n;
-	bytes _sep, _mask;
+	bytes _masked, _mask;
 	std::vector<sub_t> _subs;
 
 	template <typename Container>
-	void _input(const Container &sep) {
-		_n = sep.size();
-		_sep.reset(_n);
+	void _input(const Container &decl_ary) {
+		_n = decl_ary.size();
+		_masked.reset(_n);
 		_mask.reset(_n);
-		auto begin = sep.begin();
+		auto begin = decl_ary.begin();
 		auto in_vb = false;
 		size_t i;
 		for (i = 0; i < _n; ++i) {
@@ -889,7 +870,7 @@ private:
 					_subs.back().size = i - _subs.back().offset;
 				}
 				assert(i < _n);
-				_sep[i] = static_cast<byte>(val);
+				_masked[i] = static_cast<byte>(val);
 				_mask[i] = 255;
 			} else {
 				if (!in_vb) {
@@ -897,7 +878,7 @@ private:
 					_subs.emplace_back(sub_t{i, 0});
 				}
 				assert(i < _n);
-				_sep[i] = 0;
+				_masked[i] = 0;
 				_mask[i] = 0;
 			}
 		}
@@ -908,41 +889,88 @@ private:
 };
 
 template <typename Span>
+inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
+	auto sz = _this()->size();
+	if (sz != target.size()) {
+		return false;
+	}
+	const byte *a = _this()->data();
+	const byte *b = target.data();
+	if (a == b) {
+		return true;
+	}
+	if (!a || !b) {
+		return false;
+	}
+	return bit_has(a, b);
+}
+
+template <typename Span>
+inline opt<size_t>
+const_bytes_base<Span>::match_pos(const masked_bytes &target) const {
+	auto sz = _this()->size();
+	auto tg_sz = target.size();
+	if (sz < tg_sz) {
+		return nullopt;
+	}
+
+	const byte *begin = _this()->data();
+	const byte *tg_begin = target.masked().data();
+	const byte *m_begin = target.mask().data();
+	if (sz == tg_sz) {
+		if (bit_has(begin, tg_begin, m_begin, sz)) {
+			return 0;
+		}
+		return nullopt;
+	}
+	auto end = begin + _this()->size() - tg_sz;
+
+	for (auto it = begin; it != end; ++it) {
+		if (bit_has(it, tg_begin, m_begin, tg_sz)) {
+			return it - begin;
+		}
+	}
+	return nullopt;
+}
+
+template <typename Span>
 inline std::vector<bytes_view>
-const_bytes_base<Span>::match(const bytes_pattern &pat) const {
+const_bytes_base<Span>::match(const masked_bytes &target) const {
 	std::vector<bytes_view> mr;
-	auto fr = find(pat.sep(), pat.mask(), true);
-	if (!fr) {
+	auto pos_opt = match_pos(target);
+	if (!pos_opt) {
 		return mr;
 	}
-	const auto &subs = pat.subs();
+	const auto &subs = target.subs();
 	mr.reserve(1 + subs.size());
-	mr.emplace_back(fr);
+	auto whole = slice(pos_opt.value(), pos_opt.value() + target.size());
+	mr.emplace_back(whole);
 	for (auto &sub : subs) {
-		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
+		mr.emplace_back(whole(sub.offset, sub.offset + sub.size));
 	}
 	return mr;
 }
 
 template <typename Span>
 inline std::vector<bytes_view>
-bytes_base<Span>::match(const bytes_pattern &pat) const {
-	return const_bytes_base<Span>::match(pat);
+bytes_base<Span>::match(const masked_bytes &target) const {
+	return const_bytes_base<Span>::match(target);
 }
 
 template <typename Span>
 inline std::vector<bytes_ref>
-bytes_base<Span>::match(const bytes_pattern &pat) {
+bytes_base<Span>::match(const masked_bytes &target) {
 	std::vector<bytes_ref> mr;
-	auto fr = find(pat.sep(), pat.mask(), true);
-	if (!fr) {
+	auto pos_opt = match_pos(target);
+	if (!pos_opt) {
 		return mr;
 	}
-	const auto &subs = pat.subs();
+	const auto &subs = target.subs();
 	mr.reserve(1 + subs.size());
-	mr.emplace_back(fr);
+	auto whole = slice(pos_opt.value(), pos_opt.value() + target.size());
+	mr.emplace_back(whole);
 	for (auto &sub : subs) {
-		mr.emplace_back(fr(sub.offset, sub.offset + sub.size));
+		mr.emplace_back(whole(sub.offset, sub.offset + sub.size));
 	}
 	return mr;
 }
