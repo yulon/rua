@@ -382,7 +382,7 @@ inline bool const_bytes_base<Span>::eq(bytes_view target) const {
 	if (!a || !b) {
 		return false;
 	}
-	return bit_eq(a, b);
+	return bit_eq(a, b, sz);
 }
 
 template <typename Span>
@@ -902,7 +902,7 @@ inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
 	if (!a || !b) {
 		return false;
 	}
-	return bit_has(a, b);
+	return bit_has(a, b, sz);
 }
 
 template <typename Span>
@@ -961,7 +961,7 @@ template <typename Span>
 inline std::vector<bytes_ref>
 bytes_base<Span>::match(const masked_bytes &target) {
 	std::vector<bytes_ref> mr;
-	auto pos_opt = match_pos(target);
+	auto pos_opt = const_bytes_base<Span>::match_pos(target);
 	if (!pos_opt) {
 		return mr;
 	}
