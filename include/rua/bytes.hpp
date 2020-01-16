@@ -894,15 +894,11 @@ inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
 	if (sz != target.size()) {
 		return false;
 	}
-	const byte *a = _this()->data();
-	const byte *b = target.data();
-	if (a == b) {
-		return true;
-	}
-	if (!a || !b) {
-		return false;
-	}
-	return bit_has(a, b, sz);
+	return bit_has(
+		_this()->data().template as<const byte *>(),
+		target.masked().data().as<const byte *>(),
+		target.mask().data().as<const byte *>(),
+		sz);
 }
 
 template <typename Span>
