@@ -65,6 +65,15 @@ to_string(P *val) {
 	return val ? to_hex(reinterpret_cast<uintptr_t>(val)) : to_string(nullptr);
 }
 
+template <typename P>
+inline enable_if_t<
+	std::is_member_function_pointer<decay_t<P>>::value,
+	std::string>
+to_string(P mfp) {
+	return mfp ? to_hex(*reinterpret_cast<uintptr_t *>(&mfp))
+			   : to_string(nullptr);
+}
+
 inline std::string to_string(generic_ptr ptr) {
 	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
 }
