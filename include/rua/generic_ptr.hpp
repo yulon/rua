@@ -42,7 +42,7 @@ public:
 	template <typename T>
 	RUA_FORCE_INLINE enable_if_t<std::is_member_function_pointer<T>::value, T>
 	as() const {
-		return *reinterpret_cast<T *>(&_val);
+		return *reinterpret_cast<const T *>(&_val);
 	}
 
 	template <
