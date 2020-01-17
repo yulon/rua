@@ -31,14 +31,29 @@ inline std::string to_string(string_view sv) {
 	return std::string(sv.data(), sv.size());
 }
 
+inline std::string to_string(wstring_view wsv) {
+	return w_to_u8(wsv.data());
+}
+
 template <typename Str>
 inline enable_if_t<std::is_same<Str, std::string>::value, std::string>
 to_string(Str &&s) {
 	return std::move(s);
 }
 
-inline std::string to_string(wstring_view wsv) {
-	return w_to_u8(wsv.data());
+template <typename Str>
+inline enable_if_t<
+	std::is_convertible<Str, string_view>::value &&
+		!std::is_same<Str, std::string>::value,
+	std::string>
+to_string(Str &&s) {
+	return to_string(string_view(std::forward<Str>(s)));
+}
+
+template <typename Str>
+inline enable_if_t<std::is_convertible<Str, wstring_view>::value, std::string>
+to_string(Str &&s) {
+	return to_string(wstring_view(std::forward<Str>(s)));
 }
 
 template <
