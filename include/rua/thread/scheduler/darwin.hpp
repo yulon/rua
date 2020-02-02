@@ -81,7 +81,7 @@ public:
 			_sig->native_handle(),
 			timeout == duration_max()
 				? DISPATCH_TIME_FOREVER
-				: static_cast<dispatch_time_t>(timeout.extra_nanoseconds()));
+				: static_cast<dispatch_time_t>(timeout.extra_ns_count()));
 	}
 
 private:

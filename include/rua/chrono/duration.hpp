@@ -66,11 +66,11 @@ public:
 
 #endif
 
-	constexpr int64_t total_seconds() const {
+	constexpr int64_t s_count() const {
 		return _s;
 	}
 
-	constexpr int32_t extra_nanoseconds() const {
+	constexpr int32_t extra_ns_count() const {
 		return _n;
 	}
 

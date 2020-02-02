@@ -40,16 +40,7 @@ inline time tick() {
 	return ms(GetTickCount());
 }
 
-static const date_t sys_start_date{
-	1601,
-	1,
-	1,
-	0,
-	0,
-	0,
-	0,
-	0,
-};
+static const date_t sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
 
 inline time now() {
 	FILETIME ft;
@@ -57,7 +48,7 @@ inline time now() {
 	return time(
 		duration<100>(
 			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
-		sys_start_date);
+		sys_epoch);
 }
 
 } // namespace _clock

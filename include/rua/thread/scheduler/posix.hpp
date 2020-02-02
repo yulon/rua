@@ -89,11 +89,11 @@ public:
 		timespec ts;
 		ts.tv_sec =
 			static_cast<int64_t>(nmax<decltype(ts.tv_sec)>()) <
-					timeout.total_seconds()
+					timeout.s_count()
 				? nmax<decltype(ts.tv_sec)>()
-				: static_cast<decltype(ts.tv_sec)>(timeout.total_seconds());
+				: static_cast<decltype(ts.tv_sec)>(timeout.s_count());
 		ts.tv_nsec =
-			static_cast<decltype(ts.tv_nsec)>(timeout.extra_nanoseconds());
+			static_cast<decltype(ts.tv_nsec)>(timeout.extra_ns_count());
 
 		return sem_timedwait(_sig->native_handle(), &ts) != ETIMEDOUT;
 	}
