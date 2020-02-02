@@ -134,10 +134,6 @@
 #define RUA_MACOS
 #endif
 
-#else
-
-#define RUA_POSIX
-
 #endif
 
 #endif

@@ -83,8 +83,8 @@ private:
 		}
 
 		ucontext_t uc;
-		int using_stk_ix;
-		bytes used_stk_cp;
+		int stk_ix;
+		bytes stk_bak;
 
 		bool has_yielded;
 		scheduler::signaler_i sig;
@@ -237,8 +237,9 @@ public:
 			} else {
 				wake_ti = tick() + timeout;
 			}
+
 			_fd->_cur_fc->has_yielded = true;
-			_fd->_cur_fc->using_stk_ix = _fd->_stk_ix;
+			_fd->_cur_fc->stk_ix = _fd->_stk_ix;
 			slp_map.emplace(wake_ti, _fd->_cur_fc);
 
 			_fd->_prev_fc = std::move(_fd->_cur_fc);
@@ -342,32 +343,23 @@ private:
 			return;
 		}
 
-		assert(!_prev_fc->used_stk_cp.size());
+		assert(!_prev_fc->stk_bak.size());
 
-		auto &using_stk = _stks[_prev_fc->using_stk_ix];
-		auto used_stk =
-			using_stk(_prev_fc->uc.regs.sp + sizeof(void *) - using_stk.data());
-
-		auto rmdr = used_stk.size() % 1024;
-		_prev_fc->used_stk_cp.resize(
-			used_stk.size() + (rmdr ? 1024 - rmdr : 0));
-#ifndef NDEBUG
-		auto p = _prev_fc->used_stk_cp.data();
-#endif
-		_prev_fc->used_stk_cp = used_stk;
-#ifndef NDEBUG
-		assert(p == _prev_fc->used_stk_cp.data());
-#endif
+		auto &stk = _stks[_prev_fc->stk_ix];
+		auto stk_used = stk(_prev_fc->uc.stack_top() - stk.data());
+		auto rmdr = stk_used.size() % 1024;
+		_prev_fc->stk_bak.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
+		_prev_fc->stk_bak = stk_used;
 
 		_prev_fc.reset();
 	}
 
 	bool _try_resume_fcs_front(ucontext_t *oucp = nullptr) {
-		if (!_fcs.front()->used_stk_cp.size()) {
+		if (!_fcs.front()->stk_bak.size()) {
 			return false;
 		}
 
-		if (oucp != &_orig_uc && _fcs.front()->using_stk_ix == _stk_ix) {
+		if (oucp != &_orig_uc && _fcs.front()->stk_ix == _stk_ix) {
 			if (!oucp) {
 				set_ucontext(&_orig_uc);
 				return true;
@@ -379,11 +371,11 @@ private:
 		_cur_fc = std::move(_fcs.front());
 		_fcs.pop();
 
-		_stk_ix = _cur_fc->using_stk_ix;
+		_stk_ix = _cur_fc->stk_ix;
 		auto &cur_stk = _cur_stk();
-		cur_stk(cur_stk.size() - _cur_fc->used_stk_cp.size())
-			.copy_from(_cur_fc->used_stk_cp);
-		_cur_fc->used_stk_cp.resize(0);
+		cur_stk(cur_stk.size() - _cur_fc->stk_bak.size())
+			.copy_from(_cur_fc->stk_bak);
+		_cur_fc->stk_bak.resize(0);
 
 		if (!oucp) {
 			set_ucontext(&_cur_fc->uc);

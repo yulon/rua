@@ -117,9 +117,6 @@ using remove_all_extents_t = typename std::remove_all_extents<T>::type;
 template <std::size_t Len, std::size_t Align = Len>
 using aligned_storage_t = typename std::aligned_storage<Len, Align>::type;
 
-template <std::size_t Len, class... Types>
-using aligned_union_t = typename std::aligned_union<Len, Types...>::type;
-
 template <typename T>
 using decay_t = typename std::decay<T>::type;
 

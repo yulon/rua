@@ -5,7 +5,7 @@
 #if defined(__APPLE__) && defined(__MACH__)
 #define _RUA_CODE_SEG __attribute__((section("__TEXT,__rua_text")))
 #else
-#define _RUA_CODE_SEG __attribute__((section(".text$_ZN3rua10text")))
+#define _RUA_CODE_SEG __attribute__((section(".text._ZN3rua10text")))
 #endif
 
 #define RUA_CODE(name) static const unsigned char name[] _RUA_CODE_SEG

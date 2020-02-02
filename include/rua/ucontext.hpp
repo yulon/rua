@@ -3,6 +3,8 @@
 
 #include "macros.hpp"
 
+#ifndef RUA_USING_SYS_UCONTEXT
+
 #if defined(RUA_AMD64) || defined(RUA_I386)
 
 #include "any_word.hpp"
@@ -66,6 +68,10 @@ struct uc_stack_t {
 struct ucontext_t {
 	uc_regs_t regs;
 	uc_stack_t stack;
+
+	RUA_FORCE_INLINE generic_ptr stack_top() const {
+		return regs.sp + sizeof(void *);
+	}
 };
 
 #include "switch_code_seg.h"
@@ -158,20 +164,40 @@ inline void make_ucontext(
 
 #else
 
+#define RUA_USING_SYS_UCONTEXT
+
+#endif
+
+#endif
+
+#ifdef RUA_USING_SYS_UCONTEXT
+
 #include <ucontext.h>
 
 namespace rua {
 
-using ucontext_t = ::ucontext_t;
+struct ucontext_t : ::ucontext_t {
+	generic_ptr _stack_top;
 
-RUA_FORCE_INLINE bool get_ucontext(ucontext_t *ucp) {
-	return !getcontext(ucp);
+	RUA_FORCE_INLINE generic_ptr stack_top() const {
+		return _stack_top;
+	}
+};
+
+static RUA_NO_INLINE bool get_ucontext(ucontext_t *ucp) {
+	volatile char v;
+	ucp->_stack_top = &v;
+	return !::getcontext(ucp);
 }
 
-static void (*set_ucontext)(const ucontext_t *ucp) = &setcontext;
+static auto set_ucontext = &setcontext;
 
-static void (*swap_ucontext)(ucontext_t *oucp, const ucontext_t *ucp) =
-	&swapcontext;
+static RUA_NO_INLINE void
+swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
+	volatile char v;
+	oucp->_stack_top = &v;
+	::swapcontext(oucp, ucp);
+}
 
 inline void make_ucontext(
 	ucontext_t *ucp,
@@ -181,7 +207,7 @@ inline void make_ucontext(
 	ucp->uc_link = nullptr;
 	ucp->uc_stack.ss_sp = stack.data();
 	ucp->uc_stack.ss_size = stack.size();
-	makecontext(ucp, func, 1, func_param);
+	makecontext(ucp, reinterpret_cast<void (*)()>(func), 1, func_param);
 }
 
 } // namespace rua
