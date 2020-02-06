@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_LOC_BASE_HPP
-#define _RUA_THREAD_LOC_BASE_HPP
+#ifndef _RUA_THREAD_VAR_BASE_HPP
+#define _RUA_THREAD_VAR_BASE_HPP
 
 #include "../id.hpp"
 
@@ -19,9 +19,9 @@
 
 namespace rua {
 
-class _thread_loc_indexer {
+class _thread_var_indexer {
 public:
-	constexpr _thread_loc_indexer() : _ix_c(0), _idle_ixs() {}
+	constexpr _thread_var_indexer() : _ix_c(0), _idle_ixs() {}
 
 	size_t alloc() {
 		auto ix_opt = _idle_ixs.pop_front();
@@ -40,13 +40,13 @@ private:
 	lf_forward_list<size_t> _idle_ixs;
 };
 
-class spare_thread_loc_word {
+class spare_thread_storage {
 public:
-	spare_thread_loc_word(void (*dtor)(any_word)) :
+	spare_thread_storage(void (*dtor)(any_word)) :
 		_ix(_ctx().ixer.alloc()),
 		_dtor(dtor) {}
 
-	~spare_thread_loc_word() {
+	~spare_thread_storage() {
 		if (is_storable()) {
 			return;
 		}
@@ -55,13 +55,13 @@ public:
 		return;
 	}
 
-	spare_thread_loc_word(spare_thread_loc_word &&src) : _ix(src._ix) {
+	spare_thread_storage(spare_thread_storage &&src) : _ix(src._ix) {
 		if (src.is_storable()) {
 			src._ix = static_cast<size_t>(-1);
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_loc_word)
+	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_storage)
 
 	using native_handle_t = size_t;
 
@@ -147,7 +147,7 @@ private:
 		std::unordered_map<tid_t, std::pair<size_t, std::vector<uintptr_t>>>;
 
 	struct _ctx_t {
-		_thread_loc_indexer ixer;
+		_thread_var_indexer ixer;
 		std::mutex mtx;
 		_map_t map;
 	};
@@ -160,23 +160,23 @@ private:
 
 template <
 	typename T,
-	typename ThreadLocWord,
-	typename SpareThreadLocWord = spare_thread_loc_word>
-class basic_thread_loc {
+	typename ThreadStorage,
+	typename SpareThreadStorage = spare_thread_storage>
+class basic_thread_var {
 public:
-	basic_thread_loc() : _ix(_ixer().alloc()) {}
+	basic_thread_var() : _ix(_ixer().alloc()) {}
 
-	~basic_thread_loc() {
+	~basic_thread_var() {
 		_ixer().dealloc(_ix);
 	}
 
-	basic_thread_loc(basic_thread_loc &&src) : _ix(src._ix) {
+	basic_thread_var(basic_thread_var &&src) : _ix(src._ix) {
 		if (src.is_storable()) {
 			src._ix = static_cast<size_t>(-1);
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(basic_thread_loc)
+	RUA_OVERLOAD_ASSIGNMENT_R(basic_thread_var)
 
 	bool is_storable() const {
 		return _ix != static_cast<size_t>(-1);
@@ -212,19 +212,19 @@ public:
 		}
 	}
 
-	class loc_word_wrapper {
+	class storage_wrapper {
 	public:
-		loc_word_wrapper() {
+		storage_wrapper() {
 			auto &word_sto = _word_sto();
 			if (word_sto.is_storable()) {
 				_owner = &word_sto;
-				_bind<ThreadLocWord>();
+				_bind<ThreadStorage>();
 				return;
 			}
 			auto &spare_word_sto = _spare_word_sto();
 			assert(spare_word_sto.is_storable());
 			_owner = &spare_word_sto;
-			_bind<SpareThreadLocWord>();
+			_bind<SpareThreadStorage>();
 		}
 
 		any_word native_handle() const {
@@ -267,16 +267,16 @@ public:
 		}
 	};
 
-	static loc_word_wrapper &using_loc_word() {
-		static loc_word_wrapper inst;
+	static storage_wrapper &using_storage() {
+		static storage_wrapper inst;
 		return inst;
 	}
 
 private:
 	size_t _ix;
 
-	static ThreadLocWord &_word_sto() {
-		static ThreadLocWord inst([](any_word val) {
+	static ThreadStorage &_word_sto() {
+		static ThreadStorage inst([](any_word val) {
 			if (!val) {
 				return;
 			}
@@ -285,8 +285,8 @@ private:
 		return inst;
 	}
 
-	static SpareThreadLocWord &_spare_word_sto() {
-		static SpareThreadLocWord inst([](any_word val) {
+	static SpareThreadStorage &_spare_word_sto() {
+		static SpareThreadStorage inst([](any_word val) {
 			if (!val) {
 				return;
 			}
@@ -295,13 +295,13 @@ private:
 		return inst;
 	}
 
-	static _thread_loc_indexer &_ixer() {
-		static _thread_loc_indexer inst;
+	static _thread_var_indexer &_ixer() {
+		static _thread_var_indexer inst;
 		return inst;
 	}
 
 	static std::vector<any> &_li() {
-		auto &w_sto = using_loc_word();
+		auto &w_sto = using_storage();
 		auto w = w_sto.get();
 		if (!w) {
 			w = std::vector<any>();

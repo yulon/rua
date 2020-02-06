@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_LOC_WIN32_HPP
-#define _RUA_THREAD_LOC_WIN32_HPP
+#ifndef _RUA_THREAD_VAR_WIN32_HPP
+#define _RUA_THREAD_VAR_WIN32_HPP
 
 #include "base.hpp"
 
@@ -14,11 +14,11 @@
 
 namespace rua { namespace win32 {
 
-class thread_loc_word {
+class thread_storage {
 public:
-	thread_loc_word(void (*dtor)(any_word)) : _ix(TlsAlloc()), _dtor(dtor) {}
+	thread_storage(void (*dtor)(any_word)) : _ix(TlsAlloc()), _dtor(dtor) {}
 
-	~thread_loc_word() {
+	~thread_storage() {
 		if (!is_storable()) {
 			return;
 		}
@@ -28,13 +28,13 @@ public:
 		_ix = TLS_OUT_OF_INDEXES;
 	}
 
-	thread_loc_word(thread_loc_word &&src) : _ix(src._ix) {
+	thread_storage(thread_storage &&src) : _ix(src._ix) {
 		if (src.is_storable()) {
 			src._ix = TLS_OUT_OF_INDEXES;
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(thread_loc_word)
+	RUA_OVERLOAD_ASSIGNMENT_R(thread_storage)
 
 	using native_handle_t = DWORD;
 
@@ -90,7 +90,7 @@ private:
 };
 
 template <typename T>
-using thread_loc = basic_thread_loc<T, thread_loc_word>;
+using thread_var = basic_thread_var<T, thread_storage>;
 
 }} // namespace rua::win32
 

@@ -1,24 +1,25 @@
-#ifndef _RUA_THREAD_LOC_POSIX_HPP
-#define _RUA_THREAD_LOC_POSIX_HPP
+#ifndef _RUA_THREAD_VAR_POSIX_HPP
+#define _RUA_THREAD_VAR_POSIX_HPP
 
 #include "base.hpp"
 
 #include "../../any_word.hpp"
+#include "../../dylib/posix.hpp"
 #include "../../macros.hpp"
 
 #include <pthread.h>
 
 namespace rua { namespace posix {
 
-class thread_loc_word {
+class thread_storage {
 public:
-	thread_loc_word(void (*dtor)(any_word)) : _dtor(dtor) {
+	thread_storage(void (*dtor)(any_word)) : _dtor(dtor) {
 		_invalid = pthread_key_create(
 			&_key,
 			reinterpret_cast<void (*)(void *)>(reinterpret_cast<void *>(dtor)));
 	}
 
-	~thread_loc_word() {
+	~thread_storage() {
 		if (!is_storable()) {
 			return;
 		}
@@ -28,7 +29,7 @@ public:
 		_invalid = true;
 	}
 
-	thread_loc_word(thread_loc_word &&src) :
+	thread_storage(thread_storage &&src) :
 		_key(src._key),
 		_invalid(src._invalid) {
 		if (src.is_storable()) {
@@ -36,7 +37,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(thread_loc_word)
+	RUA_OVERLOAD_ASSIGNMENT_R(thread_storage)
 
 	using native_handle_t = pthread_key_t;
 
@@ -72,7 +73,7 @@ private:
 };
 
 template <typename T>
-using thread_loc = basic_thread_loc<T, thread_loc_word>;
+using thread_var = basic_thread_var<T, thread_storage>;
 
 }} // namespace rua::posix
 

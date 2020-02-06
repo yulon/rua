@@ -4,7 +4,7 @@
 #include "scheduler.hpp"
 
 #include "../macros.hpp"
-#include "../thread/loc.hpp"
+#include "../thread/var.hpp"
 #include "../thread/scheduler.hpp"
 
 #include <atomic>
@@ -12,7 +12,7 @@
 namespace rua {
 
 inline scheduler_i &_this_scheduler(scheduler_i (*make_default)() = nullptr) {
-	static thread_loc<scheduler_i> sto;
+	static thread_var<scheduler_i> sto;
 	static scheduler_i (*mkdft)() =
 		make_default ? make_default : []() -> scheduler_i {
 		return std::make_shared<thread_scheduler>();
