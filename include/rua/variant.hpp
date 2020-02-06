@@ -46,7 +46,7 @@ public:
 			return;
 		}
 		assert(_typ_inf->copy_ctor);
-		_typ_inf->copy_ctor(&_sto, &src._sto);
+		_typ_inf->copy_ctor(&_sto[0], &src._sto);
 	}
 
 	variant(variant &&src) : _typ_inf(src._typ_inf) {
@@ -54,7 +54,7 @@ public:
 			return;
 		}
 		assert(_typ_inf->move_ctor);
-		_typ_inf->move_ctor(&_sto, &src._sto);
+		_typ_inf->move_ctor(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(variant)
@@ -79,7 +79,7 @@ public:
 	template <typename T>
 	T &as() & {
 		assert(type_is<T>());
-		return *reinterpret_cast<T *>(&_sto);
+		return *reinterpret_cast<T *>(&_sto[0]);
 	}
 
 	template <typename T>
@@ -90,7 +90,7 @@ public:
 	template <typename T>
 	const T &as() const & {
 		assert(type_is<T>());
-		return *reinterpret_cast<const T *>(&_sto);
+		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
 
 	template <typename T, typename... Args>
@@ -120,7 +120,7 @@ public:
 			return;
 		}
 		if (_typ_inf->dtor) {
-			_typ_inf->dtor(reinterpret_cast<void *>(&_sto));
+			_typ_inf->dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
 		_typ_inf = nullptr;
 	}
@@ -135,7 +135,7 @@ private:
 		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullindex));
 
 		_typ_inf = &type_info<T>();
-		return *(new (&_sto) T(std::forward<Args>(args)...));
+		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 };
 

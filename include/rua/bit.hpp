@@ -19,8 +19,8 @@ namespace rua {
 template <typename To>
 RUA_FORCE_INLINE enable_if_t<(alignof(To) > 1), To> bit_get(generic_ptr ptr) {
 	alignas(alignof(To)) char sto[sizeof(To)];
-	memcpy(&sto, ptr, sizeof(To));
-	return reinterpret_cast<To &>(sto);
+	memcpy(&sto[0], ptr, sizeof(To));
+	return *reinterpret_cast<To *>(&sto[0]);
 }
 
 template <typename To>
@@ -46,8 +46,8 @@ bit_get_aligned(generic_ptr ptr, ptrdiff_t ix) {
 template <typename To, typename From>
 RUA_FORCE_INLINE enable_if_t<(alignof(To) > 1), To> bit_get(From *ptr) {
 	alignas(alignof(To)) char sto[sizeof(To)];
-	memcpy(&sto, reinterpret_cast<const void *>(ptr), sizeof(To));
-	return reinterpret_cast<To &>(sto);
+	memcpy(&sto[0], reinterpret_cast<const void *>(ptr), sizeof(To));
+	return *reinterpret_cast<To *>(&sto[0]);
 }
 
 template <typename To, typename From>
