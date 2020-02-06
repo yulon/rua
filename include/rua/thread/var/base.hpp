@@ -40,13 +40,13 @@ private:
 	lf_forward_list<size_t> _idle_ixs;
 };
 
-class spare_thread_storage {
+class spare_thread_word_var {
 public:
-	spare_thread_storage(void (*dtor)(any_word)) :
+	spare_thread_word_var(void (*dtor)(any_word)) :
 		_ix(_ctx().ixer.alloc()),
 		_dtor(dtor) {}
 
-	~spare_thread_storage() {
+	~spare_thread_word_var() {
 		if (is_storable()) {
 			return;
 		}
@@ -55,13 +55,13 @@ public:
 		return;
 	}
 
-	spare_thread_storage(spare_thread_storage &&src) : _ix(src._ix) {
+	spare_thread_word_var(spare_thread_word_var &&src) : _ix(src._ix) {
 		if (src.is_storable()) {
 			src._ix = static_cast<size_t>(-1);
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_storage)
+	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_word_var)
 
 	using native_handle_t = size_t;
 
@@ -160,8 +160,8 @@ private:
 
 template <
 	typename T,
-	typename ThreadStorage,
-	typename SpareThreadStorage = spare_thread_storage>
+	typename ThreadWordVar,
+	typename SpareThreadWordVar = spare_thread_word_var>
 class basic_thread_var {
 public:
 	basic_thread_var() : _ix(_ixer().alloc()) {}
@@ -183,7 +183,12 @@ public:
 	}
 
 	bool has_value() const {
-		auto &li = _li();
+		auto &wv = using_word_var();
+		auto w = wv.get();
+		if (!w) {
+			return false;
+		}
+		auto &li = w.template as<std::vector<any>>();
 		if (li.size() <= _ix) {
 			return false;
 		}
@@ -206,25 +211,31 @@ public:
 	}
 
 	void reset() {
-		auto &li = _li();
-		if (li.size() > _ix) {
-			li[_ix].reset();
+		auto &wv = using_word_var();
+		auto w = wv.get();
+		if (!w) {
+			return;
 		}
+		auto &li = w.template as<std::vector<any>>();
+		if (li.size() <= _ix) {
+			return;
+		}
+		li[_ix].reset();
 	}
 
-	class storage_wrapper {
+	class word_var_wrapper {
 	public:
-		storage_wrapper() {
-			auto &word_sto = _word_sto();
-			if (word_sto.is_storable()) {
-				_owner = &word_sto;
-				_bind<ThreadStorage>();
+		word_var_wrapper() {
+			auto &wv = _word_var<ThreadWordVar>();
+			if (wv.is_storable()) {
+				_owner = &wv;
+				_bind<ThreadWordVar>();
 				return;
 			}
-			auto &spare_word_sto = _spare_word_sto();
-			assert(spare_word_sto.is_storable());
-			_owner = &spare_word_sto;
-			_bind<SpareThreadStorage>();
+			auto &spare_wv = _word_var<SpareThreadWordVar>();
+			assert(spare_wv.is_storable());
+			_owner = &spare_wv;
+			_bind<SpareThreadWordVar>();
 		}
 
 		any_word native_handle() const {
@@ -250,43 +261,34 @@ public:
 		any_word (*_get)(void *owner);
 		void (*_reset)(void *owner);
 
-		template <typename TLW>
+		template <typename TWV>
 		void _bind() {
 			_nh = [](void *owner) -> any_word {
-				return reinterpret_cast<TLW *>(owner)->native_handle();
+				return reinterpret_cast<TWV *>(owner)->native_handle();
 			};
 			_set = [](void *owner, any_word val) {
-				reinterpret_cast<TLW *>(owner)->set(val);
+				reinterpret_cast<TWV *>(owner)->set(val);
 			};
 			_get = [](void *owner) -> any_word {
-				return reinterpret_cast<TLW *>(owner)->get();
+				return reinterpret_cast<TWV *>(owner)->get();
 			};
 			_reset = [](void *owner) {
-				reinterpret_cast<TLW *>(owner)->reset();
+				reinterpret_cast<TWV *>(owner)->reset();
 			};
 		}
 	};
 
-	static storage_wrapper &using_storage() {
-		static storage_wrapper inst;
+	static word_var_wrapper &using_word_var() {
+		static word_var_wrapper inst;
 		return inst;
 	}
 
 private:
 	size_t _ix;
 
-	static ThreadStorage &_word_sto() {
-		static ThreadStorage inst([](any_word val) {
-			if (!val) {
-				return;
-			}
-			val.destruct<std::vector<any>>();
-		});
-		return inst;
-	}
-
-	static SpareThreadStorage &_spare_word_sto() {
-		static SpareThreadStorage inst([](any_word val) {
+	template <typename TWV>
+	static TWV &_word_var() {
+		static TWV inst([](any_word val) {
 			if (!val) {
 				return;
 			}
@@ -301,11 +303,11 @@ private:
 	}
 
 	static std::vector<any> &_li() {
-		auto &w_sto = using_storage();
-		auto w = w_sto.get();
+		auto &wv = using_word_var();
+		auto w = wv.get();
 		if (!w) {
 			w = std::vector<any>();
-			w_sto.set(w);
+			wv.set(w);
 		}
 		return w.template as<std::vector<any>>();
 	}

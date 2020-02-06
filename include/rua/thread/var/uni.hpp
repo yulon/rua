@@ -5,10 +5,10 @@
 
 namespace rua { namespace uni {
 
-using thread_storage = spare_thread_storage;
+using thread_word_var = spare_thread_word_var;
 
 template <typename T>
-using thread_var = basic_thread_var<T, thread_storage>;
+using thread_var = basic_thread_var<T, thread_word_var>;
 
 }} // namespace rua::uni
 

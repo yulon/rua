@@ -14,11 +14,11 @@
 
 namespace rua { namespace win32 {
 
-class thread_storage {
+class thread_word_var {
 public:
-	thread_storage(void (*dtor)(any_word)) : _ix(TlsAlloc()), _dtor(dtor) {}
+	thread_word_var(void (*dtor)(any_word)) : _ix(TlsAlloc()), _dtor(dtor) {}
 
-	~thread_storage() {
+	~thread_word_var() {
 		if (!is_storable()) {
 			return;
 		}
@@ -28,13 +28,13 @@ public:
 		_ix = TLS_OUT_OF_INDEXES;
 	}
 
-	thread_storage(thread_storage &&src) : _ix(src._ix) {
+	thread_word_var(thread_word_var &&src) : _ix(src._ix) {
 		if (src.is_storable()) {
 			src._ix = TLS_OUT_OF_INDEXES;
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(thread_storage)
+	RUA_OVERLOAD_ASSIGNMENT_R(thread_word_var)
 
 	using native_handle_t = DWORD;
 
@@ -90,7 +90,7 @@ private:
 };
 
 template <typename T>
-using thread_var = basic_thread_var<T, thread_storage>;
+using thread_var = basic_thread_var<T, thread_word_var>;
 
 }} // namespace rua::win32
 

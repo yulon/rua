@@ -9,7 +9,7 @@
 
 namespace rua {
 
-using thread_storage = win32::thread_storage;
+using thread_word_var = win32::thread_word_var;
 
 template <typename T>
 using thread_var = win32::thread_var<T>;
@@ -22,7 +22,7 @@ using thread_var = win32::thread_var<T>;
 
 namespace rua {
 
-using thread_storage = posix::thread_storage;
+using thread_word_var = posix::thread_word_var;
 
 template <typename T>
 using thread_var = posix::thread_var<T>;
@@ -35,7 +35,7 @@ using thread_var = posix::thread_var<T>;
 
 namespace rua {
 
-using thread_storage = uni::thread_storage;
+using thread_word_var = uni::thread_word_var;
 
 template <typename T>
 using thread_var = uni::thread_var<T>;

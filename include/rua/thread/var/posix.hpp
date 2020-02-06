@@ -11,15 +11,15 @@
 
 namespace rua { namespace posix {
 
-class thread_storage {
+class thread_word_var {
 public:
-	thread_storage(void (*dtor)(any_word)) : _dtor(dtor) {
+	thread_word_var(void (*dtor)(any_word)) : _dtor(dtor) {
 		_invalid = pthread_key_create(
 			&_key,
 			reinterpret_cast<void (*)(void *)>(reinterpret_cast<void *>(dtor)));
 	}
 
-	~thread_storage() {
+	~thread_word_var() {
 		if (!is_storable()) {
 			return;
 		}
@@ -29,7 +29,7 @@ public:
 		_invalid = true;
 	}
 
-	thread_storage(thread_storage &&src) :
+	thread_word_var(thread_word_var &&src) :
 		_key(src._key),
 		_invalid(src._invalid) {
 		if (src.is_storable()) {
@@ -37,7 +37,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(thread_storage)
+	RUA_OVERLOAD_ASSIGNMENT_R(thread_word_var)
 
 	using native_handle_t = pthread_key_t;
 
@@ -73,7 +73,7 @@ private:
 };
 
 template <typename T>
-using thread_var = basic_thread_var<T, thread_storage>;
+using thread_var = basic_thread_var<T, thread_word_var>;
 
 }} // namespace rua::posix
 
