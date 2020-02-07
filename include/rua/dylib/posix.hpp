@@ -61,6 +61,8 @@ public:
 		return dlsym(_h, name.data());
 	}
 
+#define RUA_DYFN(name) get(#name).as<decltype(&name)>()
+
 	generic_ptr operator[](string_view name) const {
 		return get(name);
 	}
