@@ -34,5 +34,5 @@ mov rax, 0
 mov [rdi+152], rax
 mov [rdi+160], rax
 
-mov rax, 1
+mov rax, 0
 ret

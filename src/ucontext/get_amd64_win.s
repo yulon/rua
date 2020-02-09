@@ -43,5 +43,5 @@ rep movsq
 
 mov rsi, [rax+32]
 mov rdi, [rax+40]
-mov rax, 1
+mov rax, 0
 ret

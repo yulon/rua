@@ -29,5 +29,5 @@ mov edx, 0
 mov [eax+48], edx
 mov [eax+52], edx
 
-mov eax, 1
+mov eax, 0
 ret

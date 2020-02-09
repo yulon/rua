@@ -346,7 +346,7 @@ private:
 		assert(!_prev_fc->stk_bak.size());
 
 		auto &stk = _stks[_prev_fc->stk_ix];
-		auto stk_used = stk(_prev_fc->uc.stack_top() - stk.data());
+		auto stk_used = stk(_prev_fc->uc.sp() - stk.data().uintptr());
 		auto rmdr = stk_used.size() % 1024;
 		_prev_fc->stk_bak.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
 		_prev_fc->stk_bak = stk_used;

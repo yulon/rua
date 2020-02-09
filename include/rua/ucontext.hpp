@@ -1,89 +1,86 @@
+/*
+	Reference from
+		https://github.com/skywind3000/collection/tree/master/vintage/context
+		https://github.com/hnes/libaco/blob/master/acosw.S
+		https://github.com/boostorg/context/tree/develop/src/asm
+*/
+
 #ifndef _RUA_UCONTEXT_HPP
 #define _RUA_UCONTEXT_HPP
-
-#include "macros.hpp"
-
-#ifndef RUA_USING_SYS_UCONTEXT
-
-#if defined(RUA_AMD64) || defined(RUA_I386)
 
 #include "any_word.hpp"
 #include "bytes.hpp"
 #include "generic_ptr.hpp"
+#include "macros.hpp"
+
+#include <cstdint>
+
+#ifndef RUA_USING_NATIVE_UCONTEXT
+
+#ifdef RUA_X86
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#include <cstdint>
-#include <type_traits>
-
 namespace rua {
 
-/*
-	Reference from
-		https://github.com/skywind3000/collection/tree/master/ucontext
-		https://github.com/hnes/libaco/blob/master/acosw.S
-		https://github.com/boostorg/ucontext/tree/develop/src/asm
-*/
-
-struct uc_regs_t {
-#if defined(RUA_AMD64) || defined(RUA_I386)
-	uintptr_t a;	 // 0
-	uintptr_t b;	 // 4, 8
-	uintptr_t c;	 // 8, 16
-	uintptr_t d;	 // 12, 24
-	uintptr_t si;	// 16, 32
-	uintptr_t di;	// 20, 40
-	generic_ptr sp;  // 24, 48
-	generic_ptr bp;  // 28, 56
-	generic_ptr ip;  // 32, 64
-	uintptr_t flags; // 36, 72
-#ifdef RUA_AMD64
-	uintptr_t r8;  // 80
-	uintptr_t r9;  // 88
-	uintptr_t r10; // 96
-	uintptr_t r11; // 104
-	uintptr_t r12; // 112
-	uintptr_t r13; // 120
-	uintptr_t r14; // 128
-	uintptr_t r15; // 136
-#endif
-	uint32_t mxcsr; // 40, 144
-	uint16_t fcw;   // 44, 148
-	uint16_t _padding;
-#endif
-};
-#ifdef RUA_AMD64
-RUA_SASSERT(sizeof(uc_regs_t) == 152);
-#elif defined(RUA_I386)
-RUA_SASSERT(sizeof(uc_regs_t) == 48);
-#endif
-
-struct uc_stack_t {
-	generic_ptr base;
-	generic_ptr limit;
-};
-
 struct ucontext_t {
-	uc_regs_t regs;
-	uc_stack_t stack;
+	struct regs_t {
+		uintptr_t a;	 // 0
+		uintptr_t b;	 // 4, 8
+		uintptr_t c;	 // 8, 16
+		uintptr_t d;	 // 12, 24
+		uintptr_t si;	// 16, 32
+		uintptr_t di;	// 20, 40
+		uintptr_t sp;	// 24, 48
+		uintptr_t bp;	// 28, 56
+		uintptr_t ip;	// 32, 64
+		uintptr_t flags; // 36, 72
+#if RUA_X86 == 64
+		uintptr_t r8;  // 80
+		uintptr_t r9;  // 88
+		uintptr_t r10; // 96
+		uintptr_t r11; // 104
+		uintptr_t r12; // 112
+		uintptr_t r13; // 120
+		uintptr_t r14; // 128
+		uintptr_t r15; // 136
+#endif
+		uint32_t mxcsr; // 40, 144
+		uint16_t fcw;   // 44, 148
+		uint16_t _padding;
+	} regs;
 
-	RUA_FORCE_INLINE generic_ptr stack_top() const {
-		return regs.sp + sizeof(void *);
+	struct stack_t {
+		generic_ptr base;
+		generic_ptr limit;
+	} stack;
+
+	RUA_FORCE_INLINE uintptr_t &sp() {
+		return regs.sp;
+	}
+
+	RUA_FORCE_INLINE const uintptr_t &sp() const {
+		return regs.sp;
 	}
 };
+#if RUA_X86 == 64
+RUA_SASSERT(sizeof(ucontext_t::regs_t) == 152);
+#elif RUA_X86 == 32
+RUA_SASSERT(sizeof(ucontext_t::regs_t) == 48);
+#endif
 
 #include "switch_code_seg.h"
 
-RUA_CODE(_get_ucontext_code){
-#ifdef RUA_AMD64
+RUA_CODE(_get_ucontext_code) {
+#if RUA_X86 == 64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/get_amd64_win.inc"
 #else
 #include "ucontext/get_amd64_sysv.inc"
 #endif
-#elif defined(RUA_I386)
+#elif RUA_X86 == 32
 #ifdef _WIN32
 #include "ucontext/get_i386_win.inc"
 #else
@@ -92,14 +89,14 @@ RUA_CODE(_get_ucontext_code){
 #endif
 };
 
-RUA_CODE(_set_ucontext_code){
-#ifdef RUA_AMD64
+RUA_CODE(_set_ucontext_code) {
+#if RUA_X86 == 64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/set_amd64_win.inc"
 #else
 #include "ucontext/set_amd64_sysv.inc"
 #endif
-#elif defined(RUA_I386)
+#elif RUA_X86 == 32
 #ifdef _WIN32
 #include "ucontext/set_i386_win.inc"
 #else
@@ -108,14 +105,14 @@ RUA_CODE(_set_ucontext_code){
 #endif
 };
 
-RUA_CODE(_swap_ucontext_code){
-#ifdef RUA_AMD64
+RUA_CODE(_swap_ucontext_code) {
+#if RUA_X86 == 64
 #ifdef RUA_MS64_FASTCALL
 #include "ucontext/swap_amd64_win.inc"
 #else
 #include "ucontext/swap_amd64_sysv.inc"
 #endif
-#elif defined(RUA_I386)
+#elif RUA_X86 == 32
 #ifdef _WIN32
 #include "ucontext/swap_i386_win.inc"
 #else
@@ -145,49 +142,147 @@ inline void make_ucontext(
 	ucp->stack.base = stack.data() + stack.size();
 	ucp->stack.limit = stack.data();
 
-	ucp->regs.sp = ucp->stack.base - 5 * sizeof(uintptr_t);
-	ucp->regs.ip = func;
+	ucp->regs.sp = ucp->stack.base.uintptr() - 5 * sizeof(uintptr_t);
+	ucp->regs.ip = reinterpret_cast<uintptr_t>(func);
 
-#ifdef RUA_AMD64
+#if RUA_X86 == 64
 #ifdef RUA_MS64_FASTCALL
 	ucp->regs.c
 #else
 	ucp->regs.di
 #endif
-#elif defined(RUA_I386)
-	ucp->regs.sp.as<uintptr_t *>()[2]
+#elif RUA_X86 == 32
+	reinterpret_cast<uintptr_t *>(ucp->regs.sp)[2]
 #endif
 		= func_param;
 }
 
 } // namespace rua
 
-#else
+#elif defined(RUA_ARM) && RUA_ARM == 32 && defined(__GNUC__)
 
-#define RUA_USING_SYS_UCONTEXT
+namespace rua {
 
-#endif
+struct ucontext_t {
+	uintptr_t r[16];
 
-#endif
+	RUA_FORCE_INLINE uintptr_t &fp() {
+		return r[11];
+	}
 
-#ifdef RUA_USING_SYS_UCONTEXT
+	RUA_FORCE_INLINE const uintptr_t &fp() const {
+		return r[11];
+	}
+
+	RUA_FORCE_INLINE uintptr_t &ip() {
+		return r[12];
+	}
+
+	RUA_FORCE_INLINE const uintptr_t &ip() const {
+		return r[12];
+	}
+
+	RUA_FORCE_INLINE uintptr_t &sp() {
+		return r[13];
+	}
+
+	RUA_FORCE_INLINE const uintptr_t &sp() const {
+		return r[13];
+	}
+
+	RUA_FORCE_INLINE uintptr_t &lr() {
+		return r[14];
+	}
+
+	RUA_FORCE_INLINE const uintptr_t &lr() const {
+		return r[14];
+	}
+
+	RUA_FORCE_INLINE uintptr_t &pc() {
+		return r[15];
+	}
+
+	RUA_FORCE_INLINE const uintptr_t &pc() const {
+		return r[15];
+	}
+};
+
+extern "C" {
+
+bool _rua_get_ucontext(ucontext_t *ucp);
+
+__asm__("_rua_get_ucontext:\n\t"
+		"stmia r0, {r0-r15}\n\t"
+		"stmia r0, {r0-r15}\n\t"
+		"mov r0, #0\n\t"
+		"bx lr");
+
+void _rua_set_ucontext(const ucontext_t *ucp);
+
+__asm__("_rua_set_ucontext:\n\t"
+		"ldmia r0, {r0-r14}\n\t"
+		"bx lr");
+
+void _rua_swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp);
+
+__asm__("_rua_swap_ucontext:\n\t"
+		"stmia r0, {r0-r15}\n\t"
+		"ldmia r1, {r0-r14}\n\t"
+		"bx lr");
+}
+
+RUA_MULTIDEF_VAR bool (*get_ucontext)(ucontext_t *ucp) = &_rua_get_ucontext;
+
+RUA_MULTIDEF_VAR void (*set_ucontext)(const ucontext_t *ucp) =
+	&_rua_set_ucontext;
+
+RUA_MULTIDEF_VAR void (*swap_ucontext)(
+	ucontext_t *oucp, const ucontext_t *ucp) = &_rua_swap_ucontext;
+
+inline void make_ucontext(
+	ucontext_t *ucp,
+	void (*func)(any_word),
+	any_word func_param,
+	bytes_ref stack) {
+	auto stack_bottom = stack.data().uintptr() + stack.size();
+	stack_bottom -= stack_bottom % sizeof(uintptr_t) + sizeof(uintptr_t);
+	ucp->sp() = stack_bottom;
+	ucp->lr() = reinterpret_cast<uintptr_t>(func);
+	ucp->r[0] = func_param;
+}
+
+} // namespace rua
+
+#else // ifdef {ARCH_MACRO}
+
+#define RUA_USING_NATIVE_UCONTEXT
+
+#endif // ifdef {ARCH_MACRO}
+
+#endif // ifndef RUA_USING_NATIVE_UCONTEXT
+
+#ifdef RUA_USING_NATIVE_UCONTEXT
 
 #include <ucontext.h>
 
 namespace rua {
 
 struct ucontext_t : ::ucontext_t {
-	generic_ptr _stack_top;
+	generic_ptr _sp;
 
-	RUA_FORCE_INLINE generic_ptr stack_top() const {
-		return _stack_top;
+	RUA_FORCE_INLINE generic_ptr &sp() {
+		return _sp;
+	}
+
+	RUA_FORCE_INLINE const generic_ptr &sp() const {
+		return _sp;
 	}
 };
 
 static RUA_NO_INLINE bool get_ucontext(ucontext_t *ucp) {
 	volatile char v;
-	ucp->_stack_top = &v;
-	return !::getcontext(ucp);
+	ucp->_sp = &v;
+	return ::getcontext(ucp);
 }
 
 static auto set_ucontext = &setcontext;
@@ -195,7 +290,7 @@ static auto set_ucontext = &setcontext;
 static RUA_NO_INLINE void
 swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
 	volatile char v;
-	oucp->_stack_top = &v;
+	oucp->_sp = &v;
 	::swapcontext(oucp, ucp);
 }
 
@@ -207,11 +302,11 @@ inline void make_ucontext(
 	ucp->uc_link = nullptr;
 	ucp->uc_stack.ss_sp = stack.data();
 	ucp->uc_stack.ss_size = stack.size();
-	makecontext(ucp, reinterpret_cast<void (*)()>(func), 1, func_param);
+	::makecontext(ucp, reinterpret_cast<void (*)()>(func), 1, func_param);
 }
 
 } // namespace rua
 
-#endif
+#endif // ifdef RUA_USING_NATIVE_UCONTEXT
 
 #endif

@@ -120,53 +120,17 @@ public:
 		return generic_ptr(_val + static_cast<uintptr_t>(target));
 	}
 
+	template <typename Int>
+	RUA_FORCE_INLINE
+		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
+		operator+=(Int &&target) {
+		_val += static_cast<uintptr_t>(target);
+		return *this;
+	}
+
 	RUA_FORCE_INLINE constexpr ptrdiff_t
 	operator-(const generic_ptr target) const {
 		return static_cast<ptrdiff_t>(_val - target._val);
-	}
-
-	template <typename Int>
-	RUA_FORCE_INLINE constexpr enable_if_t<
-		std::is_integral<decay_t<Int>>::value,
-		generic_ptr>
-	operator<<(Int &&target) const {
-		return generic_ptr(_val << static_cast<uintptr_t>(target));
-	}
-
-	template <typename Int>
-	RUA_FORCE_INLINE constexpr enable_if_t<
-		std::is_integral<decay_t<Int>>::value,
-		generic_ptr>
-	operator>>(Int &&target) const {
-		return generic_ptr(_val >> static_cast<uintptr_t>(target));
-	}
-
-	template <typename Int>
-	RUA_FORCE_INLINE constexpr enable_if_t<
-		std::is_integral<decay_t<Int>>::value,
-		generic_ptr>
-	operator|(const generic_ptr target) const {
-		return generic_ptr(_val | target._val);
-	}
-
-	template <typename Int>
-	RUA_FORCE_INLINE constexpr enable_if_t<
-		std::is_integral<decay_t<Int>>::value,
-		generic_ptr>
-	operator&(const generic_ptr target) const {
-		return generic_ptr(_val & target._val);
-	}
-
-	template <typename Int>
-	RUA_FORCE_INLINE constexpr enable_if_t<
-		std::is_integral<decay_t<Int>>::value,
-		generic_ptr>
-	operator^(const generic_ptr target) const {
-		return generic_ptr(_val ^ target._val);
-	}
-
-	RUA_FORCE_INLINE constexpr generic_ptr operator~() const {
-		return generic_ptr(~_val);
 	}
 
 	template <typename Int>
@@ -180,17 +144,33 @@ public:
 	template <typename Int>
 	RUA_FORCE_INLINE
 		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
-		operator+=(Int &&target) {
-		_val += static_cast<uintptr_t>(target);
+		operator-=(Int &&target) {
+		_val -= static_cast<uintptr_t>(target);
 		return *this;
 	}
 
 	template <typename Int>
-	RUA_FORCE_INLINE
-		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
-		operator-=(Int &&target) {
-		_val -= static_cast<uintptr_t>(target);
-		return *this;
+	RUA_FORCE_INLINE constexpr enable_if_t<
+		std::is_integral<decay_t<Int>>::value,
+		ptrdiff_t>
+	operator/(Int &&target) const {
+		return static_cast<ptrdiff_t>(_val / static_cast<uintptr_t>(target));
+	}
+
+	template <typename Int>
+	RUA_FORCE_INLINE constexpr enable_if_t<
+		std::is_integral<decay_t<Int>>::value,
+		ptrdiff_t>
+	operator%(Int &&target) const {
+		return static_cast<ptrdiff_t>(_val % static_cast<uintptr_t>(target));
+	}
+
+	template <typename Int>
+	RUA_FORCE_INLINE constexpr enable_if_t<
+		std::is_integral<decay_t<Int>>::value,
+		generic_ptr>
+	operator<<(Int &&target) const {
+		return generic_ptr(_val << static_cast<uintptr_t>(target));
 	}
 
 	template <typename Int>
@@ -202,6 +182,14 @@ public:
 	}
 
 	template <typename Int>
+	RUA_FORCE_INLINE constexpr enable_if_t<
+		std::is_integral<decay_t<Int>>::value,
+		generic_ptr>
+	operator>>(Int &&target) const {
+		return generic_ptr(_val >> static_cast<uintptr_t>(target));
+	}
+
+	template <typename Int>
 	RUA_FORCE_INLINE
 		enable_if_t<std::is_integral<decay_t<Int>>::value, generic_ptr &>
 		operator>>=(Int &&target) {
@@ -209,9 +197,17 @@ public:
 		return *this;
 	}
 
+	generic_ptr operator|(const generic_ptr target) const {
+		return generic_ptr(_val | target._val);
+	}
+
 	RUA_FORCE_INLINE generic_ptr &operator|=(const generic_ptr target) {
 		_val |= target._val;
 		return *this;
+	}
+
+	generic_ptr operator&(const generic_ptr target) const {
+		return generic_ptr(_val & target._val);
 	}
 
 	RUA_FORCE_INLINE generic_ptr &operator&=(const generic_ptr target) {
@@ -219,9 +215,17 @@ public:
 		return *this;
 	}
 
+	generic_ptr operator^(const generic_ptr target) const {
+		return generic_ptr(_val ^ target._val);
+	}
+
 	RUA_FORCE_INLINE generic_ptr &operator^=(const generic_ptr target) {
 		_val ^= target._val;
 		return *this;
+	}
+
+	RUA_FORCE_INLINE constexpr generic_ptr operator~() const {
+		return generic_ptr(~_val);
 	}
 
 private:

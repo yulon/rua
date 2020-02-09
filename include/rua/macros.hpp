@@ -143,7 +143,7 @@
 	defined(__x86_64__) || defined(__amd64__) || defined(__amd64) ||           \
 	defined(_WIN64)
 
-#define RUA_AMD64
+#define RUA_X86 64
 
 #elif defined(_X86_) || (defined(_M_IX86) && _M_IX86 == 600) ||                \
 	defined(i386) || defined(__i386) || defined(__i386__) ||                   \
@@ -151,12 +151,24 @@
 	defined(__i686) || defined(__I86__) || defined(__THW_INTEL__) ||           \
 	defined(__INTEL__) || defined(_WIN32)
 
-#define RUA_I386
+#define RUA_X86 32
 
 #endif
 
-#if defined(_WIN64) || (defined(RUA_AMD64) && defined(__CYGWIN__))
+#if defined(_WIN64) ||                                                         \
+	(defined(RUA_X86) && RUA_X86 == 64 && defined(__CYGWIN__))
 #define RUA_MS64_FASTCALL
+#endif
+
+#if defined(__arm64) || defined(_M_ARM64) || defined(_M_ARM64)
+
+#define RUA_ARM 64
+
+#elif defined(__arm__) || defined(__thumb__) || defined(__TARGET_ARCH_ARM) ||  \
+	defined(__TARGET_ARCH_THUMB) || defined(_M_ARM)
+
+#define RUA_ARM 32
+
 #endif
 
 #define RUA_ONCE_CODE(code_block)                                              \
@@ -164,10 +176,6 @@
 		static std::once_flag flg;                                             \
 		std::call_once(flg, []() code_block);                                  \
 	}
-
-#define RUA_DLL_FUNC(dll_handle, name)                                         \
-	reinterpret_cast<decltype(&name)>(                                         \
-		reinterpret_cast<void *>(GetProcAddress(dll_handle, #name)))
 
 #ifdef _MSC_VER
 #define RUA_FORCE_INLINE inline __forceinline
@@ -209,5 +217,8 @@
 #define RUA_OVERLOAD_ASSIGNMENT(T)                                             \
 	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
 	RUA_OVERLOAD_ASSIGNMENT_R(T)
+
+#define RUA_S(s) #s
+#define RUA_M2S(m) RUA_S(m)
 
 #endif

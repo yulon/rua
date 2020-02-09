@@ -20,5 +20,5 @@ mov [esp], ecx
 ldmxcsr [eax+40]
 fldcw [eax+44]
 
-mov eax, 0
+mov eax, 1
 ret

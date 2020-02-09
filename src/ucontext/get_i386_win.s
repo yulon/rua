@@ -36,5 +36,5 @@ rep movsd
 
 mov esi, [eax+16]
 mov edi, [eax+20]
-mov eax, 1
+mov eax, 0
 ret
