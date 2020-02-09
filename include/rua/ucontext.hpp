@@ -213,7 +213,6 @@ bool _rua_get_ucontext(ucontext_t *ucp);
 
 __asm__("_rua_get_ucontext:\n\t"
 		"stmia r0, {r0-r15}\n\t"
-		"stmia r0, {r0-r15}\n\t"
 		"mov r0, #0\n\t"
 		"bx lr");
 
