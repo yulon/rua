@@ -206,7 +206,7 @@ public:
 		return nd;
 	}
 
-	time unix() const {
+	time to_unix() const {
 		assert(!is_monotonic());
 
 		if (*_epo == unix_epoch) {
@@ -339,7 +339,7 @@ struct hash<rua::time> {
 	RUA_FORCE_INLINE size_t operator()(const rua::time &t) const {
 		return _szt(
 			t.is_monotonic() ? rua::ms(t.elapsed()).count()
-							 : t.unix().elapsed().s_count());
+							 : t.to_unix().elapsed().s_count());
 	}
 
 private:
