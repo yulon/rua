@@ -3,7 +3,7 @@
 # See https://github.com/TheLartians/CPM for usage and update instructions.
 #
 # MIT License
-# ----------- 
+# -----------
 #[[
   Copyright (c) 2019 Lars Melchior
 
@@ -26,7 +26,7 @@
   SOFTWARE.
 ]]
 
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
 
 set(CURRENT_CPM_VERSION 0.16)
 
@@ -60,7 +60,12 @@ endif()
 
 set(CPM_SOURCE_CACHE ${CPM_SOURCE_CACHE_DEFAULT} CACHE PATH "Directory to downlaod CPM dependencies")
 
-include(FetchContent)
+if(${CMAKE_MINOR_VERSION} LESS 14)
+  include("${CMAKE_CURRENT_LIST_DIR}/CPMFetchContent.cmake")
+else()
+  include(FetchContent)
+endif()
+
 include(CMakeParseArguments)
 
 # Initialize logging prefix
@@ -89,7 +94,7 @@ function(CPMFindPackage)
   )
 
   cmake_parse_arguments(CPM_ARGS "" "${oneValueArgs}" "" ${ARGN})
-  
+
   if (CPM_DOWNLOAD_ALL)
     CPMAddPackage(${ARGN})
     cpm_export_variables()
@@ -133,16 +138,16 @@ function(CPMAddPackage)
       return()
     endif()
 
-    if(CPM_LOCAL_PACKAGES_ONLY) 
+    if(CPM_LOCAL_PACKAGES_ONLY)
       message(SEND_ERROR "CPM: ${CPM_ARGS_NAME} not found via find_package(${CPM_ARGS_NAME} ${CPM_ARGS_VERSION})")
     endif()
   endif()
 
   if (NOT DEFINED CPM_ARGS_VERSION)
-    if (DEFINED CPM_ARGS_GIT_TAG) 
+    if (DEFINED CPM_ARGS_GIT_TAG)
       cpm_get_version_from_git_tag("${CPM_ARGS_GIT_TAG}" CPM_ARGS_VERSION)
     endif()
-    if (NOT DEFINED CPM_ARGS_VERSION) 
+    if (NOT DEFINED CPM_ARGS_VERSION)
       set(CPM_ARGS_VERSION 0)
     endif()
   endif()
@@ -183,7 +188,7 @@ function(CPMAddPackage)
     cpm_fetch_package(${CPM_ARGS_NAME} ${DOWNLOAD_ONLY})
     cpm_get_fetch_properties(${CPM_ARGS_NAME})
     SET(${CPM_ARGS_NAME}_SOURCE_DIR "${${CPM_ARGS_NAME}_SOURCE_DIR}")
-    SET(${CPM_ARGS_NAME}_BINARY_DIR "${${CPM_ARGS_NAME}_BINARY_DIR}")  
+    SET(${CPM_ARGS_NAME}_BINARY_DIR "${${CPM_ARGS_NAME}_BINARY_DIR}")
     SET(${CPM_ARGS_NAME}_ADDED NO)
     cpm_export_variables()
     return()
@@ -254,11 +259,11 @@ function(CPMGetPackageVersion PACKAGE OUTPUT)
   set(${OUTPUT} "${CPM_PACKAGE_${PACKAGE}_VERSION}" PARENT_SCOPE)
 endfunction()
 
-# declares a package in FetchContent_Declare 
+# declares a package in FetchContent_Declare
 function (cpm_declare_fetch PACKAGE VERSION INFO)
   message(STATUS "${CPM_INDENT} adding package ${PACKAGE}@${VERSION} (${INFO})")
 
-  if (${CPM_DRY_RUN}) 
+  if (${CPM_DRY_RUN})
     message(STATUS "${CPM_INDENT} package not declared (dry run)")
     return()
   endif()
@@ -271,7 +276,7 @@ endfunction()
 
 # returns properties for a package previously defined by cpm_declare_fetch
 function (cpm_get_fetch_properties PACKAGE)
-  if (${CPM_DRY_RUN}) 
+  if (${CPM_DRY_RUN})
     return()
   endif()
   FetchContent_GetProperties(${PACKAGE})
@@ -281,9 +286,9 @@ function (cpm_get_fetch_properties PACKAGE)
 endfunction()
 
 # downloads a previously declared package via FetchContent
-function (cpm_fetch_package PACKAGE DOWNLOAD_ONLY)  
+function (cpm_fetch_package PACKAGE DOWNLOAD_ONLY)
 
-  if (${CPM_DRY_RUN}) 
+  if (${CPM_DRY_RUN})
     message(STATUS "${CPM_INDENT} package ${PACKAGE} not fetched (dry run)")
     return()
   endif()
@@ -319,7 +324,7 @@ endfunction()
 # guesses the package version from a git tag
 function(cpm_get_version_from_git_tag GIT_TAG RESULT)
   string(LENGTH ${GIT_TAG} length)
-  if (length EQUAL 40) 
+  if (length EQUAL 40)
     # GIT_TAG is probably a git hash
     SET(${RESULT} 0 PARENT_SCOPE)
   else()
