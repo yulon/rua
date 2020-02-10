@@ -1,0 +1,34 @@
+name: Ubuntu
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: install cmake
+      run: |
+        wget -O cmake.sh https://cmake.org/files/v3.14/cmake-3.14.0-Linux-x86_64.sh
+        sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
+        export PATH=/usr/local/bin:$PATH
+        cmake --version
+
+    - name: build debug
+      run: |
+        mkdir ./out.d
+        cd ./out.d
+        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Debug
+        cmake --build .
+        ./rua_test
+
+    - name: build release
+      run: |
+        mkdir ./out
+        cd ./out
+        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Release
+        cmake --build .
+        ./rua_test

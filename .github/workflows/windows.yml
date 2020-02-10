@@ -1,0 +1,27 @@
+name: Windows
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: build debug
+      run: |
+        mkdir ./out.d
+        cd ./out.d
+        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Debug
+        cmake --build .
+        ./rua_test
+
+    - name: build release
+      run: |
+        mkdir ./out
+        cd ./out
+        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Release
+        cmake --build .
+        ./rua_test
