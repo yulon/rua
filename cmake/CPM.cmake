@@ -73,16 +73,19 @@ if(NOT CPM_INDENT)
   set(CPM_INDENT "CPM:")
 endif()
 
-function(cpm_find_package NAME VERSION)
-  string(REPLACE " " ";" EXTRA_ARGS "${ARGN}")
-  find_package(${NAME} ${VERSION} ${EXTRA_ARGS})
-  if(${CPM_ARGS_NAME}_FOUND)
-    message(STATUS "${CPM_INDENT} using local package ${CPM_ARGS_NAME}@${${CPM_ARGS_NAME}_VERSION}")
-    CPMRegisterPackage(${CPM_ARGS_NAME} "${${CPM_ARGS_NAME}_VERSION}")
+function(cpm_find_package NAME VERSION FIND_PACKAGE_ARGUMENTS)
+  string(REPLACE " " ";" EXTRA_ARGS "${FIND_PACKAGE_ARGUMENTS}")
+
+  find_package(${NAME} ${VERSION} QUIET ${EXTRA_ARGS})
+  if(${NAME}_FOUND)
+    message(STATUS "${CPM_INDENT} using local package ${NAME}@${${NAME}_VERSION}")
+    CPMRegisterPackage(${NAME} "${${NAME}_VERSION}")
     set(CPM_PACKAGE_FOUND YES PARENT_SCOPE)
-  else()
-    set(CPM_PACKAGE_FOUND NO PARENT_SCOPE)
+    return()
   endif()
+
+  message(STATUS "${CPM_INDENT} package '${NAME}' not found")
+  set(CPM_PACKAGE_FOUND NO PARENT_SCOPE)
 endfunction()
 
 # Find a package locally or fallback to CPMAddPackage
@@ -101,7 +104,7 @@ function(CPMFindPackage)
     return()
   endif()
 
-  cpm_find_package(${CPM_ARGS_NAME} "${CPM_ARGS_VERSION}" ${CPM_ARGS_FIND_PACKAGE_ARGUMENTS})
+  cpm_find_package(${CPM_ARGS_NAME} "${CPM_ARGS_VERSION}" "${CPM_ARGS_FIND_PACKAGE_ARGUMENTS}")
 
   if(NOT CPM_PACKAGE_FOUND)
     CPMAddPackage(${ARGN})
@@ -136,10 +139,6 @@ function(CPMAddPackage)
 
     if(CPM_PACKAGE_FOUND)
       return()
-    endif()
-
-    if(CPM_LOCAL_PACKAGES_ONLY)
-      message(SEND_ERROR "CPM: ${CPM_ARGS_NAME} not found via find_package(${CPM_ARGS_NAME} ${CPM_ARGS_VERSION})")
     endif()
   endif()
 
@@ -264,7 +263,7 @@ function (cpm_declare_fetch PACKAGE VERSION INFO)
   message(STATUS "${CPM_INDENT} adding package ${PACKAGE}@${VERSION} (${INFO})")
 
   if (${CPM_DRY_RUN})
-    message(STATUS "${CPM_INDENT} package not declared (dry run)")
+    message(STATUS "${CPM_INDENT} package '${PACKAGE}' not declared (dry run)")
     return()
   endif()
 
@@ -289,7 +288,7 @@ endfunction()
 function (cpm_fetch_package PACKAGE DOWNLOAD_ONLY)
 
   if (${CPM_DRY_RUN})
-    message(STATUS "${CPM_INDENT} package ${PACKAGE} not fetched (dry run)")
+    message(STATUS "${CPM_INDENT} package '${PACKAGE}' not fetched (dry run)")
     return()
   endif()
 
