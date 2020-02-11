@@ -140,6 +140,7 @@ inline void make_ucontext(
 	bytes_ref stack) {
 
 	ucp->stack.base = stack.data() + stack.size();
+	ucp->stack.base -= ucp->stack.base % sizeof(uintptr_t);
 	ucp->stack.limit = stack.data();
 
 	ucp->regs.sp = ucp->stack.base.uintptr() - 5 * sizeof(uintptr_t);
@@ -159,7 +160,7 @@ inline void make_ucontext(
 
 } // namespace rua
 
-#elif defined(RUA_ARM) && RUA_ARM == 32 && defined(__GNUC__)
+#elif defined(RUA_ARM) && RUA_ARM == 32
 
 namespace rua {
 
@@ -207,36 +208,31 @@ struct ucontext_t {
 	}
 };
 
-extern "C" {
+#include "switch_code_seg.h"
 
-bool _rua_get_ucontext(ucontext_t *ucp);
+RUA_CODE(_get_ucontext_code){
+#include "ucontext/get_arm.inc"
+};
 
-__asm__("_rua_get_ucontext:\n\t"
-		"stmia r0, {r0-r15}\n\t"
-		"mov r0, #0\n\t"
-		"bx lr");
+RUA_CODE(_set_ucontext_code){
+#include "ucontext/set_arm.inc"
+};
 
-void _rua_set_ucontext(const ucontext_t *ucp);
+RUA_CODE(_swap_ucontext_code){
+#include "ucontext/swap_arm.inc"
+};
 
-__asm__("_rua_set_ucontext:\n\t"
-		"ldmia r0, {r0-r14}\n\t"
-		"bx lr");
+#include "switch_code_seg.h"
 
-void _rua_swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp);
+RUA_CODE_FN(bool, get_ucontext, (ucontext_t * ucp), _get_ucontext_code)
 
-__asm__("_rua_swap_ucontext:\n\t"
-		"stmia r0, {r0-r15}\n\t"
-		"ldmia r1, {r0-r14}\n\t"
-		"bx lr");
-}
+RUA_CODE_FN(void, set_ucontext, (const ucontext_t *ucp), _set_ucontext_code)
 
-RUA_MULTIDEF_VAR bool (*get_ucontext)(ucontext_t *ucp) = &_rua_get_ucontext;
-
-RUA_MULTIDEF_VAR void (*set_ucontext)(const ucontext_t *ucp) =
-	&_rua_set_ucontext;
-
-RUA_MULTIDEF_VAR void (*swap_ucontext)(
-	ucontext_t *oucp, const ucontext_t *ucp) = &_rua_swap_ucontext;
+RUA_CODE_FN(
+	void,
+	swap_ucontext,
+	(ucontext_t * oucp, const ucontext_t *ucp),
+	_swap_ucontext_code)
 
 inline void make_ucontext(
 	ucontext_t *ucp,

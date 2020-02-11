@@ -4,14 +4,6 @@ const fs = require("fs")
 const cp = require("child_process")
 const path = require("path")
 
-var log
-var argv = process.argv.splice(2);
-if (argv.length > 0 && argv[0] === "-v") {
-	log = console.log
-} else {
-	log = () => {}
-}
-
 function mkdir(dir) {
 	if (fs.existsSync(dir)) {
 		return
@@ -27,26 +19,37 @@ const incDir = path.join(repoDir, "include", "rua", "ucontext")
 mkdir(binDir)
 mkdir(incDir)
 
-const files = fs.readdirSync(__dirname)
+const filePaths = process.argv.slice(1)
 
-files.forEach(srcPath => {
-	if (path.extname(srcPath) !== ".s") {
+filePaths.forEach(filePath => {
+	if (filePath.slice(filePath.length - 7) === "_fasm.s") {
+		fasm(filePath)
 		return
 	}
+	if (filePath.slice(filePath.length - 6) === "_gas.s") {
+		gas(filePath)
+		return
+	}
+})
 
-	log("build: " + srcPath)
+function fasm(srcPath) {
+	console.log("=> build: " + srcPath)
 
-	const name = path.basename(srcPath).split(".")[0]
-
+	const srcName = path.basename(srcPath)
+	const name = srcName.slice(0, srcName.lastIndexOf("_"))
 	const binPath = path.join(binDir, name + ".bin")
-	const stdout = cp.execFileSync(
+
+	const r = cp.execFileSync(
 		"fasm",
-		[path.join(__dirname, srcPath), binPath]
+		[srcPath, binPath]
 	).toString()
+	console.log(r.length ? r + "\b" : "")
 
-	log(stdout.length ? stdout + "\b" : "")
+	bin2hex(binPath)
+}
 
-	const data = fs.readFileSync(binPath)
+function bin2inc(name) {
+	const data = fs.readFileSync(path.join(binDir, name + ".bin"))
 
 	var incStr = ""
 	var first = true
@@ -62,6 +65,77 @@ files.forEach(srcPath => {
 
 	var incPath = path.join(incDir, name + ".inc")
 	fs.writeFileSync(incPath, incStr)
+	console.log("=> output: " + incPath + "\n")
+}
 
-	log("output: " + incPath + "\n")
-})
+function gas(srcPath) {
+	console.log("=> build: " + srcPath)
+
+	const srcName = path.basename(srcPath)
+	const arch = srcName.slice(0, srcName.lastIndexOf("_"))
+	const objPath = path.join(binDir, arch + ".o")
+
+	var r = cp.execFileSync(
+		"gcc",
+		["-c", srcPath, "-o", objPath]
+	).toString()
+	console.log(r.length ? r + "\b" : "")
+
+	r = cp.execFileSync(
+		"objdump",
+		["-d", objPath]
+	).toString()
+	console.log(r.length ? r + "\b" : "")
+
+	od2inc(arch, r)
+}
+
+function od2inc(arch, od) {
+	var name = ""
+	var incStr = ""
+	var first = true
+	var out = () => {
+		incStr += "\n"
+		var incPath = path.join(incDir, name + ".inc")
+		fs.writeFileSync(incPath, incStr)
+		console.log("=> output: " + incPath + "\n")
+	}
+	const odLns = od.split("\n")
+	for (let i = 0; i < odLns.length; i++) {
+		const odLn = odLns[i].trim()
+
+		if (odLn.slice(odLn.length - 2) == ">:") {
+			if (name.length != 0) {
+				out()
+				name = ""
+				incStr = ""
+				first = true
+			}
+			const ix = odLn.lastIndexOf("<")
+			name = odLn.slice(ix + 1, odLn.length - 2) + "_" + arch
+			continue
+		}
+
+		const codeLn = odLn.split("\t")
+		if (codeLn.length < 3) {
+			continue
+		}
+
+		const hexs = codeLn[1].trim().split(" ")
+		for (let j = 0; j < hexs.length; j++) {
+			for (let k = hexs[j].length - 2; k >= 0; k -= 2) {
+				const bytHex = hexs[j].substr(k, 2)
+				if (first) {
+					first = false
+				} else {
+					incStr += ", "
+				}
+				incStr += "0x" + bytHex.toUpperCase()
+			}
+		}
+	}
+	if (name.length == 0) {
+		return
+	}
+	out()
+}
