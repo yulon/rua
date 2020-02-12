@@ -28,7 +28,7 @@ data(T &&target) {
 template <typename CharT, typename Traits, typename Allocator>
 RUA_FORCE_INLINE CharT *
 data(std::basic_string<CharT, Traits, Allocator> &target) {
-	return const_cast<CharT *>(target.data());
+	return &target[0];
 }
 
 template <typename CharT, typename Traits, typename Allocator>
