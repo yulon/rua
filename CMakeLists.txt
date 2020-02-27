@@ -5,12 +5,14 @@ project(rua)
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/rua.cmake")
 
 if(DEFINED RUA_TEST)
-	include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/CPM.cmake")
-	CPMFindPackage(
-		NAME doctest
-		GITHUB_REPOSITORY onqtam/doctest
-		GIT_TAG master
+	include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/DepPull.cmake")
+
+	DepPull(
+		doctest
+		ANY_VERSION TRUE
+		GIT_REPO "https://github.com/onqtam/doctest.git"
 	)
+
 	set(rua_test_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test")
 	if(${RUA_TEST} STREQUAL "all")
 		file(GLOB_RECURSE rua_test_SOURCES "${rua_test_SOURCE_DIR}/*.cpp")
