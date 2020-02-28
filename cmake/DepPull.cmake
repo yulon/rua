@@ -87,7 +87,7 @@ function(DepPull A_NAME)
 		if(EXISTS "${SOURCE_DIR}.ready")
 			set(FOUND TRUE)
 		else()
-			message(STATUS "DepPull: getting '${A_NAME}' (${A_ARCHIVE_URL})")
+			message(STATUS "DepPull: getting ${A_ARCHIVE_URL}")
 
 			if(EXISTS "${SOURCE_DIR}")
 				file(REMOVE_RECURSE "${SOURCE_DIR}")
@@ -139,7 +139,7 @@ function(DepPull A_NAME)
 				find_package(Git REQUIRED)
 			endif()
 
-			message(STATUS "DepPull: cloning ${A_GIT_REPO} ${GIT_TAG}")
+			message(STATUS "DepPull: cloning ${A_GIT_REPO} (${GIT_TAG})")
 
 			if(NOT EXISTS "${DEPPULL_SOURCES}")
 				file(MAKE_DIRECTORY "${DEPPULL_SOURCES}")
@@ -201,7 +201,7 @@ function(DepPull A_NAME)
 	endif()
 
 	if(NOT FOUND)
-		message(FATAL_ERROR "DepPull: not found '${A_NAME}'")
+		message(FATAL_ERROR "DepPull: not found ${A_NAME}")
 	endif()
 
 	message(STATUS "DepPull: using ${SOURCE_WITH_LIST_RELATIVE_PATH}")
