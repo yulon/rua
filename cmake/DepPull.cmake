@@ -39,7 +39,7 @@ if("${DEPPULL_SOURCES}" STREQUAL "${_DEPPULL_SOURCES_DEFAULT}")
 	message(STATUS "         if the value is <IN_HOME|IN_TEMP>, will choose the appropriate directory.")
 endif()
 
-function(_DepPull_MakeSrcFullPaths A_DEP_RELATIVE_PATH A_LIST_RELATIVE_PATH)
+function(_DepPull_MakeSrcPaths A_DEP_RELATIVE_PATH A_LIST_RELATIVE_PATH)
 	set(SOURCE_RELATIVE_PATH "${A_DEP_RELATIVE_PATH}/src")
 	set(SOURCE_RELATIVE_PATH "${SOURCE_RELATIVE_PATH}" PARENT_SCOPE)
 
@@ -82,7 +82,7 @@ function(DepPull A_NAME)
 		string(REPLACE "=" "-" DEP_RELATIVE_PATH "${A_ARCHIVE_HASH}")
 		set(DEP_RELATIVE_PATH "${NAME_TOLOWER}/${DEP_RELATIVE_PATH}")
 
-		_DepPull_MakeSrcFullPaths("${DEP_RELATIVE_PATH}" "${A_LIST_RELATIVE_PATH}")
+		_DepPull_MakeSrcPaths("${DEP_RELATIVE_PATH}" "${A_LIST_RELATIVE_PATH}")
 
 		if(EXISTS "${SOURCE_DIR}.ready")
 			set(FOUND TRUE)
@@ -117,21 +117,22 @@ function(DepPull A_NAME)
 	endif()
 
 	if(NOT FOUND AND A_GIT_REPO)
+		string(REGEX REPLACE ".+://" "" GIT_REPO_CLEAR "${A_GIT_REPO}")
+		string(REGEX REPLACE "\\.git[/\\\\]*$" "" GIT_REPO_CLEAR "${GIT_REPO_CLEAR}")
+		string(MAKE_C_IDENTIFIER "${GIT_REPO_CLEAR}" GIT_REPO_NAME)
+
 		if(A_GIT_TAG AND NOT "${A_GIT_TAG}" STREQUAL "*")
 			set(GIT_TAG "${A_GIT_REPO}")
 		else()
 			set(GIT_TAG "master")
 		endif()
 
-		if("${GIT_TAG}" STREQUAL "master")
-			string(REGEX REPLACE "\\.git$" "" GIT_REPO_CLEAR "${A_GIT_REPO}")
-			string(SHA1 GIT_REPO_HASH "${GIT_REPO_CLEAR}")
-			set(DEP_RELATIVE_PATH "${NAME_TOLOWER}/git-${GIT_REPO_HASH}")
-		else()
-			set(DEP_RELATIVE_PATH "${NAME_TOLOWER}/git-${GIT_TAG}")
+		set(DEP_RELATIVE_PATH "${NAME_TOLOWER}/git-${GIT_REPO_NAME}")
+		if(NOT "${GIT_TAG}" STREQUAL "master")
+			set(DEP_RELATIVE_PATH "${DEP_RELATIVE_PATH}-${GIT_TAG}")
 		endif()
 
-		_DepPull_MakeSrcFullPaths("${DEP_RELATIVE_PATH}" "${A_LIST_RELATIVE_PATH}")
+		_DepPull_MakeSrcPaths("${DEP_RELATIVE_PATH}" "${A_LIST_RELATIVE_PATH}")
 
 		if(NOT EXISTS "${SOURCE_DIR}.ready")
 
@@ -179,7 +180,7 @@ function(DepPull A_NAME)
 			endif()
 
 			if(DEFINED GIT_EXECUTABLE)
-				message(STATUS "DepPull: pulling ${A_GIT_REPO} (${GIT_TAG})")
+				message(STATUS "DepPull: pulling ${SOURCE_WITH_LIST_RELATIVE_PATH}")
 
 				execute_process(
 					COMMAND "${GIT_EXECUTABLE}" pull
