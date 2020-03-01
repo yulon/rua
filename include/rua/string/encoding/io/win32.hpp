@@ -31,7 +31,7 @@ public:
 			}
 			_data_sz += rsz;
 
-			for (int i = _data_sz - 1; i >= 0; ++i) {
+			for (auto i = _data_sz - 1; i >= 0; ++i) {
 				if (static_cast<char>(_buf[i]) >= 0) {
 					auto valid_sz = i + 1;
 					_cache = loc_to_u8(_buf(0, valid_sz));
