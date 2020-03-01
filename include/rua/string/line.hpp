@@ -42,7 +42,7 @@ inline bool is_eol(string_view str) {
 
 class line_reader {
 public:
-	line_reader() : _r(nullptr), _1st_chr_is_cr(false) {}
+	constexpr line_reader() : _r(nullptr), _1st_chr_is_cr(false) {}
 
 	line_reader(reader_i r) : _r(std::move(r)), _1st_chr_is_cr(false) {}
 
@@ -51,7 +51,7 @@ public:
 		for (;;) {
 			_buf.resize(buf_sz);
 			auto sz = _r->read(_buf);
-			if (!sz) {
+			if (sz <= 0) {
 				_r = nullptr;
 				_1st_chr_is_cr = false;
 				r = static_cast<std::string>(_cache);
@@ -64,7 +64,7 @@ public:
 					_buf = _buf(1);
 				}
 			}
-			for (size_t i = 0; i < sz; ++i) {
+			for (ptrdiff_t i = 0; i < sz; ++i) {
 				if (_buf[i] == static_cast<byte>('\r')) {
 					_cache += _buf(0, i);
 					if (i == sz - 1) {

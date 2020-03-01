@@ -12,7 +12,7 @@ class c_stream : public read_write_closer {
 public:
 	using native_handle_t = FILE *;
 
-	c_stream(native_handle_t f = nullptr, bool need_close = true) :
+	constexpr c_stream(native_handle_t f = nullptr, bool need_close = true) :
 		_f(f),
 		_nc(f ? need_close : false) {}
 
@@ -42,12 +42,12 @@ public:
 		return _f;
 	}
 
-	virtual size_t read(bytes_ref p) {
-		return static_cast<size_t>(fread(p.data(), 1, p.size(), _f));
+	virtual ptrdiff_t read(bytes_ref p) {
+		return static_cast<ptrdiff_t>(fread(p.data(), 1, p.size(), _f));
 	}
 
-	virtual size_t write(bytes_view p) {
-		return static_cast<size_t>(fwrite(p.data(), 1, p.size(), _f));
+	virtual ptrdiff_t write(bytes_view p) {
+		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), _f));
 	}
 
 	virtual void close() {

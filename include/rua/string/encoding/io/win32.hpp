@@ -8,7 +8,7 @@
 
 namespace rua { namespace win32 {
 
-class loc_to_u8_reader : public virtual reader {
+class loc_to_u8_reader : public reader {
 public:
 	loc_to_u8_reader() : _lr(nullptr), _data_sz(0) {}
 
@@ -18,12 +18,12 @@ public:
 
 	virtual ~loc_to_u8_reader() = default;
 
-	virtual size_t read(bytes_ref p) {
+	virtual ptrdiff_t read(bytes_ref p) {
 		while (_cache.empty()) {
 			_buf.resize(_data_sz + p.size());
 
 			auto rsz = _lr->read(_buf);
-			if (!rsz) {
+			if (rsz <= 0) {
 				if (_data_sz) {
 					_cache = loc_to_u8(_buf(0, _data_sz));
 				}
@@ -31,19 +31,17 @@ public:
 			}
 			_data_sz += rsz;
 
-			for (int i = static_cast<int>(_data_sz) - 1; i >= 0; ++i) {
-				if (static_cast<char>(_buf[static_cast<size_t>(i)]) >= 0) {
-					auto valid_sz = static_cast<size_t>(i + 1);
-
+			for (int i = _data_sz - 1; i >= 0; ++i) {
+				if (static_cast<char>(_buf[i]) >= 0) {
+					auto valid_sz = i + 1;
 					_cache = loc_to_u8(_buf(0, valid_sz));
-
 					_data_sz -= valid_sz;
 					_buf = _buf(valid_sz);
 					break;
 				}
 			}
 		};
-		auto sz = p.copy_from(_cache);
+		auto sz = static_cast<ptrdiff_t>(p.copy_from(_cache));
 		_cache = _cache.substr(sz, _cache.size() - sz);
 		return sz;
 	}
@@ -52,20 +50,20 @@ private:
 	reader_i _lr;
 	std::string _cache;
 	bytes _buf;
-	size_t _data_sz;
+	ptrdiff_t _data_sz;
 };
 
-class u8_to_loc_writer : public virtual writer {
+class u8_to_loc_writer : public writer {
 public:
-	u8_to_loc_writer() : _lw(nullptr) {}
+	constexpr u8_to_loc_writer() : _lw(nullptr) {}
 
 	u8_to_loc_writer(writer_i loc_writer) : _lw(std::move(loc_writer)) {}
 
 	virtual ~u8_to_loc_writer() = default;
 
-	virtual size_t write(bytes_view p) {
+	virtual ptrdiff_t write(bytes_view p) {
 		_lw->write_all(u8_to_loc(p));
-		return p.size();
+		return static_cast<ptrdiff_t>(p.size());
 	}
 
 private:

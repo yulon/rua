@@ -2,6 +2,7 @@
 #define _RUA_STDIO_HPP
 
 #include "io.hpp"
+#include "macros.hpp"
 
 #include <memory>
 
@@ -33,6 +34,24 @@ inline reader_i get_stdin() {
 		return nullptr;
 	}
 	return std::make_shared<sys_stream>(h, false);
+}
+
+} // namespace rua
+
+#elif defined(RUA_UNIX)
+
+namespace rua {
+
+inline writer_i get_stdout() {
+	return std::make_shared<sys_stream>(STDOUT_FILENO, false);
+}
+
+inline writer_i get_stderr() {
+	return std::make_shared<sys_stream>(STDERR_FILENO, false);
+}
+
+inline reader_i get_stdin() {
+	return std::make_shared<sys_stream>(STDIN_FILENO, false);
 }
 
 } // namespace rua

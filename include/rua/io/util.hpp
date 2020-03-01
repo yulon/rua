@@ -12,14 +12,15 @@
 
 namespace rua {
 
-inline size_t reader::read_full(bytes_ref p) {
-	size_t tsz = 0;
-	while (tsz < p.size()) {
+inline ptrdiff_t reader::read_full(bytes_ref p) {
+	auto psz = static_cast<ptrdiff_t>(p.size());
+	ptrdiff_t tsz = 0;
+	while (tsz < psz) {
 		auto sz = read(p(tsz));
 		if (!sz) {
 			return tsz;
 		}
-		tsz += static_cast<size_t>(sz);
+		tsz += sz;
 	}
 	return tsz;
 }
@@ -61,7 +62,7 @@ inline bool writer::copy(const reader_i &r, bytes_ref buf) {
 	}
 	for (;;) {
 		auto sz = r->read(buf);
-		if (!sz) {
+		if (sz <= 0) {
 			return true;
 		}
 		if (!write_all(buf(0, sz))) {
@@ -73,7 +74,7 @@ inline bool writer::copy(const reader_i &r, bytes_ref buf) {
 
 class read_group : public reader {
 public:
-	read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
+	constexpr read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
 
 	void add(reader_i r) {
 		++_c;
@@ -81,7 +82,7 @@ public:
 			bytes buf(_buf_sz.load());
 			for (;;) {
 				auto sz = r->read(buf);
-				if (!sz) {
+				if (sz <= 0) {
 					_ch << nullptr;
 					return;
 				}
@@ -90,7 +91,7 @@ public:
 		});
 	}
 
-	virtual size_t read(bytes_ref p) {
+	virtual ptrdiff_t read(bytes_ref p) {
 		while (!_buf) {
 			_ch >> _buf;
 			if (!_buf) {
@@ -100,7 +101,7 @@ public:
 				return 0;
 			}
 		}
-		auto csz = p.copy_from(_buf);
+		auto csz = static_cast<ptrdiff_t>(p.copy_from(_buf));
 		_buf = _buf(csz);
 		return csz;
 	}
@@ -121,11 +122,11 @@ public:
 		_li.emplace_back(std::move(w));
 	}
 
-	virtual size_t write(bytes_view p) {
+	virtual ptrdiff_t write(bytes_view p) {
 		for (auto &w : _li) {
 			w->write_all(p);
 		}
-		return p.size();
+		return static_cast<ptrdiff_t>(p.size());
 	}
 
 private:

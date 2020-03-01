@@ -6,15 +6,13 @@
 
 #include <windows.h>
 
-#include <cassert>
-
 namespace rua { namespace win32 {
 
 class sys_stream : public read_write_closer {
 public:
 	using native_handle_t = HANDLE;
 
-	sys_stream(native_handle_t h = nullptr, bool need_close = true) :
+	constexpr sys_stream(native_handle_t h = nullptr, bool need_close = true) :
 		_h(h),
 		_nc(h ? need_close : false) {}
 
@@ -40,20 +38,20 @@ public:
 		return _h;
 	}
 
-	virtual size_t read(bytes_ref p) {
+	virtual ptrdiff_t read(bytes_ref p) {
 		DWORD rsz;
 		return ReadFile(
 				   _h, p.data(), static_cast<DWORD>(p.size()), &rsz, nullptr)
-				   ? static_cast<size_t>(rsz)
-				   : static_cast<size_t>(0);
+				   ? static_cast<ptrdiff_t>(rsz)
+				   : static_cast<ptrdiff_t>(0);
 	}
 
-	virtual size_t write(bytes_view p) {
+	virtual ptrdiff_t write(bytes_view p) {
 		DWORD wsz;
 		return WriteFile(
 				   _h, p.data(), static_cast<DWORD>(p.size()), &wsz, nullptr)
-				   ? static_cast<size_t>(wsz)
-				   : static_cast<size_t>(0);
+				   ? static_cast<ptrdiff_t>(wsz)
+				   : static_cast<ptrdiff_t>(0);
 	}
 
 	virtual void close() {

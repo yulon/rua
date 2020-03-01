@@ -6,6 +6,7 @@
 #include "../ref.hpp"
 
 #include <cstddef>
+#include <cstdint>
 
 namespace rua {
 
@@ -13,9 +14,9 @@ class reader {
 public:
 	virtual ~reader() = default;
 
-	virtual size_t read(bytes_ref) = 0;
+	virtual ptrdiff_t read(bytes_ref) = 0;
 
-	inline size_t read_full(bytes_ref);
+	inline ptrdiff_t read_full(bytes_ref);
 
 	inline bytes read_all(size_t buf_grain_sz = 1024);
 };
@@ -26,7 +27,7 @@ class writer {
 public:
 	virtual ~writer() = default;
 
-	virtual size_t write(bytes_view) = 0;
+	virtual ptrdiff_t write(bytes_view) = 0;
 
 	inline bool write_all(bytes_view);
 
@@ -85,7 +86,7 @@ class reader_at {
 public:
 	virtual ~reader_at() = default;
 
-	virtual size_t read_at(ptrdiff_t pos, bytes_ref) = 0;
+	virtual ptrdiff_t read_at(ptrdiff_t pos, bytes_ref) = 0;
 };
 
 using reader_at_i = ref<reader_at>;
@@ -94,7 +95,7 @@ class writer_at {
 public:
 	virtual ~writer_at() = default;
 
-	virtual size_t write_at(ptrdiff_t pos, bytes_view) = 0;
+	virtual ptrdiff_t write_at(ptrdiff_t pos, bytes_view) = 0;
 };
 
 using writer_at_i = ref<writer_at>;
