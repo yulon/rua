@@ -58,7 +58,7 @@ endfunction()
 
 function(DepPull A_NAME)
 	set(oneValueArgs
-		ANY_VERSION
+		USE_PACKAGE
 		ARCHIVE_URL
 		ARCHIVE_HASH
 		GIT_REPO
@@ -67,7 +67,7 @@ function(DepPull A_NAME)
 	)
 	cmake_parse_arguments(A "" "${oneValueArgs}" "" ${ARGN})
 
-	if(A_ANY_VERSION)
+	if(A_USE_PACKAGE)
 		find_package(${A_NAME} QUIET)
 		if(${A_NAME}_FOUND)
 			message(STATUS "DepPull: found ${A_NAME} ${${A_NAME}_VERSION}")

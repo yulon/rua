@@ -9,7 +9,7 @@ if(DEFINED RUA_TEST)
 
 	DepPull(
 		doctest
-		ANY_VERSION TRUE
+		USE_PACKAGE TRUE
 		GIT_REPO "https://github.com/onqtam/doctest.git"
 	)
 
