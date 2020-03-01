@@ -6,6 +6,8 @@
 
 #include <windows.h>
 
+#include <cassert>
+
 namespace rua { namespace win32 {
 
 class sys_stream : public read_write_closer {
@@ -14,13 +16,30 @@ public:
 
 	constexpr sys_stream(native_handle_t h = nullptr, bool need_close = true) :
 		_h(h),
-		_nc(h ? need_close : false) {}
+		_nc(need_close) {}
+
+	sys_stream(const sys_stream &src) {
+		if (!src) {
+			_h = nullptr;
+			return;
+		}
+		DuplicateHandle(
+			GetCurrentProcess(),
+			src._h,
+			GetCurrentProcess(),
+			&_h,
+			0,
+			TRUE,
+			DUPLICATE_SAME_ACCESS);
+		assert(_h);
+		_nc = true;
+	}
 
 	sys_stream(sys_stream &&src) : sys_stream(src._h, src._nc) {
 		src.detach();
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(sys_stream)
+	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
 	virtual ~sys_stream() {
 		close();
@@ -60,19 +79,12 @@ public:
 		}
 		if (_nc) {
 			CloseHandle(_h);
-			_nc = false;
 		}
 		_h = nullptr;
 	}
 
 	void detach() {
-		if (!_h) {
-			return;
-		}
-		if (_nc) {
-			_nc = false;
-		}
-		_h = nullptr;
+		_nc = false;
 	}
 
 private:

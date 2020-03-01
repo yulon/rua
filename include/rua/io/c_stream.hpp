@@ -14,7 +14,7 @@ public:
 
 	constexpr c_stream(native_handle_t f = nullptr, bool need_close = true) :
 		_f(f),
-		_nc(f ? need_close : false) {}
+		_nc(need_close) {}
 
 	c_stream(c_stream &&src) : c_stream(src._f, src._nc) {
 		src.detach();
@@ -56,19 +56,12 @@ public:
 		}
 		if (_nc) {
 			fclose(_f);
-			_nc = false;
 		}
 		_f = nullptr;
 	}
 
 	void detach() {
-		if (!_f) {
-			return;
-		}
-		if (_nc) {
-			_nc = false;
-		}
-		_f = nullptr;
+		_nc = false;
 	}
 
 private:

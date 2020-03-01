@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <cassert>
+
 namespace rua { namespace posix {
 
 class sys_stream : public read_write_closer {
@@ -14,18 +16,28 @@ public:
 
 	constexpr sys_stream(native_handle_t fd = -1, bool need_close = true) :
 		_fd(fd),
-		_nc(fd ? need_close : false) {}
+		_nc(need_close) {}
 
 	template <
 		typename NullPtr,
 		typename = enable_if_t<std::is_same<NullPtr, std::nullptr_t>::value>>
 	constexpr sys_stream(NullPtr) : sys_stream(-1, false) {}
 
+	sys_stream(const sys_stream &src) {
+		if (!src._fd) {
+			_fd = -1;
+			return;
+		}
+		_fd = ::dup(src._fd);
+		assert(_fd >= 0);
+		_nc = true;
+	}
+
 	sys_stream(sys_stream &&src) : sys_stream(src._fd, src._nc) {
 		src.detach();
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(sys_stream)
+	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
 	virtual ~sys_stream() {
 		close();
@@ -57,19 +69,12 @@ public:
 		}
 		if (_nc) {
 			::close(_fd);
-			_nc = false;
 		}
 		_fd = -1;
 	}
 
 	void detach() {
-		if (_fd < 0) {
-			return;
-		}
-		if (_nc) {
-			_nc = false;
-		}
-		_fd = -1;
+		_nc = false;
 	}
 
 private:
