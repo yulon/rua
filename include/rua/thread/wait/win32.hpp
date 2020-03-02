@@ -3,7 +3,7 @@
 
 #include "../basic/win32.hpp"
 
-#include "../../sched/sys_wait/sync/win32.hpp"
+#include "../../sched/wait/sys_obj/win32.hpp"
 
 #include <windows.h>
 
@@ -13,7 +13,7 @@ inline any_word thread::wait_for_exit() {
 	if (!_h) {
 		return 0;
 	}
-	sys_wait(_h);
+	wait(_h);
 	DWORD exit_code;
 	GetExitCodeThread(_h, &exit_code);
 	reset();

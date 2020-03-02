@@ -6,8 +6,8 @@
 #include "../io.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
-#include "../sched/sys_wait/sync/win32.hpp"
 #include "../sched/util.hpp"
+#include "../sched/wait/sys_obj/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/encoding/base/win32.hpp"
 #include "../string/string_view.hpp"
@@ -259,7 +259,7 @@ public:
 			return -1;
 		}
 		unfreeze();
-		sys_wait(_h);
+		wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
 		reset();

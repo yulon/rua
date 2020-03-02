@@ -1,8 +1,9 @@
-#ifndef _RUA_SCHED_SYS_WAIT_SYNC_WIN32_HPP
-#define _RUA_SCHED_SYS_WAIT_SYNC_WIN32_HPP
+#ifndef _RUA_SCHED_WAIT_SYS_OBJ_WIN32_HPP
+#define _RUA_SCHED_WAIT_SYS_OBJ_WIN32_HPP
+
+#include "win32_async.hpp"
 
 #include "../../util.hpp"
-#include "../async/win32.hpp"
 
 #include "../../../thread/scheduler.hpp"
 
@@ -11,9 +12,9 @@
 
 namespace rua { namespace win32 {
 
-namespace _sys_wait_sync {
+namespace _wait_sys_obj {
 
-inline bool sys_wait(HANDLE handle, ms timeout = duration_max()) {
+inline bool wait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
 
 	auto sch = this_scheduler();
@@ -26,7 +27,7 @@ inline bool sys_wait(HANDLE handle, ms timeout = duration_max()) {
 	}
 	auto sig = sch->get_signaler();
 	auto r_ptr = new bool;
-	_sys_wait_async::sys_wait(
+	_wait_sys_obj_async::wait(
 		handle,
 		[=](bool r) {
 			*r_ptr = r;
@@ -39,9 +40,9 @@ inline bool sys_wait(HANDLE handle, ms timeout = duration_max()) {
 	return r;
 }
 
-} // namespace _sys_wait_sync
+} // namespace _wait_sys_obj
 
-using namespace _sys_wait_sync;
+using namespace _wait_sys_obj;
 
 }} // namespace rua::win32
 

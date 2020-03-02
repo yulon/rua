@@ -1,7 +1,7 @@
 #ifndef _RUA_PROCESS_POSIX_HPP
 #define _RUA_PROCESS_POSIX_HPP
 
-#include "../sched/block_call.hpp"
+#include "../sched/wait.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
 
@@ -136,7 +136,7 @@ public:
 		}
 		unfreeze();
 		int status;
-		block_call(waitpid, _id, &status, 0);
+		wait(waitpid, _id, &status, 0);
 		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
 	}
 
