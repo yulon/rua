@@ -7,14 +7,14 @@
 static void log(rua::string_view str) {
 	static size_t log_sz = 0;
 	if (log_sz) {
-		rua::log_printer().print(std::string(log_sz, '\b'));
+		rua::printer(rua::sout()).print(std::string(log_sz, '\b'));
 		log_sz = 0;
 	}
 	if (str.empty()) {
 		return;
 	}
 	log_sz = str.size();
-	rua::log_printer().print(str);
+	rua::printer(rua::sout()).print(str);
 }
 
 TEST_CASE("ucontext") {
