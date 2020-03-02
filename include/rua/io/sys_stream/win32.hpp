@@ -29,7 +29,7 @@ public:
 			GetCurrentProcess(),
 			&_h,
 			0,
-			TRUE,
+			FALSE,
 			DUPLICATE_SAME_ACCESS);
 		assert(_h);
 		_nc = true;

@@ -26,14 +26,26 @@ RUA_FORCE_INLINE sys_stream &in() {
 }
 
 RUA_FORCE_INLINE void set_out(const sys_stream &w) {
+	if (!w) {
+		::close(STDOUT_FILENO);
+		return;
+	}
 	::dup2(w.native_handle(), STDOUT_FILENO);
 }
 
 RUA_FORCE_INLINE void set_err(const sys_stream &w) {
+	if (!w) {
+		::close(STDERR_FILENO);
+		return;
+	}
 	::dup2(w.native_handle(), STDERR_FILENO);
 }
 
 RUA_FORCE_INLINE void set_in(const sys_stream &r) {
+	if (!r) {
+		::close(STDIN_FILENO);
+		return;
+	}
 	::dup2(r.native_handle(), STDIN_FILENO);
 }
 

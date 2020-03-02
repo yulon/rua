@@ -6,12 +6,11 @@
 #include "../io.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
-#include "../pipe.hpp"
-#include "../sched.hpp"
-#include "../stdio.hpp"
+#include "../sched/sys_wait/sync/win32.hpp"
+#include "../sched/util.hpp"
+#include "../stdio/win32.hpp"
 #include "../string/encoding/base/win32.hpp"
 #include "../string/string_view.hpp"
-#include "../thread.hpp"
 #include "../type_traits/std_patch.hpp"
 
 #include <psapi.h>
@@ -19,6 +18,7 @@
 #include <windows.h>
 
 #include <cassert>
+#include <cstddef>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -29,6 +29,16 @@
 namespace rua { namespace win32 {
 
 using pid_t = DWORD;
+
+namespace _this_pid {
+
+RUA_FORCE_INLINE pid_t this_pid() {
+	return GetCurrentProcessId();
+}
+
+} // namespace _this_pid
+
+using namespace _this_pid;
 
 class process {
 public:
@@ -59,7 +69,7 @@ public:
 		return nullptr;
 	}
 
-	static process wait_for_found(string_view name, size_t interval = 100) {
+	static process wait_for_found(string_view name, ms interval = 100) {
 		process p;
 		for (;;) {
 			p = find(name);
@@ -78,24 +88,23 @@ public:
 	explicit process(
 		string_view file,
 		const std::vector<std::string> &args = {},
-		string_view work_dir = "",
+		string_view pwd = "",
 		bool freeze_at_startup = false,
-		writer_i stdout_writer = nullptr,
-		writer_i stderr_writer = nullptr,
-		reader_i stdin_reader = nullptr) {
+		sys_stream stdout_w = out(),
+		sys_stream stderr_w = err(),
+		sys_stream stdin_r = in()) {
+
 		std::wstringstream cmd;
 		if (file.find(' ') == std::string::npos) {
 			cmd << u8_to_w(file);
 		} else {
 			cmd << L"\"" << u8_to_w(file) << L"\"";
 		}
-		if (args.size()) {
-			for (auto &arg : args) {
-				if (arg.find(' ') == std::string::npos) {
-					cmd << L" " << u8_to_w(arg);
-				} else {
-					cmd << L" \"" << u8_to_w(arg) << L"\"";
-				}
+		for (auto &arg : args) {
+			if (arg.find(' ') == std::string::npos) {
+				cmd << L" " << u8_to_w(arg);
+			} else {
+				cmd << L" \"" << u8_to_w(arg) << L"\"";
 			}
 		}
 
@@ -103,120 +112,34 @@ public:
 		memset(&si, 0, sizeof(si));
 		si.cb = sizeof(si);
 		si.wShowWindow = SW_HIDE;
+		si.dwFlags = STARTF_USESTDHANDLES;
 
-		auto stdo_r = std::make_shared<win32::sys_stream>();
-		auto stde_r = std::make_shared<win32::sys_stream>();
-		auto stdi_w = std::make_shared<win32::sys_stream>();
-		win32::sys_stream stdo_w, stde_w, stdi_r;
-
-		bool is_combined_stdout = false;
-
-		if (stdout_writer || stderr_writer || stdin_reader) {
-			si.dwFlags = STARTF_USESTDHANDLES;
-
-			auto cph = GetCurrentProcess();
-
-			if (stdout_writer == stderr_writer) {
-				is_combined_stdout = true;
-			}
-
-			if (!stdout_writer) {
-				stdout_writer = rua::get_stdout();
-			}
-			if (stdout_writer) {
-				auto stdout_writer_for_sys =
-					stdout_writer.as<win32::sys_stream>();
-				if (stdout_writer_for_sys) {
-					DuplicateHandle(
-						cph,
-						stdout_writer_for_sys->native_handle(),
-						cph,
-						&stdo_w.native_handle(),
-						0,
-						TRUE,
-						DUPLICATE_SAME_ACCESS);
-				} else {
-					if (!make_pipe(*stdo_r, stdo_w) ||
-						!SetHandleInformation(
-							stdo_w.native_handle(),
+		if (stdout_w && !SetHandleInformation(
+							stdout_w.native_handle(),
 							HANDLE_FLAG_INHERIT,
 							HANDLE_FLAG_INHERIT)) {
-						_reset();
-						return;
-					}
-				}
-			}
-
-			if (is_combined_stdout) {
-				DuplicateHandle(
-					cph,
-					stdo_w.native_handle(),
-					cph,
-					&stde_w.native_handle(),
-					0,
-					TRUE,
-					DUPLICATE_SAME_ACCESS);
-			} else {
-				if (!stderr_writer) {
-					stderr_writer = rua::get_stderr();
-				}
-				if (stderr_writer) {
-					auto stderr_writer_for_sys =
-						stderr_writer.as<win32::sys_stream>();
-					if (stderr_writer_for_sys) {
-						DuplicateHandle(
-							cph,
-							stderr_writer_for_sys->native_handle(),
-							cph,
-							&stde_w.native_handle(),
-							0,
-							TRUE,
-							DUPLICATE_SAME_ACCESS);
-					} else {
-						if (!make_pipe(*stde_r, stde_w) ||
-							!SetHandleInformation(
-								stde_w.native_handle(),
-								HANDLE_FLAG_INHERIT,
-								HANDLE_FLAG_INHERIT)) {
-							_reset();
-							return;
-						}
-					}
-				}
-			}
-
-			if (!stdin_reader) {
-				stdin_reader = rua::get_stdin();
-			}
-			if (stdin_reader) {
-				auto stdin_reader_for_sys =
-					stdin_reader.as<win32::sys_stream>();
-				;
-				if (stdin_reader_for_sys) {
-					DuplicateHandle(
-						cph,
-						stdin_reader_for_sys->native_handle(),
-						cph,
-						&stdi_r.native_handle(),
-						0,
-						TRUE,
-						DUPLICATE_SAME_ACCESS);
-				} else {
-					if (!make_pipe(stdi_r, *stdi_w) ||
-						!SetHandleInformation(
-							stdi_r.native_handle(),
-							HANDLE_FLAG_INHERIT,
-							HANDLE_FLAG_INHERIT)) {
-						_reset();
-						return;
-					}
-				}
-			}
-
-			si.hStdOutput = stdo_w.native_handle();
-			si.hStdError = stde_w.native_handle();
-			si.hStdInput = stdi_r.native_handle();
+			_reset();
+			return;
 		}
+		si.hStdOutput = stdout_w.native_handle();
+
+		if (stderr_w && !SetHandleInformation(
+							stderr_w.native_handle(),
+							HANDLE_FLAG_INHERIT,
+							HANDLE_FLAG_INHERIT)) {
+			_reset();
+			return;
+		}
+		si.hStdError = stderr_w.native_handle();
+
+		if (stdin_r && !SetHandleInformation(
+						   stdin_r.native_handle(),
+						   HANDLE_FLAG_INHERIT,
+						   HANDLE_FLAG_INHERIT)) {
+			_reset();
+			return;
+		}
+		si.hStdInput = stdin_r.native_handle();
 
 		PROCESS_INFORMATION pi;
 		memset(&pi, 0, sizeof(pi));
@@ -229,29 +152,13 @@ public:
 				true,
 				freeze_at_startup ? CREATE_SUSPENDED : 0,
 				nullptr,
-				work_dir.empty() ? nullptr : u8_to_w(work_dir).c_str(),
+				pwd.empty() ? nullptr : u8_to_w(pwd).c_str(),
 				&si,
 				&pi)) {
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
 			_reset();
 			return;
-		}
-
-		if (*stdo_r) {
-			thread([&stdout_writer, stdo_r]() mutable {
-				stdout_writer->copy(*stdo_r);
-			});
-		}
-		if (*stde_r) {
-			thread([&stderr_writer, stde_r]() mutable {
-				stderr_writer->copy(*stde_r);
-			});
-		}
-		if (*stdi_w) {
-			thread([stdi_w, &stdin_reader]() mutable {
-				stdi_w->copy(stdin_reader);
-			});
 		}
 
 		_h = pi.hProcess;
@@ -268,12 +175,15 @@ public:
 		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, FALSE, id) : nullptr),
 		_main_td_h(nullptr) {}
 
-	constexpr process(std::nullptr_t) : process() {}
+	template <
+		typename NullPtr,
+		typename = enable_if_t<std::is_same<NullPtr, std::nullptr_t>::value>>
+	constexpr process(NullPtr) : process() {}
 
 	template <
 		typename T,
-		typename =
-			enable_if_t<std::is_same<decay_t<T>, native_handle_t>::value>>
+		typename = enable_if_t<!std::is_same<T, std::nullptr_t>::value>,
+		typename = enable_if_t<std::is_same<T, native_handle_t>::value>>
 	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
 
 	~process() {
@@ -349,18 +259,18 @@ public:
 			return -1;
 		}
 		unfreeze();
-		WaitForSingleObject(_h, INFINITE);
+		sys_wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
 		reset();
 		return static_cast<int>(exit_code);
 	}
 
-	void exit(int code = 1) {
+	void kill() {
 		if (!_h) {
 			return;
 		}
-		TerminateProcess(_h, code);
+		TerminateProcess(_h, 1);
 		_main_td_h = nullptr;
 		reset();
 	}
@@ -494,12 +404,8 @@ private:
 
 namespace _this_process {
 
-RUA_FORCE_INLINE pid_t this_process_id() {
-	return GetCurrentProcessId();
-}
-
 RUA_FORCE_INLINE process this_process() {
-	return process(this_process_id());
+	return process(this_pid());
 }
 
 } // namespace _this_process

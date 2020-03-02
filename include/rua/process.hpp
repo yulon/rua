@@ -10,14 +10,24 @@
 namespace rua {
 
 using pid_t = win32::pid_t;
+using namespace win32::_this_pid;
 using process = win32::process;
 using namespace win32::_this_process;
 
 } // namespace rua
 
-//#elif defined(RUA_UNIX)
+#elif defined(RUA_UNIX)
 
-//#include "process/unix.hpp"
+#include "process/posix.hpp"
+
+namespace rua {
+
+using pid_t = posix::pid_t;
+using namespace posix::_this_pid;
+using process = posix::process;
+using namespace posix::_this_process;
+
+} // namespace rua
 
 #else
 
