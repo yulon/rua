@@ -3,8 +3,8 @@
 
 #include "../sched/util.hpp"
 #include "../sync/chan.hpp"
+#include "../thread/basic.hpp"
 #include "../thread/scheduler.hpp"
-#include "../thread/thread/basic.hpp"
 #include "../type_traits.hpp"
 
 namespace rua {

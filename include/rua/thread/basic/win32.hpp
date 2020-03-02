@@ -1,11 +1,9 @@
-#ifndef _RUA_THREAD_THREAD_BASIC_WIN32_HPP
-#define _RUA_THREAD_THREAD_BASIC_WIN32_HPP
+#ifndef _RUA_THREAD_BASIC_WIN32_HPP
+#define _RUA_THREAD_BASIC_WIN32_HPP
 
-#include "../../id/win32.hpp"
-
-#include "../../../any_word.hpp"
-#include "../../../dylib/win32.hpp"
-#include "../../../macros.hpp"
+#include "../../any_word.hpp"
+#include "../../dylib/win32.hpp"
+#include "../../macros.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -13,6 +11,18 @@
 #include <functional>
 
 namespace rua { namespace win32 {
+
+using tid_t = DWORD;
+
+namespace _this_tid {
+
+RUA_FORCE_INLINE tid_t this_tid() {
+	return GetCurrentThreadId();
+}
+
+} // namespace _this_tid
+
+using namespace _this_tid;
 
 class thread {
 public:
@@ -161,7 +171,7 @@ private:
 namespace _this_thread {
 
 RUA_FORCE_INLINE thread this_thread() {
-	return thread(this_thread_id());
+	return thread(this_tid());
 }
 
 } // namespace _this_thread

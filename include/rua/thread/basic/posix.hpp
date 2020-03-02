@@ -1,10 +1,8 @@
-#ifndef _RUA_THREAD_THREAD_BASIC_POSIX_HPP
-#define _RUA_THREAD_THREAD_BASIC_POSIX_HPP
+#ifndef _RUA_THREAD_BASIC_POSIX_HPP
+#define _RUA_THREAD_BASIC_POSIX_HPP
 
-#include "../../id/posix.hpp"
-
-#include "../../../any_word.hpp"
-#include "../../../macros.hpp"
+#include "../../any_word.hpp"
+#include "../../macros.hpp"
 
 #include <pthread.h>
 
@@ -12,6 +10,18 @@
 #include <memory>
 
 namespace rua { namespace posix {
+
+using tid_t = pthread_t;
+
+namespace _this_tid {
+
+RUA_FORCE_INLINE tid_t this_tid() {
+	return pthread_self();
+}
+
+} // namespace _this_tid
+
+using namespace _this_tid;
 
 class thread {
 public:
@@ -88,7 +98,7 @@ public:
 		if (!_id) {
 			return;
 		}
-		if (_id == this_thread_id()) {
+		if (_id == this_tid()) {
 			pthread_exit(retval);
 		} else {
 			pthread_cancel(_id);
@@ -141,7 +151,7 @@ private:
 namespace _this_thread {
 
 RUA_FORCE_INLINE thread this_thread() {
-	return thread(this_thread_id());
+	return thread(this_tid());
 }
 
 } // namespace _this_thread

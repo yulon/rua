@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_VAR_BASE_HPP
 #define _RUA_THREAD_VAR_BASE_HPP
 
-#include "../id.hpp"
+#include "../basic.hpp"
 
 #include "../../any.hpp"
 #include "../../any_word.hpp"
@@ -77,13 +77,13 @@ public:
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex>(ctx.mtx);
 
-		auto it = ctx.map.find(this_thread_id());
+		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
 			ctx.map.emplace(
-				this_thread_id(),
+				this_tid(),
 				std::make_pair(
 					static_cast<size_t>(0), std::vector<uintptr_t>()));
-			it = ctx.map.find(this_thread_id());
+			it = ctx.map.find(this_tid());
 		}
 		auto &li = it->second.second;
 		if (li.size() <= _ix) {
@@ -107,7 +107,7 @@ public:
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex>(ctx.mtx);
 
-		auto it = ctx.map.find(this_thread_id());
+		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
 			return 0;
 		}
@@ -122,7 +122,7 @@ public:
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex>(ctx.mtx);
 
-		auto it = ctx.map.find(this_thread_id());
+		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
 			return;
 		}

@@ -1,7 +1,7 @@
-#ifndef _RUA_THREAD_THREAD_BASIC_HPP
-#define _RUA_THREAD_THREAD_BASIC_HPP
+#ifndef _RUA_THREAD_BASIC_HPP
+#define _RUA_THREAD_BASIC_HPP
 
-#include "../../macros.hpp"
+#include "../macros.hpp"
 
 #ifdef _WIN32
 
@@ -9,9 +9,10 @@
 
 namespace rua {
 
+using tid_t = win32::tid_t;
+using namespace win32::_this_tid;
 using thread = win32::thread;
-
-using namespace win32::_this_thread_id;
+using namespace win32::_this_thread;
 
 } // namespace rua
 
@@ -21,8 +22,9 @@ using namespace win32::_this_thread_id;
 
 namespace rua {
 
+using tid_t = posix::tid_t;
+using namespace posix::_this_tid;
 using thread = posix::thread;
-
 using namespace posix::_this_thread;
 
 } // namespace rua
