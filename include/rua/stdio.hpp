@@ -1,6 +1,8 @@
 #ifndef _RUA_STDIO_HPP
 #define _RUA_STDIO_HPP
 
+#include "stdio/c.hpp"
+
 #include "macros.hpp"
 
 #if defined(_WIN32)
@@ -24,8 +26,6 @@ using namespace posix::_stdio;
 } // namespace rua
 
 #else
-
-#include "stdio/c.hpp"
 
 namespace rua {
 

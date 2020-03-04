@@ -190,40 +190,13 @@ public:
 		reset();
 	}
 
-	process(const process &src) {
-		if (!src) {
-			_reset();
-			return;
-		}
-		DuplicateHandle(
-			GetCurrentProcess(),
-			src._h,
-			GetCurrentProcess(),
-			&_h,
-			0,
-			FALSE,
-			DUPLICATE_SAME_ACCESS);
-		if (!src._main_td_h) {
-			_main_td_h = nullptr;
-			return;
-		}
-		DuplicateHandle(
-			GetCurrentProcess(),
-			src._main_td_h,
-			GetCurrentProcess(),
-			&_main_td_h,
-			0,
-			FALSE,
-			DUPLICATE_SAME_ACCESS);
-	}
-
 	process(process &&src) : _h(src._h), _main_td_h(src._main_td_h) {
 		if (src) {
 			src._reset();
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(process)
+	RUA_OVERLOAD_ASSIGNMENT_R(process)
 
 	pid_t id() const {
 		return GetProcessId(_h);

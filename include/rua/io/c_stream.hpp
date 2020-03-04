@@ -50,6 +50,10 @@ public:
 		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), _f));
 	}
 
+	bool is_need_close() const {
+		return _f && _nc;
+	}
+
 	virtual void close() {
 		if (!_f) {
 			return;

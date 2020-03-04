@@ -7,6 +7,7 @@
 #include <windows.h>
 
 #include <cassert>
+#include <cstdio>
 
 namespace rua { namespace win32 {
 
@@ -21,6 +22,11 @@ public:
 	sys_stream(const sys_stream &src) {
 		if (!src) {
 			_h = nullptr;
+			return;
+		}
+		if (!src._nc) {
+			_h = src._h;
+			_nc = false;
 			return;
 		}
 		DuplicateHandle(
@@ -73,6 +79,10 @@ public:
 				   : static_cast<ptrdiff_t>(0);
 	}
 
+	bool is_need_close() const {
+		return _h && _nc;
+	}
+
 	virtual void close() {
 		if (!_h) {
 			return;
@@ -87,8 +97,25 @@ public:
 		_nc = false;
 	}
 
+	sys_stream dup(bool inherit = false) const {
+		if (!_h) {
+			return nullptr;
+		}
+		HANDLE h_cp;
+		DuplicateHandle(
+			GetCurrentProcess(),
+			_h,
+			GetCurrentProcess(),
+			&h_cp,
+			0,
+			inherit,
+			DUPLICATE_SAME_ACCESS);
+		assert(h_cp);
+		return h_cp;
+	}
+
 private:
-	native_handle_t _h;
+	HANDLE _h;
 	bool _nc;
 };
 

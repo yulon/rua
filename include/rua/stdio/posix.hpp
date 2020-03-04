@@ -1,7 +1,7 @@
 #ifndef _RUA_STDIO_POSIX_HPP
 #define _RUA_STDIO_POSIX_HPP
 
-#include "../io/sys_stream.hpp"
+#include "../io/sys_stream/posix.hpp"
 #include "../macros.hpp"
 
 #include <unistd.h>
@@ -10,54 +10,57 @@ namespace rua { namespace posix {
 
 namespace _stdio {
 
-RUA_FORCE_INLINE sys_stream &out() {
-	static sys_stream inst(STDOUT_FILENO, false);
-	return inst;
-}
+class _stdio_stream;
 
-RUA_FORCE_INLINE sys_stream &err() {
-	static sys_stream inst(STDERR_FILENO, false);
-	return inst;
-}
+using stdout_stream = _stdio_stream;
+using stderr_stream = _stdio_stream;
+using stdin_stream = _stdio_stream;
 
-RUA_FORCE_INLINE sys_stream &in() {
-	static sys_stream inst(STDIN_FILENO, false);
-	return inst;
-}
-
-RUA_FORCE_INLINE void set_out(const sys_stream &w) {
-	if (!w) {
-		::close(STDOUT_FILENO);
-		return;
+class _stdio_stream : public sys_stream {
+public:
+	_stdio_stream &operator=(sys_stream s) {
+		if (!s) {
+			close();
+			return *this;
+		}
+		::dup2(s.native_handle(), native_handle());
+		return *this;
 	}
-	::dup2(w.native_handle(), STDOUT_FILENO);
+
+private:
+	constexpr _stdio_stream(int fd) : sys_stream(fd) {}
+	_stdio_stream(const _stdio_stream &) = delete;
+	_stdio_stream(_stdio_stream &&) = delete;
+
+	friend stdout_stream &out();
+	friend stderr_stream &err();
+	friend stdin_stream &in();
+};
+
+RUA_FORCE_INLINE stdout_stream &out() {
+	static stdout_stream s(STDOUT_FILENO);
+	return s;
 }
 
-RUA_FORCE_INLINE void set_err(const sys_stream &w) {
-	if (!w) {
-		::close(STDERR_FILENO);
-		return;
-	}
-	::dup2(w.native_handle(), STDERR_FILENO);
+RUA_FORCE_INLINE stderr_stream &err() {
+	static stderr_stream s(STDERR_FILENO);
+	return s;
 }
 
-RUA_FORCE_INLINE void set_in(const sys_stream &r) {
-	if (!r) {
-		::close(STDIN_FILENO);
-		return;
-	}
-	::dup2(r.native_handle(), STDIN_FILENO);
+RUA_FORCE_INLINE stdin_stream &in() {
+	static stdin_stream s(STDIN_FILENO);
+	return s;
 }
 
-RUA_FORCE_INLINE sys_stream &sout() {
+RUA_FORCE_INLINE stdout_stream &sout() {
 	return out();
 }
 
-RUA_FORCE_INLINE sys_stream &serr() {
+RUA_FORCE_INLINE stderr_stream &serr() {
 	return err();
 }
 
-RUA_FORCE_INLINE sys_stream &sin() {
+RUA_FORCE_INLINE stdin_stream &sin() {
 	return in();
 }
 

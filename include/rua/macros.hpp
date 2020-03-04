@@ -197,7 +197,8 @@
 #define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
 	T &operator=(const T &src) {                                               \
 		if (this == &src) {                                                    \
-			return *this;                                                      \
+			T tmp(src);                                                        \
+			return operator=(std::move(tmp));                                  \
 		}                                                                      \
 		this->~T();                                                            \
 		new (this) T(src);                                                     \
@@ -207,7 +208,8 @@
 #define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
 	T &operator=(T &&src) {                                                    \
 		if (this == &src) {                                                    \
-			return *this;                                                      \
+			T tmp(std::move(src));                                             \
+			return operator=(std::move(tmp));                                  \
 		}                                                                      \
 		this->~T();                                                            \
 		new (this) T(std::move(src));                                          \

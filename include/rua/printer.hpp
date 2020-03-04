@@ -19,7 +19,7 @@ public:
 
 	printer(std::nullptr_t) : printer() {}
 
-	explicit printer(writer_i w, const char *eol = eol::sys) :
+	explicit printer(writer_i w, const char *eol = eol::lf) :
 		_w(std::move(w)),
 		_eol(eol) {
 		_is_valid = _w;

@@ -28,6 +28,11 @@ public:
 			_fd = -1;
 			return;
 		}
+		if (!src._nc) {
+			_fd = src._fd;
+			_nc = false;
+			return;
+		}
 		_fd = ::dup(src._fd);
 		assert(_fd >= 0);
 		_nc = true;
@@ -63,6 +68,10 @@ public:
 		return static_cast<ptrdiff_t>(::write(_fd, p.data(), p.size()));
 	}
 
+	bool is_need_close() const {
+		return _fd >= 0 && _nc;
+	}
+
 	virtual void close() {
 		if (_fd < 0) {
 			return;
@@ -75,6 +84,13 @@ public:
 
 	void detach() {
 		_nc = false;
+	}
+
+	sys_stream dup() const {
+		if (_fd < 0) {
+			return nullptr;
+		}
+		return ::dup(_fd);
 	}
 
 private:

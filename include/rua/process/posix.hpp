@@ -77,9 +77,9 @@ public:
 		}
 		argv[i + 1] = nullptr;
 
-		set_out(stdout_w);
-		set_err(stderr_w);
-		set_in(stdin_r);
+		out() = std::move(stdout_w);
+		err() = std::move(stderr_w);
+		in() = std::move(stdin_r);
 
 		if (pwd.empty()) {
 			::exit(::execvp(file.data(), argv.data()));
