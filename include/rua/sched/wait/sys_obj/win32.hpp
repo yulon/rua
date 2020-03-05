@@ -18,7 +18,7 @@ inline bool wait(HANDLE handle, ms timeout = duration_max()) {
 	assert(handle);
 
 	auto sch = this_scheduler();
-	if (sch.type_is<thread_scheduler>()) {
+	if (sch.type_is<rua::thread_scheduler>()) {
 		return WaitForSingleObject(
 				   handle,
 				   static_cast<int64_t>(nmax<DWORD>()) < timeout.count()

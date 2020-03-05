@@ -137,7 +137,7 @@ private:
 	}
 
 	static DWORD _get_id(HANDLE h) {
-		static dylib kernel32("KERNEL32.DLL", false);
+		static dylib kernel32("kernel32.dll", false);
 		static decltype(&GetThreadId) GetThreadId_ptr = kernel32["GetThreadId"];
 
 		if (GetThreadId_ptr) {

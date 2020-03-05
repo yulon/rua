@@ -4,7 +4,6 @@
 #include "basic.hpp"
 #include "scheduler.hpp"
 
-#include "../macros.hpp"
 #include "../sync/chan/basic.hpp"
 
 #include <functional>
@@ -12,26 +11,17 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE chan<std::function<void()>> &_pa_tsk_que() {
+inline void pa(std::function<void()> task) {
 	static chan<std::function<void()>> que;
-	return que;
-}
-
-RUA_FORCE_INLINE void _pa_make_thread() {
+	if (que.emplace(std::move(task))) {
+		return;
+	}
 	thread([]() {
 		auto &&sch = thread_scheduler();
-		auto &que = _pa_tsk_que();
 		for (;;) {
 			que.pop(sch)();
 		}
 	});
-}
-
-RUA_FORCE_INLINE void pa(std::function<void()> tsk) {
-	if (_pa_tsk_que().emplace(std::move(tsk))) {
-		return;
-	}
-	_pa_make_thread();
 }
 
 } // namespace rua

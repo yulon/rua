@@ -31,7 +31,7 @@ inline time tick() {
 					els * 1000000000 / freq.QuadPart - els_s * 1000000000)));
 		}
 	}
-	static dylib kernel32("KERNEL32.DLL", false);
+	static dylib kernel32("kernel32.dll", false);
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
 		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {
