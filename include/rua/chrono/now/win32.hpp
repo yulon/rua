@@ -3,6 +3,7 @@
 
 #include "../time.hpp"
 
+#include "../../macros.hpp"
 #include "../../dylib/win32.hpp"
 
 #include <windows.h>
@@ -15,28 +16,19 @@ namespace _now {
 
 static const date_t sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
 
-inline time now() {
-	FILETIME ft;
-	GetSystemTimeAsFileTime(&ft);
-	return time(
-		duration_unit<100>(
-			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
-		sys_epoch);
-}
-
-inline int8_t local_time_zone() {
+RUA_FORCE_INLINE int8_t local_time_zone() {
 	TIME_ZONE_INFORMATION info;
 	GetTimeZoneInformation(&info);
-	return static_cast<int8_t>(info.Bias / (-60));
+	return static_cast<int8_t>(info.Bias / 60 + 16);
 }
 
-inline time local_now() {
+RUA_FORCE_INLINE time now(int8_t zone = local_time_zone()) {
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 	return time(
 		duration_unit<100>(
 			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
-		local_time_zone(),
+		zone,
 		sys_epoch);
 }
 
