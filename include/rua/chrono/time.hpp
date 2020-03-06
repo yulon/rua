@@ -2,7 +2,6 @@
 #define _RUA_CHRONO_TIME_HPP
 
 #include "duration.hpp"
-#include "zone.hpp"
 
 #include "../ref.hpp"
 
@@ -56,17 +55,30 @@ static constexpr int16_t _yr_days_at_mon[]{
 
 class time {
 public:
-	constexpr time() : _ela(), _epo(nullptr) {}
+	constexpr time() : _ela(), _zon(0), _epo(nullptr) {}
 
-	time(duration_base elapsed) : _ela(elapsed), _epo(nullptr) {}
-
-	time(duration_base elapsed, const date_t &epoch) :
+	constexpr explicit time(s elapsed, int8_t zone = 0) :
 		_ela(elapsed),
+		_zon(zone),
+		_epo(nullptr) {}
+
+	constexpr explicit time(s elapsed, const date_t &epoch) :
+		_ela(elapsed),
+		_zon(0),
 		_epo(&epoch) {}
 
-	time(duration_base elapsed, date_t &&epoch) = delete;
+	time(s elapsed, date_t &&epoch) = delete;
 
-	time(const date_t &d8, const date_t &epoch = unix_epoch) : _epo(&epoch) {
+	constexpr explicit time(s elapsed, int8_t zone, const date_t &epoch) :
+		_ela(elapsed),
+		_zon(zone),
+		_epo(&epoch) {}
+
+	time(s elapsed, int8_t zone, date_t &&epoch) = delete;
+
+	time(const date_t &d8, const date_t &epoch = unix_epoch) :
+		_zon(d8.zone),
+		_epo(&epoch) {
 		if (d8 == epoch) {
 			return;
 		}
@@ -107,13 +119,20 @@ public:
 		return _epo || _ela;
 	}
 
-	template <typename Dur>
-	constexpr Dur elapsed() const {
-		return Dur(_ela);
+	s &elapsed() {
+		return _ela;
 	}
 
-	duration_base elapsed() const {
+	s elapsed() const {
 		return _ela;
+	}
+
+	int8_t &zone() {
+		return _zon;
+	}
+
+	int8_t zone() const {
+		return _zon;
 	}
 
 	bool is_monotonic() const {
@@ -124,15 +143,15 @@ public:
 		return *_epo;
 	}
 
-	date_t date(int8_t zone = local_time_zone()) const {
+	date_t date() const {
 		assert(!is_monotonic());
 
 		date_t nd;
 
 		// zone
-		nd.zone = zone;
+		nd.zone = _zon;
 
-		d ela_days(_ela + _date2dur_exc_yr(*_epo) - h(_epo->zone - zone));
+		d ela_days(_ela + _date2dur_exc_yr(*_epo) - h(_epo->zone - _zon));
 
 		// nanosecond
 		nd.nanoseconds = ela_days.extra_ns_count();
@@ -212,11 +231,11 @@ public:
 		if (*_epo == unix_epoch) {
 			return *this;
 		}
-		return time(date(0));
+		return time(date());
 	}
 
 	void reset() {
-		_ela = duration_base();
+		_ela = 0;
 		_epo = nullptr;
 	}
 
@@ -255,41 +274,42 @@ public:
 		return _ela <= time(target.date(), *_epo).elapsed();
 	}
 
-	time operator+(duration_base dur) const {
+	time operator+(s dur) const {
 		return time(_ela + dur, *_epo);
 	}
 
-	time &operator+=(duration_base dur) {
+	time &operator+=(s dur) {
 		_ela += dur;
 		return *this;
 	}
 
-	time operator-(duration_base dur) const {
+	time operator-(s dur) const {
 		return time(_ela - dur, *_epo);
 	}
 
-	duration_base operator-(const time &target) const {
+	s operator-(const time &target) const {
 		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
 			return _ela - target.elapsed();
 		}
 		return _ela - time(target.date(), *_epo).elapsed();
 	}
 
-	duration_base operator-(const date_t &d8) const {
+	s operator-(const date_t &d8) const {
 		return _ela - time(d8, *_epo).elapsed();
 	}
 
-	time &operator-=(duration_base dur) {
+	time &operator-=(s dur) {
 		_ela -= dur;
 		return *this;
 	}
 
 private:
-	duration_base _ela;
+	s _ela;
+	int8_t _zon;
 	const date_t *_epo;
 
-	static duration_base _date2dur_exc_yr(const date_t &d8) {
-		duration_base r;
+	static duration _date2dur_exc_yr(const date_t &d8) {
+		duration r;
 		if (d8.month > 1) {
 			r += d(_yr_days_at_mon[d8.month - 2]);
 			if (d8.month > 2 && is_leap_year(d8.year)) {
@@ -302,7 +322,7 @@ private:
 	}
 };
 
-RUA_FORCE_INLINE time operator+(duration_base dur, const time &tim) {
+RUA_FORCE_INLINE time operator+(s dur, const time &tim) {
 	return tim + dur;
 }
 

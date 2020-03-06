@@ -3,7 +3,7 @@
 
 #include "lockfree_list.hpp"
 
-#include "../chrono/clock.hpp"
+#include "../chrono/tick.hpp"
 #include "../sched/util.hpp"
 
 #include <atomic>

@@ -44,7 +44,7 @@ TEST_CASE("date convert") {
 	_gmtime(&c_tm, &c_ti);
 
 	auto t = rua::time(rua::s(c_ti), c_epo);
-	auto d = t.date(0);
+	auto d = t.date();
 
 	REQUIRE(d.year == (c_tm.tm_year + 1900));
 	REQUIRE(d.month == (c_tm.tm_mon + 1));
@@ -54,7 +54,7 @@ TEST_CASE("date convert") {
 	REQUIRE(d.second == c_tm.tm_sec);
 
 	rua::date_t epo{1995, 12, 14, 0, 0, 0, 0, 9};
-	auto d2 = rua::time(d, epo).date(0);
+	auto d2 = rua::time(d, epo).date();
 
 	REQUIRE(d.year == d2.year);
 	REQUIRE(d.month == d2.month);

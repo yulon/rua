@@ -13,15 +13,15 @@
 
 namespace rua {
 
-class duration_base {
+class duration {
 public:
-	constexpr explicit duration_base(int64_t secs = 0, int32_t nanos = 0) :
+	constexpr explicit duration(int64_t secs = 0, int32_t nanos = 0) :
 		_s(secs),
 		_n(nanos) {}
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
 
-	static constexpr duration_base make(int64_t secs, int64_t nanos) {
+	static constexpr duration make(int64_t secs, int64_t nanos) {
 		auto carrys = nanos / 1000000000;
 		if (carrys != 0) {
 			secs += carrys;
@@ -34,32 +34,32 @@ public:
 			--secs;
 			nanos = 1000000000 + nanos;
 		}
-		return duration_base(secs, static_cast<int32_t>(nanos));
+		return duration(secs, static_cast<int32_t>(nanos));
 	}
 
 #else
 
 private:
-	static RUA_FORCE_INLINE constexpr duration_base
+	static RUA_FORCE_INLINE constexpr duration
 	_handle_pan(int64_t secs, int64_t nanos) {
 		return (secs < 0 && nanos > 0)
-				   ? duration_base(
+				   ? duration(
 						 secs + 1, static_cast<int32_t>(-(1000000000 - nanos)))
 				   : ((secs > 0 && nanos < 0)
-						  ? duration_base(
+						  ? duration(
 								secs - 1,
 								static_cast<int32_t>(1000000000 + nanos))
-						  : duration_base(secs, static_cast<int32_t>(nanos)));
+						  : duration(secs, static_cast<int32_t>(nanos)));
 	}
 
-	static RUA_FORCE_INLINE constexpr duration_base _handle_overflow(
+	static RUA_FORCE_INLINE constexpr duration _handle_overflow(
 		int64_t secs, int64_t nanos, int64_t carrys, int64_t remainders) {
 		return (carrys != 0) ? _handle_pan(secs + carrys, remainders)
 							 : _handle_pan(secs, nanos);
 	}
 
 public:
-	static constexpr duration_base make(int64_t secs, int64_t nanos) {
+	static constexpr duration make(int64_t secs, int64_t nanos) {
 		return _handle_overflow(
 			secs, nanos, nanos / 1000000000, nanos % 1000000000);
 	}
@@ -82,63 +82,63 @@ public:
 		return !_s && !_n;
 	}
 
-	constexpr bool operator==(duration_base target) const {
+	constexpr bool operator==(duration target) const {
 		return _s == target._s && _n == target._n;
 	}
 
-	constexpr bool operator!=(duration_base target) const {
+	constexpr bool operator!=(duration target) const {
 		return _s != target._s || _n != target._n;
 	}
 
-	constexpr bool operator>(duration_base target) const {
+	constexpr bool operator>(duration target) const {
 		return _s > target._s || (_s == target._s && _n > target._n);
 	}
 
-	constexpr bool operator<(duration_base target) const {
+	constexpr bool operator<(duration target) const {
 		return _s < target._s || (_s == target._s && _n < target._n);
 	}
 
-	constexpr bool operator>=(duration_base target) const {
+	constexpr bool operator>=(duration target) const {
 		return _s >= target._s || (_s == target._s && _n >= target._n);
 	}
 
-	constexpr bool operator<=(duration_base target) const {
+	constexpr bool operator<=(duration target) const {
 		return _s <= target._s || (_s == target._s && _n <= target._n);
 	}
 
-	constexpr duration_base operator+(duration_base target) const {
+	constexpr duration operator+(duration target) const {
 		return make(
 			_s + target._s,
 			static_cast<int64_t>(_n) + static_cast<int64_t>(target._n));
 	}
 
-	duration_base &operator+=(duration_base target) {
+	duration &operator+=(duration target) {
 		return *this = *this + target;
 	}
 
-	constexpr duration_base operator-(duration_base target) const {
+	constexpr duration operator-(duration target) const {
 		return make(
 			_s - target._s,
 			static_cast<int64_t>(_n) - static_cast<int64_t>(target._n));
 	}
 
-	constexpr duration_base operator-() const {
-		return duration_base(-_s, -_n);
+	constexpr duration operator-() const {
+		return duration(-_s, -_n);
 	}
 
-	duration_base &operator-=(duration_base target) {
+	duration &operator-=(duration target) {
 		return *this = *this - target;
 	}
 
-	constexpr duration_base operator*(int64_t target) const {
+	constexpr duration operator*(int64_t target) const {
 		return make(_s * target, static_cast<int64_t>(_n) * target);
 	}
 
-	duration_base &operator*=(int64_t target) {
+	duration &operator*=(int64_t target) {
 		return *this = *this * target;
 	}
 
-	constexpr int64_t operator/(duration_base target) const {
+	constexpr int64_t operator/(duration target) const {
 		return ((target._s || !target._n) ? _s / target._s : 0) +
 			   (target._n ? ((static_cast<int64_t>(_n) +
 							  _s % target._s * 1000000000) /
@@ -146,17 +146,17 @@ public:
 						  : 0);
 	}
 
-	constexpr duration_base operator/(int64_t target) const {
+	constexpr duration operator/(int64_t target) const {
 		return make(
 			_s / target,
 			(static_cast<int64_t>(_n) + _s % target * 1000000000) / target);
 	}
 
-	duration_base &operator/=(int64_t target) {
+	duration &operator/=(int64_t target) {
 		return *this = *this / target;
 	}
 
-	constexpr duration_base operator%(duration_base target) const {
+	constexpr duration operator%(duration target) const {
 		return make(
 			0,
 			target._n ? (static_cast<int64_t>(_n) +
@@ -168,16 +168,16 @@ public:
 							 1000000000));
 	}
 
-	constexpr duration_base operator%(int64_t target) const {
+	constexpr duration operator%(int64_t target) const {
 		return make(
 			0, (static_cast<int64_t>(_n) + _s % target * 1000000000) % target);
 	}
 
-	duration_base &operator%=(duration_base target) {
+	duration &operator%=(duration target) {
 		return *this = *this % target;
 	}
 
-	duration_base &operator%=(int64_t target) {
+	duration &operator%=(int64_t target) {
 		return *this = *this % target;
 	}
 
@@ -198,76 +198,76 @@ protected:
 	}
 };
 
-RUA_FORCE_INLINE constexpr duration_base operator*(int64_t a, duration_base b) {
+RUA_FORCE_INLINE constexpr duration operator*(int64_t a, duration b) {
 	return b * a;
 }
 
-RUA_FORCE_INLINE constexpr duration_base duration_max() {
-	return duration_base(nmax<int64_t>(), 999999999);
+RUA_FORCE_INLINE constexpr duration duration_max() {
+	return duration(nmax<int64_t>(), 999999999);
 }
 
-RUA_FORCE_INLINE constexpr duration_base duration_zero() {
-	return duration_base();
+RUA_FORCE_INLINE constexpr duration duration_zero() {
+	return duration();
 }
 
-RUA_FORCE_INLINE constexpr duration_base duration_min() {
-	return duration_base(nmin<int64_t>(), -999999999);
+RUA_FORCE_INLINE constexpr duration duration_min() {
+	return duration(nmin<int64_t>(), -999999999);
 }
 
 template <int64_t Multiple, typename = enable_if_t<(Multiple > 0)>>
-class duration : public duration_base {
+class duration_unit : public duration {
 public:
 	static constexpr int64_t multiple = Multiple;
 
-	constexpr duration(int64_t count = 0) :
-		duration_base(_in(count, _in_attr{})) {}
+	constexpr duration_unit(int64_t count = 0) :
+		duration(_in(count, _in_attr{})) {}
 
-	constexpr duration(duration_base other_dur) : duration_base(other_dur) {}
+	constexpr duration_unit(duration other_dur) : duration(other_dur) {}
 
 	constexpr int64_t count() const {
 		return _out(_s, _n, _out_attr{});
 	}
 
-	duration &operator+=(duration target) {
-		*static_cast<duration_base *>(this) += target;
+	duration_unit &operator+=(duration_unit target) {
+		*static_cast<duration *>(this) += target;
 		return *this;
 	}
 
-	duration &operator-=(duration target) {
-		*static_cast<duration_base *>(this) -= target;
+	duration_unit &operator-=(duration_unit target) {
+		*static_cast<duration *>(this) -= target;
 		return *this;
 	}
 
-	duration &operator*=(int64_t target) {
-		*static_cast<duration_base *>(this) *= target;
+	duration_unit &operator*=(int64_t target) {
+		*static_cast<duration *>(this) *= target;
 		return *this;
 	}
 
-	duration &operator/=(int64_t target) {
-		*static_cast<duration_base *>(this) /= target;
+	duration_unit &operator/=(int64_t target) {
+		*static_cast<duration *>(this) /= target;
 		return *this;
 	}
 
-	duration &operator%=(duration target) {
-		*static_cast<duration_base *>(this) %= target;
+	duration_unit &operator%=(duration_unit target) {
+		*static_cast<duration *>(this) %= target;
 		return *this;
 	}
 
-	duration &operator++() {
+	duration_unit &operator++() {
 		return *this += 1;
 	}
 
-	duration operator++(int) {
+	duration_unit operator++(int) {
 		auto old = *this;
 		++*this;
 		return old;
 	}
 
-	duration &operator--() {
+	duration_unit &operator--() {
 		*this -= 1;
 	}
 
-	duration operator--(int) {
+	duration_unit operator--(int) {
 		auto old = *this;
 		--*this;
 		return old;
@@ -285,12 +285,12 @@ private:
 
 	using _out_attr = conditional_t<Multiple >= 1000000000, _div_s, _mul_n>;
 
-	static constexpr duration_base _in(int64_t c, _exa_div_s &&) {
-		return duration_base(c * (Multiple / 1000000000));
+	static constexpr duration _in(int64_t c, _exa_div_s &&) {
+		return duration(c * (Multiple / 1000000000));
 	}
 
-	static constexpr duration_base _in(int64_t c, _div_s &&) {
-		return duration_base(
+	static constexpr duration _in(int64_t c, _div_s &&) {
+		return duration(
 			c * (Multiple / 1000000000),
 			static_cast<int32_t>(c * (Multiple % 1000000000)));
 	}
@@ -299,12 +299,12 @@ private:
 		return s / (Multiple / 1000000000) + n / Multiple;
 	}
 
-	static constexpr duration_base _in(int64_t c, _mul_n &&) {
+	static constexpr duration _in(int64_t c, _mul_n &&) {
 		return _make_for_mul_n(c, c / (1000000000 / Multiple));
 	}
 
-	static constexpr duration_base _make_for_mul_n(int64_t c, int64_t s) {
-		return duration_base(
+	static constexpr duration _make_for_mul_n(int64_t c, int64_t s) {
+		return duration(
 			s,
 			static_cast<int32_t>((c - s * (1000000000 / Multiple)) * Multiple));
 	}
@@ -316,24 +316,23 @@ private:
 
 #define RUA_DURATION_CONCEPT(Duration)                                         \
 	typename Duration,                                                         \
-		typename =                                                             \
-			enable_if_t < std::is_base_of<duration_base, Duration>::value &&   \
-			!std::is_same<duration_base, Duration>::value >
+		typename = enable_if_t < std::is_base_of<duration, Duration>::value && \
+				   !std::is_same<duration, Duration>::value >
 
 #define RUA_DURATION_EXPR_CONCEPT(First, Second, FirstDuration)                \
 	typename First, typename Second,                                           \
                                                                                \
 		typename =                                                             \
-			enable_if_t < (std::is_base_of<duration_base, First>::value &&     \
-						   !std::is_same<duration_base, First>::value &&       \
+			enable_if_t < (std::is_base_of<duration, First>::value &&          \
+						   !std::is_same<duration, First>::value &&            \
 						   std::is_convertible<Second, First>::value) ||       \
-			(std::is_base_of<duration_base, Second>::value &&                  \
-			 !std::is_same<duration_base, Second>::value &&                    \
+			(std::is_base_of<duration, Second>::value &&                       \
+			 !std::is_same<duration, Second>::value &&                         \
 			 std::is_convertible<First, Second>::value) >,                     \
                                                                                \
 		typename FirstDuration = conditional_t<                                \
-			(std::is_base_of<duration_base, First>::value &&                   \
-			 !std::is_same<duration_base, First>::value &&                     \
+			(std::is_base_of<duration, First>::value &&                        \
+			 !std::is_same<duration, First>::value &&                          \
 			 std::is_convertible<Second, First>::value),                       \
 			First,                                                             \
 			Second>
@@ -341,86 +340,77 @@ private:
 #define RUA_DURATION_PAIR_CONCEPT(FirstDuration, SecondDuration)               \
 	typename FirstDuration, typename SecondDuration,                           \
                                                                                \
-		typename =                                                             \
-			enable_if_t <                                                      \
-				(std::is_base_of<duration_base, FirstDuration>::value &&       \
-				 !std::is_same<duration_base, FirstDuration>::value &&         \
-				 std::is_base_of<duration_base, SecondDuration>::value) ||     \
-			(std::is_base_of<duration_base, SecondDuration>::value &&          \
-			 !std::is_same<duration_base, SecondDuration>::value &&            \
-			 std::is_base_of<duration_base, FirstDuration>::value) >
+		typename = enable_if_t <                                               \
+					   (std::is_base_of<duration, FirstDuration>::value &&     \
+						!std::is_same<duration, FirstDuration>::value &&       \
+						std::is_base_of<duration, SecondDuration>::value) ||   \
+				   (std::is_base_of<duration, SecondDuration>::value &&        \
+					!std::is_same<duration, SecondDuration>::value &&          \
+					std::is_base_of<duration, FirstDuration>::value) >
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) ==
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) == static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator!=(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) !=
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) != static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) >
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) > static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) <
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) < static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>=(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) >=
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) >= static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<=(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) <=
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) <= static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr Dur operator+(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) +
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) + static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr Dur operator-(A a, B b) {
-	return static_cast<duration_base &&>(Dur(a)) -
-		   static_cast<duration_base &&>(Dur(b));
+	return static_cast<duration &&>(Dur(a)) - static_cast<duration &&>(Dur(b));
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator*(Dur a, int64_t b) {
-	return static_cast<duration_base &>(a) * b;
+	return static_cast<duration &>(a) * b;
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator*(int64_t a, Dur b) {
-	return a * static_cast<duration_base &>(b);
+	return a * static_cast<duration &>(b);
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator/(Dur a, int64_t b) {
-	return static_cast<duration_base &>(a) / b;
+	return static_cast<duration &>(a) / b;
 }
 
 template <RUA_DURATION_PAIR_CONCEPT(DurA, DurB)>
 RUA_FORCE_INLINE constexpr DurA operator%(DurA a, DurB b) {
-	return static_cast<duration_base &>(a) % static_cast<duration_base &>(b);
+	return static_cast<duration &>(a) % static_cast<duration &>(b);
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator%(Dur a, int64_t b) {
-	return static_cast<duration_base &>(a) % b;
+	return static_cast<duration &>(a) % b;
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
@@ -429,25 +419,25 @@ RUA_FORCE_INLINE constexpr Dur duration_max() {
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
-RUA_FORCE_INLINE constexpr duration_base duration_zero() {
+RUA_FORCE_INLINE constexpr duration duration_zero() {
 	return Dur(duration_zero());
 }
 
 template <RUA_DURATION_CONCEPT(Dur)>
-RUA_FORCE_INLINE constexpr duration_base duration_min() {
+RUA_FORCE_INLINE constexpr duration duration_min() {
 	return Dur(duration_min());
 }
 
-using ns = duration<1>;
-using us = duration<1000 * ns::multiple>;
-using ms = duration<1000 * us::multiple>;
-using s = duration<1000 * ms::multiple>;
-using m = duration<60 * s::multiple>;
-using h = duration<60 * m::multiple>;
-using d = duration<24 * h::multiple>;
-using w = duration<7 * d::multiple>;
-using y = duration<365 * d::multiple>;
-using ly = duration<366 * d::multiple>;
+using ns = duration_unit<1>;
+using us = duration_unit<1000 * ns::multiple>;
+using ms = duration_unit<1000 * us::multiple>;
+using s = duration_unit<1000 * ms::multiple>;
+using m = duration_unit<60 * s::multiple>;
+using h = duration_unit<60 * m::multiple>;
+using d = duration_unit<24 * h::multiple>;
+using w = duration_unit<7 * d::multiple>;
+using y = duration_unit<365 * d::multiple>;
+using ly = duration_unit<366 * d::multiple>;
 
 namespace duration_literals {
 
