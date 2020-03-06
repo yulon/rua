@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_MUTEX_HPP
 #define _RUA_SYNC_MUTEX_HPP
 
-#include "lf_forward_list.hpp"
+#include "lockfree_list.hpp"
 
 #include "../chrono/clock.hpp"
 #include "../sched/util.hpp"
@@ -88,7 +88,7 @@ public:
 
 private:
 	std::atomic<bool> _locked;
-	lf_forward_list<scheduler::signaler_i> _waiters;
+	lockfree_list<scheduler::signaler_i> _waiters;
 	std::atomic<size_t> _sig_c;
 };
 

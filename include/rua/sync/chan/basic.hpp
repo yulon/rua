@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_BASIC_HPP
 #define _RUA_SYNC_CHAN_BASIC_HPP
 
-#include "../lf_forward_list.hpp"
+#include "../lockfree_list.hpp"
 
 #include "../../chrono/clock.hpp"
 #include "../../macros.hpp"
@@ -57,8 +57,8 @@ public:
 	}
 
 private:
-	lf_forward_list<T> _buf;
-	lf_forward_list<scheduler::signaler_i> _waiters;
+	lockfree_list<T> _buf;
+	lockfree_list<scheduler::signaler_i> _waiters;
 
 	rua::opt<T> _try_pop(scheduler_i sch, ms timeout) {
 		assert(timeout);

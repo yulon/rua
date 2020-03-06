@@ -3,7 +3,7 @@
 
 #include "../../../chrono.hpp"
 #include "../../../macros.hpp"
-#include "../../../sync/lf_forward_list.hpp"
+#include "../../../sync/lockfree_list.hpp"
 #include "../../../thread/pa.hpp"
 
 #include <windows.h>
@@ -25,7 +25,7 @@ struct _wait_info_t {
 };
 
 struct _sys_obj_waiter_ctx_t {
-	lf_forward_list<_wait_info_t> pre_waits;
+	lockfree_list<_wait_info_t> pre_waits;
 	std::atomic<size_t> wait_c;
 	std::atomic<size_t> waiter_c;
 	HANDLE ev;

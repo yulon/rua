@@ -6,7 +6,7 @@
 #include "../../any.hpp"
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
-#include "../../sync/lf_forward_list.hpp"
+#include "../../sync/lockfree_list.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -37,7 +37,7 @@ public:
 
 private:
 	std::atomic<size_t> _ix_c;
-	lf_forward_list<size_t> _idle_ixs;
+	lockfree_list<size_t> _idle_ixs;
 };
 
 class spare_thread_word_var {

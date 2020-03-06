@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_LF_FORWARD_LIST_HPP
-#define _RUA_SYNC_LF_FORWARD_LIST_HPP
+#ifndef _RUA_SYNC_LOCKFREE_LIST_HPP
+#define _RUA_SYNC_LOCKFREE_LIST_HPP
 
 #include "../macros.hpp"
 #include "../opt.hpp"
@@ -11,22 +11,26 @@
 namespace rua {
 
 /*
-Use only *_front() is thread-safe and performance best.
-Use only *_front() and erase_with_restore_befores() is thread-safe.
-Use only emplace_front() and pop_back()/erase_back()/erase(back) is thread-safe.
-Use only emplace_front() and emplace_back() is thread-safe.
-Use iterators or iterate list when using pop/erase(before) is not thread-safe.
-*_back() and erase() is implemented in iteration.
+	lockfree_list{} is the forward list using atomic operations.
+
+	Access is thread-safe when the following conditions are met:
+	1.Use only *_front(). (performance best)
+	2.Use only *_front() and erase_with_restore_befores().
+	3.Use only emplace_front() and pop_back()/erase_back()/erase(back).
+	4.Use only emplace_front() and emplace_back().
+	5.Cannot pop_front()/erase(before elements) while iterating.
+
+	Note:
+	*_back() and erase() operations are implemented using iteration.
 */
 template <typename T>
-class lf_forward_list {
+class lockfree_list {
 public:
-	constexpr lf_forward_list() : _front(nullptr) {}
+	constexpr lockfree_list() : _front(nullptr) {}
 
-	lf_forward_list(lf_forward_list &&src) :
-		_front(src._front.exchange(nullptr)) {}
+	lockfree_list(lockfree_list &&src) : _front(src._front.exchange(nullptr)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(lf_forward_list)
+	RUA_OVERLOAD_ASSIGNMENT_R(lockfree_list)
 
 private:
 	struct _node_t {
@@ -84,7 +88,7 @@ public:
 		}
 
 	private:
-		friend lf_forward_list;
+		friend lockfree_list;
 		_node_t *_node;
 		constexpr explicit iterator(_node_t *node) : _node(node) {}
 	};
