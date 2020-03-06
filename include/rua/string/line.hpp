@@ -3,6 +3,7 @@
 
 #include "string_view.hpp"
 
+#include "../macros.hpp"
 #include "../bytes.hpp"
 #include "../io/util.hpp"
 
@@ -13,16 +14,25 @@ namespace rua {
 
 namespace eol {
 
-static constexpr const char *lf = "\n";
-static constexpr const char *crlf = "\r\n";
-static constexpr const char *cr = "\r";
+RUA_MULTIDEF_VAR constexpr const char *lf = "\n";
+RUA_MULTIDEF_VAR constexpr const char *crlf = "\r\n";
+RUA_MULTIDEF_VAR constexpr const char *cr = "\r";
 
 #ifdef _WIN32
-static constexpr const char *sys = crlf;
+
+RUA_MULTIDEF_VAR constexpr const char *sys_text = crlf;
+RUA_MULTIDEF_VAR constexpr const char *sys_con = crlf;
+
 #elif defined(RUA_DARWIN)
-static constexpr const char *sys = cr;
+
+RUA_MULTIDEF_VAR constexpr const char *sys_text = cr;
+RUA_MULTIDEF_VAR constexpr const char *sys_con = lf;
+
 #else
-static constexpr const char *sys = lf;
+
+RUA_MULTIDEF_VAR constexpr const char *sys_text = lf;
+RUA_MULTIDEF_VAR constexpr const char *sys_con = lf;
+
 #endif
 
 } // namespace eol

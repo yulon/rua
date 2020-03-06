@@ -11,10 +11,10 @@
 		if (!(_exp)) {                                                         \
 			rua::err_log(                                                      \
 				"Assertion failed!",                                           \
-				rua::eol::sys,                                                 \
+				rua::eol::sys_con,                                             \
 				"File:",                                                       \
 				std::string(__FILE__) + ":" + std::to_string(__LINE__),        \
-				rua::eol::sys,                                                 \
+				rua::eol::sys_con,                                             \
 				"Expression:",                                                 \
 				#_exp);                                                        \
 			abort();                                                           \

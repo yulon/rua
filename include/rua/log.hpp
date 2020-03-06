@@ -34,13 +34,7 @@ private:
 #endif
 
 RUA_FORCE_INLINE printer &log_printer() {
-	static printer p(
-		sout()
-#ifdef _WIN32
-			,
-		eol::sys
-#endif
-	);
+	static printer p(sout(), eol::sys_con);
 	return p;
 }
 
@@ -52,14 +46,15 @@ RUA_FORCE_INLINE void log(Args &&... args) {
 RUA_FORCE_INLINE printer &err_log_printer() {
 	static printer p(
 #ifdef _WIN32
-		write_group{
+		write_group {
 			serr(),
-			std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR)},
-		eol::sys
+				std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR)
+		}
 #else
 		serr()
 #endif
-	);
+		,
+		eol::sys_con);
 	return p;
 }
 

@@ -59,7 +59,13 @@ public:
 		print(std::forward<Args>(args)..., _eol);
 	}
 
-	void reset(writer_i w = nullptr, const char *eol = eol::sys) {
+	void reset(writer_i w = nullptr) {
+		auto lg = make_lock_guard(_mtx);
+		_is_valid = w;
+		_w = w;
+	}
+
+	void reset(writer_i w, const char *eol) {
 		auto lg = make_lock_guard(_mtx);
 		_is_valid = w;
 		_w = w;
