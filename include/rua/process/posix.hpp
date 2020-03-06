@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include <cstddef>
 #include <cstdlib>
@@ -81,12 +82,10 @@ public:
 		err() = std::move(stderr_w);
 		in() = std::move(stdin_r);
 
-		if (pwd.empty()) {
-			::exit(::execvp(file.data(), argv.data()));
+		if (pwd.size()) {
+			::setenv("PWD", &pwd[0], 1);
 		}
-		pwd = "PWD=" + pwd;
-		char *envp[2]{&pwd[0], nullptr};
-		::exit(::execvpe(file.data(), argv.data(), &envp[0]));
+		::exit(::execvp(file.data(), argv.data()));
 	}
 
 	constexpr explicit process(pid_t id) : _id(id) {}
