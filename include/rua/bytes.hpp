@@ -265,23 +265,18 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			!std::is_same<T, const byte>::value &&
+			!std::is_same<remove_cv_t<T>, void>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>>
 	bytes_view(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
 
-	template <typename R, typename... A>
-	bytes_view(R (*ptr)(A...), size_t size = nmax<size_t>()) :
-		_p(ptr),
-		_n(size) {}
-
 	template <
 		typename T,
+		typename RmRefT = remove_reference_t<T>,
 		typename = enable_if_t<
-			!std::is_convertible<T &&, string_view>::value &&
-			!std::is_convertible<T &&, wstring_view>::value &&
-			!is_span<T &&>::value>>
+			!std::is_pointer<RmRefT>::value && !is_span<T &&>::value &&
+			!std::is_member_pointer<RmRefT>::value>>
 	bytes_view(T &&ref, size_t size = sizeof(T)) : bytes_view(&ref, size) {}
 
 	template <
@@ -466,20 +461,40 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			!std::is_const<T>::value && !std::is_same<T, byte>::value &&
+			!std::is_const<T>::value &&
+			!std::is_same<remove_cv_t<T>, void>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value &&
 			!std::is_function<T>::value>>
 	bytes_ref(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
 
+	template <typename T>
+	bytes_ref(const T *const_ptr, size_t size = sizeof(T)) = delete;
+
+	template <typename R, typename... Args>
+	bytes_ref(R (*fn_ptr)(Args...), size_t size) = delete;
+
 	template <
 		typename T,
+		typename =
+			enable_if_t<std::is_member_pointer<remove_reference_t<T>>::value>>
+	bytes_ref(T &&mem_ptr, size_t size) = delete;
+
+	template <
+		typename T,
+		typename RmRefT = remove_reference_t<T>,
 		typename = enable_if_t<
-			!std::is_const<remove_reference_t<T>>::value &&
-			!std::is_convertible<T &&, string_view>::value &&
-			!std::is_convertible<T &&, wstring_view>::value &&
-			!is_span<T &&>::value>>
+			!std::is_const<RmRefT>::value && !std::is_pointer<RmRefT>::value &&
+			!is_span<T &&>::value && !std::is_member_pointer<RmRefT>::value>>
 	bytes_ref(T &&ref, size_t size = sizeof(T)) : bytes_ref(&ref, size) {}
+
+	template <
+		typename T,
+		typename RmRefT = remove_reference_t<T>,
+		typename = enable_if_t<
+			std::is_const<RmRefT>::value && !std::is_pointer<RmRefT>::value &&
+			!is_span<T &&>::value && !std::is_member_pointer<RmRefT>::value>>
+	bytes_ref(const T &const_ref, size_t size = 0) = delete;
 
 	template <
 		typename T,
@@ -495,6 +510,13 @@ public:
 			rua::data(std::forward<T>(span)),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
+
+	template <
+		typename T,
+		typename = enable_if_t<
+			!std::is_base_of<bytes_ref, decay_t<T>>::value &&
+			std::is_const<typename span_traits<T &&>::element_type>::value>>
+	bytes_ref(T &&const_span) = delete;
 
 	constexpr operator bool() const {
 		return _p;
