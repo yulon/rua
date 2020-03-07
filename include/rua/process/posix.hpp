@@ -4,15 +4,16 @@
 #include "../sched/wait.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
+#include "../type_traits/std_patch.hpp"
 
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include <cstddef>
-#include <cstdlib>
 #include <vector>
 
 namespace rua { namespace posix {
@@ -148,7 +149,18 @@ public:
 	}
 
 	std::string file_path() {
-		return "";
+		if (_id < 0) {
+			return "";
+		}
+		char buf[PATH_MAX];
+		auto n = readlink(
+			("/proc/" + std::to_string(_id) + "/exe").c_str(),
+			&buf[0],
+			PATH_MAX);
+		if (n < 0) {
+			return "";
+		}
+		return std::string(&buf[0], n);
 	}
 
 	void reset() {
