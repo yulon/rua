@@ -1,6 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "chan/full.hpp"
+#include "chan/auto.hpp"
+#include "chan/thread_based.hpp"
 
 #endif

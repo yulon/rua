@@ -27,6 +27,12 @@ RUA_FORCE_INLINE scheduler_i this_scheduler() {
 	return _this_scheduler();
 }
 
+struct this_scheduler_getter {
+	static RUA_FORCE_INLINE scheduler_i get() {
+		return this_scheduler();
+	}
+};
+
 class scheduler_guard {
 public:
 	scheduler_guard(scheduler_i s) {

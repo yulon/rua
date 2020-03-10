@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_CHAN_BASIC_HPP
-#define _RUA_SYNC_CHAN_BASIC_HPP
+#ifndef _RUA_SYNC_CHAN_BASIC_CHAN_HPP
+#define _RUA_SYNC_CHAN_BASIC_CHAN_HPP
 
 #include "../lockfree_list.hpp"
 
@@ -7,6 +7,7 @@
 #include "../../macros.hpp"
 #include "../../opt.hpp"
 #include "../../sched/scheduler.hpp"
+#include "../../type_traits/std_patch.hpp"
 
 #include <cassert>
 #include <queue>
@@ -14,36 +15,14 @@
 
 namespace rua {
 
-template <typename T>
-class chan {
+template <typename T, typename DefaultSchedulerGetter>
+class basic_chan {
 public:
-	constexpr chan() : _buf(), _waiters() {}
+	constexpr basic_chan() : _buf(), _waiters() {}
 
-	chan(const chan &) = delete;
+	basic_chan(const basic_chan &) = delete;
 
-	chan &operator=(const chan &) = delete;
-
-	rua::opt<T> try_pop() {
-		return _buf.pop_back();
-	}
-
-	rua::opt<T> try_pop(ms timeout = 0);
-
-	T pop() {
-		return try_pop(duration_max()).value();
-	}
-
-	rua::opt<T> try_pop(scheduler_i sch, ms timeout = 0) {
-		auto val_opt = _buf.pop_back();
-		if (val_opt || !timeout) {
-			return val_opt;
-		}
-		return _try_pop(sch, timeout);
-	}
-
-	T pop(scheduler_i sch) {
-		return try_pop(std::move(sch), duration_max()).value();
-	}
+	basic_chan &operator=(const basic_chan &) = delete;
 
 	template <typename... Args>
 	bool emplace(Args &&... args) {
@@ -56,11 +35,39 @@ public:
 		return true;
 	}
 
+	rua::opt<T> try_pop() {
+		return _buf.pop_back();
+	}
+
+	rua::opt<T> try_pop(ms timeout) {
+		auto val_opt = _buf.pop_back();
+		if (val_opt || !timeout) {
+			return val_opt;
+		}
+		return _wait_and_pop(DefaultSchedulerGetter::get(), timeout);
+	}
+
+	rua::opt<T> try_pop(scheduler_i sch, ms timeout = 0) {
+		auto val_opt = _buf.pop_back();
+		if (val_opt || !timeout) {
+			return val_opt;
+		}
+		return _wait_and_pop(std::move(sch), timeout);
+	}
+
+	T pop() {
+		return try_pop(duration_max()).value();
+	}
+
+	T pop(scheduler_i sch) {
+		return try_pop(std::move(sch), duration_max()).value();
+	}
+
 private:
 	lockfree_list<T> _buf;
 	lockfree_list<scheduler::signaler_i> _waiters;
 
-	rua::opt<T> _try_pop(scheduler_i sch, ms timeout) {
+	rua::opt<T> _wait_and_pop(scheduler_i sch, ms timeout) {
 		assert(timeout);
 
 		rua::opt<T> val_opt;
@@ -110,26 +117,16 @@ private:
 	}
 };
 
-template <typename T, typename R>
-RUA_FORCE_INLINE chan<T> &operator>>(chan<T> &ch, R &receiver) {
+template <typename T, typename DefaultSchedulerGetter, typename R>
+RUA_FORCE_INLINE basic_chan<T, DefaultSchedulerGetter> &
+operator<<(R &receiver, basic_chan<T, DefaultSchedulerGetter> &ch) {
 	receiver = ch.pop();
 	return ch;
 }
 
-template <typename T, typename R>
-RUA_FORCE_INLINE chan<T> &operator<<(R &receiver, chan<T> &ch) {
-	receiver = ch.pop();
-	return ch;
-}
-
-template <typename T, typename V>
-RUA_FORCE_INLINE chan<T> &operator<<(chan<T> &ch, V &&val) {
-	ch.emplace(std::forward<V>(val));
-	return ch;
-}
-
-template <typename T, typename V>
-RUA_FORCE_INLINE chan<T> &operator>>(V &&val, chan<T> &ch) {
+template <typename T, typename DefaultSchedulerGetter, typename V>
+RUA_FORCE_INLINE basic_chan<T, DefaultSchedulerGetter> &
+operator<<(basic_chan<T, DefaultSchedulerGetter> &ch, V &&val) {
 	ch.emplace(std::forward<V>(val));
 	return ch;
 }

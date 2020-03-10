@@ -96,6 +96,12 @@ private:
 	std::shared_ptr<signaler> _sig;
 };
 
+struct thread_scheduler_getter {
+	static RUA_FORCE_INLINE scheduler_i get() {
+		return std::make_shared<thread_scheduler>();
+	}
+};
+
 }} // namespace rua::win32
 
 #endif

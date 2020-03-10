@@ -2,6 +2,7 @@
 #define _RUA_THREAD_SCHEDULER_POSIX_HPP
 
 #include "../../limits.hpp"
+#include "../../macros.hpp"
 #include "../../sched/scheduler.hpp"
 
 #include <sched.h>
@@ -87,11 +88,10 @@ public:
 		}
 
 		timespec ts;
-		ts.tv_sec =
-			static_cast<int64_t>(nmax<decltype(ts.tv_sec)>()) <
-					timeout.s_count()
-				? nmax<decltype(ts.tv_sec)>()
-				: static_cast<decltype(ts.tv_sec)>(timeout.s_count());
+		ts.tv_sec = static_cast<int64_t>(nmax<decltype(ts.tv_sec)>()) <
+							timeout.s_count()
+						? nmax<decltype(ts.tv_sec)>()
+						: static_cast<decltype(ts.tv_sec)>(timeout.s_count());
 		ts.tv_nsec =
 			static_cast<decltype(ts.tv_nsec)>(timeout.extra_ns_count());
 
@@ -101,6 +101,12 @@ public:
 private:
 	ms _yield_dur;
 	std::shared_ptr<signaler> _sig;
+};
+
+struct thread_scheduler_getter {
+	static RUA_FORCE_INLINE scheduler_i get() {
+		return std::make_shared<thread_scheduler>();
+	}
 };
 
 }} // namespace rua::posix

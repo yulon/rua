@@ -93,7 +93,7 @@ public:
 
 	virtual ptrdiff_t read(bytes_ref p) {
 		while (!_buf) {
-			_ch >> _buf;
+			_buf << _ch;
 			if (!_buf) {
 				if (--_c) {
 					continue;

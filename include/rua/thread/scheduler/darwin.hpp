@@ -2,6 +2,7 @@
 #define _RUA_THREAD_SCHEDULER_DARWIN_HPP
 
 #include "../../limits.hpp"
+#include "../../macros.hpp"
 #include "../../sched/scheduler.hpp"
 
 #include <dispatch/dispatch.h>
@@ -87,6 +88,12 @@ public:
 private:
 	ms _yield_dur;
 	std::shared_ptr<signaler> _sig;
+};
+
+struct thread_scheduler_getter {
+	static RUA_FORCE_INLINE scheduler_i get() {
+		return std::make_shared<thread_scheduler>();
+	}
 };
 
 }} // namespace rua::darwin
