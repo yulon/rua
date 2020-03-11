@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_CHAN_AUTO_HPP
-#define _RUA_SYNC_CHAN_AUTO_HPP
+#ifndef _RUA_SYNC_CHAN_FOR_THIS_HPP
+#define _RUA_SYNC_CHAN_FOR_THIS_HPP
 
 #include "base.hpp"
 

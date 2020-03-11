@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_CHAN_THREAD_BASED_HPP
-#define _RUA_SYNC_CHAN_THREAD_BASED_HPP
+#ifndef _RUA_SYNC_CHAN_FOR_THREAD_HPP
+#define _RUA_SYNC_CHAN_FOR_THREAD_HPP
 
 #include "base.hpp"
 

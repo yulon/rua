@@ -4,7 +4,7 @@
 #include "basic.hpp"
 #include "scheduler.hpp"
 
-#include "../sync/chan/thread_based.hpp"
+#include "../sync/chan/for_thread.hpp"
 
 #include <functional>
 #include <utility>

@@ -4,6 +4,6 @@
 #include "sync/chan.hpp"
 #include "sync/lockfree_list.hpp"
 #include "sync/mutex.hpp"
-#include "sync/util.hpp"
+#include "sync/lock_guard.hpp"
 
 #endif

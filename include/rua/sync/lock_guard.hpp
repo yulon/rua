@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_UTIL_HPP
-#define _RUA_SYNC_UTIL_HPP
+#ifndef _RUA_SYNC_LOCK_GUARD_HPP
+#define _RUA_SYNC_LOCK_GUARD_HPP
 
 #include "../chrono/duration.hpp"
 #include "../macros.hpp"
