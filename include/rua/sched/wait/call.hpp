@@ -1,8 +1,9 @@
 #ifndef _RUA_SCHED_WAIT_CALL_HPP
 #define _RUA_SCHED_WAIT_CALL_HPP
 
-#include "../../thread/pa.hpp"
 #include "../util.hpp"
+
+#include "../../thread/pa.hpp"
 
 #include <utility>
 
@@ -12,7 +13,7 @@ template <
 	typename Callee,
 	typename... Args,
 	typename Ret =
-		decltype(std::declval<Callee &>()(std::declval<Args &>()...))>
+		decltype(std::declval<Callee &&>()(std::declval<Args &&>()...))>
 inline enable_if_t<
 	!std::is_function<remove_reference_t<Callee>>::value &&
 		std::is_same<Ret, void>::value,
@@ -20,7 +21,7 @@ inline enable_if_t<
 wait(Callee &&callee, Args &&... args) {
 	auto sch = this_scheduler();
 	if (sch.type_is<thread_scheduler>()) {
-		callee(std::forward<Args>(args)...);
+		std::forward<Callee>(callee)(std::forward<Args>(args)...);
 		return;
 	}
 	auto sig = sch->get_signaler();
@@ -35,7 +36,7 @@ template <
 	typename Callee,
 	typename... Args,
 	typename Ret =
-		decltype(std::declval<Callee &>()(std::declval<Args &>()...))>
+		decltype(std::declval<Callee &&>()(std::declval<Args &&>()...))>
 enable_if_t<
 	!std::is_function<remove_reference_t<Callee>>::value &&
 		!std::is_same<Ret, void>::value,
@@ -43,7 +44,7 @@ enable_if_t<
 wait(Callee &&callee, Args &&... args) {
 	auto sch = this_scheduler();
 	if (sch.type_is<thread_scheduler>()) {
-		return callee(std::forward<Args>(args)...);
+		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
 	}
 	auto sig = sch->get_signaler();
 	auto r_ptr = new Ret;
@@ -52,7 +53,7 @@ wait(Callee &&callee, Args &&... args) {
 		sig->signal();
 	});
 	sch->wait();
-	auto r = *r_ptr;
+	auto r = std::move(*r_ptr);
 	delete r_ptr;
 	return r;
 }
