@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_FOR_THIS_HPP
 #define _RUA_SYNC_CHAN_FOR_THIS_HPP
 
-#include "base.hpp"
+#include "basic.hpp"
 
 #include "../../sched/util.hpp"
 
