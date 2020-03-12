@@ -20,7 +20,7 @@ public:
 
 	template <
 		typename NullPtr,
-		typename = enable_if_t<std::is_same<NullPtr, std::nullptr_t>::value>>
+		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
 	constexpr sys_stream(NullPtr) : sys_stream(-1, false) {}
 
 	sys_stream(const sys_stream &src) {

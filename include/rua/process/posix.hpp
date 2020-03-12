@@ -93,7 +93,7 @@ public:
 
 	template <
 		typename NullPtr,
-		typename = enable_if_t<std::is_same<NullPtr, std::nullptr_t>::value>>
+		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
 	constexpr process(NullPtr) : process() {}
 
 	~process() {

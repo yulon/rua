@@ -177,12 +177,12 @@ public:
 
 	template <
 		typename NullPtr,
-		typename = enable_if_t<std::is_same<NullPtr, std::nullptr_t>::value>>
+		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
 	constexpr process(NullPtr) : process() {}
 
 	template <
 		typename T,
-		typename = enable_if_t<!std::is_same<T, std::nullptr_t>::value>,
+		typename = enable_if_t<!is_null_pointer<T>::value>,
 		typename = enable_if_t<std::is_same<T, native_handle_t>::value>>
 	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
 
