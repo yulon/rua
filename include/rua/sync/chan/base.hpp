@@ -4,10 +4,8 @@
 #include "../lockfree_list.hpp"
 
 #include "../../chrono/tick.hpp"
-#include "../../macros.hpp"
 #include "../../opt.hpp"
 #include "../../sched/scheduler.hpp"
-#include "../../type_traits/std_patch.hpp"
 
 #include <utility>
 
@@ -29,14 +27,18 @@ public:
 		return true;
 	}
 
+	rua::opt<T> try_pop() {
+		return _buf.pop_back();
+	}
+
 	template <typename GetScheduler>
-	rua::opt<T> try_pop(GetScheduler &&get_sch, ms timeout = 0) {
+	rua::opt<T> try_pop(GetScheduler &&get_sch, ms timeout) {
 		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout) {
 			return val_opt;
 		}
 
-		auto sch = get_sch();
+		scheduler_i sch(get_sch());
 		auto sig = sch->get_signaler();
 		auto it = _waiters.emplace_front(sig);
 
