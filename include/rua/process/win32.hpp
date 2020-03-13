@@ -6,7 +6,6 @@
 #include "../io.hpp"
 #include "../limits.hpp"
 #include "../macros.hpp"
-#include "../sched/util.hpp"
 #include "../sched/wait/sys_obj/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/encoding/base/win32.hpp"
@@ -20,8 +19,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
-#include <functional>
-#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
