@@ -21,11 +21,9 @@ public:
 	RUA_FORCE_INLINE generic_ptr(T *src) :
 		_val(reinterpret_cast<uintptr_t>(src)) {}
 
-	template <
-		typename T,
-		typename = enable_if_t<std::is_member_function_pointer<T>::value>>
-	RUA_FORCE_INLINE generic_ptr(const T &src) :
-		generic_ptr(*reinterpret_cast<const void *const *>(&src)) {}
+	template <typename M, typename T>
+	RUA_FORCE_INLINE generic_ptr(M T::*src) :
+		generic_ptr(*reinterpret_cast<uintptr_t *>(&src)) {}
 
 	RUA_FORCE_INLINE explicit constexpr generic_ptr(uintptr_t val) :
 		_val(val) {}
@@ -40,7 +38,7 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE enable_if_t<std::is_member_function_pointer<T>::value, T>
+	RUA_FORCE_INLINE enable_if_t<std::is_member_pointer<T>::value, T>
 	as() const {
 		return *reinterpret_cast<const T *>(&_val);
 	}
@@ -48,8 +46,7 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			std::is_pointer<T>::value ||
-			std::is_member_function_pointer<T>::value>>
+			std::is_pointer<T>::value || std::is_member_pointer<T>::value>>
 	RUA_FORCE_INLINE operator T() const {
 		return as<T>();
 	}

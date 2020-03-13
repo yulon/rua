@@ -4,6 +4,7 @@
 #include "encoding/base.hpp"
 #include "string_view.hpp"
 
+#include "../macros.hpp"
 #include "../generic_ptr.hpp"
 #include "../type_traits/std_patch.hpp"
 
@@ -15,98 +16,73 @@
 namespace rua {
 
 template <typename T>
-inline enable_if_t<
+RUA_FORCE_INLINE enable_if_t<
 	!std::is_same<decay_t<T>, bool>::value,
 	decltype(std::to_string(std::declval<decay_t<T>>()))>
 to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
 
-inline const char *to_string(std::nullptr_t) {
+RUA_FORCE_INLINE const char *to_string(std::nullptr_t) {
 	static const auto null_str = "null";
 	return null_str;
 }
 
-inline std::string to_string(string_view sv) {
+RUA_FORCE_INLINE std::string to_string(string_view sv) {
 	return std::string(sv.data(), sv.size());
 }
 
-inline std::string to_string(wstring_view wsv) {
+RUA_FORCE_INLINE std::string to_string(wstring_view wsv) {
 	return w_to_u8(wsv.data());
 }
 
-template <typename Str>
-inline enable_if_t<std::is_same<Str, std::string>::value, std::string>
-to_string(Str &&s) {
+RUA_FORCE_INLINE const std::string &to_string(const std::string &s) {
+	return s;
+}
+
+RUA_FORCE_INLINE std::string &&to_string(std::string &&s) {
 	return std::move(s);
-}
-
-template <typename Str>
-inline enable_if_t<
-	std::is_convertible<Str, string_view>::value &&
-		!std::is_same<Str, std::string>::value,
-	std::string>
-to_string(Str &&s) {
-	return to_string(string_view(std::forward<Str>(s)));
-}
-
-template <typename Str>
-inline enable_if_t<std::is_convertible<Str, wstring_view>::value, std::string>
-to_string(Str &&s) {
-	return to_string(wstring_view(std::forward<Str>(s)));
 }
 
 template <
 	typename T,
 	typename = enable_if_t<!std::is_same<decay_t<T>, unsigned char>::value>>
-inline std::string to_hex(T val, size_t width = sizeof(T) * 2) {
+RUA_FORCE_INLINE std::string to_hex(T val, size_t width = sizeof(T) * 2) {
 	std::stringstream ss;
 	ss << "0x" << std::hex << std::uppercase << std::setw(width)
 	   << std::setfill('0') << val;
 	return ss.str();
 }
 
-inline std::string
+RUA_FORCE_INLINE std::string
 to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 	return to_hex(static_cast<uintptr_t>(val), width);
 }
 
-template <typename P>
-inline enable_if_t<
-	!std::is_convertible<P *, string_view>::value &&
-		!std::is_convertible<P *, wstring_view>::value,
+template <typename Ptr>
+RUA_FORCE_INLINE enable_if_t<
+	std::is_convertible<Ptr, generic_ptr>::value &&
+		!std::is_convertible<Ptr, string_view>::value &&
+		!std::is_integral<decay_t<Ptr>>::value,
 	std::string>
-to_string(P *val) {
-	return val ? to_hex(reinterpret_cast<uintptr_t>(val)) : to_string(nullptr);
+to_string(Ptr &&ptr) {
+	return ptr ? to_hex(generic_ptr(ptr).uintptr()) : to_string(nullptr);
 }
 
-template <typename P>
-inline enable_if_t<
-	std::is_member_function_pointer<decay_t<P>>::value,
-	std::string>
-to_string(P mfp) {
-	return mfp ? to_hex(*reinterpret_cast<uintptr_t *>(&mfp))
-			   : to_string(nullptr);
-}
-
-inline std::string to_string(generic_ptr ptr) {
-	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
-}
-
-inline const char *to_string(bool val) {
-	static const auto true_str = "true";
-	static const auto false_str = "false";
-	return val ? true_str : false_str;
+RUA_FORCE_INLINE const char *to_string(bool val) {
+	static const auto true_c_str = "true";
+	static const auto false_c_str = "false";
+	return val ? true_c_str : false_c_str;
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
-inline string_view to_temp_string(string_view sv) {
+RUA_FORCE_INLINE string_view to_temp_string(string_view sv) {
 	return sv;
 }
 
 template <typename T>
-inline enable_if_t<
+RUA_FORCE_INLINE enable_if_t<
 	!std::is_convertible<T, string_view>::value &&
 		!std::is_same<decltype(to_string(std::declval<T>())), const char *>::
 			value,
@@ -116,7 +92,7 @@ to_temp_string(T &&src) {
 }
 
 template <typename T>
-inline enable_if_t<
+RUA_FORCE_INLINE enable_if_t<
 	!std::is_convertible<T, string_view>::value &&
 		std::is_same<decltype(to_string(std::declval<T>())), const char *>::
 			value,
