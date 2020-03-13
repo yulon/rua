@@ -1,9 +1,10 @@
 #ifndef _RUA_IO_UTIL_HPP
 #define _RUA_IO_UTIL_HPP
 
+#include "abstract.hpp"
+
 #include "../sync/chan.hpp"
 #include "../thread.hpp"
-#include "abstract.hpp"
 
 #include <atomic>
 #include <cstddef>
@@ -11,66 +12,6 @@
 #include <vector>
 
 namespace rua {
-
-inline ptrdiff_t reader::read_full(bytes_ref p) {
-	auto psz = static_cast<ptrdiff_t>(p.size());
-	ptrdiff_t tsz = 0;
-	while (tsz < psz) {
-		auto sz = read(p(tsz));
-		if (!sz) {
-			return tsz;
-		}
-		tsz += sz;
-	}
-	return tsz;
-}
-
-inline bytes reader::read_all(size_t buf_grain_sz) {
-	bytes buf(buf_grain_sz);
-	size_t tsz = 0;
-	for (;;) {
-		auto sz = read(buf(tsz));
-		if (!sz) {
-			break;
-		}
-		tsz += static_cast<size_t>(sz);
-		if (buf.size() - tsz < buf_grain_sz / 2) {
-			buf.resize(buf.size() + buf_grain_sz);
-		}
-	}
-	buf.resize(tsz);
-	return buf;
-}
-
-inline bool writer::write_all(bytes_view p) {
-	size_t tsz = 0;
-	while (tsz < p.size()) {
-		auto sz = write(p(tsz));
-		if (!sz) {
-			return false;
-		}
-		tsz += static_cast<size_t>(sz);
-	}
-	return true;
-}
-
-inline bool writer::copy(const reader_i &r, bytes_ref buf) {
-	bytes inner_buf;
-	if (!buf) {
-		inner_buf.reset(1024);
-		buf = inner_buf;
-	}
-	for (;;) {
-		auto sz = r->read(buf);
-		if (sz <= 0) {
-			return true;
-		}
-		if (!write_all(buf(0, sz))) {
-			return false;
-		}
-	}
-	return false;
-}
 
 class read_group : public reader {
 public:

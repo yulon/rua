@@ -16,9 +16,35 @@ public:
 
 	virtual ptrdiff_t read(bytes_ref) = 0;
 
-	inline ptrdiff_t read_full(bytes_ref);
+	ptrdiff_t read_full(bytes_ref p) {
+		auto psz = static_cast<ptrdiff_t>(p.size());
+		ptrdiff_t tsz = 0;
+		while (tsz < psz) {
+			auto sz = read(p(tsz));
+			if (!sz) {
+				return tsz;
+			}
+			tsz += sz;
+		}
+		return tsz;
+	}
 
-	inline bytes read_all(size_t buf_grain_sz = 1024);
+	bytes read_all(size_t buf_grain_sz = 1024) {
+		bytes buf(buf_grain_sz);
+		size_t tsz = 0;
+		for (;;) {
+			auto sz = read(buf(tsz));
+			if (!sz) {
+				break;
+			}
+			tsz += static_cast<size_t>(sz);
+			if (buf.size() - tsz < buf_grain_sz / 2) {
+				buf.resize(buf.size() + buf_grain_sz);
+			}
+		}
+		buf.resize(tsz);
+		return buf;
+	}
 };
 
 using reader_i = ref<reader>;
@@ -29,9 +55,35 @@ public:
 
 	virtual ptrdiff_t write(bytes_view) = 0;
 
-	inline bool write_all(bytes_view);
+	bool write_all(bytes_view p) {
+		size_t tsz = 0;
+		while (tsz < p.size()) {
+			auto sz = write(p(tsz));
+			if (!sz) {
+				return false;
+			}
+			tsz += static_cast<size_t>(sz);
+		}
+		return true;
+	}
 
-	inline bool copy(const reader_i &r, bytes_ref buf = nullptr);
+	bool copy(const reader_i &r, bytes_ref buf = nullptr) {
+		bytes inner_buf;
+		if (!buf) {
+			inner_buf.reset(1024);
+			buf = inner_buf;
+		}
+		for (;;) {
+			auto sz = r->read(buf);
+			if (sz <= 0) {
+				return true;
+			}
+			if (!write_all(buf(0, sz))) {
+				return false;
+			}
+		}
+		return false;
+	}
 };
 
 using writer_i = ref<writer>;
