@@ -3,7 +3,7 @@
 
 #include "win32_async.hpp"
 
-#include "../../util.hpp"
+#include "../../scheduler.hpp"
 
 #include "../../../thread/scheduler.hpp"
 

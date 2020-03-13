@@ -10,7 +10,6 @@
 namespace rua {
 
 using thread_scheduler = win32::thread_scheduler;
-using thread_scheduler_getter = win32::thread_scheduler_getter;
 
 } // namespace rua
 
@@ -21,7 +20,6 @@ using thread_scheduler_getter = win32::thread_scheduler_getter;
 namespace rua {
 
 using thread_scheduler = darwin::thread_scheduler;
-using thread_scheduler_getter = darwin::thread_scheduler_getter;
 
 } // namespace rua
 
@@ -32,7 +30,6 @@ using thread_scheduler_getter = darwin::thread_scheduler_getter;
 namespace rua {
 
 using thread_scheduler = posix::thread_scheduler;
-using thread_scheduler_getter = posix::thread_scheduler_getter;
 
 } // namespace rua
 

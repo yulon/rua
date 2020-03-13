@@ -1,20 +1,20 @@
-#ifndef _RUA_SYNC_CHAN_BASE_HPP
-#define _RUA_SYNC_CHAN_BASE_HPP
+#ifndef _RUA_SYNC_CHAN_MANUAL_HPP
+#define _RUA_SYNC_CHAN_MANUAL_HPP
 
 #include "../lockfree_list.hpp"
 
 #include "../../chrono/tick.hpp"
 #include "../../opt.hpp"
-#include "../../sched/scheduler.hpp"
+#include "../../sched/scheduler/abstract.hpp"
 
 #include <utility>
 
 namespace rua {
 
 template <typename T>
-class chan_base {
+class chan {
 public:
-	constexpr chan_base() : _buf(), _waiters() {}
+	constexpr chan() : _buf(), _waiters() {}
 
 	template <typename... Args>
 	bool emplace(Args &&... args) {
@@ -31,14 +31,34 @@ public:
 		return _buf.pop_back();
 	}
 
-	template <typename GetScheduler>
-	rua::opt<T> try_pop(GetScheduler &&get_sch, ms timeout) {
+	inline rua::opt<T> try_pop(ms timeout);
+
+	rua::opt<T> try_pop(scheduler_i sch, ms timeout) {
 		auto val_opt = _buf.pop_back();
-		if (val_opt || !timeout) {
+		if (val_opt || !timeout || !sch) {
 			return val_opt;
 		}
+		return _wait_and_pop(std::move(sch), timeout);
+	}
 
-		scheduler_i sch(get_sch());
+	T pop() {
+		return try_pop(duration_max()).value();
+	}
+
+	T pop(scheduler_i sch) {
+		return try_pop(std::move(sch), duration_max()).value();
+	}
+
+protected:
+	lockfree_list<T> _buf;
+	lockfree_list<scheduler::signaler_i> _waiters;
+
+	rua::opt<T> _wait_and_pop(scheduler_i sch, ms timeout) {
+		assert(sch);
+		assert(timeout);
+
+		rua::opt<T> val_opt;
+
 		auto sig = sch->get_signaler();
 		auto it = _waiters.emplace_front(sig);
 
@@ -82,16 +102,6 @@ public:
 		}
 		return val_opt;
 	}
-
-	template <typename GetScheduler>
-	T pop(GetScheduler &&get_sch) {
-		return try_pop(std::forward<GetScheduler>(get_sch), duration_max())
-			.value();
-	}
-
-private:
-	lockfree_list<T> _buf;
-	lockfree_list<scheduler::signaler_i> _waiters;
 };
 
 } // namespace rua

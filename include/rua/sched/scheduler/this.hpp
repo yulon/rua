@@ -1,24 +1,20 @@
-#ifndef _RUA_SCHED_UTIL_HPP
-#define _RUA_SCHED_UTIL_HPP
+#ifndef _RUA_SCHED_SCHEDULER_ABSTRACT_THIS_HPP
+#define _RUA_SCHED_SCHEDULER_ABSTRACT_THIS_HPP
 
-#include "scheduler.hpp"
+#include "abstract.hpp"
+#include "default.hpp"
 
-#include "../macros.hpp"
-#include "../thread/var.hpp"
-#include "../thread/scheduler.hpp"
+#include "../../macros.hpp"
+#include "../../thread/var.hpp"
 
 #include <atomic>
 
 namespace rua {
 
-inline scheduler_i &_this_scheduler(scheduler_i (*make_default)() = nullptr) {
+inline scheduler_i &_this_scheduler() {
 	static thread_var<scheduler_i> sto;
-	static scheduler_i (*mkdft)() =
-		make_default ? make_default : []() -> scheduler_i {
-		return std::make_shared<thread_scheduler>();
-	};
 	if (!sto.has_value()) {
-		return sto.emplace(mkdft());
+		return sto.emplace(make_default_scheduler());
 	}
 	return sto.value();
 }
@@ -26,12 +22,6 @@ inline scheduler_i &_this_scheduler(scheduler_i (*make_default)() = nullptr) {
 RUA_FORCE_INLINE scheduler_i this_scheduler() {
 	return _this_scheduler();
 }
-
-struct this_scheduler_getter {
-	static RUA_FORCE_INLINE scheduler_i get() {
-		return this_scheduler();
-	}
-};
 
 class scheduler_guard {
 public:

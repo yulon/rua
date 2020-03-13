@@ -4,7 +4,7 @@
 #include "bytes.hpp"
 #include "chrono.hpp"
 #include "limits.hpp"
-#include "sched/util.hpp"
+#include "sched/scheduler.hpp"
 #include "ucontext.hpp"
 
 #include <array>

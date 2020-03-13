@@ -1,7 +1,7 @@
 #ifndef _RUA_SCHED_WAIT_CALL_HPP
 #define _RUA_SCHED_WAIT_CALL_HPP
 
-#include "../util.hpp"
+#include "../scheduler.hpp"
 
 #include "../../thread/pa.hpp"
 
