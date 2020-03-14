@@ -244,9 +244,38 @@ public:
 
 	constexpr bytes_view(std::nullptr_t) : bytes_view() {}
 
-	constexpr bytes_view(generic_ptr ptr, size_t size) :
-		_p(ptr),
-		_n(ptr ? size : 0) {}
+	template <
+		typename T,
+		typename DecayT = decay_t<T>,
+		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
+	constexpr bytes_view(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	bytes_view(const void *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	template <
+		typename T,
+		typename = enable_if_t<
+			size_of<remove_cv_t<T>>::value &&
+			!std::is_convertible<T *, string_view>::value &&
+			!std::is_convertible<T *, wstring_view>::value>>
+	bytes_view(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
+
+	template <typename R, typename... Args>
+	bytes_view(R (*fn_ptr)(Args...), size_t size) :
+		_p(fn_ptr),
+		_n(fn_ptr ? size : 0) {}
+
+	template <typename T, typename R, typename... Args>
+	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
+		_p(mem_fn_ptr),
+		_n(mem_fn_ptr ? size : 0) {}
+
+	template <
+		typename T,
+		typename = enable_if_t<
+			!std::is_convertible<T &&, generic_ptr>::value &&
+			!is_span<T &&>::value>>
+	bytes_view(T &&ref, size_t size = sizeof(T)) : _p(&ref), _n(size) {}
 
 	bytes_view(std::initializer_list<const byte> il) :
 		_p(il.begin()),
@@ -264,23 +293,6 @@ public:
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_same<remove_cv_t<T>, void>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>>
-	bytes_view(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
-
-	template <
-		typename T,
-		typename RmRefT = remove_reference_t<T>,
-		typename = enable_if_t<
-			!std::is_pointer<RmRefT>::value && !is_span<T &&>::value &&
-			!std::is_member_pointer<RmRefT>::value>>
-	bytes_view(T &&ref, size_t size = sizeof(T)) : bytes_view(&ref, size) {}
-
-	template <
-		typename T,
 		typename SpanTraits = span_traits<T &&>,
 		typename = enable_if_t<
 			!std::is_base_of<bytes_view, decay_t<T>>::value &&
@@ -289,7 +301,7 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_view(T &&span) :
 		bytes_view(
-			rua::data(std::forward<T>(span)),
+			generic_ptr(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
@@ -442,9 +454,29 @@ public:
 
 	constexpr bytes_ref(std::nullptr_t) : bytes_ref() {}
 
-	constexpr bytes_ref(generic_ptr ptr, size_t size) :
-		_p(ptr),
-		_n(ptr ? size : 0) {}
+	template <
+		typename T,
+		typename DecayT = decay_t<T>,
+		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
+	constexpr bytes_ref(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	bytes_ref(void *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	template <
+		typename T,
+		typename = enable_if_t<
+			size_of<remove_cv_t<T>>::value && !std::is_const<T>::value &&
+			!std::is_convertible<T *, string_view>::value &&
+			!std::is_convertible<T *, wstring_view>::value>>
+	bytes_ref(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
+
+	template <
+		typename T,
+		typename = enable_if_t<
+			!std::is_const<remove_reference_t<T>>::value &&
+			!std::is_convertible<T &&, generic_ptr>::value &&
+			!is_span<T &&>::value>>
+	bytes_ref(T &&ref, size_t size = sizeof(T)) : _p(&ref), _n(size) {}
 
 	bytes_ref(std::initializer_list<byte> il) : _p(il.begin()), _n(il.size()) {}
 
@@ -460,44 +492,6 @@ public:
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_const<T>::value &&
-			!std::is_same<remove_cv_t<T>, void>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value &&
-			!std::is_function<T>::value>>
-	bytes_ref(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
-
-	template <typename T>
-	bytes_ref(const T *const_ptr, size_t size = sizeof(T)) = delete;
-
-	template <typename R, typename... Args>
-	bytes_ref(R (*fn_ptr)(Args...), size_t size) = delete;
-
-	template <
-		typename T,
-		typename =
-			enable_if_t<std::is_member_pointer<remove_reference_t<T>>::value>>
-	bytes_ref(T &&mem_ptr, size_t size) = delete;
-
-	template <
-		typename T,
-		typename RmRefT = remove_reference_t<T>,
-		typename = enable_if_t<
-			!std::is_const<RmRefT>::value && !std::is_pointer<RmRefT>::value &&
-			!is_span<T &&>::value && !std::is_member_pointer<RmRefT>::value>>
-	bytes_ref(T &&ref, size_t size = sizeof(T)) : bytes_ref(&ref, size) {}
-
-	template <
-		typename T,
-		typename RmRefT = remove_reference_t<T>,
-		typename = enable_if_t<
-			std::is_const<RmRefT>::value && !std::is_pointer<RmRefT>::value &&
-			!is_span<T &&>::value && !std::is_member_pointer<RmRefT>::value>>
-	bytes_ref(const T &const_ref, size_t size = 0) = delete;
-
-	template <
-		typename T,
 		typename SpanTraits = span_traits<T &&>,
 		typename = enable_if_t<
 			!std::is_base_of<bytes_ref, decay_t<T>>::value &&
@@ -507,16 +501,9 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_ref(T &&span) :
 		bytes_ref(
-			rua::data(std::forward<T>(span)),
+			generic_ptr(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
-
-	template <
-		typename T,
-		typename = enable_if_t<
-			!std::is_base_of<bytes_ref, decay_t<T>>::value &&
-			std::is_const<typename span_traits<T &&>::element_type>::value>>
-	bytes_ref(T &&const_span) = delete;
 
 	constexpr operator bool() const {
 		return _p;
