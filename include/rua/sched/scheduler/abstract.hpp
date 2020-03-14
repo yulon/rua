@@ -2,7 +2,7 @@
 #define _RUA_SCHED_SCHEDULER_ABSTRACT_HPP
 
 #include "../../chrono.hpp"
-#include "../../ref.hpp"
+#include "../../interface_ptr.hpp"
 
 #include <memory>
 
@@ -41,7 +41,7 @@ public:
 		virtual void signal() {}
 	};
 
-	using signaler_i = ref<signaler>;
+	using signaler_i = interface_ptr<signaler>;
 
 	virtual signaler_i get_signaler() {
 		static signaler wkr;
@@ -57,7 +57,7 @@ protected:
 	constexpr scheduler() = default;
 };
 
-using scheduler_i = ref<scheduler>;
+using scheduler_i = interface_ptr<scheduler>;
 
 } // namespace rua
 

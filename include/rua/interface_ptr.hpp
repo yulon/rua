@@ -1,5 +1,5 @@
-#ifndef _RUA_REF_HPP
-#define _RUA_REF_HPP
+#ifndef _RUA_INTERFACE_PTR_HPP
+#define _RUA_INTERFACE_PTR_HPP
 
 #include "macros.hpp"
 #include "type_traits/macros.hpp"
@@ -13,15 +13,15 @@
 namespace rua {
 
 template <typename T>
-class ref {
+class interface_ptr {
 public:
-	constexpr ref(std::nullptr_t = nullptr) :
+	constexpr interface_ptr(std::nullptr_t = nullptr) :
 		_raw_ptr(nullptr),
 		_shared_ptr(),
 		_type(type_id<std::nullptr_t>()) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	ref(SameBase *raw_ptr) {
+	interface_ptr(SameBase *raw_ptr) {
 		if (!raw_ptr) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -32,17 +32,17 @@ public:
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	ref(SameBase &lv) : ref(&lv) {}
+	interface_ptr(SameBase &lv) : interface_ptr(&lv) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	ref(SameBase &&rv) {
+	interface_ptr(SameBase &&rv) {
 		_type = type_id<SameBase>();
 		new (&_shared_ptr) std::shared_ptr<T>(std::static_pointer_cast<T>(
 			std::make_shared<SameBase>(std::move(rv))));
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	ref(const std::shared_ptr<T> &base_shared_ptr_lv) {
+	interface_ptr(const std::shared_ptr<T> &base_shared_ptr_lv) {
 		if (!base_shared_ptr_lv) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -53,7 +53,7 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	ref(std::shared_ptr<T> &&base_shared_ptr_rv) {
+	interface_ptr(std::shared_ptr<T> &&base_shared_ptr_rv) {
 		if (!base_shared_ptr_rv) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -65,7 +65,7 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	ref(const std::shared_ptr<Derived> &derived_shared_ptr_lv) {
+	interface_ptr(const std::shared_ptr<Derived> &derived_shared_ptr_lv) {
 		if (!derived_shared_ptr_lv) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -78,7 +78,7 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	ref(std::shared_ptr<Derived> &&derived_shared_ptr_rv) {
+	interface_ptr(std::shared_ptr<Derived> &&derived_shared_ptr_rv) {
 		if (!derived_shared_ptr_rv) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -91,11 +91,11 @@ public:
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	ref(const std::unique_ptr<SameBase> &unique_ptr_lv) :
-		ref(unique_ptr_lv.get()) {}
+	interface_ptr(const std::unique_ptr<SameBase> &unique_ptr_lv) :
+		interface_ptr(unique_ptr_lv.get()) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	ref(std::unique_ptr<SameBase> &&unique_ptr_rv) {
+	interface_ptr(std::unique_ptr<SameBase> &&unique_ptr_rv) {
 		if (!unique_ptr_rv) {
 			_raw_ptr = nullptr;
 			_type = type_id<std::nullptr_t>();
@@ -108,7 +108,7 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	ref(const ref<Derived> &derived_blended_ptr_lv) {
+	interface_ptr(const interface_ptr<Derived> &derived_blended_ptr_lv) {
 		_type = derived_blended_ptr_lv.type();
 
 		if (!derived_blended_ptr_lv) {
@@ -128,7 +128,7 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	ref(ref<Derived> &&derived_blended_ptr_rv) {
+	interface_ptr(interface_ptr<Derived> &&derived_blended_ptr_rv) {
 		_type = derived_blended_ptr_rv.type();
 
 		if (!derived_blended_ptr_rv) {
@@ -147,7 +147,7 @@ public:
 		_raw_ptr = static_cast<T *>(derived_blended_ptr_rv.release());
 	}
 
-	ref(const ref<T> &src) {
+	interface_ptr(const interface_ptr<T> &src) {
 		_raw_ptr = src._raw_ptr;
 		_type = src._type;
 
@@ -158,13 +158,13 @@ public:
 		_shared_ptr = src._shared_ptr;
 	}
 
-	ref<T> &operator=(const ref<T> &src) {
+	interface_ptr<T> &operator=(const interface_ptr<T> &src) {
 		reset();
-		new (this) ref<T>(src);
+		new (this) interface_ptr<T>(src);
 		return *this;
 	}
 
-	ref(ref<T> &&src) {
+	interface_ptr(interface_ptr<T> &&src) {
 		_type = src._type;
 
 		_raw_ptr = src.release();
@@ -176,13 +176,13 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	ref<T> &operator=(ref<T> &&src) {
+	interface_ptr<T> &operator=(interface_ptr<T> &&src) {
 		reset();
-		new (this) ref<T>(std::move(src));
+		new (this) interface_ptr<T>(std::move(src));
 		return *this;
 	}
 
-	~ref() {
+	~interface_ptr() {
 		reset();
 	}
 
@@ -190,11 +190,11 @@ public:
 		return _raw_ptr;
 	}
 
-	bool operator==(const ref<T> &src) const {
+	bool operator==(const interface_ptr<T> &src) const {
 		return _raw_ptr == src._raw_ptr;
 	}
 
-	bool operator!=(const ref<T> &src) const {
+	bool operator!=(const interface_ptr<T> &src) const {
 		return _raw_ptr != src._raw_ptr;
 	}
 

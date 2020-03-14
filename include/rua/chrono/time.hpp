@@ -3,7 +3,7 @@
 
 #include "duration.hpp"
 
-#include "../ref.hpp"
+#include "../interface_ptr.hpp"
 
 #include <cassert>
 #include <cstdint>

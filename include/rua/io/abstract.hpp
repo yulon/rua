@@ -3,7 +3,7 @@
 
 #include "../bytes.hpp"
 #include "../limits.hpp"
-#include "../ref.hpp"
+#include "../interface_ptr.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -47,7 +47,7 @@ public:
 	}
 };
 
-using reader_i = ref<reader>;
+using reader_i = interface_ptr<reader>;
 
 class writer {
 public:
@@ -86,11 +86,11 @@ public:
 	}
 };
 
-using writer_i = ref<writer>;
+using writer_i = interface_ptr<writer>;
 
 class read_writer : public reader, public writer {};
 
-using read_writer_i = ref<read_writer>;
+using read_writer_i = interface_ptr<read_writer>;
 
 class closer {
 public:
@@ -99,19 +99,19 @@ public:
 	virtual void close() = 0;
 };
 
-using closer_i = ref<closer>;
+using closer_i = interface_ptr<closer>;
 
 class read_closer : public reader, public closer {};
 
-using read_closer_i = ref<read_closer>;
+using read_closer_i = interface_ptr<read_closer>;
 
 class write_closer : public writer, public closer {};
 
-using write_closer_i = ref<write_closer>;
+using write_closer_i = interface_ptr<write_closer>;
 
 class read_write_closer : public read_writer, public closer {};
 
-using read_write_closer_i = ref<read_write_closer>;
+using read_write_closer_i = interface_ptr<read_write_closer>;
 
 class seeker {
 public:
@@ -120,19 +120,19 @@ public:
 	virtual size_t seek(size_t offset, int whence) = 0;
 };
 
-using seeker_i = ref<seeker>;
+using seeker_i = interface_ptr<seeker>;
 
 class read_seeker : public reader, public seeker {};
 
-using read_seeker_i = ref<read_seeker>;
+using read_seeker_i = interface_ptr<read_seeker>;
 
 class write_seeker : public writer, public seeker {};
 
-using write_seeker_i = ref<write_seeker>;
+using write_seeker_i = interface_ptr<write_seeker>;
 
 class read_write_seeker : public reader, public writer, public seeker {};
 
-using read_write_seeker_i = ref<read_write_seeker>;
+using read_write_seeker_i = interface_ptr<read_write_seeker>;
 
 class reader_at {
 public:
@@ -141,7 +141,7 @@ public:
 	virtual ptrdiff_t read_at(ptrdiff_t pos, bytes_ref) = 0;
 };
 
-using reader_at_i = ref<reader_at>;
+using reader_at_i = interface_ptr<reader_at>;
 
 class writer_at {
 public:
@@ -150,15 +150,15 @@ public:
 	virtual ptrdiff_t write_at(ptrdiff_t pos, bytes_view) = 0;
 };
 
-using writer_at_i = ref<writer_at>;
+using writer_at_i = interface_ptr<writer_at>;
 
 class read_writer_at : public reader_at, public writer_at {};
 
-using read_writer_at_i = ref<read_writer_at>;
+using read_writer_at_i = interface_ptr<read_writer_at>;
 
 class read_writer_at_closer : public read_writer_at, public closer {};
 
-using read_writer_at_closer_i = ref<read_writer_at_closer>;
+using read_writer_at_closer_i = interface_ptr<read_writer_at_closer>;
 
 } // namespace rua
 

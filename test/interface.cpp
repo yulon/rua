@@ -1,17 +1,17 @@
-#include <rua/ref.hpp>
+#include <rua/interface_ptr.hpp>
 
 #include <doctest/doctest.h>
 
 #include <memory>
 
-TEST_CASE("use ref for interface") {
+TEST_CASE("interface") {
 	struct animal {
 		virtual ~animal() = default;
 
 		virtual size_t age() const = 0;
 	};
 
-	using animal_i = rua::ref<animal>;
+	using animal_i = rua::interface_ptr<animal>;
 
 	struct dog : animal {
 		virtual ~dog() = default;
@@ -40,8 +40,8 @@ TEST_CASE("use ref for interface") {
 	animal_i aml5(dog{});						  // Impl &&
 	animal_i aml6(std::unique_ptr<dog>(new dog)); // std::unique_ptr<Impl> &&
 
-	// save pointer type same as source ref
-	animal_i aml7(aml6); // ref
+	// save pointer type same as source interface_ptr
+	animal_i aml7(aml6); // interface_ptr
 
 	// null
 	animal_i aml8;
