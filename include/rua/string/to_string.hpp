@@ -16,9 +16,7 @@
 namespace rua {
 
 template <typename T>
-RUA_FORCE_INLINE enable_if_t<
-	!std::is_same<decay_t<T>, bool>::value,
-	decltype(std::to_string(std::declval<decay_t<T>>()))>
+RUA_FORCE_INLINE decltype(std::to_string(std::declval<decay_t<T>>()))
 to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
@@ -59,17 +57,13 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 	return to_hex(static_cast<uintptr_t>(val), width);
 }
 
-template <typename Ptr>
-RUA_FORCE_INLINE enable_if_t<
-	std::is_convertible<Ptr, generic_ptr>::value &&
-		!std::is_convertible<Ptr, string_view>::value &&
-		!std::is_integral<decay_t<Ptr>>::value,
-	std::string>
-to_string(Ptr &&ptr) {
-	return ptr ? to_hex(generic_ptr(ptr).uintptr()) : to_string(nullptr);
+RUA_FORCE_INLINE std::string to_string(generic_ptr ptr) {
+	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
 }
 
-RUA_FORCE_INLINE const char *to_string(bool val) {
+template <typename Bool>
+RUA_FORCE_INLINE enable_if_t<std::is_same<Bool, bool>::value, const char *>
+to_string(Bool val) {
 	static const auto true_c_str = "true";
 	static const auto false_c_str = "false";
 	return val ? true_c_str : false_c_str;
