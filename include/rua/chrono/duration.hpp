@@ -222,7 +222,13 @@ public:
 	constexpr duration_unit(int64_t count = 0) :
 		duration(_in(count, _in_attr{})) {}
 
-	constexpr duration_unit(duration other_dur) : duration(other_dur) {}
+	template <
+		typename T,
+		typename DecayT = decay_t<T>,
+		typename = enable_if_t<
+			std::is_base_of<duration, DecayT>::value &&
+			!std::is_base_of<duration_unit, DecayT>::value>>
+	constexpr duration_unit(T &&other_dur) : duration(other_dur) {}
 
 	constexpr int64_t count() const {
 		return _out(_s, _n, _out_attr{});
@@ -314,12 +320,12 @@ private:
 	}
 };
 
-#define RUA_DURATION_CONCEPT(Duration)                                         \
+#define RUA_DURATION_UNIT_CONCEPT(Duration)                                    \
 	typename Duration,                                                         \
 		typename = enable_if_t < std::is_base_of<duration, Duration>::value && \
 				   !std::is_same<duration, Duration>::value >
 
-#define RUA_DURATION_EXPR_CONCEPT(First, Second, FirstDuration)                \
+#define RUA_DURATION_UNIT_EXPR_CONCEPT(First, Second, FirstDuration)           \
 	typename First, typename Second,                                           \
                                                                                \
 		typename =                                                             \
@@ -337,7 +343,7 @@ private:
 			First,                                                             \
 			Second>
 
-#define RUA_DURATION_PAIR_CONCEPT(FirstDuration, SecondDuration)               \
+#define RUA_DURATION_UNIT_PAIR_CONCEPT(FirstDuration, SecondDuration)          \
 	typename FirstDuration, typename SecondDuration,                           \
                                                                                \
 		typename = enable_if_t <                                               \
@@ -348,82 +354,82 @@ private:
 					!std::is_same<duration, SecondDuration>::value &&          \
 					std::is_base_of<duration, FirstDuration>::value) >
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator==(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) == static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator!=(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) != static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) > static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) < static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator>=(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) >= static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr bool operator<=(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) <= static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr Dur operator+(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) + static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_EXPR_CONCEPT(A, B, Dur)>
+template <RUA_DURATION_UNIT_EXPR_CONCEPT(A, B, Dur)>
 RUA_FORCE_INLINE constexpr Dur operator-(A a, B b) {
 	return static_cast<duration &&>(Dur(a)) - static_cast<duration &&>(Dur(b));
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator*(Dur a, int64_t b) {
 	return static_cast<duration &>(a) * b;
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator*(int64_t a, Dur b) {
 	return a * static_cast<duration &>(b);
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator/(Dur a, int64_t b) {
 	return static_cast<duration &>(a) / b;
 }
 
-template <RUA_DURATION_PAIR_CONCEPT(DurA, DurB)>
+template <RUA_DURATION_UNIT_PAIR_CONCEPT(DurA, DurB)>
 RUA_FORCE_INLINE constexpr DurA operator%(DurA a, DurB b) {
 	return static_cast<duration &>(a) % static_cast<duration &>(b);
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur operator%(Dur a, int64_t b) {
 	return static_cast<duration &>(a) % b;
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr Dur duration_max() {
 	return Dur(duration_max());
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr duration duration_zero() {
 	return Dur(duration_zero());
 }
 
-template <RUA_DURATION_CONCEPT(Dur)>
+template <RUA_DURATION_UNIT_CONCEPT(Dur)>
 RUA_FORCE_INLINE constexpr duration duration_min() {
 	return Dur(duration_min());
 }
