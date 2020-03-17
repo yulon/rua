@@ -87,7 +87,7 @@ private:
 		bytes stk_bak;
 
 		bool has_yielded;
-		scheduler::signaler_i sig;
+		waker_i wkr;
 	};
 
 	using _ctx_ptr_t = std::shared_ptr<_ctx_t>;
@@ -100,9 +100,7 @@ private:
 class fiber_driver {
 public:
 	fiber_driver(size_t stack_size = 0x100000) :
-		_stk_sz(stack_size),
-		_stk_ix(0),
-		_sch(*this) {}
+		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
 
 	fiber attach(std::function<void()> func, size_t dur = 0) {
 		fiber f(fiber::not_auto_attach, std::move(func), dur);
@@ -154,7 +152,7 @@ public:
 
 		scheduler_guard sg(_sch);
 		auto orig_sch = sg.previous();
-		_orig_sig = orig_sch->get_signaler();
+		_orig_wkr = orig_sch->get_waker();
 
 		auto now = tick();
 
@@ -180,7 +178,7 @@ public:
 						wake_ti = _slps.begin()->first;
 					}
 					if (wake_ti > now) {
-						orig_sch->wait(wake_ti - now);
+						orig_sch->sleep(wake_ti - now, true);
 					} else {
 						orig_sch->yield();
 					}
@@ -206,7 +204,7 @@ public:
 
 				auto wake_ti = _cws.begin()->first;
 				if (wake_ti > now) {
-					orig_sch->wait(wake_ti - now);
+					orig_sch->sleep(wake_ti - now, true);
 				} else {
 					orig_sch->yield();
 				}
@@ -218,6 +216,8 @@ public:
 			}
 		}
 	}
+
+	using waker = rua::secondary_waker;
 
 	class scheduler : public rua::scheduler {
 	public:
@@ -253,34 +253,33 @@ public:
 			_fd->_clear_prev_fc();
 		}
 
-		virtual void sleep(ms timeout) {
-			_sleep(_fd->_slps, timeout);
-		}
-
-		using signaler = rua::secondary_signaler;
-
-		virtual signaler_i get_signaler() {
-			assert(_fd->_cur_fc);
-
-			if (!_fd->_cur_fc->sig.type_is<signaler>() ||
-				_fd->_cur_fc->sig.as<signaler>()->primary() != _fd->_orig_sig) {
-				_fd->_cur_fc->sig = std::make_shared<signaler>(_fd->_orig_sig);
+		virtual bool sleep(ms timeout, bool wakeable = false) {
+			if (!wakeable) {
+				_sleep(_fd->_slps, timeout);
+				return false;
 			}
-			return _fd->_cur_fc->sig;
-		}
 
-		virtual bool wait(ms timeout = duration_max()) {
-			assert(_fd->_cur_fc->sig.type_is<signaler>());
-			assert(_fd->_cur_fc->sig.as<signaler>()->primary());
+			assert(_fd->_cur_fc->wkr.type_is<waker>());
+			assert(_fd->_cur_fc->wkr.as<waker>()->primary());
 
-			auto sig = _fd->_cur_fc->sig.as<signaler>();
-			auto state = sig->state();
+			auto wkr = _fd->_cur_fc->wkr.as<waker>();
+			auto state = wkr->state();
 			if (!state) {
 				_sleep(_fd->_cws, timeout);
-				state = sig->state();
+				state = wkr->state();
 			}
-			sig->reset();
+			wkr->reset();
 			return state;
+		}
+
+		virtual waker_i get_waker() {
+			assert(_fd->_cur_fc);
+
+			if (!_fd->_cur_fc->wkr.type_is<waker>() ||
+				_fd->_cur_fc->wkr.as<waker>()->primary() != _fd->_orig_wkr) {
+				_fd->_cur_fc->wkr = std::make_shared<waker>(_fd->_orig_wkr);
+			}
+			return _fd->_cur_fc->wkr;
 		}
 
 		fiber_driver *get_fiber_driver() {
@@ -313,7 +312,7 @@ private:
 
 	void _check_cws(time now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->second->sig.as<secondary_signaler>()->state() ||
+			if (it->second->wkr.as<secondary_waker>()->state() ||
 				now >= it->first) {
 				_fcs.emplace(std::move(it->second));
 				it = _cws.erase(it);
@@ -452,7 +451,7 @@ private:
 	friend scheduler;
 	scheduler _sch;
 
-	rua::scheduler::signaler_i _orig_sig;
+	waker_i _orig_wkr;
 };
 
 inline fiber::fiber(std::function<void()> func, size_t dur) :

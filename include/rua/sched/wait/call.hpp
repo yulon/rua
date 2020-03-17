@@ -24,12 +24,12 @@ wait(Callee &&callee, Args &&... args) {
 		std::forward<Callee>(callee)(std::forward<Args>(args)...);
 		return;
 	}
-	auto sig = sch->get_signaler();
+	auto wkr = sch->get_waker();
 	pa([=]() mutable {
 		callee(args...);
-		sig->signal();
+		wkr->wake();
 	});
-	sch->wait();
+	sch->sleep(duration_max(), true);
 }
 
 template <
@@ -46,13 +46,13 @@ wait(Callee &&callee, Args &&... args) {
 	if (sch.type_is<thread_scheduler>()) {
 		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
 	}
-	auto sig = sch->get_signaler();
+	auto wkr = sch->get_waker();
 	auto r_ptr = new Ret;
 	pa([=]() mutable {
 		*r_ptr = callee(args...);
-		sig->signal();
+		wkr->wake();
 	});
-	sch->wait();
+	sch->sleep(duration_max(), true);
 	auto r = std::move(*r_ptr);
 	delete r_ptr;
 	return r;

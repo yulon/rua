@@ -15,7 +15,7 @@ namespace rua {
 
 class mutex {
 public:
-	constexpr mutex() : _locked(false), _waiters(), _sig_c(0) {}
+	constexpr mutex() : _locked(false), _waiters(), _wkr_c(0) {}
 
 	mutex(const mutex &) = delete;
 
@@ -30,8 +30,8 @@ public:
 		}
 
 		auto sch = this_scheduler();
-		auto sig = sch->get_signaler();
-		auto it = _waiters.emplace_front(sig);
+		auto wkr = sch->get_waker();
+		auto it = _waiters.emplace_front(wkr);
 
 		if (it.is_back() && !_locked.exchange(true)) {
 			_waiters.erase(it);
@@ -40,18 +40,18 @@ public:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->wait(timeout)) {
+				if (sch->sleep(timeout, true)) {
 					if (!_locked.exchange(true)) {
 						return true;
 					}
-					it = _waiters.emplace_front(sig);
+					it = _waiters.emplace_front(wkr);
 				}
 			}
 		}
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->wait(timeout);
+			auto r = sch->sleep(timeout, true);
 			if (!_locked.exchange(true)) {
 				return true;
 			}
@@ -62,7 +62,7 @@ public:
 			if (timeout <= 0) {
 				return false;
 			}
-			it = _waiters.emplace_front(sig);
+			it = _waiters.emplace_front(wkr);
 		}
 		return false;
 	}
@@ -83,13 +83,13 @@ public:
 		if (!waiter_opt) {
 			return;
 		}
-		waiter_opt.value()->signal();
+		waiter_opt.value()->wake();
 	}
 
 private:
 	std::atomic<bool> _locked;
-	lockfree_list<scheduler::signaler_i> _waiters;
-	std::atomic<size_t> _sig_c;
+	lockfree_list<waker_i> _waiters;
+	std::atomic<size_t> _wkr_c;
 };
 
 } // namespace rua

@@ -25,16 +25,16 @@ inline bool wait(HANDLE handle, ms timeout = duration_max()) {
 					   ? nmax<DWORD>()
 					   : static_cast<DWORD>(timeout.count())) != WAIT_TIMEOUT;
 	}
-	auto sig = sch->get_signaler();
+	auto wkr = sch->get_waker();
 	auto r_ptr = new bool;
 	_wait_sys_obj_async::wait(
 		handle,
 		[=](bool r) {
 			*r_ptr = r;
-			sig->signal();
+			wkr->wake();
 		},
 		timeout);
-	sch->wait();
+	sch->sleep(duration_max(), true);
 	auto r = *r_ptr;
 	delete r_ptr;
 	return r;

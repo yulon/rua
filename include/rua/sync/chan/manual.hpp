@@ -23,7 +23,7 @@ public:
 		if (!waiter_opt) {
 			return false;
 		}
-		waiter_opt.value()->signal();
+		waiter_opt.value()->wake();
 		return true;
 	}
 
@@ -51,7 +51,7 @@ public:
 
 protected:
 	lockfree_list<T> _buf;
-	lockfree_list<scheduler::signaler_i> _waiters;
+	lockfree_list<waker_i> _waiters;
 
 	rua::opt<T> _wait_and_pop(scheduler_i sch, ms timeout) {
 		assert(sch);
@@ -59,16 +59,16 @@ protected:
 
 		rua::opt<T> val_opt;
 
-		auto sig = sch->get_signaler();
-		auto it = _waiters.emplace_front(sig);
+		auto wkr = sch->get_waker();
+		auto it = _waiters.emplace_front(wkr);
 
 		if (it.is_back()) {
 			val_opt = _buf.pop_back();
 			if (val_opt) {
 				if (!_waiters.erase(it) && !_buf.is_empty()) {
 					auto waiter_opt = _waiters.pop_back();
-					if (waiter_opt && waiter_opt.value() != sig) {
-						waiter_opt.value()->signal();
+					if (waiter_opt && waiter_opt.value() != wkr) {
+						waiter_opt.value()->wake();
 					}
 				}
 				return val_opt;
@@ -77,19 +77,19 @@ protected:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->wait(timeout)) {
+				if (sch->sleep(timeout, true)) {
 					val_opt = _buf.pop_back();
 					if (val_opt) {
 						return val_opt;
 					}
-					it = _waiters.emplace_front(sig);
+					it = _waiters.emplace_front(wkr);
 				}
 			}
 		}
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->wait(timeout);
+			auto r = sch->sleep(timeout, true);
 			val_opt = _buf.pop_back();
 			if (val_opt || !r) {
 				return val_opt;
@@ -98,7 +98,7 @@ protected:
 			if (timeout <= 0) {
 				return val_opt;
 			}
-			it = _waiters.emplace_front(sig);
+			it = _waiters.emplace_front(wkr);
 		}
 		return val_opt;
 	}

@@ -7,8 +7,6 @@
 #include "../../macros.hpp"
 #include "../../thread/var.hpp"
 
-#include <atomic>
-
 namespace rua {
 
 inline scheduler_i &_this_scheduler() {
@@ -50,40 +48,6 @@ RUA_FORCE_INLINE void yield() {
 RUA_FORCE_INLINE void sleep(ms timeout) {
 	this_scheduler()->sleep(timeout);
 }
-
-class secondary_signaler : public scheduler::signaler {
-public:
-	constexpr secondary_signaler() : _pri(nullptr), _state(false) {}
-
-	explicit secondary_signaler(scheduler::signaler_i primary_signaler) :
-		_pri(primary_signaler),
-		_state(false) {}
-
-	virtual ~secondary_signaler() = default;
-
-	bool state() const {
-		return _state.load();
-	}
-
-	virtual void signal() {
-		_state.store(true);
-		if (_pri) {
-			_pri->signal();
-		}
-	}
-
-	void reset() {
-		_state.store(false);
-	}
-
-	scheduler::signaler_i primary() const {
-		return _pri;
-	}
-
-private:
-	scheduler::signaler_i _pri;
-	std::atomic<bool> _state;
-};
 
 } // namespace rua
 

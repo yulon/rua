@@ -4,9 +4,58 @@
 #include "../../chrono.hpp"
 #include "../../interface_ptr.hpp"
 
+#include <atomic>
 #include <memory>
 
 namespace rua {
+
+class waker {
+public:
+	waker() = default;
+	virtual ~waker() = default;
+
+	waker(const waker &) = delete;
+	waker(waker &&) = delete;
+	waker &operator=(const waker &) = delete;
+	waker &operator=(waker &&) = delete;
+
+	virtual void wake() {}
+};
+
+using waker_i = interface_ptr<waker>;
+
+class secondary_waker : public waker {
+public:
+	constexpr secondary_waker() : _pri(nullptr), _state(false) {}
+
+	explicit secondary_waker(waker_i primary_waker) :
+		_pri(primary_waker), _state(false) {}
+
+	virtual ~secondary_waker() = default;
+
+	bool state() const {
+		return _state.load();
+	}
+
+	virtual void wake() {
+		_state.store(true);
+		if (_pri) {
+			_pri->wake();
+		}
+	}
+
+	void reset() {
+		_state.store(false);
+	}
+
+	waker_i primary() const {
+		return _pri;
+	}
+
+private:
+	waker_i _pri;
+	std::atomic<bool> _state;
+};
 
 class scheduler {
 public:
@@ -21,36 +70,21 @@ public:
 		sleep(0);
 	}
 
-	virtual void sleep(ms timeout) {
+	virtual bool sleep(ms timeout, bool wakeable = false) {
+		if (wakeable) {
+			yield();
+			return true;
+		}
 		auto t = tick();
 		do {
 			yield();
 		} while (tick() - t < timeout);
+		return false;
 	}
 
-	class signaler {
-	public:
-		signaler() = default;
-		virtual ~signaler() = default;
-
-		signaler(const signaler &) = delete;
-		signaler(signaler &&) = delete;
-		signaler &operator=(const signaler &) = delete;
-		signaler &operator=(signaler &&) = delete;
-
-		virtual void signal() {}
-	};
-
-	using signaler_i = interface_ptr<signaler>;
-
-	virtual signaler_i get_signaler() {
-		static signaler wkr;
+	virtual waker_i get_waker() {
+		static waker wkr;
 		return wkr;
-	}
-
-	virtual bool wait(ms = duration_max()) {
-		yield();
-		return true;
 	}
 
 protected:
