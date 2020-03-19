@@ -4,8 +4,8 @@
 #include "encoding/base.hpp"
 #include "string_view.hpp"
 
-#include "../macros.hpp"
 #include "../generic_ptr.hpp"
+#include "../macros.hpp"
 #include "../type_traits/std_patch.hpp"
 
 #include <cstdint>
@@ -16,7 +16,9 @@
 namespace rua {
 
 template <typename T>
-RUA_FORCE_INLINE decltype(std::to_string(std::declval<decay_t<T>>()))
+RUA_FORCE_INLINE enable_if_t<
+	!std::is_same<decay_t<T>, bool>::value,
+	decltype(std::to_string(std::declval<decay_t<T>>()))>
 to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
