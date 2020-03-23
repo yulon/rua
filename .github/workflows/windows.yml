@@ -16,4 +16,6 @@ jobs:
         cd ./out
         cmake .. -DRUA_TEST=all
         cmake --build .
-        .\Debug\rua_test.exe
+        .\Debug\rua_test_11.exe
+        .\Debug\rua_test_14.exe
+        .\Debug\rua_test_17.exe
