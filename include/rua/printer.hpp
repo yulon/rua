@@ -4,12 +4,11 @@
 #include "io.hpp"
 #include "string.hpp"
 #include "sync.hpp"
+#include "types/util.hpp"
 
 #include <array>
 #include <atomic>
-#include <initializer_list>
 #include <string>
-#include <utility>
 
 namespace rua {
 
@@ -20,8 +19,7 @@ public:
 	printer(std::nullptr_t) : printer() {}
 
 	explicit printer(writer_i w, const char *eol = eol::lf) :
-		_w(std::move(w)),
-		_eol(eol) {
+		_w(std::move(w)), _eol(eol) {
 		_is_valid = _w;
 	}
 

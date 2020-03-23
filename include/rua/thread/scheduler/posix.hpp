@@ -1,9 +1,9 @@
 #ifndef _RUA_THREAD_SCHEDULER_POSIX_HPP
 #define _RUA_THREAD_SCHEDULER_POSIX_HPP
 
-#include "../../limits.hpp"
 #include "../../macros.hpp"
 #include "../../sched/scheduler/abstract.hpp"
+#include "../../types/util.hpp"
 
 #include <sched.h>
 #include <semaphore.h>

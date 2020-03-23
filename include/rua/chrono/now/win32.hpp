@@ -3,12 +3,11 @@
 
 #include "../time.hpp"
 
-#include "../../macros.hpp"
 #include "../../dylib/win32.hpp"
+#include "../../macros.hpp"
+#include "../../types/util.hpp"
 
 #include <windows.h>
-
-#include <cstdint>
 
 namespace rua { namespace win32 {
 

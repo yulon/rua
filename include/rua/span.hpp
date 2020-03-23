@@ -1,10 +1,9 @@
-#ifndef _RUA_TYPE_TRAITS_SPAN_HPP
-#define _RUA_TYPE_TRAITS_SPAN_HPP
+#ifndef _RUA_SPAN_HPP
+#define _RUA_SPAN_HPP
 
-#include "std_patch.hpp"
-
-#include "../byte.hpp"
-#include "../generic_ptr.hpp"
+#include "generic_ptr.hpp"
+#include "types/traits.hpp"
+#include "types/util.hpp"
 
 #include <string>
 

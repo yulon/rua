@@ -4,10 +4,9 @@
 #include "../time.hpp"
 
 #include "../../dylib/win32.hpp"
+#include "../../types/util.hpp"
 
 #include <windows.h>
-
-#include <cstdint>
 
 namespace rua { namespace win32 {
 

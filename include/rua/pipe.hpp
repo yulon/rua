@@ -2,8 +2,8 @@
 #define _RUA_PIPE_HPP
 
 #include "io/sys_stream.hpp"
-#include "limits.hpp"
 #include "string.hpp"
+#include "types/util.hpp"
 
 #ifdef _WIN32
 #include <windows.h>

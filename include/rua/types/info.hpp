@@ -1,12 +1,9 @@
-#ifndef _RUA_TYPE_TRAITS_TYPE_INFO_HPP
-#define _RUA_TYPE_TRAITS_TYPE_INFO_HPP
+#ifndef _RUA_TYPES_INFO_HPP
+#define _RUA_TYPES_INFO_HPP
 
-#include "measures.hpp"
-#include "std_patch.hpp"
+#include "traits.hpp"
+#include "util.hpp"
 
-#include "../macros.hpp"
-
-#include <cstdint>
 #include <string>
 
 #ifdef RUA_USING_RTTI

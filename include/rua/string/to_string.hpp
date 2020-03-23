@@ -6,9 +6,9 @@
 
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
-#include "../type_traits/std_patch.hpp"
+#include "../types/traits.hpp"
+#include "../types/util.hpp"
 
-#include <cstdint>
 #include <iomanip>
 #include <sstream>
 #include <string>

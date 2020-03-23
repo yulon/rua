@@ -2,13 +2,12 @@
 #define _RUA_CHRONO_DURATION_HPP
 
 #include "../bytes.hpp"
-#include "../limits.hpp"
 #include "../macros.hpp"
 #include "../string/str_len.hpp"
 #include "../string/to_string.hpp"
-#include "../type_traits/std_patch.hpp"
+#include "../types/traits.hpp"
+#include "../types/util.hpp"
 
-#include <cstdint>
 #include <cstring>
 
 namespace rua {
@@ -16,8 +15,7 @@ namespace rua {
 class duration {
 public:
 	constexpr explicit duration(int64_t secs = 0, int32_t nanos = 0) :
-		_s(secs),
-		_n(nanos) {}
+		_s(secs), _n(nanos) {}
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
 

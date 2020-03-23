@@ -2,8 +2,8 @@
 #define _RUA_ANY_WORD_HPP
 
 #include "bit.hpp"
-#include "type_traits/measures.hpp"
-#include "type_traits/std_patch.hpp"
+#include "types/traits.hpp"
+#include "types/util.hpp"
 
 #include <cassert>
 #include <cstddef>

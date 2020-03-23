@@ -3,11 +3,11 @@
 
 #include "string_view.hpp"
 
-#include "../macros.hpp"
 #include "../bytes.hpp"
 #include "../io/util.hpp"
+#include "../macros.hpp"
+#include "../types/util.hpp"
 
-#include <cstdint>
 #include <string>
 
 namespace rua {

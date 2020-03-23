@@ -1,11 +1,10 @@
 #ifndef _RUA_BIT_HPP
 #define _RUA_BIT_HPP
 
-#include "byte.hpp"
 #include "generic_ptr.hpp"
 #include "macros.hpp"
-#include "type_traits/measures.hpp"
-#include "type_traits/std_patch.hpp"
+#include "types/traits.hpp"
+#include "types/util.hpp"
 
 #include <cstddef>
 #include <cstdint>

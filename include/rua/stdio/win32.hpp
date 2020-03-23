@@ -4,12 +4,12 @@
 #include "../io/sys_stream/win32.hpp"
 #include "../macros.hpp"
 #include "../string/encoding/io/win32.hpp"
+#include "../types/util.hpp"
 
 #include "windows.h"
 
 #include <atomic>
 #include <cassert>
-#include <utility>
 
 namespace rua { namespace win32 {
 

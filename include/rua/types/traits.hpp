@@ -1,14 +1,29 @@
-#ifndef _RUA_TYPE_TRAITS_STD_PATCH_HPP
-#define _RUA_TYPE_TRAITS_STD_PATCH_HPP
+#ifndef _RUA_TYPES_TRAITS_HPP
+#define _RUA_TYPES_TRAITS_HPP
 
-#include "../macros.hpp"
+#include "util.hpp"
 
-#include <cstddef>
 #include <type_traits>
 
 namespace rua {
 
-// Improvement
+// Non-standard
+
+template <bool Cond, typename T, typename... Args>
+struct rebind_if;
+
+template <typename T, typename... Args>
+struct rebind_if<true, T, Args...> {
+	using type = typename T::template rebind<Args...>::type;
+};
+
+template <typename T, typename... Args>
+struct rebind_if<false, T, Args...> {
+	using type = T;
+};
+
+template <bool Cond, typename T, typename... Args>
+using rebind_if_t = typename rebind_if<Cond, T, Args...>::type;
 
 template <bool Cond, typename... T>
 struct enable_if;
@@ -55,7 +70,15 @@ struct conditional<false, T, F, FArgs...> {
 template <bool Cond, typename T, typename... F>
 using conditional_t = typename conditional<Cond, T, F...>::type;
 
-// Alias
+template <typename FirstArg, typename... Args>
+struct argments_front {
+	using type = FirstArg;
+};
+
+template <typename... Args>
+using argments_front_t = typename argments_front<Args...>::type;
+
+// Standard alias
 
 #ifdef __cpp_lib_bool_constant
 
@@ -126,7 +149,7 @@ using common_type_t = typename std::common_type<T...>::type;
 template <typename T>
 using underlying_type_t = typename std::underlying_type<T>::type;
 
-// Compatibility
+// Standard Compatibility
 
 template <typename...>
 using void_t = void;
@@ -186,47 +209,6 @@ struct remove_cvref : std::remove_cv<remove_reference_t<T> > {};
 
 template <typename T>
 using remove_cvref_t = typename remove_cvref<T>::type;
-
-} // namespace rua
-
-#if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \
-	defined(__cpp_lib_any)
-
-#include <utility>
-
-namespace rua {
-
-using in_place_t = std::in_place_t;
-
-template <typename T>
-using in_place_type_t = std::in_place_type_t<T>;
-
-template <size_t I>
-using in_place_index_t = std::in_place_index_t<I>;
-
-} // namespace rua
-
-#else
-
-#include <cstddef>
-
-namespace rua {
-
-struct in_place_t {};
-
-template <typename T>
-struct in_place_type_t {};
-
-template <size_t I>
-struct in_place_index_t {};
-
-} // namespace rua
-
-#endif
-
-namespace rua {
-
-RUA_MULTIDEF_VAR constexpr in_place_t in_place{};
 
 } // namespace rua
 

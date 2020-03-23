@@ -4,11 +4,10 @@
 #include "../time.hpp"
 
 #include "../../macros.hpp"
+#include "../../types/util.hpp"
 
 #include <sys/time.h>
 #include <time.h>
-
-#include <cstdint>
 
 namespace rua { namespace posix {
 

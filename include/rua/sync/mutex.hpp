@@ -5,10 +5,10 @@
 
 #include "../chrono/tick.hpp"
 #include "../sched/scheduler.hpp"
+#include "../types/util.hpp"
 
 #include <atomic>
 #include <cassert>
-#include <cstdint>
 #include <queue>
 
 namespace rua {

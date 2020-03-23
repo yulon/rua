@@ -4,9 +4,9 @@
 #include "duration.hpp"
 
 #include "../interface_ptr.hpp"
+#include "../types/util.hpp"
 
 #include <cassert>
-#include <cstdint>
 #include <functional>
 
 namespace rua {
@@ -58,27 +58,20 @@ public:
 	constexpr time() : _ela(), _zon(0), _epo(nullptr) {}
 
 	constexpr explicit time(s elapsed, int8_t zone = 0) :
-		_ela(elapsed),
-		_zon(zone),
-		_epo(nullptr) {}
+		_ela(elapsed), _zon(zone), _epo(nullptr) {}
 
 	constexpr explicit time(s elapsed, const date_t &epoch) :
-		_ela(elapsed),
-		_zon(0),
-		_epo(&epoch) {}
+		_ela(elapsed), _zon(0), _epo(&epoch) {}
 
 	time(s elapsed, date_t &&epoch) = delete;
 
 	constexpr explicit time(s elapsed, int8_t zone, const date_t &epoch) :
-		_ela(elapsed),
-		_zon(zone),
-		_epo(&epoch) {}
+		_ela(elapsed), _zon(zone), _epo(&epoch) {}
 
 	time(s elapsed, int8_t zone, date_t &&epoch) = delete;
 
 	time(const date_t &d8, const date_t &epoch = unix_epoch) :
-		_zon(d8.zone),
-		_epo(&epoch) {
+		_zon(d8.zone), _epo(&epoch) {
 		if (d8 == epoch) {
 			return;
 		}

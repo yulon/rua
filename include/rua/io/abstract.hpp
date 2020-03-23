@@ -2,11 +2,8 @@
 #define _RUA_IO_ABSTRACT_HPP
 
 #include "../bytes.hpp"
-#include "../limits.hpp"
 #include "../interface_ptr.hpp"
-
-#include <cstddef>
-#include <cstdint>
+#include "../types/util.hpp"
 
 namespace rua {
 

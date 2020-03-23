@@ -12,8 +12,7 @@
 #include "bytes.hpp"
 #include "generic_ptr.hpp"
 #include "macros.hpp"
-
-#include <cstdint>
+#include "types/util.hpp"
 
 #ifndef RUA_USING_NATIVE_UCONTEXT
 
@@ -31,11 +30,11 @@ struct ucontext_t {
 		uintptr_t b;	 // 4, 8
 		uintptr_t c;	 // 8, 16
 		uintptr_t d;	 // 12, 24
-		uintptr_t si;	// 16, 32
-		uintptr_t di;	// 20, 40
-		uintptr_t sp;	// 24, 48
-		uintptr_t bp;	// 28, 56
-		uintptr_t ip;	// 32, 64
+		uintptr_t si;	 // 16, 32
+		uintptr_t di;	 // 20, 40
+		uintptr_t sp;	 // 24, 48
+		uintptr_t bp;	 // 28, 56
+		uintptr_t ip;	 // 32, 64
 		uintptr_t flags; // 36, 72
 #if RUA_X86 == 64
 		uintptr_t r8;  // 80
@@ -48,7 +47,7 @@ struct ucontext_t {
 		uintptr_t r15; // 136
 #endif
 		uint32_t mxcsr; // 40, 144
-		uint16_t fcw;   // 44, 148
+		uint16_t fcw;	// 44, 148
 		uint16_t _padding;
 	} regs;
 
@@ -66,8 +65,10 @@ struct ucontext_t {
 	}
 };
 #if RUA_X86 == 64
+RUA_SASSERT(sizeof(uintptr_t) == 8);
 RUA_SASSERT(sizeof(ucontext_t::regs_t) == 152);
 #elif RUA_X86 == 32
+RUA_SASSERT(sizeof(uintptr_t) == 4);
 RUA_SASSERT(sizeof(ucontext_t::regs_t) == 48);
 #endif
 

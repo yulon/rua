@@ -2,12 +2,9 @@
 #define _RUA_INTERFACE_PTR_HPP
 
 #include "macros.hpp"
-#include "type_traits/macros.hpp"
-#include "type_traits/std_patch.hpp"
-#include "type_traits/type_info.hpp"
+#include "types.hpp"
 
 #include <cassert>
-#include <cstdint>
 #include <memory>
 
 namespace rua {
@@ -16,9 +13,7 @@ template <typename T>
 class interface_ptr {
 public:
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
-		_raw_ptr(nullptr),
-		_shared_ptr(),
-		_type(type_id<std::nullptr_t>()) {}
+		_raw_ptr(nullptr), _shared_ptr(), _type(type_id<std::nullptr_t>()) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	interface_ptr(SameBase *raw_ptr) {

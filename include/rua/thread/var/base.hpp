@@ -7,6 +7,7 @@
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
 #include "../../sync/lockfree_list.hpp"
+#include "../../types/util.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -14,7 +15,6 @@
 #include <mutex>
 #include <type_traits>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 namespace rua {
@@ -43,8 +43,7 @@ private:
 class spare_thread_word_var {
 public:
 	spare_thread_word_var(void (*dtor)(any_word)) :
-		_ix(_ctx().ixer.alloc()),
-		_dtor(dtor) {}
+		_ix(_ctx().ixer.alloc()), _dtor(dtor) {}
 
 	~spare_thread_word_var() {
 		if (is_storable()) {

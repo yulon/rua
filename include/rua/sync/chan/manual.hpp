@@ -6,8 +6,7 @@
 #include "../../chrono/tick.hpp"
 #include "../../opt.hpp"
 #include "../../sched/scheduler/abstract.hpp"
-
-#include <utility>
+#include "../../types/util.hpp"
 
 namespace rua {
 

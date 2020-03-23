@@ -3,11 +3,11 @@
 
 #include "basic.hpp"
 
-#include "../sync/chan/manual.hpp"
 #include "../sched/scheduler/default.hpp"
+#include "../sync/chan/manual.hpp"
+#include "../types/util.hpp"
 
 #include <functional>
-#include <utility>
 
 namespace rua {
 

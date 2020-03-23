@@ -3,10 +3,10 @@
 
 #include "../macros.hpp"
 #include "../opt.hpp"
+#include "../types/util.hpp"
 
 #include <atomic>
 #include <forward_list>
-#include <utility>
 
 namespace rua {
 

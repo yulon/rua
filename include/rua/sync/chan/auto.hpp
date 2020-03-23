@@ -4,9 +4,8 @@
 #include "manual.hpp"
 
 #include "../../macros.hpp"
-#include "../../sched/scheduler.hpp"
-
-#include <utility>
+#include "../../sched/scheduler/this.hpp"
+#include "../../types/util.hpp"
 
 namespace rua {
 

@@ -16,7 +16,8 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 
 #include "str_len.hpp"
 
-#include <cstdint>
+#include "../types/util.hpp"
+
 #include <cstring>
 #include <string>
 
@@ -36,14 +37,12 @@ public:
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
 	constexpr basic_string_view(const CharT *s, size_type count) :
-		_s(s),
-		_c(count) {}
+		_s(s), _c(count) {}
 	constexpr basic_string_view(const CharT *s) : _s(s), _c(str_len(s)) {}
 #else
 	static constexpr auto _nullsz = static_cast<size_type>(-3);
 	constexpr basic_string_view(const CharT *s, size_type count = _nullsz) :
-		_s(s),
-		_c(count) {}
+		_s(s), _c(count) {}
 #endif
 
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :

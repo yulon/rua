@@ -2,7 +2,7 @@
 #define _RUA_OPT_HPP
 
 #include "macros.hpp"
-#include "type_traits/std_patch.hpp"
+#include "types/traits.hpp"
 
 #ifdef __cpp_lib_optional
 
@@ -21,11 +21,7 @@ RUA_MULTIDEF_VAR constexpr auto nullopt = std::nullopt;
 
 #else
 
-#include "type_traits/enable_copy_move.hpp"
-
-#include <cstdint>
-#include <initializer_list>
-#include <utility>
+#include "types/util.hpp"
 
 namespace rua {
 

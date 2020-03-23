@@ -2,20 +2,17 @@
 #define _RUA_BYTES_HPP
 
 #include "bit.hpp"
-#include "byte.hpp"
-#include "limits.hpp"
 #include "macros.hpp"
 #include "opt.hpp"
+#include "span.hpp"
 #include "string/str_len.hpp"
 #include "string/string_view.hpp"
-#include "type_traits.hpp"
+#include "types/traits.hpp"
+#include "types/util.hpp"
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
 #include <cstring>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace rua {
@@ -262,13 +259,11 @@ public:
 
 	template <typename R, typename... Args>
 	bytes_view(R (*fn_ptr)(Args...), size_t size) :
-		_p(fn_ptr),
-		_n(fn_ptr ? size : 0) {}
+		_p(fn_ptr), _n(fn_ptr ? size : 0) {}
 
 	template <typename T, typename R, typename... Args>
 	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
-		_p(mem_fn_ptr),
-		_n(mem_fn_ptr ? size : 0) {}
+		_p(mem_fn_ptr), _n(mem_fn_ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -278,8 +273,7 @@ public:
 	bytes_view(T &&ref, size_t size = sizeof(T)) : _p(&ref), _n(size) {}
 
 	bytes_view(std::initializer_list<const byte> il) :
-		_p(il.begin()),
-		_n(il.size()) {}
+		_p(il.begin()), _n(il.size()) {}
 
 	bytes_view(const char *c_str, size_t size) : _p(c_str), _n(size) {}
 
@@ -288,8 +282,7 @@ public:
 	bytes_view(const wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
-		_p(c_wstr),
-		_n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
+		_p(c_wstr), _n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
 		typename T,
@@ -364,14 +357,14 @@ inline bytes_view const_bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-inline bytes_view const_bytes_base<Span>::
-operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
+inline bytes_view const_bytes_base<Span>::operator()(
+	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
 	return slice(begin_offset, end_offset_from_begin);
 }
 
 template <typename Span>
-inline bytes_view const_bytes_base<Span>::
-operator()(ptrdiff_t begin_offset) const {
+inline bytes_view
+const_bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
 	return slice(begin_offset);
 }
 
@@ -487,8 +480,7 @@ public:
 	bytes_ref(wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
-		_p(c_wstr),
-		_n(str_len(c_wstr) * sizeof(wchar_t)) {}
+		_p(c_wstr), _n(str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
 		typename T,
@@ -583,8 +575,8 @@ inline bytes_ref bytes_base<Span>::slice(ptrdiff_t begin_offset) {
 }
 
 template <typename Span>
-inline bytes_view bytes_base<Span>::
-operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
+inline bytes_view bytes_base<Span>::operator()(
+	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
 	return slice(begin_offset, end_offset_from_begin);
 }
 
@@ -594,8 +586,8 @@ inline bytes_view bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-inline bytes_ref bytes_base<Span>::
-operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) {
+inline bytes_ref bytes_base<Span>::operator()(
+	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) {
 	return slice(begin_offset, end_offset_from_begin);
 }
 

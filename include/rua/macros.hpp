@@ -1,6 +1,7 @@
 #ifndef _RUA_MACROS_HPP
 #define _RUA_MACROS_HPP
 
+#define RUA_CPP_20 202002L
 #define RUA_CPP_17 201703L
 #define RUA_CPP_14 201402L
 #define RUA_CPP_11 201103L
@@ -190,35 +191,6 @@
 #elif defined(__GNUC__)
 #define RUA_NO_INLINE __attribute__((noinline))
 #endif
-
-#include <new>
-#include <utility>
-
-#define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
-	T &operator=(const T &src) {                                               \
-		if (this == &src) {                                                    \
-			T tmp(src);                                                        \
-			return operator=(std::move(tmp));                                  \
-		}                                                                      \
-		this->~T();                                                            \
-		new (this) T(src);                                                     \
-		return *this;                                                          \
-	}
-
-#define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
-	T &operator=(T &&src) {                                                    \
-		if (this == &src) {                                                    \
-			T tmp(std::move(src));                                             \
-			return operator=(std::move(tmp));                                  \
-		}                                                                      \
-		this->~T();                                                            \
-		new (this) T(std::move(src));                                          \
-		return *this;                                                          \
-	}
-
-#define RUA_OVERLOAD_ASSIGNMENT(T)                                             \
-	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
-	RUA_OVERLOAD_ASSIGNMENT_R(T)
 
 #define RUA_S(s) #s
 #define RUA_M2S(m) RUA_S(m)

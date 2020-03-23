@@ -2,6 +2,7 @@
 #define _RUA_STRING_STR_LEN_HPP
 
 #include "../macros.hpp"
+#include "../types/util.hpp"
 
 namespace rua {
 

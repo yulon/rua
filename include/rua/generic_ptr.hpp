@@ -2,12 +2,10 @@
 #define _RUA_GENERIC_PTR_HPP
 
 #include "macros.hpp"
-#include "type_traits/std_patch.hpp"
+#include "types/traits.hpp"
+#include "types/util.hpp"
 
-#include <cstddef>
-#include <cstdint>
 #include <functional>
-#include <utility>
 
 namespace rua {
 

@@ -1,9 +1,7 @@
 #ifndef _RUA_VARIANT_HPP
 #define _RUA_VARIANT_HPP
 
-#include "type_traits/measures.hpp"
-#include "type_traits/std_patch.hpp"
-#include "type_traits/type_info.hpp"
+#include "types.hpp"
 
 #include <cassert>
 #include <cstddef>

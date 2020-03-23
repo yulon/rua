@@ -5,15 +5,14 @@
 #include "../../../macros.hpp"
 #include "../../../sync/lockfree_list.hpp"
 #include "../../../thread/pa.hpp"
+#include "../../../types/util.hpp"
 
 #include <windows.h>
 
 #include <atomic>
 #include <cassert>
-#include <cstddef>
 #include <functional>
 #include <list>
-#include <utility>
 #include <vector>
 
 namespace rua { namespace win32 {
