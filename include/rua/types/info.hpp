@@ -6,7 +6,7 @@
 
 #include <string>
 
-#ifdef RUA_USING_RTTI
+#ifdef RUA_RTTI
 #include <typeindex>
 #include <typeinfo>
 #endif
@@ -62,7 +62,7 @@ struct type_info_t {
 		move_ctor(dest, src);
 	}
 
-#ifdef RUA_USING_RTTI
+#ifdef RUA_RTTI
 	const std::type_info &(*const std_id)();
 #endif
 };
@@ -83,7 +83,7 @@ RUA_FORCE_INLINE bool operator!=(const type_info_t &a, type_id_t b) {
 	return a.id.info != b.info;
 }
 
-#ifdef RUA_USING_RTTI
+#ifdef RUA_RTTI
 
 RUA_FORCE_INLINE bool operator==(type_id_t a, const std::type_info &b) {
 	return a.info().std_id() == b;
@@ -253,7 +253,7 @@ inline type_info_t &type_info() {
 						   _type_dtor<T>(),
 						   _type_copy_ctor<T>(),
 						   _type_move_ctor<T>()
-#ifdef RUA_USING_RTTI
+#ifdef RUA_RTTI
 							   ,
 						   []() -> const std::type_info & { return typeid(T); }
 #endif

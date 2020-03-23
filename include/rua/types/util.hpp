@@ -51,6 +51,12 @@
 	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
 	RUA_OVERLOAD_ASSIGNMENT_R(T)
 
+#if defined(__cpp_rtti) && __cpp_rtti
+#define RUA_RTTI __cpp_rtti
+#elif defined(_HAS_STATIC_RTTI) && _HAS_STATIC_RTTI
+#define RUA_RTTI _HAS_STATIC_RTTI
+#endif
+
 namespace rua {
 
 using uint = unsigned int;
