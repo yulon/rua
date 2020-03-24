@@ -38,7 +38,7 @@ struct type_info_t {
 
 	std::string &(*const desc)();
 
-	void (*const del)(uintptr_t);
+	void (*const del)(void *);
 
 	uintptr_t (*const new_copy)(const void *src);
 
@@ -157,19 +157,19 @@ RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info_t &b) {
 
 template <typename T, typename = void>
 struct _type_del {
-	static constexpr const std::nullptr_t value = nullptr;
+	static constexpr std::nullptr_t value = nullptr;
 };
 
 template <typename T>
-struct _type_del<T, enable_if_t<size_of<T>::value>> {
-	static void value(uintptr_t ptr) {
+struct _type_del<T, enable_if_t<(size_of<T>::value > 0)>> {
+	static void value(void *ptr) {
 		delete reinterpret_cast<T *>(ptr);
 	}
 };
 
 template <typename T, typename = void>
 struct _type_new_copy {
-	static constexpr const std::nullptr_t value = nullptr;
+	static constexpr std::nullptr_t value = nullptr;
 };
 
 template <typename T>
@@ -182,7 +182,7 @@ struct _type_new_copy<T, enable_if_t<std::is_copy_constructible<T>::value>> {
 
 template <typename T, typename = void>
 struct _type_dtor {
-	static constexpr const std::nullptr_t value = nullptr;
+	static constexpr std::nullptr_t value = nullptr;
 };
 
 template <typename T>
@@ -196,7 +196,7 @@ struct _type_dtor<
 
 template <typename T, typename = void>
 struct _type_copy_ctor {
-	static constexpr const std::nullptr_t value = nullptr;
+	static constexpr std::nullptr_t value = nullptr;
 };
 
 template <typename T>
@@ -209,7 +209,7 @@ struct _type_copy_ctor<T, enable_if_t<std::is_copy_constructible<T>::value>> {
 
 template <typename T, typename = void>
 struct _type_move_ctor {
-	static constexpr const std::nullptr_t value = nullptr;
+	static constexpr std::nullptr_t value = nullptr;
 };
 
 template <typename T>

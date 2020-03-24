@@ -4,10 +4,6 @@
 #include "types.hpp"
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <initializer_list>
-#include <utility>
 
 namespace rua {
 
@@ -168,7 +164,7 @@ public:
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
 				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
 			assert(_typ_inf->del);
-			_typ_inf->del(*reinterpret_cast<uintptr_t *>(&_sto[0]));
+			_typ_inf->del(*reinterpret_cast<void **>(&_sto[0]));
 		} else if (_typ_inf->dtor) {
 			_typ_inf->dtor(reinterpret_cast<void *>(&_sto[0]));
 		}

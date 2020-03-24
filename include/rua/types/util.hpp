@@ -200,6 +200,11 @@ struct align_of<void> {
 	static constexpr size_t value = 0;
 };
 
+template <typename R, typename... Args>
+struct align_of<R(Args...)> {
+	static constexpr size_t value = 0;
+};
+
 #if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto align_of_v = align_of<T>::value;

@@ -4,10 +4,6 @@
 #include "types.hpp"
 
 #include <cassert>
-#include <cstddef>
-#include <cstdint>
-#include <initializer_list>
-#include <utility>
 
 namespace rua {
 
