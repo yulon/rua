@@ -155,88 +155,83 @@ RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info_t &b) {
 
 #endif
 
-template <typename T>
-inline enable_if_t<std::is_void<T>::value, void (*)(uintptr_t)> _type_del() {
-	return nullptr;
-}
+template <typename T, typename = void>
+struct _type_del {
+	static constexpr const std::nullptr_t value = nullptr;
+};
 
 template <typename T>
-inline enable_if_t<!std::is_void<T>::value, void (*)(uintptr_t)> _type_del() {
-	return [](uintptr_t ptr) { delete reinterpret_cast<T *>(ptr); };
-}
+struct _type_del<T, enable_if_t<size_of<T>::value>> {
+	static void value(uintptr_t ptr) {
+		delete reinterpret_cast<T *>(ptr);
+	}
+};
+
+template <typename T, typename = void>
+struct _type_new_copy {
+	static constexpr const std::nullptr_t value = nullptr;
+};
 
 template <typename T>
-inline enable_if_t<
-	std::is_copy_constructible<T>::value,
-	uintptr_t (*)(const void *)>
-_type_new_copy() {
-	return [](const void *src) -> uintptr_t {
+struct _type_new_copy<T, enable_if_t<std::is_copy_constructible<T>::value>> {
+	static uintptr_t value(const void *src) {
 		return reinterpret_cast<uintptr_t>(
 			new T(*reinterpret_cast<const T *>(src)));
-	};
-}
+	}
+};
+
+template <typename T, typename = void>
+struct _type_dtor {
+	static constexpr const std::nullptr_t value = nullptr;
+};
 
 template <typename T>
-inline enable_if_t<
-	!std::is_copy_constructible<T>::value,
-	uintptr_t (*)(const void *)>
-_type_new_copy() {
-	return nullptr;
-}
+struct _type_dtor<
+	T,
+	enable_if_t<size_of<T>::value && !std::is_trivial<T>::value>> {
+	static void value(void *ptr) {
+		reinterpret_cast<T *>(ptr)->~T();
+	}
+};
+
+template <typename T, typename = void>
+struct _type_copy_ctor {
+	static constexpr const std::nullptr_t value = nullptr;
+};
 
 template <typename T>
-inline enable_if_t<
-	std::is_void<T>::value || std::is_trivial<T>::value,
-	void (*)(void *)>
-_type_dtor() {
-	return nullptr;
-}
-
-template <typename T>
-inline enable_if_t<
-	!std::is_void<T>::value && !std::is_trivial<T>::value,
-	void (*)(void *)>
-_type_dtor() {
-	return [](void *ptr) { reinterpret_cast<T *>(ptr)->~T(); };
-}
-
-template <typename T>
-inline enable_if_t<
-	std::is_copy_constructible<T>::value,
-	void (*)(void *, const void *)>
-_type_copy_ctor() {
-	return [](void *ptr, const void *src) {
+struct _type_copy_ctor<T, enable_if_t<std::is_copy_constructible<T>::value>> {
+	static void value(void *ptr, const void *src) {
 		new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 			T(*reinterpret_cast<const T *>(src));
 	};
-}
+};
+
+template <typename T, typename = void>
+struct _type_move_ctor {
+	static constexpr const std::nullptr_t value = nullptr;
+};
 
 template <typename T>
-inline enable_if_t<
-	!std::is_copy_constructible<T>::value,
-	void (*)(void *, const void *)>
-_type_copy_ctor() {
-	return nullptr;
-}
-
-template <typename T>
-inline enable_if_t<
-	std::is_move_constructible<T>::value,
-	void (*)(void *, void *)>
-_type_move_ctor() {
-	return [](void *ptr, void *src) {
+struct _type_move_ctor<T, enable_if_t<std::is_move_constructible<T>::value>> {
+	static void value(void *ptr, void *src) {
 		new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 			T(std::move(*reinterpret_cast<T *>(src)));
-	};
-}
+	}
+};
 
 template <typename T>
-inline enable_if_t<
-	!std::is_move_constructible<T>::value,
-	void (*)(void *, void *)>
-_type_move_ctor() {
-	return nullptr;
+inline std::string &_type_desc() {
+	static std::string desc;
+	return desc;
 }
+
+#ifdef RUA_RTTI
+template <typename T>
+inline const std::type_info &_type_std_info() {
+	return typeid(T);
+}
+#endif
 
 template <typename T>
 inline type_info_t &type_info() {
@@ -244,18 +239,15 @@ inline type_info_t &type_info() {
 						   size_of<T>::value,
 						   align_of<T>::value,
 						   std::is_trivial<T>::value,
-						   []() -> std::string & {
-							   static std::string desc;
-							   return desc;
-						   },
-						   _type_del<T>(),
-						   _type_new_copy<T>(),
-						   _type_dtor<T>(),
-						   _type_copy_ctor<T>(),
-						   _type_move_ctor<T>()
+						   &_type_desc<T>,
+						   _type_del<T>::value,
+						   _type_new_copy<T>::value,
+						   _type_dtor<T>::value,
+						   _type_copy_ctor<T>::value,
+						   _type_move_ctor<T>::value
 #ifdef RUA_RTTI
-							   ,
-						   []() -> const std::type_info & { return typeid(T); }
+						   ,
+						   &_type_std_info<T>
 #endif
 	};
 	return inf;
