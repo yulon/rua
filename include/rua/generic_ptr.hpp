@@ -5,6 +5,7 @@
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
+#include <cstring>
 #include <functional>
 
 namespace rua {
@@ -20,8 +21,9 @@ public:
 		_val(reinterpret_cast<uintptr_t>(src)) {}
 
 	template <typename M, typename T>
-	RUA_FORCE_INLINE generic_ptr(M T::*src) :
-		generic_ptr(*reinterpret_cast<uintptr_t *>(&src)) {}
+	RUA_FORCE_INLINE generic_ptr(M T::*src) {
+		memcpy(&_val, &src, sizeof(uintptr_t));
+	}
 
 	RUA_FORCE_INLINE explicit constexpr generic_ptr(uintptr_t val) :
 		_val(val) {}
@@ -38,7 +40,9 @@ public:
 	template <typename T>
 	RUA_FORCE_INLINE enable_if_t<std::is_member_pointer<T>::value, T>
 	as() const {
-		return *reinterpret_cast<const T *>(&_val);
+		T mem_ptr;
+		memcpy(&mem_ptr, &_val, sizeof(uintptr_t));
+		return mem_ptr;
 	}
 
 	template <
