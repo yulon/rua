@@ -57,16 +57,15 @@ public:
 			return;
 		}
 
-		assert(type().copy_ctor);
+		assert(_type.is_copyable());
 
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				type().size, type().align, StorageLen, StorageAlign)) {
-			assert(type().new_copy);
-			*reinterpret_cast<uintptr_t *>(&_sto[0]) = type().new_copy(
+				_type.size(), _type.align(), StorageLen, StorageAlign)) {
+			*reinterpret_cast<void **>(&_sto[0]) = _type.copy_new(
 				*reinterpret_cast<const void *const *>(&src._sto));
 			return;
 		}
-		type().copy_ctor(&_sto[0], &src._sto);
+		_type.copy_ctor(&_sto[0], &src._sto);
 	}
 
 	basic_any(basic_any &&src) :
@@ -75,16 +74,16 @@ public:
 			return;
 		}
 
-		assert(type().move_ctor);
+		assert(_type.is_moveable());
 
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				type().size, type().align, StorageLen, StorageAlign)) {
+				_type.size(), _type.align(), StorageLen, StorageAlign)) {
 			*reinterpret_cast<void **>(&_sto[0]) =
 				*reinterpret_cast<void **>(&src._sto);
-			src._reset_type<void>();
+			src._type = type_id<void>();
 			return;
 		}
-		type().move_ctor(&_sto[0], &src._sto);
+		_type.move_ctor(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
@@ -155,13 +154,12 @@ public:
 			return;
 		}
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				type().size, type().align, StorageLen, StorageAlign)) {
-			assert(type().del);
-			type().del(*reinterpret_cast<void **>(&_sto[0]));
-		} else if (type().dtor) {
-			type().dtor(reinterpret_cast<void *>(&_sto[0]));
+				_type.size(), _type.align(), StorageLen, StorageAlign)) {
+			_type.del(*reinterpret_cast<void **>(&_sto[0]));
+		} else if (!_type.is_trivial()) {
+			_type.dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
-		_reset_type<void>();
+		_type = type_id<void>();
 	}
 
 private:
@@ -170,14 +168,14 @@ private:
 	template <typename T, typename... Args>
 	RUA_FORCE_INLINE enable_if_t<!is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
-		_reset_type<T>();
+		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
 	RUA_FORCE_INLINE enable_if_t<is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
-		_reset_type<T>();
+		_type = type_id<T>();
 		return *(
 			*reinterpret_cast<T **>(&_sto[0]) =
 				new T(std::forward<Args>(args)...));

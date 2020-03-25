@@ -40,8 +40,8 @@ public:
 		if (!has_value()) {
 			return;
 		}
-		assert(type().copy_ctor);
-		type().copy_ctor(&_sto[0], &src._sto);
+		assert(_type.is_copyable());
+		_type.copy_ctor(&_sto[0], &src._sto);
 	}
 
 	variant(variant &&src) :
@@ -49,8 +49,8 @@ public:
 		if (!has_value()) {
 			return;
 		}
-		assert(type().move_ctor);
-		type().move_ctor(&_sto[0], &src._sto);
+		assert(_type.is_moveable());
+		_type.move_ctor(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(variant)
@@ -106,10 +106,10 @@ public:
 		if (!has_value()) {
 			return;
 		}
-		if (type().dtor) {
-			type().dtor(reinterpret_cast<void *>(&_sto[0]));
+		if (_type.dtor) {
+			_type.dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
-		_reset_type<void>();
+		_type = type_id<void>();
 	}
 
 private:
@@ -120,7 +120,7 @@ private:
 	T &_emplace(Args &&... args) {
 		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullindex));
 
-		_reset_type<T>();
+		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 };
