@@ -10,19 +10,21 @@
 namespace rua {
 
 template <typename T>
-class interface_ptr {
+class interface_ptr : public enable_type_info {
 public:
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
-		_raw_ptr(nullptr), _shared_ptr(), _type(type_id<std::nullptr_t>()) {}
+		enable_type_info(type_id<std::nullptr_t>()),
+		_raw_ptr(nullptr),
+		_shared_ptr() {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	interface_ptr(SameBase *raw_ptr) {
 		if (!raw_ptr) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<SameBase>();
+		_reset_type<SameBase>();
 		_raw_ptr = static_cast<T *>(raw_ptr);
 	}
 
@@ -31,7 +33,7 @@ public:
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	interface_ptr(SameBase &&rv) {
-		_type = type_id<SameBase>();
+		_reset_type<SameBase>();
 		new (&_shared_ptr) std::shared_ptr<T>(std::static_pointer_cast<T>(
 			std::make_shared<SameBase>(std::move(rv))));
 		_raw_ptr = _shared_ptr.get();
@@ -40,10 +42,10 @@ public:
 	interface_ptr(const std::shared_ptr<T> &base_shared_ptr_lv) {
 		if (!base_shared_ptr_lv) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<T>();
+		_reset_type<T>();
 		new (&_shared_ptr) std::shared_ptr<T>(base_shared_ptr_lv);
 		_raw_ptr = _shared_ptr.get();
 	}
@@ -51,10 +53,10 @@ public:
 	interface_ptr(std::shared_ptr<T> &&base_shared_ptr_rv) {
 		if (!base_shared_ptr_rv) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<T>();
+		_reset_type<T>();
 		new (&_shared_ptr) std::shared_ptr<T>(std::move(base_shared_ptr_rv));
 		_raw_ptr = _shared_ptr.get();
 	}
@@ -63,10 +65,10 @@ public:
 	interface_ptr(const std::shared_ptr<Derived> &derived_shared_ptr_lv) {
 		if (!derived_shared_ptr_lv) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<Derived>();
+		_reset_type<Derived>();
 		new (&_shared_ptr) std::shared_ptr<T>(
 			std::static_pointer_cast<T>(derived_shared_ptr_lv));
 		_raw_ptr = _shared_ptr.get();
@@ -76,10 +78,10 @@ public:
 	interface_ptr(std::shared_ptr<Derived> &&derived_shared_ptr_rv) {
 		if (!derived_shared_ptr_rv) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<Derived>();
+		_reset_type<Derived>();
 		new (&_shared_ptr) std::shared_ptr<T>(
 			std::static_pointer_cast<T>(std::move(derived_shared_ptr_rv)));
 		_raw_ptr = _shared_ptr.get();
@@ -93,18 +95,19 @@ public:
 	interface_ptr(std::unique_ptr<SameBase> &&unique_ptr_rv) {
 		if (!unique_ptr_rv) {
 			_raw_ptr = nullptr;
-			_type = type_id<std::nullptr_t>();
+			_reset_type<std::nullptr_t>();
 			return;
 		}
-		_type = type_id<SameBase>();
+		_reset_type<SameBase>();
 		new (&_shared_ptr)
 			std::shared_ptr<T>(static_cast<T *>(unique_ptr_rv.release()));
 		_raw_ptr = _shared_ptr.get();
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(const interface_ptr<Derived> &derived_blended_ptr_lv) {
-		_type = derived_blended_ptr_lv.type();
+	interface_ptr(const interface_ptr<Derived> &derived_blended_ptr_lv) :
+		enable_type_info(
+			static_cast<const enable_type_info &>(derived_blended_ptr_lv)) {
 
 		if (!derived_blended_ptr_lv) {
 			_raw_ptr = nullptr;
@@ -123,8 +126,9 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(interface_ptr<Derived> &&derived_blended_ptr_rv) {
-		_type = derived_blended_ptr_rv.type();
+	interface_ptr(interface_ptr<Derived> &&derived_blended_ptr_rv) :
+		enable_type_info(
+			static_cast<const enable_type_info &>(derived_blended_ptr_rv)) {
 
 		if (!derived_blended_ptr_rv) {
 			_raw_ptr = nullptr;
@@ -142,9 +146,10 @@ public:
 		_raw_ptr = static_cast<T *>(derived_blended_ptr_rv.release());
 	}
 
-	interface_ptr(const interface_ptr<T> &src) {
+	interface_ptr(const interface_ptr &src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
+
 		_raw_ptr = src._raw_ptr;
-		_type = src._type;
 
 		if (!_raw_ptr || !src._shared_ptr) {
 			return;
@@ -153,14 +158,8 @@ public:
 		_shared_ptr = src._shared_ptr;
 	}
 
-	interface_ptr<T> &operator=(const interface_ptr<T> &src) {
-		reset();
-		new (this) interface_ptr<T>(src);
-		return *this;
-	}
-
-	interface_ptr(interface_ptr<T> &&src) {
-		_type = src._type;
+	interface_ptr(interface_ptr &&src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
 
 		_raw_ptr = src.release();
 		if (_raw_ptr || !src) {
@@ -171,11 +170,7 @@ public:
 		_raw_ptr = _shared_ptr.get();
 	}
 
-	interface_ptr<T> &operator=(interface_ptr<T> &&src) {
-		reset();
-		new (this) interface_ptr<T>(std::move(src));
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT(interface_ptr)
 
 	~interface_ptr() {
 		reset();
@@ -205,15 +200,6 @@ public:
 		return *_raw_ptr;
 	}
 
-	type_id_t type() const {
-		return _type;
-	}
-
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	bool type_is() const {
-		return type() == type_id<SameBase>();
-	}
-
 	T *get() const {
 		return _raw_ptr;
 	}
@@ -224,7 +210,7 @@ public:
 		}
 		auto base_raw_ptr = _raw_ptr;
 		_raw_ptr = nullptr;
-		_type = type_id<std::nullptr_t>();
+		_reset_type<std::nullptr_t>();
 		return base_raw_ptr;
 	}
 
@@ -240,7 +226,7 @@ public:
 			return nullptr;
 		}
 		_raw_ptr = nullptr;
-		_type = type_id<std::nullptr_t>();
+		_reset_type<std::nullptr_t>();
 		return std::move(_shared_ptr);
 	}
 
@@ -280,13 +266,12 @@ public:
 			_shared_ptr.reset();
 		}
 		_raw_ptr = nullptr;
-		_type = type_id<std::nullptr_t>();
+		_reset_type<std::nullptr_t>();
 	}
 
 private:
 	T *_raw_ptr;
 	std::shared_ptr<T> _shared_ptr;
-	type_id_t _type;
 };
 
 } // namespace rua

@@ -13,23 +13,7 @@
 
 namespace rua {
 
-struct type_info_t;
-
-struct type_id_t {
-	type_info_t &(*info)();
-};
-
-RUA_FORCE_INLINE bool operator==(type_id_t a, type_id_t b) {
-	return a.info == b.info;
-}
-
-RUA_FORCE_INLINE bool operator!=(type_id_t a, type_id_t b) {
-	return a.info != b.info;
-}
-
 struct type_info_t {
-	const type_id_t id;
-
 	const size_t size;
 
 	const size_t align;
@@ -67,55 +51,15 @@ struct type_info_t {
 #endif
 };
 
-RUA_FORCE_INLINE bool operator==(type_id_t a, const type_info_t &b) {
-	return a.info == b.id.info;
+RUA_FORCE_INLINE bool operator==(const type_info_t &a, const type_info_t &b) {
+	return &a == &b;
 }
 
-RUA_FORCE_INLINE bool operator!=(type_id_t a, const type_info_t &b) {
-	return a.info != b.id.info;
-}
-
-RUA_FORCE_INLINE bool operator==(const type_info_t &a, type_id_t b) {
-	return a.id.info == b.info;
-}
-
-RUA_FORCE_INLINE bool operator!=(const type_info_t &a, type_id_t b) {
-	return a.id.info != b.info;
+RUA_FORCE_INLINE bool operator!=(const type_info_t &a, const type_info_t &b) {
+	return &a != &b;
 }
 
 #ifdef RUA_RTTI
-
-RUA_FORCE_INLINE bool operator==(type_id_t a, const std::type_info &b) {
-	return a.info().std_id() == b;
-}
-
-RUA_FORCE_INLINE bool operator!=(type_id_t a, const std::type_info &b) {
-	return a.info().std_id() != b;
-}
-
-RUA_FORCE_INLINE bool operator==(const std::type_info &a, type_id_t b) {
-	return a == b.info().std_id();
-}
-
-RUA_FORCE_INLINE bool operator!=(const std::type_info &a, type_id_t b) {
-	return a != b.info().std_id();
-}
-
-RUA_FORCE_INLINE bool operator==(type_id_t a, std::type_index b) {
-	return std::type_index(a.info().std_id()) == b;
-}
-
-RUA_FORCE_INLINE bool operator!=(type_id_t a, std::type_index b) {
-	return std::type_index(a.info().std_id()) != b;
-}
-
-RUA_FORCE_INLINE bool operator==(std::type_index a, type_id_t b) {
-	return a == std::type_index(b.info().std_id());
-}
-
-RUA_FORCE_INLINE bool operator!=(std::type_index a, type_id_t b) {
-	return a != std::type_index(b.info().std_id());
-}
 
 RUA_FORCE_INLINE bool
 operator==(const type_info_t &a, const std::type_info &b) {
@@ -234,28 +178,58 @@ inline const std::type_info &_type_std_info() {
 #endif
 
 template <typename T>
-inline type_info_t &type_info() {
-	static type_info_t inf{type_id_t{&type_info<T>},
-						   size_of<T>::value,
-						   align_of<T>::value,
-						   std::is_trivial<T>::value,
-						   &_type_desc<T>,
-						   _type_del<T>::value,
-						   _type_new_copy<T>::value,
-						   _type_dtor<T>::value,
-						   _type_copy_ctor<T>::value,
-						   _type_move_ctor<T>::value
+inline const type_info_t &type_id() {
+	static const type_info_t inf{size_of<T>::value,
+								 align_of<T>::value,
+								 std::is_trivial<T>::value,
+								 &_type_desc<T>,
+								 _type_del<T>::value,
+								 _type_new_copy<T>::value,
+								 _type_dtor<T>::value,
+								 _type_copy_ctor<T>::value,
+								 _type_move_ctor<T>::value
 #ifdef RUA_RTTI
-						   ,
-						   &_type_std_info<T>
+								 ,
+								 &_type_std_info<T>
 #endif
 	};
 	return inf;
 }
 
-template <typename T>
-inline constexpr type_id_t type_id() {
-	return type_id_t{&type_info<T>};
+class enable_type_info {
+public:
+	const type_info_t &type() const {
+		return _typ_inf ? *_typ_inf : type_id<void>();
+	};
+
+	template <typename T>
+	bool type_is() const {
+		return type() == type_id<T>();
+	}
+
+protected:
+	constexpr enable_type_info() : _typ_inf(nullptr) {}
+
+	constexpr enable_type_info(const type_info_t &ti) : _typ_inf(&ti) {}
+
+	~enable_type_info() {
+		if (_typ_inf) {
+			_typ_inf = nullptr;
+		}
+	}
+
+	template <typename T>
+	void _reset_type() {
+		_typ_inf = &type_id<T>();
+	}
+
+private:
+	const type_info_t *_typ_inf;
+};
+
+template <>
+inline void enable_type_info::_reset_type<void>() {
+	_typ_inf = nullptr;
 }
 
 } // namespace rua

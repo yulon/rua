@@ -11,7 +11,7 @@ namespace rua {
 	(val_len > sto_len || val_align > sto_align)
 
 template <size_t StorageLen, size_t StorageAlign>
-class basic_any {
+class basic_any : public enable_type_info {
 public:
 	template <typename T>
 	struct is_dynamic_allocation {
@@ -27,7 +27,7 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr basic_any() : _sto(), _typ_inf(nullptr) {}
+	constexpr basic_any() : enable_type_info(), _sto() {}
 
 	template <
 		typename T,
@@ -51,38 +51,40 @@ public:
 		reset();
 	}
 
-	basic_any(const basic_any &src) : _typ_inf(src._typ_inf) {
-		if (!_typ_inf) {
+	basic_any(const basic_any &src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
+		if (!has_value()) {
 			return;
 		}
 
-		assert(_typ_inf->copy_ctor);
+		assert(type().copy_ctor);
 
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
-			assert(_typ_inf->new_copy);
-			*reinterpret_cast<uintptr_t *>(&_sto[0]) = _typ_inf->new_copy(
+				type().size, type().align, StorageLen, StorageAlign)) {
+			assert(type().new_copy);
+			*reinterpret_cast<uintptr_t *>(&_sto[0]) = type().new_copy(
 				*reinterpret_cast<const void *const *>(&src._sto));
 			return;
 		}
-		_typ_inf->copy_ctor(&_sto[0], &src._sto);
+		type().copy_ctor(&_sto[0], &src._sto);
 	}
 
-	basic_any(basic_any &&src) : _typ_inf(src._typ_inf) {
-		if (!_typ_inf) {
+	basic_any(basic_any &&src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
+		if (!has_value()) {
 			return;
 		}
 
-		assert(_typ_inf->move_ctor);
+		assert(type().move_ctor);
 
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
+				type().size, type().align, StorageLen, StorageAlign)) {
 			*reinterpret_cast<void **>(&_sto[0]) =
 				*reinterpret_cast<void **>(&src._sto);
-			src._typ_inf = nullptr;
+			src._reset_type<void>();
 			return;
 		}
-		_typ_inf->move_ctor(&_sto[0], &src._sto);
+		type().move_ctor(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
@@ -93,15 +95,6 @@ public:
 
 	operator bool() const {
 		return has_value();
-	}
-
-	type_id_t type() const {
-		return _typ_inf ? _typ_inf->id : type_id<void>();
-	}
-
-	template <typename T>
-	bool type_is() const {
-		return type() == type_id<T>();
 	}
 
 	template <typename T>
@@ -158,34 +151,33 @@ public:
 	}
 
 	void reset() {
-		if (!_typ_inf) {
+		if (!has_value()) {
 			return;
 		}
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
-				_typ_inf->size, _typ_inf->align, StorageLen, StorageAlign)) {
-			assert(_typ_inf->del);
-			_typ_inf->del(*reinterpret_cast<void **>(&_sto[0]));
-		} else if (_typ_inf->dtor) {
-			_typ_inf->dtor(reinterpret_cast<void *>(&_sto[0]));
+				type().size, type().align, StorageLen, StorageAlign)) {
+			assert(type().del);
+			type().del(*reinterpret_cast<void **>(&_sto[0]));
+		} else if (type().dtor) {
+			type().dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
-		_typ_inf = nullptr;
+		_reset_type<void>();
 	}
 
 private:
 	alignas(StorageAlign) char _sto[StorageLen];
-	const type_info_t *_typ_inf;
 
 	template <typename T, typename... Args>
 	RUA_FORCE_INLINE enable_if_t<!is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
-		_typ_inf = &type_info<T>();
+		_reset_type<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
 	RUA_FORCE_INLINE enable_if_t<is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
-		_typ_inf = &type_info<T>();
+		_reset_type<T>();
 		return *(
 			*reinterpret_cast<T **>(&_sto[0]) =
 				new T(std::forward<Args>(args)...));

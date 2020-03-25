@@ -8,9 +8,9 @@
 namespace rua {
 
 template <typename... Types>
-class variant {
+class variant : public enable_type_info {
 public:
-	constexpr variant() : _sto(), _typ_inf(nullptr) {}
+	constexpr variant() : enable_type_info(), _sto() {}
 
 	template <
 		typename T,
@@ -35,20 +35,22 @@ public:
 		reset();
 	}
 
-	variant(const variant &src) : _typ_inf(src._typ_inf) {
-		if (!_typ_inf) {
+	variant(const variant &src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
+		if (!has_value()) {
 			return;
 		}
-		assert(_typ_inf->copy_ctor);
-		_typ_inf->copy_ctor(&_sto[0], &src._sto);
+		assert(type().copy_ctor);
+		type().copy_ctor(&_sto[0], &src._sto);
 	}
 
-	variant(variant &&src) : _typ_inf(src._typ_inf) {
-		if (!_typ_inf) {
+	variant(variant &&src) :
+		enable_type_info(static_cast<const enable_type_info &>(src)) {
+		if (!has_value()) {
 			return;
 		}
-		assert(_typ_inf->move_ctor);
-		_typ_inf->move_ctor(&_sto[0], &src._sto);
+		assert(type().move_ctor);
+		type().move_ctor(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(variant)
@@ -59,15 +61,6 @@ public:
 
 	operator bool() const {
 		return has_value();
-	}
-
-	type_id_t type() const {
-		return _typ_inf ? _typ_inf->id : type_id<void>();
-	}
-
-	template <typename T>
-	bool type_is() const {
-		return type() == type_id<T>();
 	}
 
 	template <typename T>
@@ -110,25 +103,24 @@ public:
 	}
 
 	void reset() {
-		if (!_typ_inf) {
+		if (!has_value()) {
 			return;
 		}
-		if (_typ_inf->dtor) {
-			_typ_inf->dtor(reinterpret_cast<void *>(&_sto[0]));
+		if (type().dtor) {
+			type().dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
-		_typ_inf = nullptr;
+		_reset_type<void>();
 	}
 
 private:
 	alignas(
 		max_align_of<Types...>::value) char _sto[max_size_of<Types...>::value];
-	const type_info_t *_typ_inf;
 
 	template <typename T, typename... Args>
 	T &_emplace(Args &&... args) {
 		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullindex));
 
-		_typ_inf = &type_info<T>();
+		_reset_type<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 };
