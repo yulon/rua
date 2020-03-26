@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 project(rua)
 
-add_library(rua INTERFACE IMPORTED)
+add_library(rua INTERFACE)
 set(rua_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(rua INTERFACE ${rua_INCLUDE_DIR})
 if(WIN32)
