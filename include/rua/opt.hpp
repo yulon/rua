@@ -15,7 +15,7 @@ using opt = std::optional<T>;
 
 using nullopt_t = std::nullopt_t;
 
-RUA_MULTIDEF_VAR constexpr auto nullopt = std::nullopt;
+RUA_INLINE_CONST auto nullopt = std::nullopt;
 
 } // namespace rua
 
@@ -27,7 +27,7 @@ namespace rua {
 
 struct nullopt_t {};
 
-RUA_MULTIDEF_VAR constexpr nullopt_t nullopt;
+RUA_INLINE_CONST nullopt_t nullopt;
 
 template <typename T>
 class _opt_base {

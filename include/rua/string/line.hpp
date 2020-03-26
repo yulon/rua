@@ -14,24 +14,24 @@ namespace rua {
 
 namespace eol {
 
-RUA_MULTIDEF_VAR constexpr const char *lf = "\n";
-RUA_MULTIDEF_VAR constexpr const char *crlf = "\r\n";
-RUA_MULTIDEF_VAR constexpr const char *cr = "\r";
+RUA_INLINE_CONST const char *lf = "\n";
+RUA_INLINE_CONST const char *crlf = "\r\n";
+RUA_INLINE_CONST const char *cr = "\r";
 
 #ifdef _WIN32
 
-RUA_MULTIDEF_VAR constexpr const char *sys_text = crlf;
-RUA_MULTIDEF_VAR constexpr const char *sys_con = crlf;
+RUA_INLINE_CONST const char *sys_text = crlf;
+RUA_INLINE_CONST const char *sys_con = crlf;
 
 #elif defined(RUA_DARWIN)
 
-RUA_MULTIDEF_VAR constexpr const char *sys_text = cr;
-RUA_MULTIDEF_VAR constexpr const char *sys_con = lf;
+RUA_INLINE_CONST const char *sys_text = cr;
+RUA_INLINE_CONST const char *sys_con = lf;
 
 #else
 
-RUA_MULTIDEF_VAR constexpr const char *sys_text = lf;
-RUA_MULTIDEF_VAR constexpr const char *sys_con = lf;
+RUA_INLINE_CONST const char *sys_text = lf;
+RUA_INLINE_CONST const char *sys_con = lf;
 
 #endif
 

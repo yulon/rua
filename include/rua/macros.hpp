@@ -81,12 +81,12 @@
 	static type &name = name##_instance()
 
 #if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
-#define RUA_MULTIDEF_VAR inline
+#define RUA_INLINE_CONST inline constexpr
 
 #define RUA_INLINE_VAR(type, name, init_declarator)                            \
 	inline type name init_declarator
 #else
-#define RUA_MULTIDEF_VAR static
+#define RUA_INLINE_CONST static constexpr
 
 #define RUA_INLINE_VAR(type, name, init_declarator)                            \
 	RUA_INLINE_VAR_S(type, name, init_declarator)

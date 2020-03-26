@@ -171,7 +171,7 @@ struct in_place_index_t {};
 
 #endif
 
-RUA_MULTIDEF_VAR constexpr in_place_t in_place{};
+RUA_INLINE_CONST in_place_t in_place{};
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -265,7 +265,7 @@ inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
 
 ////////////////////////////////////////////////////////////////////////////
 
-RUA_MULTIDEF_VAR constexpr size_t nullindex = static_cast<size_t>(-1);
+RUA_INLINE_CONST size_t nullindex = static_cast<size_t>(-1);
 
 template <size_t C, typename T, typename... Types>
 struct _index_of;
