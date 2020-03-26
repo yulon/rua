@@ -144,26 +144,19 @@ public:
 		_raw = static_cast<T *>(derived_blended_ptr_rv.release());
 	}
 
-	interface_ptr(const interface_ptr &src) :
-		enable_type_info(static_cast<const enable_type_info &>(src)) {
-
+	interface_ptr(const interface_ptr &src) : enable_type_info(src._type) {
 		_raw = src._raw;
-
 		if (!_raw || !src._shared) {
 			return;
 		}
-
 		_shared = src._shared;
 	}
 
-	interface_ptr(interface_ptr &&src) :
-		enable_type_info(static_cast<const enable_type_info &>(src)) {
-
+	interface_ptr(interface_ptr &&src) : enable_type_info(src._type) {
 		_raw = src.release();
 		if (_raw || !src) {
 			return;
 		}
-
 		_shared = src.release_shared();
 		_raw = _shared.get();
 	}

@@ -39,8 +39,7 @@
 #define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
 	T &operator=(T &&src) {                                                    \
 		if (this == &src) {                                                    \
-			T tmp(std::move(src));                                             \
-			return operator=(std::move(tmp));                                  \
+			return *this;                                                      \
 		}                                                                      \
 		this->~T();                                                            \
 		new (this) T(std::move(src));                                          \
@@ -85,6 +84,14 @@ using std_byte = std::byte;
 #else
 using std_byte = uchar;
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename A, typename B>
+RUA_FORCE_INLINE decltype(std::declval<A &&>() = std::declval<B &&>())
+assign(A &&a, B &&b) {
+	return std::forward<A>(a) = std::forward<B>(b);
+}
 
 ////////////////////////////////////////////////////////////////////////////
 

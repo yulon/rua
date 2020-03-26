@@ -17,102 +17,102 @@ namespace rua {
 
 class type_info {
 public:
-	constexpr type_info() : _inf(nullptr) {}
+	constexpr type_info() : _tab(nullptr) {}
 
 	operator bool() const {
-		return _inf;
+		return _tab;
 	}
 
 	bool operator!() const {
-		return !_inf;
+		return !_tab;
 	}
 
 	bool operator==(const type_info &target) const {
-		return _inf == target._inf;
+		return _tab == target._tab;
 	}
 
 	bool operator!=(const type_info &target) const {
-		return _inf != target._inf;
+		return _tab != target._tab;
 	}
 
 	RUA_FORCE_INLINE size_t size() const {
-		return _inf ? _inf->size : 0;
+		return _tab ? _tab->size : 0;
 	}
 
 	RUA_FORCE_INLINE size_t align() const {
-		return _inf ? _inf->size : 0;
+		return _tab ? _tab->size : 0;
 	}
 
 	RUA_FORCE_INLINE bool is_trivial() const {
-		return _inf ? _inf->is_trivial : false;
+		return _tab ? _tab->is_trivial : false;
 	}
 
 	RUA_FORCE_INLINE const std::string &desc() const {
-		return _inf ? _inf->desc() : _desc<void>();
+		return _tab ? _tab->desc() : _desc<void>();
 	}
 
 	RUA_FORCE_INLINE std::string &desc() {
-		return _inf ? _inf->desc() : _desc<void>();
+		return _tab ? _tab->desc() : _desc<void>();
 	}
 
 	RUA_FORCE_INLINE size_t hash_code() const {
-		return static_cast<size_t>(reinterpret_cast<uintptr_t>(_inf));
+		return static_cast<size_t>(reinterpret_cast<uintptr_t>(_tab));
 	}
 
 	RUA_FORCE_INLINE void dtor(void *ptr) const {
-		assert(_inf);
-		if (!_inf->dtor) {
+		assert(_tab);
+		if (!_tab->dtor) {
 			return;
 		}
-		_inf->dtor(ptr);
+		_tab->dtor(ptr);
 	}
 
 	RUA_FORCE_INLINE void del(void *ptr) const {
-		assert(_inf);
-		assert(_inf->del);
-		_inf->del(ptr);
+		assert(_tab);
+		assert(_tab->del);
+		_tab->del(ptr);
 	}
 
 	RUA_FORCE_INLINE bool is_copyable() const {
-		return _inf && _inf->copy_ctor;
+		return _tab && _tab->copy_ctor;
 	}
 
 	RUA_FORCE_INLINE void copy_ctor(void *ptr, const void *src) const {
-		assert(_inf);
-		assert(_inf->copy_ctor);
-		_inf->copy_ctor(ptr, src);
+		assert(_tab);
+		assert(_tab->copy_ctor);
+		_tab->copy_ctor(ptr, src);
 	}
 
 	RUA_FORCE_INLINE void *copy_new(const void *src) const {
-		assert(_inf);
-		assert(_inf->copy_new);
-		return _inf->copy_new(src);
+		assert(_tab);
+		assert(_tab->copy_new);
+		return _tab->copy_new(src);
 	}
 
 	RUA_FORCE_INLINE bool is_moveable() const {
-		return _inf && _inf->move_ctor;
+		return _tab && _tab->move_ctor;
 	}
 
 	RUA_FORCE_INLINE void move_ctor(void *ptr, void *src) const {
-		assert(_inf);
-		assert(_inf->move_ctor);
-		_inf->move_ctor(ptr, src);
+		assert(_tab);
+		assert(_tab->move_ctor);
+		_tab->move_ctor(ptr, src);
 	}
 
 	RUA_FORCE_INLINE void *move_new(void *src) const {
-		assert(_inf);
-		assert(_inf->move_new);
-		return _inf->move_new(src);
+		assert(_tab);
+		assert(_tab->move_new);
+		return _tab->move_new(src);
 	}
 
 #ifdef RUA_RTTI
 	RUA_FORCE_INLINE const std::type_info &std_id() const {
-		return _inf ? _inf->std_id() : typeid(void);
+		return _tab ? _tab->std_id() : typeid(void);
 	}
 #endif
 
 private:
-	struct _tab_t {
+	struct _table_t {
 		const size_t size;
 
 		const size_t align;
@@ -228,30 +228,30 @@ private:
 #endif
 
 	template <typename T>
-	static RUA_FORCE_INLINE const _tab_t &_tab() {
+	static RUA_FORCE_INLINE const _table_t &_table() {
 		RUA_SASSERT((!std::is_same<T, void>::value));
 
-		static const _tab_t inf{size_of<T>::value,
-								align_of<T>::value,
-								std::is_trivial<T>::value,
-								&_desc<T>,
-								_dtor<T>::value,
-								_del<T>::value,
-								_copy_ctor<T>::value,
-								_copy_new<T>::value,
-								_move_ctor<T>::value,
-								_move_new<T>::value
+		static const _table_t tab{size_of<T>::value,
+								  align_of<T>::value,
+								  std::is_trivial<T>::value,
+								  &_desc<T>,
+								  _dtor<T>::value,
+								  _del<T>::value,
+								  _copy_ctor<T>::value,
+								  _copy_new<T>::value,
+								  _move_ctor<T>::value,
+								  _move_new<T>::value
 #ifdef RUA_RTTI
-								,
-								&_std_id<T>
+								  ,
+								  &_std_id<T>
 #endif
 		};
-		return inf;
+		return tab;
 	}
 
-	const _tab_t *_inf;
+	const _table_t *_tab;
 
-	type_info(const _tab_t &inf) : _inf(&inf) {}
+	type_info(const _table_t &tab) : _tab(&tab) {}
 
 	template <typename T>
 	friend RUA_FORCE_INLINE constexpr type_info type_id();
@@ -259,7 +259,7 @@ private:
 
 template <typename T>
 RUA_FORCE_INLINE constexpr type_info type_id() {
-	return type_info(type_info::_tab<T>());
+	return type_info(type_info::_table<T>());
 }
 
 template <>

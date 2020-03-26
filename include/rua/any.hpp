@@ -51,9 +51,8 @@ public:
 		reset();
 	}
 
-	basic_any(const basic_any &src) :
-		enable_type_info(static_cast<const enable_type_info &>(src)) {
-		if (!has_value()) {
+	basic_any(const basic_any &src) : enable_type_info(src._type) {
+		if (!_type) {
 			return;
 		}
 
@@ -68,9 +67,8 @@ public:
 		_type.copy_ctor(&_sto[0], &src._sto);
 	}
 
-	basic_any(basic_any &&src) :
-		enable_type_info(static_cast<const enable_type_info &>(src)) {
-		if (!has_value()) {
+	basic_any(basic_any &&src) : enable_type_info(src._type) {
+		if (!_type) {
 			return;
 		}
 
@@ -89,11 +87,11 @@ public:
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
 
 	bool has_value() const {
-		return !type_is<void>();
+		return _type;
 	}
 
 	operator bool() const {
-		return has_value();
+		return _type;
 	}
 
 	template <typename T>
@@ -150,13 +148,13 @@ public:
 	}
 
 	void reset() {
-		if (!has_value()) {
+		if (!_type) {
 			return;
 		}
 		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
 			_type.del(*reinterpret_cast<void **>(&_sto[0]));
-		} else if (!_type.is_trivial()) {
+		} else {
 			_type.dtor(reinterpret_cast<void *>(&_sto[0]));
 		}
 		_type = type_id<void>();
