@@ -2,7 +2,14 @@ cmake_minimum_required(VERSION 3.0)
 
 project(rua)
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/rua.cmake")
+add_library(rua INTERFACE IMPORTED)
+set(rua_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(rua INTERFACE ${rua_INCLUDE_DIR})
+if(WIN32)
+	target_link_libraries(rua INTERFACE psapi)
+elseif(UNIX)
+	target_link_libraries(rua INTERFACE pthread)
+endif()
 
 if(DEFINED RUA_TEST)
 	include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/DepPull.cmake")
