@@ -302,27 +302,6 @@ protected:
 	type_info _type;
 };
 
-template <typename Derived>
-class enable_ptr_type_info {
-public:
-	RUA_FORCE_INLINE type_info type() const {
-		return *static_cast<const Derived *>(this) ? _type
-												   : type_id<std::nullptr_t>();
-	}
-
-	template <typename T>
-	RUA_FORCE_INLINE bool type_is() const {
-		return type() == type_id<T>();
-	}
-
-protected:
-	constexpr enable_ptr_type_info() : _type() {}
-
-	constexpr enable_ptr_type_info(type_info ti) : _type(ti) {}
-
-	type_info _type;
-};
-
 } // namespace rua
 
 #include <functional>
