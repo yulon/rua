@@ -988,11 +988,11 @@ protected:
 };
 
 template <typename Derived, size_t Size = sizeof(Derived)>
-class enable_bytes_accessor_from_this
+class enable_bytes_accessor
 	: private bytes_block_base<Derived, Size>,
 	  public bytes_base<bytes_block_base<Derived, Size>> {
 protected:
-	constexpr enable_bytes_accessor_from_this() = default;
+	constexpr enable_bytes_accessor() = default;
 };
 
 template <size_t Size, size_t Align = Size + Size % 2>
