@@ -13,6 +13,39 @@
 
 namespace rua {
 
+// bit_as from generic_ptr
+
+template <typename To>
+RUA_FORCE_INLINE To &bit_as(generic_ptr ptr) {
+	return *ptr.as<To *>();
+}
+
+template <typename To>
+RUA_FORCE_INLINE To &bit_as(generic_ptr ptr, ptrdiff_t offset) {
+	return *(ptr + offset).as<To *>();
+}
+
+// bit_as from From *
+
+template <
+	typename To,
+	typename From,
+	typename Result =
+		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
+RUA_FORCE_INLINE Result &bit_as(From *ptr) {
+	return *reinterpret_cast<Result *>(ptr);
+}
+
+template <
+	typename To,
+	typename From,
+	typename Result =
+		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
+RUA_FORCE_INLINE Result &bit_as(From *ptr, ptrdiff_t offset) {
+	return *reinterpret_cast<Result *>(
+		reinterpret_cast<uintptr_t>(ptr) + offset);
+}
+
 // bit_get from generic_ptr
 
 template <typename To>
