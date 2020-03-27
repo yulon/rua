@@ -23,15 +23,14 @@ class fiber {
 public:
 	fiber() = default;
 
-	inline fiber(std::function<void()> func, size_t dur = 0);
+	inline fiber(std::function<void()> func, ms dur = 0);
 
-	inline fiber(
-		fiber_driver &fib_dvr, std::function<void()> func, size_t dur = 0);
+	inline fiber(fiber_driver &fib_dvr, std::function<void()> func, ms dur = 0);
 
 	struct not_auto_attach_t {};
 	static constexpr not_auto_attach_t not_auto_attach{};
 
-	fiber(not_auto_attach_t, std::function<void()> func, size_t dur = 0) :
+	fiber(not_auto_attach_t, std::function<void()> func, ms dur = 0) :
 		_ctx(std::make_shared<_ctx_t>()) {
 		_ctx->fn = std::move(func);
 		_ctx->is_stoped = true;
@@ -46,7 +45,7 @@ public:
 		_ctx.reset();
 	}
 
-	void reset_duration(size_t dur = 0) {
+	void reset_duration(ms dur = 0) {
 		if (!_ctx) {
 			return;
 		}
@@ -102,7 +101,7 @@ public:
 	fiber_driver(size_t stack_size = 0x100000) :
 		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
 
-	fiber attach(std::function<void()> func, size_t dur = 0) {
+	fiber attach(std::function<void()> func, ms dur = 0) {
 		fiber f(fiber::not_auto_attach, std::move(func), dur);
 		f._ctx->is_stoped = false;
 		_fcs.emplace(f._ctx);
@@ -121,6 +120,10 @@ public:
 
 	fiber current() const {
 		return _cur_fc;
+	}
+
+	operator bool() const {
+		return _fcs.size() || _slps.size() || _cws.size();
 	}
 
 	// Does not block the current context.
@@ -260,7 +263,6 @@ public:
 			}
 
 			assert(_fd->_cur_fc->wkr.type_is<waker>());
-			assert(_fd->_cur_fc->wkr.as<waker>()->primary());
 
 			auto wkr = _fd->_cur_fc->wkr.as<waker>();
 			auto state = wkr->state();
@@ -454,7 +456,7 @@ private:
 	waker_i _orig_wkr;
 };
 
-inline fiber::fiber(std::function<void()> func, size_t dur) :
+inline fiber::fiber(std::function<void()> func, ms dur) :
 	fiber(fiber::not_auto_attach, std::move(func), dur) {
 	auto sch = this_scheduler();
 	if (sch) {
@@ -469,8 +471,7 @@ inline fiber::fiber(std::function<void()> func, size_t dur) :
 	fib_dvr_uptr->run();
 }
 
-inline fiber::fiber(
-	fiber_driver &fib_dvr, std::function<void()> func, size_t dur) :
+inline fiber::fiber(fiber_driver &fib_dvr, std::function<void()> func, ms dur) :
 	fiber(fiber::not_auto_attach, std::move(func), dur) {
 	fib_dvr.attach(*this);
 }
