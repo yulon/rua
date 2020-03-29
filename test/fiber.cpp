@@ -26,6 +26,7 @@ TEST_CASE("fiber_driver run") {
 		sch.sleep(100);
 		r += "3";
 	});
+
 	dvr.run();
 
 	REQUIRE(r == "123321");
@@ -58,7 +59,11 @@ TEST_CASE("fiber_driver step") {
 	}
 
 	REQUIRE(r == "123321");
+}
 
+TEST_CASE("fiber long-lasting task") {
+	static rua::fiber_driver dvr;
+	static auto &sch = dvr.get_scheduler();
 	static size_t c = 0;
 
 	dvr.attach([]() { ++c; }, rua::duration_max());
@@ -68,6 +73,44 @@ TEST_CASE("fiber_driver step") {
 	}
 
 	REQUIRE(c == 5);
+}
+
+TEST_CASE("fiber wake sequence") {
+	static rua::fiber_driver dvr;
+	static auto &sch = dvr.get_scheduler();
+	static std::string r;
+
+	dvr.attach([]() { r += "1"; });
+	dvr.attach([]() { r += "2"; });
+	dvr.attach([]() { r += "3"; });
+
+	dvr.step();
+
+	REQUIRE(r == "123");
+
+	r.resize(0);
+
+	dvr.attach([]() {
+		r += "1";
+		sch.sleep(100);
+		r += "1";
+	});
+	dvr.attach([]() {
+		r += "2";
+		sch.sleep(100);
+		r += "2";
+	});
+	dvr.attach([]() {
+		r += "3";
+		sch.sleep(100);
+		r += "3";
+	});
+
+	dvr.step();
+	rua::sleep(200);
+	dvr.step();
+
+	REQUIRE(r == "123123");
 }
 
 TEST_CASE("fiber") {
