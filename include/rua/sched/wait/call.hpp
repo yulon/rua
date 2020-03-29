@@ -3,6 +3,7 @@
 
 #include "../scheduler.hpp"
 
+#include "../../sync/chan.hpp"
 #include "../../thread/pa.hpp"
 #include "../../types/util.hpp"
 
@@ -23,12 +24,12 @@ wait(Callee &&callee, Args &&... args) {
 		std::forward<Callee>(callee)(std::forward<Args>(args)...);
 		return;
 	}
-	auto wkr = sch->get_waker();
+	auto ch = std::make_shared<chan<bool>>();
 	pa([=]() mutable {
 		callee(args...);
-		wkr->wake();
+		*ch << true;
 	});
-	sch->sleep(duration_max(), true);
+	ch->pop(sch);
 }
 
 template <
@@ -45,16 +46,9 @@ wait(Callee &&callee, Args &&... args) {
 	if (sch.type_is<thread_scheduler>()) {
 		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
 	}
-	auto wkr = sch->get_waker();
-	auto r_ptr = new Ret;
-	pa([=]() mutable {
-		*r_ptr = callee(args...);
-		wkr->wake();
-	});
-	sch->sleep(duration_max(), true);
-	auto r = std::move(*r_ptr);
-	delete r_ptr;
-	return r;
+	auto ch = std::make_shared<chan<Ret>>();
+	pa([=]() mutable { *ch << callee(args...); });
+	return ch->pop(sch);
 }
 
 template <typename Ret, typename... Params, typename... Args>

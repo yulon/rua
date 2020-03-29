@@ -9,7 +9,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <queue>
 
 namespace rua {
 
@@ -31,10 +30,9 @@ public:
 
 		auto sch = this_scheduler();
 		auto wkr = sch->get_waker();
-		auto it = _waiters.emplace_front(wkr);
 
-		if (it.is_back() && !_locked.exchange(true)) {
-			_waiters.erase(it);
+		if (_waiters.emplace(wkr) && !_locked.exchange(true)) {
+			_erase_waiter(wkr);
 			return true;
 		}
 
@@ -44,7 +42,10 @@ public:
 					if (!_locked.exchange(true)) {
 						return true;
 					}
-					it = _waiters.emplace_front(wkr);
+					if (_waiters.emplace(wkr) && !_locked.exchange(true)) {
+						_erase_waiter(wkr);
+						return true;
+					}
 				}
 			}
 		}
@@ -62,7 +63,10 @@ public:
 			if (timeout <= 0) {
 				return false;
 			}
-			it = _waiters.emplace_front(wkr);
+			if (_waiters.emplace(wkr) && !_locked.exchange(true)) {
+				_erase_waiter(wkr);
+				return true;
+			}
 		}
 		return false;
 	}
@@ -72,24 +76,43 @@ public:
 	}
 
 	void unlock() {
-		auto waiter_opt = _waiters.pop_back();
+		auto waiters = _waiters.pop();
 
-#ifndef NDEBUG
+#ifdef assert
 		assert(_locked.exchange(false));
 #else
 		_locked.store(false);
 #endif
 
-		if (!waiter_opt) {
-			return;
+		while (waiters) {
+			waiters.pop_front()->wake();
 		}
-		waiter_opt.value()->wake();
 	}
 
 private:
 	std::atomic<bool> _locked;
 	lockfree_list<waker_i> _waiters;
 	std::atomic<size_t> _wkr_c;
+
+	void _erase_waiter(waker_i waiter) {
+		auto waiters = _waiters.pop();
+		auto before = waiters.end();
+		auto after = waiters.begin();
+		while (after) {
+			if (*after == waiter) {
+				if (!before) {
+					waiters.erase_front();
+					break;
+				}
+				waiters.erase_after(before);
+				break;
+			}
+			before = after++;
+		}
+		if (waiters) {
+			_waiters.prepend(std::move(waiters));
+		}
+	}
 };
 
 } // namespace rua

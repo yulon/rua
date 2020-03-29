@@ -5,6 +5,7 @@
 
 #include "../../scheduler.hpp"
 
+#include "../../../sync/chan/manual.hpp"
 #include "../../../thread/scheduler.hpp"
 
 #include <cassert>
@@ -25,19 +26,10 @@ inline bool wait(HANDLE handle, ms timeout = duration_max()) {
 					   ? nmax<DWORD>()
 					   : static_cast<DWORD>(timeout.count())) != WAIT_TIMEOUT;
 	}
-	auto wkr = sch->get_waker();
-	auto r_ptr = new bool;
+	auto ch = std::make_shared<chan<bool>>();
 	_wait_sys_obj_async::wait(
-		handle,
-		[=](bool r) {
-			*r_ptr = r;
-			wkr->wake();
-		},
-		timeout);
-	sch->sleep(duration_max(), true);
-	auto r = *r_ptr;
-	delete r_ptr;
-	return r;
+		handle, [=](bool r) mutable { *ch << r; }, timeout);
+	return ch->pop(sch);
 }
 
 } // namespace _wait_sys_obj

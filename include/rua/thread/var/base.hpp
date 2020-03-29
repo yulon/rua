@@ -24,15 +24,17 @@ public:
 	constexpr _thread_var_indexer() : _ix_c(0), _idle_ixs() {}
 
 	size_t alloc() {
-		auto ix_opt = _idle_ixs.pop_front();
-		if (ix_opt) {
-			return ix_opt.value();
+		auto idle_ixs = _idle_ixs.pop();
+		if (idle_ixs) {
+			auto r = idle_ixs.pop_front();
+			_idle_ixs.prepend(std::move(idle_ixs));
+			return r;
 		}
 		return _ix_c++;
 	}
 
 	void dealloc(size_t ix) {
-		_idle_ixs.emplace_front(ix);
+		_idle_ixs.emplace(ix);
 	}
 
 private:

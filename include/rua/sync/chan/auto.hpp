@@ -11,7 +11,7 @@ namespace rua {
 
 template <typename T>
 inline rua::opt<T> chan<T>::try_pop(ms timeout) {
-	auto val_opt = _buf.pop_back();
+	auto val_opt = _try_pop();
 	if (val_opt || !timeout) {
 		return val_opt;
 	}
@@ -21,12 +21,6 @@ inline rua::opt<T> chan<T>::try_pop(ms timeout) {
 template <typename T, typename R>
 RUA_FORCE_INLINE chan<T> &operator<<(R &receiver, chan<T> &ch) {
 	receiver = ch.pop();
-	return ch;
-}
-
-template <typename T, typename V>
-RUA_FORCE_INLINE chan<T> &operator<<(chan<T> &ch, V &&val) {
-	ch.emplace(std::forward<V>(val));
 	return ch;
 }
 
