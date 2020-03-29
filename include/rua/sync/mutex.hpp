@@ -77,13 +77,11 @@ public:
 
 	void unlock() {
 		auto waiters = _waiters.pop();
-
-#ifdef assert
-		assert(_locked.exchange(false));
-#else
+#ifdef NDEBUG
 		_locked.store(false);
+#else
+		assert(_locked.exchange(false));
 #endif
-
 		while (waiters) {
 			waiters.pop_front()->wake();
 		}
