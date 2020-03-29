@@ -196,8 +196,12 @@ public:
 		return raw;
 	}
 
-	std::shared_ptr<T> get_shared() const & {
+	std::shared_ptr<T> shared() const {
 		return _shared;
+	}
+
+	size_t shared_count() const {
+		return _shared.use_count();
 	}
 
 	std::shared_ptr<T> release_shared() {
@@ -206,10 +210,6 @@ public:
 		}
 		_raw = nullptr;
 		return std::move(_shared);
-	}
-
-	std::shared_ptr<T> get_shared() && {
-		return release_shared();
 	}
 
 	type_info type() const {
