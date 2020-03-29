@@ -36,27 +36,27 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T get_aligned(ptrdiff_t ix) const {
-		return bit_get_aligned<T>(_this()->data(), ix);
+	RUA_FORCE_INLINE T aligned_get(ptrdiff_t ix) const {
+		return bit_aligned_get<T>(_this()->data(), ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at() const {
-		return *_this()->data().template as<const T *>();
+	RUA_FORCE_INLINE const T &as() const {
+		return bit_as<const T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
-		return *(_this()->data() + offset).template as<const T *>();
+	RUA_FORCE_INLINE const T &as(ptrdiff_t offset) const {
+		return bit_as<const T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
-		return _this()->data().template as<const T *>()[ix];
+	RUA_FORCE_INLINE const T &aligned_as(ptrdiff_t ix) const {
+		return bit_aligned_as<const T>(_this()->data(), ix);
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return at<const byte>(offset);
+		return as<const byte>(offset);
 	}
 
 	inline bytes_view
@@ -75,7 +75,7 @@ public:
 	template <typename CharT, typename Traits>
 	RUA_FORCE_INLINE operator basic_string_view<CharT, Traits>() const {
 		return basic_string_view<CharT, Traits>(
-			_this()->data().template as<const CharT *>(),
+			generic_ptr(_this()->data()).template as<const CharT *>(),
 			_this()->size() / sizeof(CharT));
 	}
 
@@ -83,7 +83,7 @@ public:
 	RUA_FORCE_INLINE
 	operator std::basic_string<CharT, Traits, Allocator>() const {
 		return std::basic_string<CharT, Traits, Allocator>(
-			_this()->data().template as<const CharT *>(),
+			generic_ptr(_this()->data()).template as<const CharT *>(),
 			_this()->size() / sizeof(CharT));
 	}
 
@@ -129,47 +129,47 @@ public:
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE void set_aligned(const T &val, ptrdiff_t ix) {
-		return bit_set_aligned<T>(_this()->data(), val, ix);
+	RUA_FORCE_INLINE void aligned_set(const T &val, ptrdiff_t ix) {
+		return bit_aligned_set<T>(_this()->data(), val, ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at() const {
-		return *reinterpret_cast<const T *>(_this()->data());
+	RUA_FORCE_INLINE const T &as() const {
+		return bit_as<const T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &at() {
-		return *reinterpret_cast<T *>(_this()->data());
+	RUA_FORCE_INLINE T &as() {
+		return bit_as<T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at(ptrdiff_t offset) const {
-		return *(_this()->data() + offset).template as<const T *>();
+	RUA_FORCE_INLINE const T &as(ptrdiff_t offset) const {
+		return bit_as<const T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &at(ptrdiff_t offset) {
-		return *(_this()->data() + offset).template as<T *>();
+	RUA_FORCE_INLINE T &as(ptrdiff_t offset) {
+		return bit_as<T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &at_aligned(ptrdiff_t ix) const {
-		return _this()->data().template as<const T *>()[ix];
+	RUA_FORCE_INLINE const T &aligned_as(ptrdiff_t ix) const {
+		return bit_aligned_as<const T>(_this()->data(), ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &at_aligned(ptrdiff_t ix) {
-		return _this()->data().template as<T *>()[ix];
+	RUA_FORCE_INLINE T &aligned_as(ptrdiff_t ix) {
+		return bit_aligned_as<T>(_this()->data(), ix);
 	}
 
 	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
-		return at<const byte>(offset);
+		return as<const byte>(offset);
 		;
 	}
 
 	RUA_FORCE_INLINE byte &operator[](ptrdiff_t offset) {
-		return at<byte>(offset);
+		return as<byte>(offset);
 		;
 	}
 
@@ -826,6 +826,8 @@ operator+(A &&a, B &&b) {
 
 class masked_bytes : public bytes {
 public:
+	masked_bytes() : _n(0) {}
+
 	masked_bytes(std::initializer_list<uint16_t> decl_ary) {
 		_input(decl_ary);
 	}
@@ -896,7 +898,7 @@ inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
 		return false;
 	}
 	return bit_has(
-		_this()->data().template as<const byte *>(),
+		_this()->data(),
 		target.masked().data().as<const byte *>(),
 		target.mask().data().as<const byte *>(),
 		sz);
@@ -972,39 +974,56 @@ bytes_base<Span>::match(const masked_bytes &target) {
 	return mr;
 }
 
-template <typename Derived, size_t Size = nmax<size_t>()>
-class bytes_block_base {
+template <typename Derived, size_t Size = sizeof(Derived)>
+class enable_bytes_accessor
+	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
 	generic_ptr data() const {
-		return this;
+		return static_cast<const Derived *>(this);
+	}
+
+	static constexpr size_t size() {
+		return sizeof(Derived);
+	}
+
+protected:
+	constexpr enable_bytes_accessor() = default;
+};
+
+template <size_t Size, size_t Align = Size + Size % 2>
+class bytes_block : public bytes_base<bytes_block<Size, Align>> {
+public:
+	generic_ptr data() const {
+		return &_raw[0];
 	}
 
 	static constexpr size_t size() {
 		return Size;
 	}
 
-protected:
-	constexpr bytes_block_base() = default;
-};
-
-template <typename Derived, size_t Size = sizeof(Derived)>
-class enable_bytes_accessor
-	: private bytes_block_base<Derived, Size>,
-	  public bytes_base<bytes_block_base<Derived, Size>> {
-protected:
-	constexpr enable_bytes_accessor() = default;
-};
-
-template <size_t Size, size_t Align = Size + Size % 2>
-class bytes_block
-	: public bytes_block_base<bytes_block<Size>, Size>,
-	  public bytes_base<bytes_block_base<bytes_block<Size>, Size>> {
 private:
 	alignas(Align) char _raw[Size];
 };
 
-template <size_t Sz = nmax<size_t>()>
-using bytes_block_ptr = bytes_block<Sz> *;
+class _bytes_hacker_base {
+public:
+	generic_ptr data() const {
+		return this;
+	}
+
+	static constexpr size_t size() {
+		return nmax<size_t>();
+	}
+
+protected:
+	constexpr _bytes_hacker_base() = default;
+};
+
+class bytes_hacker : public _bytes_hacker_base,
+					 public bytes_base<bytes_hacker> {
+protected:
+	constexpr bytes_hacker() = default;
+};
 
 } // namespace rua
 

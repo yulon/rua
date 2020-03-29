@@ -22,7 +22,12 @@ RUA_FORCE_INLINE To &bit_as(generic_ptr ptr) {
 
 template <typename To>
 RUA_FORCE_INLINE To &bit_as(generic_ptr ptr, ptrdiff_t offset) {
-	return *(ptr + offset).as<To *>();
+	return bit_as<To>(ptr + offset);
+}
+
+template <typename To>
+RUA_FORCE_INLINE To &bit_aligned_as(generic_ptr ptr, ptrdiff_t ix) {
+	return bit_as<To>(ptr, ix * sizeof(To));
 }
 
 // bit_as from From *
@@ -43,7 +48,17 @@ template <
 		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
 RUA_FORCE_INLINE Result &bit_as(From *ptr, ptrdiff_t offset) {
 	return *reinterpret_cast<Result *>(
-		reinterpret_cast<uintptr_t>(ptr) + offset);
+		reinterpret_cast<From *>(reinterpret_cast<uintptr_t>(ptr) + offset));
+}
+
+template <
+	typename To,
+	typename From,
+	typename Result =
+		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
+RUA_FORCE_INLINE Result &bit_aligned_as(From *ptr, ptrdiff_t ix) {
+	return *reinterpret_cast<Result *>(reinterpret_cast<From *>(
+		reinterpret_cast<uintptr_t>(ptr) + ix * sizeof(To)));
 }
 
 // bit_get from generic_ptr
@@ -69,7 +84,7 @@ bit_get(generic_ptr ptr, ptrdiff_t offset) {
 
 template <typename To>
 RUA_FORCE_INLINE decltype(bit_get<To>(nullptr))
-bit_get_aligned(generic_ptr ptr, ptrdiff_t ix) {
+bit_aligned_get(generic_ptr ptr, ptrdiff_t ix) {
 	return bit_get<To>(ptr + ix * sizeof(To));
 }
 
@@ -82,10 +97,9 @@ RUA_FORCE_INLINE enable_if_t<(alignof(To) > 1), To> bit_get(From *ptr) {
 	return *reinterpret_cast<To *>(&sto[0]);
 }
 
-template <typename To, typename From>
-RUA_FORCE_INLINE enable_if_t<(alignof(To) == 1), const remove_cv_t<To> &>
-bit_get(From *ptr) {
-	return *reinterpret_cast<const remove_cv_t<To> *>(ptr);
+template <typename To, typename From, typename ConstTo = add_const_t<To>>
+RUA_FORCE_INLINE enable_if_t<(alignof(To) == 1), ConstTo &> bit_get(From *ptr) {
+	return *reinterpret_cast<ConstTo *>(ptr);
 }
 
 template <typename To, typename From>
@@ -95,9 +109,13 @@ bit_get(From *ptr, ptrdiff_t offset) {
 		reinterpret_cast<From *>(reinterpret_cast<uintptr_t>(ptr) + offset));
 }
 
-template <typename To, typename From>
+template <
+	typename To,
+	typename From,
+	typename Result =
+		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
 RUA_FORCE_INLINE decltype(bit_get<To>(std::declval<From *>()))
-bit_get_aligned(From *ptr, ptrdiff_t ix) {
+bit_aligned_get(From *ptr, ptrdiff_t ix) {
 	return bit_get<To>(ptr, ix * sizeof(To));
 }
 
@@ -116,7 +134,7 @@ bit_set(generic_ptr ptr, ptrdiff_t offset, const From &val) {
 
 template <typename From>
 RUA_FORCE_INLINE void
-bit_set_aligned(generic_ptr ptr, ptrdiff_t ix, const From &val) {
+bit_aligned_set(generic_ptr ptr, ptrdiff_t ix, const From &val) {
 	bit_set<From>(ptr + ix * sizeof(From), val);
 }
 
@@ -134,7 +152,7 @@ RUA_FORCE_INLINE void bit_set(To *ptr, ptrdiff_t offset, const From &val) {
 }
 
 template <typename From, typename To>
-RUA_FORCE_INLINE void bit_set_aligned(To *ptr, ptrdiff_t ix, const From &val) {
+RUA_FORCE_INLINE void bit_aligned_set(To *ptr, ptrdiff_t ix, const From &val) {
 	bit_set<From>(ptr, ix * sizeof(From), val);
 }
 
