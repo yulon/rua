@@ -42,7 +42,12 @@ public:
 
 	template <typename... Args>
 	bool emplace(Args &&... args) {
-		return !_push(new node_t(std::forward<Args>(args)...));
+		auto new_front = new node_t(std::forward<Args>(args)...);
+		auto old_front = _front.load();
+		do {
+			new_front->after = old_front;
+		} while (!_front.compare_exchange_weak(old_front, new_front));
+		return !old_front;
 	}
 
 	forward_list<T> pop() {
@@ -53,16 +58,18 @@ public:
 		if (!pp) {
 			return false;
 		}
+
 		auto pp_front = pp.release();
 		auto pp_back = pp_front;
-		for (;;) {
-			auto after = pp_back->after;
-			if (!after) {
-				break;
-			}
-			pp_back = after;
+		while (pp_back->after) {
+			pp_back = pp_back->after;
 		}
-		return !_push(pp_front);
+
+		auto old_front = _front.load();
+		do {
+			pp_back->after = old_front;
+		} while (!_front.compare_exchange_weak(old_front, pp_front));
+		return !old_front;
 	}
 
 	void reset() {
@@ -71,14 +78,6 @@ public:
 
 private:
 	std::atomic<node_t *> _front;
-
-	node_t *_push(node_t *new_front = nullptr) {
-		auto old_front = _front.load();
-		do {
-			new_front->after = old_front;
-		} while (!_front.compare_exchange_weak(old_front, new_front));
-		return old_front;
-	}
 
 	void _reset(node_t *new_front = nullptr) {
 		auto node = _front.exchange(new_front);
