@@ -1,6 +1,8 @@
 #ifndef _RUA_DYLIB_POSIX_HPP
 #define _RUA_DYLIB_POSIX_HPP
 
+#include "dyfn.h"
+
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../string/string_view.hpp"
@@ -14,19 +16,11 @@ public:
 	using native_handle_t = void *;
 
 	dylib(string_view name, bool shared_scope = true) {
-		auto flags = RTLD_LAZY;
-		if (shared_scope) {
-			flags |= RTLD_GLOBAL;
-		} else {
-			flags |= RTLD_LOCAL;
-		}
-		_h = dlopen(name.data(), flags);
-		_need_unload = _h;
+		_load(name, shared_scope);
 	}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = false) :
-		_h(h),
-		_need_unload(need_unload) {}
+		_h(h), _need_unload(need_unload) {}
 
 	~dylib() {
 		unload();
@@ -45,10 +39,6 @@ public:
 		return _h;
 	}
 
-	bool operator!() const {
-		return !_h;
-	}
-
 	native_handle_t native_handle() const {
 		return _h;
 	}
@@ -57,14 +47,18 @@ public:
 		return _h && _need_unload;
 	}
 
-	generic_ptr get(string_view name) const {
+	generic_ptr find(string_view name) const {
 		return dlsym(_h, name.data());
 	}
 
-#define RUA_DYFN(name) get(#name).as<decltype(&name)>()
-
 	generic_ptr operator[](string_view name) const {
-		return get(name);
+		return find(name);
+	}
+
+	bool load(string_view name, bool shared_scope = true) {
+		unload();
+		_load(name, shared_scope);
+		return _h;
 	}
 
 	void unload() {
@@ -80,6 +74,17 @@ public:
 private:
 	void *_h;
 	bool _need_unload;
+
+	void _load(string_view name, bool shared_scope) {
+		auto flags = RTLD_LAZY;
+		if (shared_scope) {
+			flags |= RTLD_GLOBAL;
+		} else {
+			flags |= RTLD_LOCAL;
+		}
+		_h = dlopen(name.data(), flags);
+		_need_unload = _h;
+	}
 };
 
 }} // namespace rua::posix

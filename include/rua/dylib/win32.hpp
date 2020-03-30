@@ -1,6 +1,8 @@
 #ifndef _RUA_DYLIB_WIN32_HPP
 #define _RUA_DYLIB_WIN32_HPP
 
+#include "dyfn.h"
+
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../string/encoding/base/win32.hpp"
@@ -14,22 +16,12 @@ class dylib {
 public:
 	using native_handle_t = HMODULE;
 
-	dylib(string_view name, bool always_load = true) {
-		auto wname = u8_to_w(name);
-		if (!always_load) {
-			_h = GetModuleHandleW(wname.c_str());
-			if (_h) {
-				_need_unload = false;
-				return;
-			}
-		}
-		_h = LoadLibraryW(wname.c_str());
-		_need_unload = _h;
+	explicit dylib(string_view name, bool always_load = true) {
+		_load(name, always_load);
 	}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = false) :
-		_h(h),
-		_need_unload(need_unload) {}
+		_h(h), _need_unload(need_unload) {}
 
 	~dylib() {
 		unload();
@@ -48,10 +40,6 @@ public:
 		return _h;
 	}
 
-	bool operator!() const {
-		return !_h;
-	}
-
 	native_handle_t native_handle() const {
 		return _h;
 	}
@@ -60,14 +48,18 @@ public:
 		return _h && _need_unload;
 	}
 
-	generic_ptr get(string_view name) const {
+	generic_ptr find(string_view name) const {
 		return GetProcAddress(_h, name.data());
 	}
 
-#define RUA_DYFN(name) get(#name).as<decltype(&name)>()
-
 	generic_ptr operator[](string_view name) const {
-		return get(name);
+		return find(name);
+	}
+
+	bool load(string_view name, bool always_load = true) {
+		unload();
+		_load(name, always_load);
+		return _h;
 	}
 
 	void unload() {
@@ -83,6 +75,19 @@ public:
 private:
 	HMODULE _h;
 	bool _need_unload;
+
+	void _load(string_view name, bool always_load) {
+		auto wname = u8_to_w(name);
+		if (!always_load) {
+			_h = GetModuleHandleW(wname.c_str());
+			if (_h) {
+				_need_unload = false;
+				return;
+			}
+		}
+		_h = LoadLibraryW(wname.c_str());
+		_need_unload = _h;
+	}
 };
 
 }} // namespace rua::win32
