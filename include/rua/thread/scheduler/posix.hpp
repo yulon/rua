@@ -38,7 +38,7 @@ public:
 	}
 
 	void reset() {
-		while (sem_trywait(&_sem) != EAGAIN)
+		while (!sem_trywait(&_sem))
 			;
 	}
 
@@ -80,7 +80,7 @@ public:
 		}
 		assert(_wkr);
 		if (timeout == duration_max()) {
-			return sem_wait(_wkr->native_handle()) != ETIMEDOUT;
+			return !sem_wait(_wkr->native_handle());
 		}
 		struct timespec ts {
 			static_cast<int64_t>(
@@ -89,7 +89,7 @@ public:
 				: static_cast<decltype(ts.tv_sec)>(timeout.s_count()),
 				static_cast<decltype(ts.tv_nsec)>(timeout.extra_ns_count())
 		};
-		return sem_timedwait(_wkr->native_handle(), &ts) != ETIMEDOUT;
+		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
 
 	virtual waker_i get_waker() {

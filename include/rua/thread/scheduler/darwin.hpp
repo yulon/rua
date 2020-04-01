@@ -35,7 +35,7 @@ public:
 	}
 
 	void reset() {
-		while (dispatch_semaphore_wait(_sem, DISPATCH_TIME_NOW))
+		while (!dispatch_semaphore_wait(_sem, DISPATCH_TIME_NOW))
 			;
 	}
 
