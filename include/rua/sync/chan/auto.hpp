@@ -11,7 +11,7 @@ namespace rua {
 
 template <typename T>
 inline rua::opt<T> chan<T>::try_pop(ms timeout) {
-	auto val_opt = _try_pop();
+	auto val_opt = _buf.pop();
 	if (val_opt || !timeout) {
 		return val_opt;
 	}

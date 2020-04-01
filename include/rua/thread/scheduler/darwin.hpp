@@ -34,6 +34,11 @@ public:
 		dispatch_semaphore_signal(_sem);
 	}
 
+	void reset() {
+		while (dispatch_semaphore_wait(_sem, DISPATCH_TIME_NOW))
+			;
+	}
+
 private:
 	dispatch_semaphore_t _sem;
 };
@@ -72,11 +77,13 @@ public:
 			_wkr->native_handle(),
 			timeout == duration_max()
 				? DISPATCH_TIME_FOREVER
-				: static_cast<dispatch_time_t>(timeout.extra_ns_count()));
+				: dispatch_time(DISPATCH_TIME_NOW, ns(timeout).count()));
 	}
 
 	virtual waker_i get_waker() {
-		if (!_wkr) {
+		if (_wkr) {
+			_wkr->reset();
+		} else {
 			_wkr = std::make_shared<thread_waker>();
 		}
 		return _wkr;

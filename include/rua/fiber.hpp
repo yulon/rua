@@ -265,23 +265,23 @@ public:
 			assert(_fd->_cur_fc->wkr.type_is<waker>());
 
 			auto wkr = _fd->_cur_fc->wkr.as<waker>();
-			auto state = wkr->state();
-			if (!state) {
+			if (!wkr->state()) {
 				_sleep(_fd->_cws, timeout);
-				state = wkr->state();
 			}
-			wkr->reset();
-			return state;
+			return wkr->state();
 		}
 
 		virtual waker_i get_waker() {
 			assert(_fd->_cur_fc);
 
-			if (!_fd->_cur_fc->wkr.type_is<waker>() ||
-				_fd->_cur_fc->wkr.as<waker>()->primary() != _fd->_orig_wkr) {
-				_fd->_cur_fc->wkr = std::make_shared<waker>(_fd->_orig_wkr);
+			auto &wkr = _fd->_cur_fc->wkr;
+			if (wkr.type_is<waker>() &&
+				wkr.as<waker>()->primary() == _fd->_orig_wkr) {
+				wkr.as<waker>()->reset();
+			} else {
+				wkr = std::make_shared<waker>(_fd->_orig_wkr);
 			}
-			return _fd->_cur_fc->wkr;
+			return wkr;
 		}
 
 		fiber_driver *get_fiber_driver() {

@@ -38,6 +38,10 @@ public:
 		SetEvent(_h);
 	}
 
+	void reset() {
+		ResetEvent(_h);
+	}
+
 private:
 	HANDLE _h;
 };
@@ -77,7 +81,9 @@ public:
 	}
 
 	virtual waker_i get_waker() {
-		if (!_wkr) {
+		if (_wkr) {
+			_wkr->reset();
+		} else {
 			_wkr = std::make_shared<thread_waker>();
 		}
 		return _wkr;

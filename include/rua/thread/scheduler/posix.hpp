@@ -37,6 +37,11 @@ public:
 		sem_post(&_sem);
 	}
 
+	void reset() {
+		while (sem_trywait(&_sem) != EAGAIN)
+			;
+	}
+
 private:
 	sem_t _sem;
 	bool _need_close;
@@ -88,7 +93,9 @@ public:
 	}
 
 	virtual waker_i get_waker() {
-		if (!_wkr) {
+		if (_wkr) {
+			_wkr->reset();
+		} else {
 			_wkr = std::make_shared<thread_waker>();
 		}
 		return _wkr;

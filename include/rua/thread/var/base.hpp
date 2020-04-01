@@ -24,11 +24,9 @@ public:
 	constexpr _thread_var_indexer() : _ix_c(0), _idle_ixs() {}
 
 	size_t alloc() {
-		auto idle_ixs = _idle_ixs.pop();
-		if (idle_ixs) {
-			auto r = idle_ixs.pop_front();
-			_idle_ixs.prepend(std::move(idle_ixs));
-			return r;
+		auto idle_ix_opt = _idle_ixs.pop();
+		if (idle_ix_opt) {
+			return idle_ix_opt.value();
 		}
 		return _ix_c++;
 	}

@@ -21,25 +21,25 @@ public:
 
 	chan &operator=(const chan &) = delete;
 
-	// TODO: Because the lockfree_list{} is refactored, it may not be possible
-	// to know if there are currently waiting persons, and the relevant code is
-	// subject to correction.
 	template <typename... Args>
 	bool emplace(Args &&... args) {
-		if (_buf.emplace(std::forward<Args>(args)...)) {
-			return _wakes();
+		_buf.emplace(std::forward<Args>(args)...);
+		auto waiter_opt = _waiters.pop();
+		if (!waiter_opt) {
+			return false;
 		}
-		return _waiters || !_buf;
+		waiter_opt.value()->wake();
+		return true;
 	}
 
 	rua::opt<T> try_pop() {
-		return _try_pop();
+		return _buf.pop();
 	}
 
 	inline rua::opt<T> try_pop(ms timeout);
 
 	rua::opt<T> try_pop(scheduler_i sch, ms timeout) {
-		auto val_opt = _try_pop();
+		auto val_opt = _buf.pop();
 		if (val_opt || !timeout || !sch) {
 			return val_opt;
 		}
@@ -59,36 +59,6 @@ protected:
 	lockfree_list<T> _buf;
 	lockfree_list<waker_i> _waiters;
 
-	bool _wakes(waker_i ignore_waiter = nullptr) {
-		auto waiters = _waiters.pop();
-		if (!waiters) {
-			return false;
-		}
-		do {
-			auto waiter = waiters.pop_front();
-			if (waiter == ignore_waiter) {
-				continue;
-			}
-			waiter->wake();
-		} while (waiters);
-		return true;
-	}
-
-	rua::opt<T> _try_pop(waker_i ignore_waiter = nullptr) {
-		rua::opt<T> val_opt;
-
-		auto buf = _buf.pop();
-		if (!buf) {
-			return val_opt;
-		}
-
-		val_opt = buf.pop_front();
-		if (buf && _buf.prepend(std::move(buf))) {
-			_wakes(ignore_waiter);
-		}
-		return val_opt;
-	}
-
 	rua::opt<T> _wait_and_pop(scheduler_i sch, ms timeout) {
 		assert(sch);
 		assert(timeout);
@@ -97,46 +67,42 @@ protected:
 
 		auto wkr = sch->get_waker();
 
-		if (_waiters.emplace(wkr)) {
-			val_opt = _try_pop(wkr);
-			if (val_opt) {
-				return val_opt;
-			}
+		if (!_waiters.emplace_if(
+				[&]() -> bool {
+					val_opt = _buf.pop();
+					return !val_opt;
+				},
+				wkr)) {
+			return val_opt;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->sleep(timeout, true)) {
-					val_opt = _try_pop(wkr);
-					if (val_opt) {
-						return val_opt;
-					}
-					if (_waiters.emplace(wkr)) {
-						val_opt = _try_pop(wkr);
-						if (val_opt) {
-							return val_opt;
-						}
-					}
+				if (sch->sleep(timeout, true) && !_waiters.emplace_if(
+													 [&]() -> bool {
+														 val_opt = _buf.pop();
+														 return !val_opt;
+													 },
+													 wkr)) {
+					return val_opt;
 				}
 			}
 		}
 
+		auto t = tick();
 		for (;;) {
-			auto t = tick();
-			auto nto = sch->sleep(timeout, true);
-			val_opt = _try_pop(wkr);
-			if (val_opt || !nto) {
-				return val_opt;
-			}
+			auto r = sch->sleep(timeout, true);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
-				return val_opt;
+				return try_pop();
 			}
-			if (_waiters.emplace(wkr)) {
-				val_opt = _try_pop(wkr);
-				if (val_opt) {
-					return val_opt;
-				}
+			if (r && !_waiters.emplace_if(
+						 [&]() -> bool {
+							 val_opt = _buf.pop();
+							 return !val_opt;
+						 },
+						 wkr)) {
+				return val_opt;
 			}
 		}
 		return val_opt;

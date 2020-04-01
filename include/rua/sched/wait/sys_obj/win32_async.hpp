@@ -48,7 +48,7 @@ inline void _sys_obj_waiter() {
 	for (;;) {
 		while (waited_ix > -1 ? waitings.size() - 1
 							  : waitings.size() < MAXIMUM_WAIT_OBJECTS) {
-			auto pre_waits = ctx.pre_waits.pop();
+			auto pre_waits = ctx.pre_waits.lock_when_non_empty();
 			if (!pre_waits) {
 				break;
 			}
@@ -57,6 +57,7 @@ inline void _sys_obj_waiter() {
 				 ++i) {
 				waitings.emplace_back(pre_waits.pop_front());
 			}
+			ctx.pre_waits.unlock_and_prepend(std::move(pre_waits));
 		}
 
 		ms timeout(duration_max());
