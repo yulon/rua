@@ -17,108 +17,56 @@
 
 namespace rua {
 
-class fiber_driver;
-
-class fiber {
+class fiber_executor {
 public:
-	fiber() = default;
+	fiber_executor(size_t shared_stack_size = 0x100000) :
+		_shared_stk_sz(shared_stack_size), _shared_stk_ix(0), _sch(*this) {}
 
-	inline fiber(std::function<void()> func, ms dur = 0);
-
-	inline fiber(fiber_driver &fib_dvr, std::function<void()> func, ms dur = 0);
-
-	struct not_auto_attach_t {};
-	static constexpr not_auto_attach_t not_auto_attach{};
-
-	fiber(not_auto_attach_t, std::function<void()> func, ms dur = 0) :
-		_ctx(std::make_shared<_ctx_t>()) {
-		_ctx->fn = std::move(func);
-		_ctx->is_stoped = true;
-		_ctx->reset_duration(dur);
-	}
-
-	void stop() {
-		if (!_ctx) {
-			return;
+	class context {
+	public:
+		void stop() {
+			_is_stoped = true;
 		}
-		_ctx->is_stoped = true;
-		_ctx.reset();
-	}
 
-	void reset_duration(ms dur = 0) {
-		if (!_ctx) {
-			return;
-		}
-		if (!_ctx->is_stoped) {
-			_ctx.reset();
-			return;
-		}
-		_ctx->reset_duration(dur);
-	}
-
-	explicit operator bool() const {
-		return _ctx && !_ctx->is_stoped;
-	}
-
-private:
-	friend fiber_driver;
-
-	struct _ctx_t {
-		std::function<void()> fn;
-
-		std::atomic<bool> is_stoped;
-		time end_ti;
-
-		void reset_duration(ms dur = 0) {
+		void reset_lifetime(ms dur = 0) {
 			if (!dur) {
-				end_ti.reset();
+				_end_ti.reset();
 			}
 			auto now = tick();
 			if (dur >= time_max() - now) {
-				end_ti = time_max();
+				_end_ti = time_max();
 				return;
 			}
-			end_ti = now + dur;
+			_end_ti = now + dur;
 		}
 
-		ucontext_t uc;
-		int stk_ix;
-		bytes stk_bak;
+	private:
+		std::function<void()> _task;
 
-		bool has_yielded;
-		waker_i wkr;
+		bool _is_stoped;
+		time _end_ti;
+
+		ucontext_t _uc;
+		int _shared_stk_ix;
+		bytes _stk;
+
+		bool _has_yielded;
+		std::shared_ptr<secondary_waker> _wkr;
+
+		friend fiber_executor;
 	};
 
-	using _ctx_ptr_t = std::shared_ptr<_ctx_t>;
-
-	_ctx_ptr_t _ctx;
-
-	fiber(_ctx_ptr_t fc) : _ctx(std::move(fc)) {}
-};
-
-class fiber_driver {
-public:
-	fiber_driver(size_t stack_size = 0x100000) :
-		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
-
-	fiber attach(std::function<void()> func, ms dur = 0) {
-		fiber f(fiber::not_auto_attach, std::move(func), dur);
-		f._ctx->is_stoped = false;
-		_fcs.emplace(f._ctx);
-		return f;
+	std::shared_ptr<context>
+	execute(std::function<void()> func, ms lifetime = 0) {
+		auto ctx = std::make_shared<context>();
+		ctx->_task = std::move(func);
+		ctx->_is_stoped = false;
+		ctx->reset_lifetime(lifetime);
+		_fcs.emplace(ctx);
+		return ctx;
 	}
 
-	void attach(fiber f) {
-		assert(f._ctx);
-
-		auto old = f._ctx->is_stoped.exchange(false);
-		if (!old) {
-			return;
-		}
-		_fcs.emplace(f._ctx);
-	}
-
-	fiber current() const {
+	std::shared_ptr<context> current() const {
 		return _cur_fc;
 	}
 
@@ -220,13 +168,11 @@ public:
 		}
 	}
 
-	using waker = rua::secondary_waker;
-
 	class scheduler : public rua::scheduler {
 	public:
 		scheduler() = default;
 
-		scheduler(fiber_driver &fib_dvr) : _fd(&fib_dvr) {}
+		scheduler(fiber_executor &fib_dvr) : _fd(&fib_dvr) {}
 
 		virtual ~scheduler() = default;
 
@@ -241,17 +187,17 @@ public:
 				wake_ti = tick() + timeout;
 			}
 
-			_fd->_cur_fc->has_yielded = true;
-			_fd->_cur_fc->stk_ix = _fd->_stk_ix;
+			_fd->_cur_fc->_has_yielded = true;
+			_fd->_cur_fc->_shared_stk_ix = _fd->_shared_stk_ix;
 			slp_map.emplace(wake_ti, _fd->_cur_fc);
 
 			_fd->_prev_fc = std::move(_fd->_cur_fc);
 			if (_fd->_fcs.size()) {
 				if (!_fd->_try_resume_fcs_front()) {
-					_fd->_swap_new_worker_uc(&_fd->_prev_fc->uc);
+					_fd->_swap_new_worker_uc(&_fd->_prev_fc->_uc);
 				}
 			} else {
-				swap_ucontext(&_fd->_prev_fc->uc, &_fd->_orig_uc);
+				swap_ucontext(&_fd->_prev_fc->_uc, &_fd->_orig_uc);
 			}
 			_fd->_clear_prev_fc();
 		}
@@ -262,9 +208,7 @@ public:
 				return false;
 			}
 
-			assert(_fd->_cur_fc->wkr.type_is<waker>());
-
-			auto wkr = _fd->_cur_fc->wkr.as<waker>();
+			auto &wkr = _fd->_cur_fc->_wkr;
 			if (!wkr->state()) {
 				_sleep(_fd->_cws, timeout);
 			}
@@ -274,22 +218,21 @@ public:
 		virtual waker_i get_waker() {
 			assert(_fd->_cur_fc);
 
-			auto &wkr = _fd->_cur_fc->wkr;
-			if (wkr.type_is<waker>() &&
-				wkr.as<waker>()->primary() == _fd->_orig_wkr) {
-				wkr.as<waker>()->reset();
+			auto &wkr = _fd->_cur_fc->_wkr;
+			if (wkr) {
+				wkr.reset();
 			} else {
-				wkr = std::make_shared<waker>(_fd->_orig_wkr);
+				wkr = std::make_shared<secondary_waker>(_fd->_orig_wkr);
 			}
 			return wkr;
 		}
 
-		fiber_driver *get_fiber_driver() {
-			return _fd;
+		fiber_executor &get_executor() {
+			return *_fd;
 		}
 
 	private:
-		fiber_driver *_fd;
+		fiber_executor *_fd;
 	};
 
 	scheduler &get_scheduler() {
@@ -297,11 +240,11 @@ public:
 	}
 
 private:
-	std::queue<fiber::_ctx_ptr_t> _fcs;
-	fiber::_ctx_ptr_t _cur_fc, _prev_fc;
+	std::queue<std::shared_ptr<context>> _fcs;
+	std::shared_ptr<context> _cur_fc, _prev_fc;
 
-	std::multimap<time, fiber::_ctx_ptr_t> _slps;
-	std::multimap<time, fiber::_ctx_ptr_t> _cws;
+	std::multimap<time, std::shared_ptr<context>> _slps;
+	std::multimap<time, std::shared_ptr<context>> _cws;
 
 	void _check_slps(time now) {
 		for (auto it = _slps.begin(); it != _slps.end(); it = _slps.erase(it)) {
@@ -314,8 +257,7 @@ private:
 
 	void _check_cws(time now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->second->wkr.as<secondary_waker>()->state() ||
-				now >= it->first) {
+			if (it->second->_wkr->state() || now >= it->first) {
 				_fcs.emplace(std::move(it->second));
 				it = _cws.erase(it);
 				continue;
@@ -326,17 +268,17 @@ private:
 
 	ucontext_t _orig_uc;
 
-	size_t _stk_sz;
-	int _stk_ix;
-	bytes _stks[2];
+	size_t _shared_stk_sz;
+	int _shared_stk_ix;
+	bytes _shared_stks[2];
 	ucontext_t _new_worker_ucs[2];
 
 	bytes &_cur_stk() {
-		return _stks[_stk_ix];
+		return _shared_stks[_shared_stk_ix];
 	}
 
 	ucontext_t &_cur_new_worker_uc() {
-		return _new_worker_ucs[_stk_ix];
+		return _new_worker_ucs[_shared_stk_ix];
 	}
 
 	void _clear_prev_fc() {
@@ -344,23 +286,24 @@ private:
 			return;
 		}
 
-		assert(!_prev_fc->stk_bak.size());
+		assert(!_prev_fc->_stk.size());
 
-		auto &stk = _stks[_prev_fc->stk_ix];
-		auto stk_used = stk(_prev_fc->uc.sp() - stk.data().uintptr());
+		auto &stk = _shared_stks[_prev_fc->_shared_stk_ix];
+		auto stk_used = stk(_prev_fc->_uc.sp() - stk.data().uintptr());
 		auto rmdr = stk_used.size() % 1024;
-		_prev_fc->stk_bak.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
-		_prev_fc->stk_bak = stk_used;
+		_prev_fc->_stk.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
+		_prev_fc->_stk = stk_used;
 
 		_prev_fc.reset();
 	}
 
 	bool _try_resume_fcs_front(ucontext_t *oucp = nullptr) {
-		if (!_fcs.front()->stk_bak.size()) {
+		if (!_fcs.front()->_stk.size()) {
 			return false;
 		}
 
-		if (oucp != &_orig_uc && _fcs.front()->stk_ix == _stk_ix) {
+		if (oucp != &_orig_uc &&
+			_fcs.front()->_shared_stk_ix == _shared_stk_ix) {
 			if (!oucp) {
 				set_ucontext(&_orig_uc);
 				return true;
@@ -372,17 +315,16 @@ private:
 		_cur_fc = std::move(_fcs.front());
 		_fcs.pop();
 
-		_stk_ix = _cur_fc->stk_ix;
+		_shared_stk_ix = _cur_fc->_shared_stk_ix;
 		auto &cur_stk = _cur_stk();
-		cur_stk(cur_stk.size() - _cur_fc->stk_bak.size())
-			.copy_from(_cur_fc->stk_bak);
-		_cur_fc->stk_bak.resize(0);
+		cur_stk(cur_stk.size() - _cur_fc->_stk.size()).copy_from(_cur_fc->_stk);
+		_cur_fc->_stk.resize(0);
 
 		if (!oucp) {
-			set_ucontext(&_cur_fc->uc);
+			set_ucontext(&_cur_fc->_uc);
 			return true;
 		}
-		swap_ucontext(oucp, &_cur_fc->uc);
+		swap_ucontext(oucp, &_cur_fc->_uc);
 		return true;
 	}
 
@@ -397,27 +339,27 @@ private:
 			assert(!_fcs.front());
 			_fcs.pop();
 
-			if (_cur_fc->is_stoped) {
+			if (_cur_fc->_is_stoped) {
 				continue;
 			}
 
 			for (;;) {
-				_cur_fc->fn();
+				_cur_fc->_task();
 
-				if (_cur_fc->is_stoped) {
+				if (_cur_fc->_is_stoped) {
 					break;
 				}
 
-				if (_cur_fc->end_ti <= tick()) {
-					_cur_fc->is_stoped = false;
+				if (_cur_fc->_end_ti <= tick()) {
+					_cur_fc->_is_stoped = false;
 					break;
 				}
 
-				if (!_cur_fc->has_yielded) {
+				if (!_cur_fc->_has_yielded) {
 					_slps.emplace(time_zero(), std::move(_cur_fc));
 					break;
 				}
-				_cur_fc->has_yielded = false;
+				_cur_fc->_has_yielded = false;
 			}
 		}
 
@@ -425,16 +367,16 @@ private:
 	}
 
 	static void _worker(any_word th1s) {
-		th1s.as<fiber_driver *>()->_work();
+		th1s.as<fiber_executor *>()->_work();
 	}
 
 	void _swap_new_worker_uc(ucontext_t *oucp) {
 		if (oucp != &_orig_uc) {
-			_stk_ix = !_stk_ix;
+			_shared_stk_ix = !_shared_stk_ix;
 		}
 		auto &cur_stk = _cur_stk();
 		if (!cur_stk) {
-			cur_stk.reset(_stk_sz);
+			cur_stk.reset(_shared_stk_sz);
 			get_ucontext(&_cur_new_worker_uc());
 			make_ucontext(&_cur_new_worker_uc(), &_worker, this, cur_stk);
 		}
@@ -456,24 +398,19 @@ private:
 	waker_i _orig_wkr;
 };
 
-inline fiber::fiber(std::function<void()> func, ms dur) :
-	fiber(fiber::not_auto_attach, std::move(func), dur) {
+inline std::shared_ptr<fiber_executor::context>
+co(std::function<void()> func, ms lifetime = 0) {
 	auto sch = this_scheduler();
 	if (sch) {
-		auto fsch = sch.as<fiber_driver::scheduler>();
-		if (fsch) {
-			fsch->get_fiber_driver()->attach(*this);
-			return;
+		auto fib_sch = sch.as<fiber_executor::scheduler>();
+		if (fib_sch) {
+			return fib_sch->get_executor().execute(std::move(func), lifetime);
 		}
 	}
-	std::unique_ptr<fiber_driver> fib_dvr_uptr(new fiber_driver);
-	fib_dvr_uptr->attach(*this);
-	fib_dvr_uptr->run();
-}
-
-inline fiber::fiber(fiber_driver &fib_dvr, std::function<void()> func, ms dur) :
-	fiber(fiber::not_auto_attach, std::move(func), dur) {
-	fib_dvr.attach(*this);
+	fiber_executor fib_exr;
+	fib_exr.execute(std::move(func), lifetime);
+	fib_exr.run();
+	return nullptr;
 }
 
 } // namespace rua

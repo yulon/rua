@@ -6,22 +6,22 @@
 
 #include <string>
 
-TEST_CASE("fiber_driver run") {
-	static rua::fiber_driver dvr;
+TEST_CASE("fiber_executor run") {
+	static rua::fiber_executor dvr;
 	static auto &sch = dvr.get_scheduler();
 	static std::string r;
 
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "1";
 		sch.sleep(300);
 		r += "1";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "2";
 		sch.sleep(200);
 		r += "2";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "3";
 		sch.sleep(100);
 		r += "3";
@@ -32,22 +32,22 @@ TEST_CASE("fiber_driver run") {
 	REQUIRE(r == "123321");
 }
 
-TEST_CASE("fiber_driver step") {
-	static rua::fiber_driver dvr;
+TEST_CASE("fiber_executor step") {
+	static rua::fiber_executor dvr;
 	static auto &sch = dvr.get_scheduler();
 	static std::string r;
 
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "1";
 		sch.sleep(300);
 		r += "1";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "2";
 		sch.sleep(200);
 		r += "2";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "3";
 		sch.sleep(100);
 		r += "3";
@@ -62,11 +62,11 @@ TEST_CASE("fiber_driver step") {
 }
 
 TEST_CASE("fiber long-lasting task") {
-	static rua::fiber_driver dvr;
+	static rua::fiber_executor dvr;
 	static auto &sch = dvr.get_scheduler();
 	static size_t c = 0;
 
-	dvr.attach([]() { ++c; }, rua::duration_max());
+	dvr.execute([]() { ++c; }, rua::duration_max());
 
 	for (size_t i = 0; i < 5; ++i) {
 		dvr.step();
@@ -76,13 +76,13 @@ TEST_CASE("fiber long-lasting task") {
 }
 
 TEST_CASE("fiber wake sequence") {
-	static rua::fiber_driver dvr;
+	static rua::fiber_executor dvr;
 	static auto &sch = dvr.get_scheduler();
 	static std::string r;
 
-	dvr.attach([]() { r += "1"; });
-	dvr.attach([]() { r += "2"; });
-	dvr.attach([]() { r += "3"; });
+	dvr.execute([]() { r += "1"; });
+	dvr.execute([]() { r += "2"; });
+	dvr.execute([]() { r += "3"; });
 
 	dvr.step();
 
@@ -90,17 +90,17 @@ TEST_CASE("fiber wake sequence") {
 
 	r.resize(0);
 
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "1";
 		sch.sleep(100);
 		r += "1";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "2";
 		sch.sleep(100);
 		r += "2";
 	});
-	dvr.attach([]() {
+	dvr.execute([]() {
 		r += "3";
 		sch.sleep(100);
 		r += "3";
@@ -113,21 +113,21 @@ TEST_CASE("fiber wake sequence") {
 	REQUIRE(r == "123123");
 }
 
-TEST_CASE("fiber") {
+TEST_CASE("co") {
 	static std::string r;
 
-	rua::fiber([]() {
-		rua::fiber([]() {
+	rua::co([]() {
+		rua::co([]() {
 			r += "1";
 			rua::sleep(300);
 			r += "1";
 		});
-		rua::fiber([]() {
+		rua::co([]() {
 			r += "2";
 			rua::sleep(200);
 			r += "2";
 		});
-		rua::fiber([]() {
+		rua::co([]() {
 			r += "3";
 			rua::sleep(100);
 			r += "3";
@@ -138,7 +138,7 @@ TEST_CASE("fiber") {
 }
 
 TEST_CASE("use chan on fiber") {
-	rua::fiber([]() {
+	rua::co([]() {
 		static rua::chan<std::string> ch;
 
 		rua::thread([]() mutable {
