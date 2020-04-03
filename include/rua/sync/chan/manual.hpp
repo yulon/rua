@@ -23,8 +23,8 @@ public:
 
 	template <typename... Args>
 	bool emplace(Args &&... args) {
-		_buf.emplace(std::forward<Args>(args)...);
-		auto waiter_opt = _waiters.pop();
+		_buf.emplace_front(std::forward<Args>(args)...);
+		auto waiter_opt = _waiters.pop_back_if([&]() -> bool { return _buf; });
 		if (!waiter_opt) {
 			return false;
 		}
@@ -33,13 +33,13 @@ public:
 	}
 
 	rua::opt<T> try_pop() {
-		return _buf.pop();
+		return _buf.pop_back();
 	}
 
 	inline rua::opt<T> try_pop(ms timeout);
 
 	rua::opt<T> try_pop(scheduler_i sch, ms timeout) {
-		auto val_opt = _buf.pop();
+		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout || !sch) {
 			return val_opt;
 		}
@@ -67,9 +67,9 @@ protected:
 
 		auto wkr = sch->get_waker();
 
-		if (!_waiters.emplace_if(
+		if (!_waiters.emplace_front_if(
 				[&]() -> bool {
-					val_opt = _buf.pop();
+					val_opt = _buf.pop_back();
 					return !val_opt;
 				},
 				wkr)) {
@@ -78,9 +78,10 @@ protected:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->sleep(timeout, true) && !_waiters.emplace_if(
+				if (sch->sleep(timeout, true) && !_waiters.emplace_front_if(
 													 [&]() -> bool {
-														 val_opt = _buf.pop();
+														 val_opt =
+															 _buf.pop_back();
 														 return !val_opt;
 													 },
 													 wkr)) {
@@ -89,16 +90,16 @@ protected:
 			}
 		}
 
-		auto t = tick();
 		for (;;) {
+			auto t = tick();
 			auto r = sch->sleep(timeout, true);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
-				return try_pop();
+				return _buf.pop_back();
 			}
-			if (r && !_waiters.emplace_if(
+			if (r && !_waiters.emplace_front_if(
 						 [&]() -> bool {
-							 val_opt = _buf.pop();
+							 val_opt = _buf.pop_back();
 							 return !val_opt;
 						 },
 						 wkr)) {

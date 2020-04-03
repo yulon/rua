@@ -48,7 +48,7 @@ public:
 	}
 
 	template <typename... Args>
-	void emplace(Args &&... args) {
+	bool emplace_front(Args &&... args) {
 		auto new_front = new node_t(std::forward<Args>(args)...);
 		auto old_front = _front.load();
 		do {
@@ -57,10 +57,11 @@ public:
 			}
 			new_front->after = old_front;
 		} while (!_front.compare_exchange_weak(old_front, new_front));
+		return !old_front;
 	}
 
 	template <typename Cond, typename... Args>
-	bool emplace_if(Cond &&cond, Args &&... args) {
+	bool emplace_front_if(Cond &&cond, Args &&... args) {
 		auto li = lock();
 		auto r = cond();
 		if (r) {
@@ -70,8 +71,19 @@ public:
 		return r;
 	}
 
+	template <typename Cond, typename... Args>
+	bool emplace_front_if_non_empty_or(Cond &&cond, Args &&... args) {
+		auto li = lock();
+		auto r = !li || cond();
+		if (r) {
+			li.emplace_front(std::forward<Args>(args)...);
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
 	template <typename... Args>
-	bool try_emplace(Args &&... args) {
+	opt<bool> try_emplace_front(Args &&... args) {
 		node_t *new_front = nullptr;
 		auto old_front = _front.load();
 		do {
@@ -79,56 +91,97 @@ public:
 				if (new_front) {
 					delete new_front;
 				}
-				return false;
+				return nullopt;
 			}
 			if (!new_front) {
 				new_front = new node_t(std::forward<Args>(args)...);
 			}
 			new_front->after = old_front;
 		} while (!_front.compare_exchange_weak(old_front, new_front));
+		return !old_front;
+	}
+
+	template <typename... Args>
+	void emplace_back(Args &&... args) {
+		auto new_back = new node_t(std::forward<Args>(args)...);
+		new_back->after = nullptr;
+		auto old_front = _front.load();
+		for (;;) {
+			while (old_front == reinterpret_cast<node_t *>(_locked)) {
+				old_front = _front.load();
+			}
+			if (!old_front) {
+				if (_front.compare_exchange_weak(old_front, new_back)) {
+					return;
+				}
+				continue;
+			}
+			if (_front.compare_exchange_weak(
+					old_front, reinterpret_cast<node_t *>(_locked))) {
+				break;
+			}
+		}
+		forward_list<T> li(old_front);
+		li.push_back_node(new_back);
+		unlock_and_prepend(std::move(li));
+	}
+
+	template <typename Cond, typename... Args>
+	bool emplace_back_if(Cond &&cond, Args &&... args) {
+		auto li = lock();
+		auto r = cond();
+		if (r) {
+			li.emplace_back(std::forward<Args>(args)...);
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename Cond, typename... Args>
+	bool emplace_back_if_non_empty_or(Cond &&cond, Args &&... args) {
+		auto li = lock();
+		auto r = !li || cond();
+		if (r) {
+			li.emplace_back(std::forward<Args>(args)...);
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename... Args>
+	bool try_emplace_back(Args &&... args) {
+		node_t *new_back = nullptr;
+		auto old_front = _front.load();
+		for (;;) {
+			if (old_front == reinterpret_cast<node_t *>(_locked)) {
+				if (new_back) {
+					delete new_back;
+				}
+				return false;
+			}
+			if (!old_front) {
+				if (!new_back) {
+					new_back = new node_t(std::forward<Args>(args)...);
+					new_back->after = nullptr;
+				}
+				if (_front.compare_exchange_weak(old_front, new_back)) {
+					return true;
+				}
+				continue;
+			}
+			if (_front.compare_exchange_weak(
+					old_front, reinterpret_cast<node_t *>(_locked))) {
+				break;
+			}
+		}
+		forward_list<T> li(old_front);
+		if (new_back) {
+			li.push_back_node(new_back);
+		} else {
+			li.emplace_back(std::forward<Args>(args)...);
+		}
+		unlock_and_prepend(std::move(li));
 		return true;
-	}
-
-	opt<T> pop() {
-		opt<T> r;
-		auto li = lock_when_non_empty();
-		if (!li) {
-			return r;
-		}
-		r.emplace(li.pop_front());
-		unlock_and_prepend(std::move(li));
-		return r;
-	}
-
-	opt<T> try_pop() {
-		opt<T> r;
-		auto li = try_lock_when_non_empty();
-		if (!li) {
-			return r;
-		}
-		r.emplace(li.pop_front());
-		unlock_and_prepend(std::move(li));
-		return r;
-	}
-
-	forward_list<T> pop_all() {
-		auto front = _front.load();
-		do {
-			while (front == reinterpret_cast<node_t *>(_locked)) {
-				front = _front.load();
-			}
-		} while (!_front.compare_exchange_weak(front, nullptr));
-		return forward_list<T>(front);
-	}
-
-	opt<forward_list<T>> try_pop_all() {
-		auto front = _front.load();
-		do {
-			if (front == reinterpret_cast<node_t *>(_locked)) {
-				return nullopt;
-			}
-		} while (!_front.compare_exchange_weak(front, nullptr));
-		return forward_list<T>(front);
 	}
 
 	bool prepend(forward_list<T> pp) {
@@ -171,6 +224,98 @@ public:
 			pp_back->after = old_front;
 		} while (!_front.compare_exchange_weak(old_front, pp_front));
 		return !old_front;
+	}
+
+	opt<T> pop_front() {
+		opt<T> r;
+		auto li = lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		r.emplace(li.pop_front());
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename Cond>
+	opt<T> pop_front_if(Cond &&cond) {
+		opt<T> r;
+		auto li = lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		if (cond()) {
+			r.emplace(li.pop_front());
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	opt<T> try_pop_front() {
+		opt<T> r;
+		auto li = try_lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		r.emplace(li.pop_front());
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	opt<T> pop_back() {
+		opt<T> r;
+		auto li = lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		r.emplace(li.pop_back());
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename Cond>
+	opt<T> pop_back_if(Cond &&cond) {
+		opt<T> r;
+		auto li = lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		if (cond()) {
+			r.emplace(li.pop_back());
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	opt<T> try_pop_back() {
+		opt<T> r;
+		auto li = try_lock_when_non_empty();
+		if (!li) {
+			return r;
+		}
+		r.emplace(li.pop_back());
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	forward_list<T> pop_all() {
+		auto front = _front.load();
+		do {
+			while (front == reinterpret_cast<node_t *>(_locked)) {
+				front = _front.load();
+			}
+		} while (!_front.compare_exchange_weak(front, nullptr));
+		return forward_list<T>(front);
+	}
+
+	opt<forward_list<T>> try_pop_all() {
+		auto front = _front.load();
+		do {
+			if (front == reinterpret_cast<node_t *>(_locked)) {
+				return nullopt;
+			}
+		} while (!_front.compare_exchange_weak(front, nullptr));
+		return forward_list<T>(front);
 	}
 
 	forward_list<T> lock() {

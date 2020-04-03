@@ -21,7 +21,7 @@ public:
 	mutex &operator=(const mutex &) = delete;
 
 	bool try_lock(ms timeout = 0) {
-		if (!_locked.exchange(true)) {
+		if (!_waiters && !_locked.exchange(true)) {
 			return true;
 		}
 		if (!timeout) {
@@ -31,16 +31,16 @@ public:
 		auto sch = this_scheduler();
 		auto wkr = sch->get_waker();
 
-		if (!_waiters.emplace_if(
-				[&]() -> bool { return _locked.exchange(true); }, wkr)) {
+		if (!_waiters.emplace_front_if_non_empty_or(
+				[this]() -> bool { return _locked.exchange(true); }, wkr)) {
 			return true;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
 				if (sch->sleep(timeout, true) &&
-					!_waiters.emplace_if(
-						[&]() -> bool { return _locked.exchange(true); },
+					!_waiters.emplace_front_if_non_empty_or(
+						[this]() -> bool { return _locked.exchange(true); },
 						wkr)) {
 					return true;
 				}
@@ -52,11 +52,11 @@ public:
 			auto r = sch->sleep(timeout, true);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
-				return !_locked.exchange(true);
+				return r && !_locked.exchange(true);
 			}
 			if (r &&
-				!_waiters.emplace_if(
-					[&]() -> bool { return _locked.exchange(true); }, wkr)) {
+				!_waiters.emplace_front_if_non_empty_or(
+					[this]() -> bool { return _locked.exchange(true); }, wkr)) {
 				return true;
 			}
 		}
@@ -73,7 +73,8 @@ public:
 #else
 		assert(_locked.exchange(false));
 #endif
-		auto waiter_opt = _waiters.try_pop();
+		auto waiter_opt =
+			_waiters.pop_back_if([this]() -> bool { return !_locked.load(); });
 		if (!waiter_opt) {
 			return;
 		}

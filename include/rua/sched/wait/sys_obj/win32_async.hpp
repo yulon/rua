@@ -46,8 +46,8 @@ inline void _sys_obj_waiter() {
 	int waited_ix = -1;
 
 	for (;;) {
-		while (waited_ix > -1 ? waitings.size() - 1
-							  : waitings.size() < MAXIMUM_WAIT_OBJECTS) {
+		if (waited_ix > -1 ? waitings.size() - 1
+						   : waitings.size() < MAXIMUM_WAIT_OBJECTS) {
 			auto pre_waits = ctx.pre_waits.lock_when_non_empty();
 			if (!pre_waits) {
 				break;
@@ -149,7 +149,7 @@ RUA_FORCE_INLINE void wait(
 	assert(h_cp);
 
 	++ctx.wait_c;
-	ctx.pre_waits.emplace(
+	ctx.pre_waits.emplace_front(
 		_wait_info_t{h_cp,
 					 timeout == duration_max() ? time_max() : tick() + timeout,
 					 std::move(callback)});

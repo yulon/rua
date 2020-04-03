@@ -24,7 +24,7 @@ public:
 	constexpr _thread_var_indexer() : _ix_c(0), _idle_ixs() {}
 
 	size_t alloc() {
-		auto idle_ix_opt = _idle_ixs.pop();
+		auto idle_ix_opt = _idle_ixs.pop_front();
 		if (idle_ix_opt) {
 			return idle_ix_opt.value();
 		}
@@ -32,7 +32,7 @@ public:
 	}
 
 	void dealloc(size_t ix) {
-		_idle_ixs.emplace(ix);
+		_idle_ixs.emplace_front(ix);
 	}
 
 private:

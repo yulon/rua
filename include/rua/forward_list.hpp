@@ -124,9 +124,28 @@ public:
 	template <typename... Args>
 	iterator emplace_front(Args &&... args) {
 		auto new_front = new node_t(std::forward<Args>(args)...);
-		new_front->after = _front;
-		_front = new_front;
+		push_front_node(new_front);
 		return iterator(new_front);
+	}
+
+	void push_front_node(node_t *new_front_node) {
+		new_front_node->after = _front;
+		_front = new_front_node;
+	}
+
+	template <typename... Args>
+	iterator emplace_back(Args &&... args) {
+		auto new_back = new node_t(std::forward<Args>(args)...);
+		push_back_node(new_back);
+		return iterator(new_back);
+	}
+
+	void push_back_node(node_t *new_back_node) {
+		auto slot = &_front;
+		while (*slot) {
+			slot = &(*slot)->after;
+		}
+		*slot = new_back_node;
 	}
 
 	template <typename... Args>
@@ -134,17 +153,40 @@ public:
 		assert(before);
 
 		auto new_after = new node_t(std::forward<Args>(args)...);
-		new_after->after = before.node()->after;
-		before.node()->after = new_after;
+		insert_after_node(before.node(), new_after);
 		return iterator(new_after);
+	}
+
+	void insert_after_node(node_t *before_node, node_t *new_after_node) {
+		new_after_node->after = before_node->after;
+		before_node->after = new_after_node;
 	}
 
 	T pop_front() {
 		return _pop(_front);
 	}
 
+	T pop_back() {
+		return _pop(_back());
+	}
+
+	T pop_after(const_iterator before) {
+		assert(_front);
+		assert(before.node());
+
+		return _pop(before.node()->after);
+	}
+
 	iterator erase_front() {
 		return _erase(_front);
+	}
+
+	void erase_back() {
+		assert(_front);
+
+		auto &back = _back();
+		delete back;
+		back = nullptr;
 	}
 
 	iterator erase_after(const_iterator before) {
@@ -217,6 +259,16 @@ private:
 		delete n;
 		n = it.node();
 		return it;
+	}
+
+	node_t *&_back() {
+		assert(_front);
+
+		auto slot = &_front;
+		while ((*slot)->after) {
+			slot = &(*slot)->after;
+		}
+		return *slot;
 	}
 };
 
