@@ -20,7 +20,11 @@ public:
 
 	mutex &operator=(const mutex &) = delete;
 
-	bool try_lock(ms timeout = 0) {
+	bool try_pop() {
+		return !_waiters && !_locked.exchange(true);
+	}
+
+	bool try_lock(ms timeout) {
 		if (!_waiters && !_locked.exchange(true)) {
 			return true;
 		}
@@ -30,7 +34,7 @@ public:
 		return _wait_and_lock(this_scheduler(), timeout);
 	}
 
-	bool try_lock(scheduler_i sch, ms timeout = 0) {
+	bool try_lock(scheduler_i sch, ms timeout) {
 		if (!_waiters && !_locked.exchange(true)) {
 			return true;
 		}
