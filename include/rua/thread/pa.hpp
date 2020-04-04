@@ -4,14 +4,14 @@
 #include "basic.hpp"
 
 #include "../sched/scheduler/default.hpp"
-#include "../sync/chan/manual.hpp"
+#include "../sync/chan.hpp"
 #include "../types/util.hpp"
 
 #include <functional>
 
 namespace rua {
 
-inline void pa(std::function<void()> task) {
+RUA_FORCE_INLINE void pa(std::function<void()> task) {
 	static chan<std::function<void()>> que;
 	if (que.emplace(std::move(task))) {
 		return;

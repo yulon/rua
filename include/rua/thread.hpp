@@ -7,4 +7,6 @@
 #include "thread/var.hpp"
 #include "thread/wait.hpp"
 
+#include "sched.hpp"
+
 #endif

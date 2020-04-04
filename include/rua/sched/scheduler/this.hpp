@@ -1,15 +1,16 @@
-#ifndef _RUA_SCHED_SCHEDULER_ABSTRACT_THIS_HPP
-#define _RUA_SCHED_SCHEDULER_ABSTRACT_THIS_HPP
+#ifndef _RUA_SCHED_SCHEDULER_THIS_HPP
+#define _RUA_SCHED_SCHEDULER_THIS_HPP
 
 #include "abstract.hpp"
 #include "default.hpp"
+#include "this_decl.hpp"
 
 #include "../../macros.hpp"
 #include "../../thread/var.hpp"
 
 namespace rua {
 
-inline scheduler_i &_this_scheduler() {
+RUA_FORCE_INLINE scheduler_i &_this_scheduler_ref() {
 	static thread_var<scheduler_i> sto;
 	if (!sto.has_value()) {
 		return sto.emplace(make_default_scheduler());
@@ -18,27 +19,31 @@ inline scheduler_i &_this_scheduler() {
 }
 
 RUA_FORCE_INLINE scheduler_i this_scheduler() {
-	return _this_scheduler();
+	return _this_scheduler_ref();
 }
 
 class scheduler_guard {
 public:
-	scheduler_guard(scheduler_i s) {
-		auto &sch = _this_scheduler();
-		_previous = std::move(sch);
-		sch = std::move(s);
+	scheduler_guard(scheduler_i sch) {
+		auto &sch_ref = _this_scheduler_ref();
+		_prev = std::move(sch_ref);
+		sch_ref = std::move(sch);
 	}
 
+	scheduler_guard(const scheduler_guard &) = delete;
+
+	scheduler_guard &operator=(const scheduler_guard &) = delete;
+
 	~scheduler_guard() {
-		_this_scheduler() = _previous;
+		_this_scheduler_ref() = std::move(_prev);
 	}
 
 	scheduler_i previous() {
-		return _previous;
+		return _prev;
 	}
 
 private:
-	scheduler_i _previous;
+	scheduler_i _prev;
 };
 
 RUA_FORCE_INLINE void yield() {

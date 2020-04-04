@@ -3,9 +3,9 @@
 
 #include "win32_async.hpp"
 
-#include "../../scheduler.hpp"
+#include "../../scheduler/this_decl.hpp"
 
-#include "../../../sync/chan/manual.hpp"
+#include "../../../sync/chan.hpp"
 #include "../../../thread/scheduler.hpp"
 
 #include <cassert>

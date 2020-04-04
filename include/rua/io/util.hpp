@@ -3,6 +3,7 @@
 
 #include "abstract.hpp"
 
+#include "../sched/scheduler/this.hpp"
 #include "../sync/chan.hpp"
 #include "../thread.hpp"
 

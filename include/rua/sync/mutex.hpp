@@ -4,7 +4,7 @@
 #include "lockfree_list.hpp"
 
 #include "../chrono/tick.hpp"
-#include "../sched/scheduler.hpp"
+#include "../sched/scheduler/this_decl.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
@@ -27,8 +27,49 @@ public:
 		if (!timeout) {
 			return false;
 		}
+		return _wait_and_lock(this_scheduler(), timeout);
+	}
 
-		auto sch = this_scheduler();
+	bool try_lock(scheduler_i sch, ms timeout = 0) {
+		if (!_waiters && !_locked.exchange(true)) {
+			return true;
+		}
+		if (!timeout) {
+			return false;
+		}
+		return _wait_and_lock(std::move(sch), timeout);
+	}
+
+	void lock() {
+		try_lock(duration_max());
+	}
+
+	void lock(scheduler_i sch) {
+		try_lock(std::move(sch), duration_max());
+	}
+
+	void unlock() {
+#ifdef NDEBUG
+		_locked.store(false);
+#else
+		assert(_locked.exchange(false));
+#endif
+		auto waiter_opt =
+			_waiters.pop_back_if([this]() -> bool { return !_locked.load(); });
+		if (!waiter_opt) {
+			return;
+		}
+		waiter_opt.value()->wake();
+	}
+
+private:
+	std::atomic<bool> _locked;
+	lockfree_list<waker_i> _waiters;
+
+	bool _wait_and_lock(scheduler_i sch, ms timeout) {
+		assert(sch);
+		assert(timeout);
+
 		auto wkr = sch->get_waker();
 
 		if (!_waiters.emplace_front_if_non_empty_or(
@@ -62,28 +103,6 @@ public:
 		}
 		return false;
 	}
-
-	void lock() {
-		try_lock(duration_max());
-	}
-
-	void unlock() {
-#ifdef NDEBUG
-		_locked.store(false);
-#else
-		assert(_locked.exchange(false));
-#endif
-		auto waiter_opt =
-			_waiters.pop_back_if([this]() -> bool { return !_locked.load(); });
-		if (!waiter_opt) {
-			return;
-		}
-		waiter_opt.value()->wake();
-	}
-
-private:
-	std::atomic<bool> _locked;
-	lockfree_list<waker_i> _waiters;
 };
 
 } // namespace rua
