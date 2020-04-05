@@ -3,7 +3,7 @@
 
 #include "bytes.hpp"
 #include "chrono.hpp"
-#include "sched/scheduler.hpp"
+#include "sched.hpp"
 #include "types/util.hpp"
 #include "ucontext.hpp"
 
