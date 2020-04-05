@@ -97,60 +97,55 @@ public:
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(const interface_ptr<Derived> &derived_blended_ptr_lv) :
-		_type(derived_blended_ptr_lv.type()) {
+	interface_ptr(const interface_ptr<Derived> &derived_interface_ptr_lv) :
+		_type(derived_interface_ptr_lv.type()) {
 
-		if (!derived_blended_ptr_lv) {
+		if (!derived_interface_ptr_lv) {
 			_raw = nullptr;
 			return;
 		}
 
-		auto src_base_ptr_shared_ptr = derived_blended_ptr_lv.get_shared();
-		if (src_base_ptr_shared_ptr) {
-			new (&_shared) std::shared_ptr<T>(std::static_pointer_cast<T>(
-				std::move(src_base_ptr_shared_ptr)));
+		auto shared = derived_interface_ptr_lv.get_shared();
+		if (shared) {
+			_shared = std::static_pointer_cast<T>(std::move(shared));
 			_raw = _shared.get();
 			return;
 		}
 
-		_raw = static_cast<T *>(derived_blended_ptr_lv.get());
+		auto raw = derived_interface_ptr_lv.get();
+		assert(raw);
+		_raw = static_cast<T *>(raw);
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(interface_ptr<Derived> &&derived_blended_ptr_rv) :
-		_type(derived_blended_ptr_rv.type()) {
+	interface_ptr(interface_ptr<Derived> &&derived_interface_ptr_rv) :
+		_type(derived_interface_ptr_rv.type()) {
 
-		if (!derived_blended_ptr_rv) {
+		if (!derived_interface_ptr_rv) {
 			_raw = nullptr;
 			return;
 		}
 
-		auto src_base_ptr_shared_ptr = derived_blended_ptr_rv.release_shared();
-		if (src_base_ptr_shared_ptr) {
-			new (&_shared) std::shared_ptr<T>(std::static_pointer_cast<T>(
-				std::move(src_base_ptr_shared_ptr)));
+		auto shared = derived_interface_ptr_rv.release_shared();
+		if (shared) {
+			_shared = std::static_pointer_cast<T>(std::move(shared));
 			_raw = _shared.get();
 			return;
 		}
 
-		_raw = static_cast<T *>(derived_blended_ptr_rv.release());
+		auto raw = derived_interface_ptr_rv.release();
+		assert(raw);
+		_raw = static_cast<T *>(raw);
 	}
 
-	interface_ptr(const interface_ptr &src) : _type(src._type) {
-		_raw = src._raw;
-		if (!_raw || !src._shared) {
-			return;
-		}
-		_shared = src._shared;
-	}
+	interface_ptr(const interface_ptr &src) :
+		_raw(src._raw), _shared(src._shared), _type(src._type) {}
 
-	interface_ptr(interface_ptr &&src) : _type(src._type) {
-		_raw = src.release();
-		if (_raw || !src) {
-			return;
+	interface_ptr(interface_ptr &&src) :
+		_raw(src._raw), _shared(std::move(src._shared)), _type(src._type) {
+		if (src._raw) {
+			src._raw = nullptr;
 		}
-		_shared = src.release_shared();
-		_raw = _shared.get();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(interface_ptr)

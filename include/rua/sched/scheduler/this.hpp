@@ -8,6 +8,8 @@
 #include "../../macros.hpp"
 #include "../../thread/var.hpp"
 
+#include <cassert>
+
 namespace rua {
 
 RUA_FORCE_INLINE scheduler_i &_this_scheduler_ref() {
@@ -15,6 +17,7 @@ RUA_FORCE_INLINE scheduler_i &_this_scheduler_ref() {
 	if (!sto.has_value()) {
 		return sto.emplace(make_default_scheduler());
 	}
+	assert(sto.value().get());
 	return sto.value();
 }
 

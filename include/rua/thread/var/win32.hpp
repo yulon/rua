@@ -81,8 +81,8 @@ private:
 			wait(h, [=](bool) {
 				dtor(*p);
 				delete p;
+				CloseHandle(h);
 			});
-			CloseHandle(h);
 			val_ptr = p;
 		}
 		return *reinterpret_cast<any_word *>(val_ptr);
