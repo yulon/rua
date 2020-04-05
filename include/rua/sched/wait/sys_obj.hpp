@@ -4,12 +4,10 @@
 #ifdef _WIN32
 
 #include "sys_obj/win32.hpp"
-#include "sys_obj/win32_async.hpp"
 
 namespace rua {
 
 using namespace win32::_wait_sys_obj;
-using namespace win32::_wait_sys_obj_async;
 
 } // namespace rua
 

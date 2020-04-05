@@ -5,7 +5,7 @@
 
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
-#include "../../sched/wait/sys_obj/win32_async.hpp"
+#include "../../sched/wait/sys_obj/win32.hpp"
 #include "../../types/util.hpp"
 
 #include <windows.h>
