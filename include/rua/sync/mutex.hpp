@@ -4,7 +4,7 @@
 #include "lockfree_list.hpp"
 
 #include "../chrono/tick.hpp"
-#include "../sched/scheduler/this_decl.hpp"
+#include "../sched/scheduler.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>

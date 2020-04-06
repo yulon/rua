@@ -5,8 +5,7 @@
 
 #include "../chrono/tick.hpp"
 #include "../opt.hpp"
-#include "../sched/scheduler/abstract.hpp"
-#include "../sched/scheduler/this_decl.hpp"
+#include "../sched/scheduler.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>

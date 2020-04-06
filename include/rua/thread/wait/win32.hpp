@@ -3,7 +3,7 @@
 
 #include "../basic/win32.hpp"
 
-#include "../../sched/wait/sys_obj/win32.hpp"
+#include "../../sched/wait/win32.hpp"
 
 #include <windows.h>
 

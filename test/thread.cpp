@@ -1,4 +1,3 @@
-#include <rua/sync.hpp>
 #include <rua/thread.hpp>
 
 #include <doctest/doctest.h>
@@ -11,8 +10,7 @@ TEST_CASE("thread") {
 	rua::thread([]() mutable {
 		rua::sleep(100);
 		r = "ok";
-	})
-		.wait_for_exit();
+	}).wait_for_exit();
 
 	REQUIRE(r == "ok");
 }

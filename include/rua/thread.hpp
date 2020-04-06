@@ -8,5 +8,6 @@
 #include "thread/wait.hpp"
 
 #include "sched.hpp"
+#include "sync.hpp"
 
 #endif

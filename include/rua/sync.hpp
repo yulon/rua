@@ -6,6 +6,4 @@
 #include "sync/lockfree_list.hpp"
 #include "sync/mutex.hpp"
 
-#include "sched/scheduler/this.hpp"
-
 #endif

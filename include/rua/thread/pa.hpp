@@ -3,7 +3,6 @@
 
 #include "basic.hpp"
 
-#include "../sched/scheduler/default.hpp"
 #include "../sync/chan.hpp"
 #include "../types/util.hpp"
 
@@ -17,9 +16,8 @@ RUA_FORCE_INLINE void pa(std::function<void()> task) {
 		return;
 	}
 	thread([]() {
-		auto sch = make_default_scheduler();
 		for (;;) {
-			que.pop(sch)();
+			que.pop()();
 		}
 	});
 }

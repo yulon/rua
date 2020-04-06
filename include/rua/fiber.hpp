@@ -4,6 +4,7 @@
 #include "bytes.hpp"
 #include "chrono.hpp"
 #include "sched.hpp"
+#include "sync.hpp"
 #include "types/util.hpp"
 #include "ucontext.hpp"
 

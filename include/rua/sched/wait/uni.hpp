@@ -1,8 +1,9 @@
-#ifndef _RUA_SCHED_WAIT_CALL_HPP
-#define _RUA_SCHED_WAIT_CALL_HPP
+#ifndef _RUA_SCHED_WAIT_UNI_HPP
+#define _RUA_SCHED_WAIT_UNI_HPP
 
-#include "../scheduler/this_decl.hpp"
+#include "../scheduler.hpp"
 
+#include "../../sched/scheduler.hpp"
 #include "../../sync/chan.hpp"
 #include "../../thread/pa.hpp"
 #include "../../types/util.hpp"

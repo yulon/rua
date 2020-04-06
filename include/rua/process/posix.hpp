@@ -1,7 +1,7 @@
 #ifndef _RUA_PROCESS_POSIX_HPP
 #define _RUA_PROCESS_POSIX_HPP
 
-#include "../sched/wait/call.hpp"
+#include "../sched/wait/uni.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
 #include "../types/traits.hpp"

@@ -3,7 +3,6 @@
 
 #include "abstract.hpp"
 #include "default.hpp"
-#include "this_decl.hpp"
 
 #include "../../macros.hpp"
 #include "../../thread/var.hpp"

@@ -1,5 +1,4 @@
 #include <rua/fiber.hpp>
-#include <rua/sync.hpp>
 #include <rua/thread.hpp>
 
 #include <doctest/doctest.h>

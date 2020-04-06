@@ -5,7 +5,7 @@
 #include "../bytes.hpp"
 #include "../io.hpp"
 #include "../macros.hpp"
-#include "../sched/wait/sys_obj/win32.hpp"
+#include "../sched/wait/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/encoding/base/win32.hpp"
 #include "../string/string_view.hpp"
@@ -314,7 +314,7 @@ public:
 		size_t _sz;
 	};
 
-	bytes_view mem_image() const {
+	bytes_view mem_view() const {
 		assert(id() == GetCurrentProcessId());
 
 		MODULEINFO mi;
