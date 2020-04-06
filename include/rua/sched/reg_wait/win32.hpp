@@ -58,7 +58,7 @@ public:
 			}
 			auto td_c_inc = td_c + 1;
 			if (_td_c.compare_exchange_weak(td_c, td_c_inc)) {
-				thread([this, td_c_inc]() { waits(td_c_inc); });
+				thread([this]() { waits(); });
 				return;
 			}
 		}
@@ -66,7 +66,7 @@ public:
 		SetEvent(_on_wait);
 	}
 
-	void waits(size_t waiter_id) {
+	void waits() {
 		std::list<_wait_t> waitings;
 
 		HANDLE waiting_hs[MAXIMUM_WAIT_OBJECTS];
