@@ -25,10 +25,13 @@ public:
 	constexpr fiber() = default;
 
 	operator bool() const {
-		return _ctx.get();
+		return _ctx && !_ctx->is_stoped.load();
 	}
 
 	void reset_lifetime(ms dur = 0) {
+		if (!_ctx) {
+			return;
+		}
 		if (!dur) {
 			_ctx->end_ti.reset();
 		}
@@ -41,7 +44,11 @@ public:
 	}
 
 	void stop() {
+		if (!_ctx) {
+			return;
+		}
 		_ctx->is_stoped.store(true);
+		_ctx.reset();
 	}
 
 private:
@@ -230,7 +237,7 @@ public:
 		}
 
 		virtual waker_i get_waker() {
-			assert(_fe->_cur);
+			assert(_fe->_cur._ctx);
 
 			auto &wkr = _fe->_cur._ctx->wkr;
 			if (wkr) {
@@ -347,11 +354,11 @@ private:
 		_clear_prev();
 
 		while (_exs.size()) {
-			assert(_exs.front());
+			assert(_exs.front()._ctx);
 			_try_resume_exs_front();
 
 			_cur = std::move(_exs.front());
-			assert(!_exs.front());
+			assert(!_exs.front()._ctx);
 			_exs.pop();
 
 			if (_cur._ctx->is_stoped.load()) {
