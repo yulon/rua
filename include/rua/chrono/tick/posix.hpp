@@ -12,7 +12,7 @@ namespace _tick {
 inline time tick() {
 	timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return time(duration(ts.tv_sec, ts.tv_nsec));
+	return time(s::from_s_and_extra_ns_counts(ts.tv_sec, ts.tv_nsec));
 }
 
 } // namespace _tick

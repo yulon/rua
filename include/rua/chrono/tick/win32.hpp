@@ -23,7 +23,7 @@ inline time tick() {
 		if (QueryPerformanceCounter(&end)) {
 			int64_t els = (end.QuadPart - start.QuadPart);
 			int64_t els_s = els / freq.QuadPart;
-			return time(duration(
+			return time(s::from_s_and_extra_ns_counts(
 				els_s,
 				static_cast<int32_t>(
 					els * 1000000000 / freq.QuadPart - els_s * 1000000000)));

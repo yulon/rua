@@ -301,8 +301,8 @@ private:
 	int8_t _zon;
 	const date_t *_epo;
 
-	static duration _date2dur_exc_yr(const date_t &d8) {
-		duration r;
+	static s _date2dur_exc_yr(const date_t &d8) {
+		s r;
 		if (d8.month > 1) {
 			r += d(_yr_days_at_mon[d8.month - 2]);
 			if (d8.month > 2 && is_leap_year(d8.year)) {
