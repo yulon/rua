@@ -3,31 +3,22 @@
 
 #include "io.hpp"
 #include "string.hpp"
-#include "sync.hpp"
 #include "types/util.hpp"
 
-#include <array>
-#include <atomic>
 #include <string>
 
 namespace rua {
 
 class printer {
 public:
-	printer() : _is_valid(false) {}
+	printer() {}
 
 	printer(std::nullptr_t) : printer() {}
 
 	explicit printer(writer_i w, const char *eol = eol::lf) :
-		_w(std::move(w)), _eol(eol) {
-		_is_valid = _w;
-	}
+		_w(std::move(w)), _eol(eol) {}
 
 	~printer() {
-		if (!_is_valid) {
-			return;
-		}
-		auto lg = make_lock_guard(_mtx);
 		if (!_w) {
 			return;
 		}
@@ -36,10 +27,6 @@ public:
 
 	template <typename... Args>
 	void print(Args &&... args) {
-		if (!_is_valid) {
-			return;
-		}
-		auto lg = make_lock_guard(_mtx);
 		if (!_w) {
 			return;
 		}
@@ -58,23 +45,17 @@ public:
 	}
 
 	void reset(writer_i w = nullptr) {
-		auto lg = make_lock_guard(_mtx);
-		_is_valid = w;
 		_w = w;
 	}
 
 	void reset(writer_i w, const char *eol) {
-		auto lg = make_lock_guard(_mtx);
-		_is_valid = w;
 		_w = w;
 		_eol = eol;
 	}
 
 private:
-	mutex _mtx;
 	writer_i _w;
 	const char *_eol;
-	std::atomic<bool> _is_valid;
 	std::string _buf;
 };
 
