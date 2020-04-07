@@ -208,7 +208,7 @@ public:
 	}
 
 	type_info type() const {
-		return _raw ? _type : type_id<std::nullptr_t>();
+		return _raw ? _type : type_id<void>();
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
