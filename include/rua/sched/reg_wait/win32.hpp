@@ -3,15 +3,65 @@
 
 #include "../../chrono.hpp"
 #include "../../macros.hpp"
+#include "../../types/util.hpp"
+
+#include <cassert>
+#include <functional>
+
+#ifndef RUA_USE_BUILTIN_REG_WAIT
+
+#include <winbase.h>
+
+namespace rua { namespace win32 {
+
+struct _reg_wait_sys_h_ctx_t {
+	HANDLE wait_h;
+	std::function<void(bool)> cb;
+};
+
+inline VOID CALLBACK _reg_wait_sys_h_cb(PVOID _ctx, BOOLEAN timeouted) {
+	auto ctx = reinterpret_cast<_reg_wait_sys_h_ctx_t *>(_ctx);
+	ctx->cb(!timeouted);
+	UnregisterWaitEx(ctx->wait_h, nullptr);
+	delete ctx;
+}
+
+namespace _reg_wait {
+
+RUA_FORCE_INLINE void reg_wait(
+	HANDLE handle,
+	std::function<void(bool)> callback,
+	ms timeout = duration_max()) {
+
+	assert(handle);
+
+	auto ctx = new _reg_wait_sys_h_ctx_t{nullptr, std::move(callback)};
+
+	RegisterWaitForSingleObject(
+		&ctx->wait_h,
+		handle,
+		_reg_wait_sys_h_cb,
+		ctx,
+		timeout == duration_max()
+			? INFINITE
+			: static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
+				  ? INFINITE
+				  : static_cast<DWORD>(timeout.count()),
+		WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
+}
+
+} // namespace _reg_wait
+
+}} // namespace rua::win32
+
+#else
+
 #include "../../sync/lockfree_list.hpp"
 #include "../../thread/basic/win32.hpp"
-#include "../../types/util.hpp"
 
 #include <windows.h>
 
 #include <atomic>
-#include <cassert>
-#include <functional>
 #include <list>
 
 namespace rua { namespace win32 {
@@ -90,7 +140,7 @@ public:
 			}
 
 			ms timeout(duration_max());
-			auto now_ti = now();
+			auto now_ti = tick();
 
 			int before_i = 0;
 			size_t i = 0;
@@ -180,6 +230,12 @@ RUA_FORCE_INLINE void reg_wait(
 }
 
 } // namespace _reg_wait
+
+}} // namespace rua::win32
+
+#endif
+
+namespace rua { namespace win32 {
 
 using namespace _reg_wait;
 
