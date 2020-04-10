@@ -48,7 +48,7 @@ private:
 
 class thread_scheduler : public scheduler {
 public:
-	constexpr thread_scheduler(ms yield_dur = 0) :
+	constexpr thread_scheduler(duration yield_dur = 0) :
 		_yield_dur(yield_dur), _wkr() {}
 
 	virtual ~thread_scheduler() = default;
@@ -66,18 +66,15 @@ public:
 		Sleep(1);
 	}
 
-	virtual bool sleep(ms timeout, bool wakeable = false) {
-		auto dur = timeout == duration_max()
-					   ? INFINITE
-					   : (static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
-							  ? nmax<DWORD>()
-							  : static_cast<DWORD>(timeout.count()));
+	virtual bool sleep(duration timeout, bool wakeable = false) {
 		if (!wakeable) {
-			Sleep(dur);
+			Sleep(timeout.milliseconds<DWORD, INFINITE>());
 			return false;
 		}
 		assert(_wkr);
-		return WaitForSingleObject(_wkr->native_handle(), dur) != WAIT_TIMEOUT;
+		return WaitForSingleObject(
+				   _wkr->native_handle(),
+				   timeout.milliseconds<DWORD, INFINITE>()) != WAIT_TIMEOUT;
 	}
 
 	virtual waker_i get_waker() {
@@ -90,7 +87,7 @@ public:
 	}
 
 private:
-	ms _yield_dur;
+	duration _yield_dur;
 	std::shared_ptr<thread_waker> _wkr;
 };
 

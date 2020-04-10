@@ -31,7 +31,7 @@ namespace _reg_wait {
 RUA_FORCE_INLINE void reg_wait(
 	HANDLE handle,
 	std::function<void(bool)> callback,
-	ms timeout = duration_max()) {
+	duration timeout = duration_max()) {
 
 	assert(handle);
 
@@ -42,11 +42,7 @@ RUA_FORCE_INLINE void reg_wait(
 		handle,
 		_reg_wait_sys_h_cb,
 		ctx,
-		timeout == duration_max()
-			? INFINITE
-			: static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
-				  ? INFINITE
-				  : static_cast<DWORD>(timeout.count()),
+		timeout.milliseconds<DWORD, INFINITE>(),
 		WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
 }
 
@@ -90,7 +86,7 @@ public:
 	void reg_wait(
 		HANDLE handle,
 		std::function<void(bool)> callback,
-		ms timeout = duration_max()) {
+		duration timeout = duration_max()) {
 
 		assert(handle);
 
@@ -139,7 +135,7 @@ public:
 				}
 			}
 
-			ms timeout(duration_max());
+			duration timeout(duration_max());
 			auto now_ti = tick();
 
 			int before_i = 0;
@@ -180,9 +176,7 @@ public:
 				static_cast<DWORD>(i),
 				&waiting_hs[0],
 				FALSE,
-				static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
-					? nmax<DWORD>()
-					: static_cast<DWORD>(timeout.count()));
+				timeout.milliseconds<DWORD, INFINITE>());
 
 			if ((!is_max && r == WAIT_OBJECT_0 + c) || r == WAIT_TIMEOUT ||
 				r == WAIT_FAILED) {
@@ -225,7 +219,7 @@ namespace _reg_wait {
 RUA_FORCE_INLINE void reg_wait(
 	HANDLE handle,
 	std::function<void(bool)> callback,
-	ms timeout = duration_max()) {
+	duration timeout = duration_max()) {
 	_sys_h_waiter::instance().reg_wait(handle, std::move(callback), timeout);
 }
 

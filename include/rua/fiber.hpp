@@ -29,7 +29,7 @@ public:
 		return _ctx && !_ctx->is_stoped.load();
 	}
 
-	void reset_lifetime(ms dur = 0) {
+	void reset_lifetime(duration dur = 0) {
 		if (!_ctx) {
 			return;
 		}
@@ -79,7 +79,7 @@ public:
 	fiber_executor(size_t stack_size = 0x100000) :
 		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
 
-	fiber execute(std::function<void()> task, ms lifetime = 0) {
+	fiber execute(std::function<void()> task, duration lifetime = 0) {
 		fiber f(std::make_shared<fiber::_ctx_t>());
 		f._ctx->tsk = std::move(task);
 		f._ctx->is_stoped.store(false);
@@ -199,7 +199,7 @@ public:
 		virtual ~scheduler() = default;
 
 		template <typename SlpMap>
-		void _sleep(SlpMap &&slp_map, ms timeout) {
+		void _sleep(SlpMap &&slp_map, duration timeout) {
 			time wake_ti;
 			if (!timeout) {
 				wake_ti.reset();
@@ -224,7 +224,7 @@ public:
 			_fe->_clear_prev();
 		}
 
-		virtual bool sleep(ms timeout, bool wakeable = false) {
+		virtual bool sleep(duration timeout, bool wakeable = false) {
 			if (!wakeable) {
 				_sleep(_fe->_slps, timeout);
 				return false;
@@ -441,7 +441,7 @@ inline fiber this_fiber() {
 	return fiber();
 }
 
-inline fiber co(std::function<void()> task, ms lifetime = 0) {
+inline fiber co(std::function<void()> task, duration lifetime = 0) {
 	auto fe = this_fiber_executor();
 	if (fe) {
 		return fe->execute(std::move(task), lifetime);

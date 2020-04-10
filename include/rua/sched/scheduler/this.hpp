@@ -52,7 +52,7 @@ RUA_FORCE_INLINE void yield() {
 	this_scheduler()->yield();
 }
 
-RUA_FORCE_INLINE void sleep(ms timeout) {
+RUA_FORCE_INLINE void sleep(duration timeout) {
 	this_scheduler()->sleep(timeout);
 }
 

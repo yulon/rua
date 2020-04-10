@@ -4,16 +4,6 @@
 
 using namespace rua::duration_literals;
 
-TEST_CASE("precision of duration") {
-	auto dur = rua::h(rua::d(6_ns));
-	REQUIRE(dur != 0);
-	REQUIRE(dur.count() == 0);
-	dur /= 3;
-	REQUIRE(dur != 0);
-	REQUIRE(dur.count() == 0);
-	REQUIRE(rua::ns(dur) == 2);
-}
-
 TEST_CASE("duration to string") {
 	REQUIRE(rua::to_string(7_s + 8_ms + 2_h) == "2h0m7.008s");
 }
@@ -43,7 +33,7 @@ TEST_CASE("date convert") {
 	c_ti = time(nullptr);
 	_gmtime(&c_tm, &c_ti);
 
-	auto t = rua::time(rua::s(c_ti), c_epo);
+	auto t = rua::time(rua::seconds(c_ti), c_epo);
 	auto d = t.date();
 
 	REQUIRE(d.year == (c_tm.tm_year + 1900));

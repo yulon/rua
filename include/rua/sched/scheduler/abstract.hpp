@@ -70,7 +70,7 @@ public:
 		sleep(0);
 	}
 
-	virtual bool sleep(ms timeout, bool wakeable = false) {
+	virtual bool sleep(duration timeout, bool wakeable = false) {
 		if (wakeable) {
 			yield();
 			return true;

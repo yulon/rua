@@ -23,7 +23,7 @@ inline time tick() {
 		if (QueryPerformanceCounter(&end)) {
 			int64_t els = (end.QuadPart - start.QuadPart);
 			int64_t els_s = els / freq.QuadPart;
-			return time(s::from_s_and_extra_ns_counts(
+			return time(duration(
 				els_s,
 				static_cast<int32_t>(
 					els * 1000000000 / freq.QuadPart - els_s * 1000000000)));
@@ -33,9 +33,9 @@ inline time tick() {
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
 		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {
-		return time(ms(GetTickCount64_ptr()));
+		return time(duration(GetTickCount64_ptr()));
 	}
-	return time(ms(GetTickCount()));
+	return time(duration(GetTickCount()));
 }
 
 } // namespace _tick

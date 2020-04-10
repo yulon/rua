@@ -40,7 +40,7 @@ public:
 		return nullptr;
 	}
 
-	static process wait_for_found(string_view name, ms interval = 100) {
+	static process wait_for_found(string_view name, duration interval = 100) {
 		process p;
 		for (;;) {
 			p = find(name);

@@ -24,7 +24,7 @@ public:
 		return !_waiters && !_locked.exchange(true);
 	}
 
-	bool try_lock(ms timeout) {
+	bool try_lock(duration timeout) {
 		if (!_waiters && !_locked.exchange(true)) {
 			return true;
 		}
@@ -34,7 +34,7 @@ public:
 		return _wait_and_lock(this_scheduler(), timeout);
 	}
 
-	bool try_lock(scheduler_i sch, ms timeout) {
+	bool try_lock(scheduler_i sch, duration timeout) {
 		if (!_waiters && !_locked.exchange(true)) {
 			return true;
 		}
@@ -70,7 +70,7 @@ private:
 	std::atomic<bool> _locked;
 	lockfree_list<waker_i> _waiters;
 
-	bool _wait_and_lock(scheduler_i sch, ms timeout) {
+	bool _wait_and_lock(scheduler_i sch, duration timeout) {
 		assert(sch);
 		assert(timeout);
 

@@ -25,7 +25,7 @@ RUA_FORCE_INLINE time now(int8_t zone = local_time_zone()) {
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 	return time(
-		duration<100>(
+		duration::from<100>(
 			static_cast<int64_t>(ft.dwHighDateTime) << 32 | ft.dwLowDateTime),
 		zone,
 		sys_epoch);

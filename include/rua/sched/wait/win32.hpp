@@ -10,16 +10,14 @@ namespace rua { namespace win32 {
 
 namespace _wait {
 
-inline bool wait(HANDLE handle, ms timeout = duration_max()) {
+inline bool wait(HANDLE handle, duration timeout = duration_max()) {
 	assert(handle);
 
 	auto sch = this_scheduler();
 	if (sch.type_is<rua::thread_scheduler>()) {
 		return WaitForSingleObject(
-				   handle,
-				   static_cast<int64_t>(nmax<DWORD>()) < timeout.count()
-					   ? nmax<DWORD>()
-					   : static_cast<DWORD>(timeout.count())) != WAIT_TIMEOUT;
+				   handle, timeout.milliseconds<DWORD, INFINITE>()) !=
+			   WAIT_TIMEOUT;
 	}
 	auto ch = std::make_shared<chan<bool>>();
 	reg_wait(

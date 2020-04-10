@@ -7,6 +7,7 @@
 
 #include <sched.h>
 #include <semaphore.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <memory>
@@ -49,7 +50,7 @@ private:
 
 class thread_scheduler : public scheduler {
 public:
-	constexpr thread_scheduler(ms yield_dur = 0) :
+	constexpr thread_scheduler(duration yield_dur = 0) :
 		_yield_dur(yield_dur), _wkr() {}
 
 	virtual ~thread_scheduler() = default;
@@ -69,13 +70,14 @@ public:
 		::usleep(1);
 	}
 
-	virtual bool sleep(ms timeout, bool wakeable = false) {
+	virtual bool sleep(duration timeout, bool wakeable = false) {
 		if (!wakeable) {
-			auto us_c = us(timeout).count();
-			::usleep(
-				static_cast<int64_t>(nmax<int>()) < us_c
-					? nmax<int>()
-					: static_cast<int>(us_c));
+			struct timespec ts {
+				timeout.seconds<decltype(ts.tv_sec)>(),
+					static_cast<decltype(ts.tv_nsec)>(
+						timeout.remaining_nanoseconds())
+			};
+			::nanosleep(&ts, nullptr);
 			return false;
 		}
 		assert(_wkr);
@@ -83,11 +85,9 @@ public:
 			return !sem_wait(_wkr->native_handle());
 		}
 		struct timespec ts {
-			static_cast<int64_t>(
-				nmax<decltype(ts.tv_sec)>()) < timeout.s_count()
-				? nmax<decltype(ts.tv_sec)>()
-				: static_cast<decltype(ts.tv_sec)>(timeout.s_count()),
-				static_cast<decltype(ts.tv_nsec)>(timeout.extra_ns_count())
+			timeout.seconds<decltype(ts.tv_sec)>(),
+				static_cast<decltype(ts.tv_nsec)>(
+					timeout.remaining_nanoseconds())
 		};
 		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
@@ -102,7 +102,7 @@ public:
 	}
 
 private:
-	ms _yield_dur;
+	duration _yield_dur;
 	std::shared_ptr<thread_waker> _wkr;
 };
 
