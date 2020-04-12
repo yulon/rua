@@ -18,15 +18,17 @@ inline std::wstring mb_to_w(UINT mb_cp, string_view mb_str) {
 		return L"";
 	}
 
-	int w_str_len = MultiByteToWideChar(mb_cp, 0, mb_str.data(), -1, NULL, 0);
+	int w_str_len =
+		MultiByteToWideChar(mb_cp, 0, mb_str.data(), mb_str.size(), nullptr, 0);
 	if (!w_str_len) {
 		return L"";
 	}
 
 	wchar_t *w_c_str = new wchar_t[w_str_len + 1];
-	MultiByteToWideChar(mb_cp, 0, mb_str.data(), -1, w_c_str, w_str_len);
+	MultiByteToWideChar(
+		mb_cp, 0, mb_str.data(), mb_str.size(), w_c_str, w_str_len);
 
-	std::wstring w_str(w_c_str);
+	std::wstring w_str(w_c_str, w_str_len);
 	delete[] w_c_str;
 	return w_str;
 }
@@ -36,8 +38,8 @@ inline std::string w_to_mb(wstring_view w_str, UINT mb_cp) {
 		return "";
 	}
 
-	int u8_str_len =
-		WideCharToMultiByte(mb_cp, 0, w_str.data(), -1, NULL, 0, NULL, NULL);
+	int u8_str_len = WideCharToMultiByte(
+		mb_cp, 0, w_str.data(), w_str.size(), nullptr, 0, nullptr, nullptr);
 	if (!u8_str_len) {
 		return "";
 	}
@@ -45,9 +47,16 @@ inline std::string w_to_mb(wstring_view w_str, UINT mb_cp) {
 	char *u8_c_str = new char[u8_str_len + 1];
 	u8_c_str[u8_str_len] = 0;
 	WideCharToMultiByte(
-		mb_cp, 0, w_str.data(), -1, u8_c_str, u8_str_len, NULL, NULL);
+		mb_cp,
+		0,
+		w_str.data(),
+		w_str.size(),
+		u8_c_str,
+		u8_str_len,
+		nullptr,
+		nullptr);
 
-	std::string u8_str(u8_c_str);
+	std::string u8_str(u8_c_str, u8_str_len);
 	delete[] u8_c_str;
 	return u8_str;
 }
