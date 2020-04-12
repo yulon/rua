@@ -4,7 +4,7 @@
 #include "lockfree_list.hpp"
 
 #include "../chrono/tick.hpp"
-#include "../opt.hpp"
+#include "../optional.hpp"
 #include "../sched/scheduler.hpp"
 #include "../types/util.hpp"
 
@@ -32,11 +32,11 @@ public:
 		return true;
 	}
 
-	rua::opt<T> try_pop() {
+	optional<T> try_pop() {
 		return _buf.pop_back();
 	}
 
-	rua::opt<T> try_pop(duration timeout) {
+	optional<T> try_pop(duration timeout) {
 		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout) {
 			return val_opt;
@@ -44,7 +44,7 @@ public:
 		return _wait_and_pop(this_scheduler(), timeout);
 	}
 
-	rua::opt<T> try_pop(scheduler_i sch, duration timeout) {
+	optional<T> try_pop(scheduler_i sch, duration timeout) {
 		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout || !sch) {
 			return val_opt;
@@ -65,11 +65,11 @@ protected:
 	lockfree_list<T> _buf;
 	lockfree_list<waker_i> _waiters;
 
-	rua::opt<T> _wait_and_pop(scheduler_i sch, duration timeout) {
+	optional<T> _wait_and_pop(scheduler_i sch, duration timeout) {
 		assert(sch);
 		assert(timeout);
 
-		rua::opt<T> val_opt;
+		optional<T> val_opt;
 
 		auto wkr = sch->get_waker();
 

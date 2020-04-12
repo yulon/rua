@@ -3,7 +3,7 @@
 
 #include "../forward_list.hpp"
 #include "../macros.hpp"
-#include "../opt.hpp"
+#include "../optional.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
@@ -150,8 +150,8 @@ public:
 		return !old_front;
 	}
 
-	opt<T> pop_front() {
-		opt<T> r;
+	optional<T> pop_front() {
+		optional<T> r;
 		auto li = _lock_if_non_empty();
 		if (!li) {
 			return r;
@@ -162,8 +162,8 @@ public:
 	}
 
 	template <typename Cond>
-	opt<T> pop_front_if(Cond &&cond) {
-		opt<T> r;
+	optional<T> pop_front_if(Cond &&cond) {
+		optional<T> r;
 		auto li = _lock_if_non_empty();
 		if (!li) {
 			return r;
@@ -175,8 +175,8 @@ public:
 		return r;
 	}
 
-	opt<T> pop_back() {
-		opt<T> r;
+	optional<T> pop_back() {
+		optional<T> r;
 		auto li = _lock_if_non_empty();
 		if (!li) {
 			return r;
@@ -187,8 +187,8 @@ public:
 	}
 
 	template <typename Cond>
-	opt<T> pop_back_if(Cond &&cond) {
-		opt<T> r;
+	optional<T> pop_back_if(Cond &&cond) {
+		optional<T> r;
 		auto li = _lock_if_non_empty();
 		if (!li) {
 			return r;

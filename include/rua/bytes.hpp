@@ -3,7 +3,7 @@
 
 #include "bit.hpp"
 #include "macros.hpp"
-#include "opt.hpp"
+#include "optional.hpp"
 #include "span.hpp"
 #include "string/str_len.hpp"
 #include "string/string_view.hpp"
@@ -98,11 +98,11 @@ public:
 
 	inline bool has(const masked_bytes &) const;
 
-	inline opt<size_t> find_pos(bytes_view) const;
+	inline optional<size_t> find_pos(bytes_view) const;
 
 	inline bytes_view find(bytes_view) const;
 
-	inline opt<size_t> match_pos(const masked_bytes &) const;
+	inline optional<size_t> match_pos(const masked_bytes &) const;
 
 	inline std::vector<bytes_view> match(const masked_bytes &) const;
 
@@ -391,7 +391,8 @@ inline bool const_bytes_base<Span>::operator==(bytes_view target) const {
 }
 
 template <typename Span>
-inline opt<size_t> const_bytes_base<Span>::find_pos(bytes_view target) const {
+inline optional<size_t>
+const_bytes_base<Span>::find_pos(bytes_view target) const {
 	auto sz = _this()->size();
 	auto tg_sz = target.size();
 	if (sz < tg_sz) {
@@ -905,7 +906,7 @@ inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
 }
 
 template <typename Span>
-inline opt<size_t>
+inline optional<size_t>
 const_bytes_base<Span>::match_pos(const masked_bytes &target) const {
 	auto sz = _this()->size();
 	auto tg_sz = target.size();
