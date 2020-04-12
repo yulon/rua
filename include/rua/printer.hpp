@@ -32,9 +32,9 @@ public:
 		}
 		str_join(
 			_buf,
-			std::initializer_list<string_view>{to_temp_string(args)...},
+			{to_temp_string(args)...},
 			" ",
-			str_join_multi_line);
+			RUA_DI(str_join_options, $.is_multi_line = true));
 		_w->write_all(_buf);
 		_buf.resize(0);
 	}

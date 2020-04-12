@@ -4,6 +4,7 @@
 #include "line.hpp"
 #include "string_view.hpp"
 
+#include "../macros.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -11,19 +12,22 @@
 
 namespace rua {
 
-static constexpr uint32_t str_join_ignore_empty = 0x0000000F;
-static constexpr uint32_t str_join_multi_line = 0x000000F0;
+struct str_join_options {
+	bool is_ignore_empty = false;
+	bool is_multi_line = false;
+	size_t pre_reserved_size = 0;
+};
 
 template <
-	typename StrList,
-	typename = enable_if_t<
-		std::is_convertible<typename StrList::value_type, string_view>::value>>
+	typename StrList = std::initializer_list<string_view>,
+	typename = enable_if_t<std::is_convertible<
+		decltype(*std::declval<const StrList &>().begin()),
+		string_view>::value>>
 inline void str_join(
 	std::string &buf,
 	const StrList &strs,
 	string_view sep = "",
-	uint32_t flags = 0,
-	size_t pre_reserved_size = 0) {
+	const str_join_options &opt = {}) {
 
 	if (sep.empty()) {
 		size_t len = 0;
@@ -33,20 +37,17 @@ inline void str_join(
 		if (!len) {
 			return;
 		}
-		buf.reserve(buf.size() + len + pre_reserved_size);
+		buf.reserve(buf.size() + len + opt.pre_reserved_size);
 		for (auto &str : strs) {
 			buf += str;
 		}
 		return;
 	}
 
-	bool is_ignore_empty = flags & str_join_ignore_empty;
-	bool is_multi_line = flags & str_join_multi_line;
-
 	size_t len = 0;
 	bool bf_is_eol = true;
 	for (auto &str : strs) {
-		if (!str.size() && (is_ignore_empty)) {
+		if (!str.size() && (opt.is_ignore_empty)) {
 			continue;
 		}
 		if (bf_is_eol) {
@@ -55,7 +56,7 @@ inline void str_join(
 			len += sep.size();
 		}
 		len += str.size();
-		if (is_multi_line && is_eol(str)) {
+		if (opt.is_multi_line && is_eol(str)) {
 			bf_is_eol = true;
 		}
 	}
@@ -63,11 +64,11 @@ inline void str_join(
 	if (!len) {
 		return;
 	}
-	buf.reserve(buf.size() + len + pre_reserved_size);
+	buf.reserve(buf.size() + len + opt.pre_reserved_size);
 
 	bf_is_eol = true;
 	for (auto &str : strs) {
-		if (!str.size() && is_ignore_empty) {
+		if (!str.size() && opt.is_ignore_empty) {
 			continue;
 		}
 		if (bf_is_eol) {
@@ -76,7 +77,7 @@ inline void str_join(
 			buf += sep;
 		}
 		buf += str;
-		if (is_multi_line && is_eol(str)) {
+		if (opt.is_multi_line && is_eol(str)) {
 			bf_is_eol = true;
 		}
 	}
@@ -84,25 +85,25 @@ inline void str_join(
 }
 
 template <
-	typename StrList,
-	typename = enable_if_t<
-		std::is_convertible<typename StrList::value_type, string_view>::value>>
-inline std::string str_join(
+	typename StrList = std::initializer_list<string_view>,
+	typename = enable_if_t<std::is_convertible<
+		decltype(*std::declval<const StrList &>().begin()),
+		string_view>::value>>
+RUA_FORCE_INLINE std::string str_join(
 	const StrList &strs,
 	string_view sep = "",
-	uint32_t flags = 0,
-	size_t pre_reserved_size = 0) {
+	const str_join_options &opt = {}) {
 	std::string r;
-	str_join(r, strs, sep, flags, pre_reserved_size);
+	str_join(r, strs, sep, opt);
 	return r;
 }
 
 template <
 	typename... Strs,
-	typename StrList = std::initializer_list<string_view>,
-	typename = decltype(StrList{std::declval<Strs>()...})>
-inline std::string str_join(Strs &&... strs) {
-	return str_join(StrList{strs...});
+	typename = decltype(std::initializer_list<string_view>{
+		std::declval<Strs>()...})>
+RUA_FORCE_INLINE std::string str_join(Strs &&... strs) {
+	return str_join({strs...});
 }
 
 } // namespace rua

@@ -56,6 +56,13 @@
 #define RUA_RTTI _HAS_STATIC_RTTI
 #endif
 
+#define RUA_DI(T, ...)                                                         \
+	([&]() -> T {                                                              \
+		T $;                                                                   \
+		__VA_ARGS__;                                                           \
+		return $;                                                              \
+	}())
+
 namespace rua {
 
 using uint = unsigned int;
