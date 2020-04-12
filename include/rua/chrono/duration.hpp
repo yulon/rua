@@ -260,6 +260,11 @@ public:
 		return _ns;
 	}
 
+	template <typename CountT>
+	constexpr CountT remaining_nanoseconds() const {
+		return static_cast<CountT>(_ns);
+	}
+
 	constexpr int64_t minutes() const {
 		return _count(_out_attr<multiple_of_nanosecond::minute>{});
 	}

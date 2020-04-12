@@ -113,6 +113,14 @@ public:
 		return _epo || _ela;
 	}
 
+	bool is_monotonic() const {
+		return !_epo;
+	}
+
+	const date_t &epoch() const {
+		return *_epo;
+	}
+
 	duration &elapsed() {
 		return _ela;
 	}
@@ -127,14 +135,6 @@ public:
 
 	int8_t zone() const {
 		return _zon;
-	}
-
-	bool is_monotonic() const {
-		return !_epo;
-	}
-
-	const date_t &epoch() const {
-		return *_epo;
 	}
 
 	date_t date() const {
@@ -219,13 +219,17 @@ public:
 		return nd;
 	}
 
-	time to_unix() const {
+	time to(const date_t &target_epoch) const {
 		assert(!is_monotonic());
 
-		if (*_epo == unix_epoch) {
+		if (*_epo == target_epoch) {
 			return *this;
 		}
-		return time(date());
+		return time(date(), target_epoch);
+	}
+
+	time to_unix() const {
+		return to(unix_epoch);
 	}
 
 	void reset() {
