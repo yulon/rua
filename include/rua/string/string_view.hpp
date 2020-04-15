@@ -8,8 +8,10 @@
 #include <string_view>
 
 namespace rua {
+
 template <typename CharT, typename Traits = std::char_traits<CharT> >
 using basic_string_view = std::basic_string_view<CharT, Traits>;
+
 }
 
 #else
@@ -157,7 +159,7 @@ private:
 template <typename CharT, typename Traits>
 std::basic_string<CharT, Traits> &operator+=(
 	std::basic_string<CharT, Traits> &a, basic_string_view<CharT, Traits> b) {
-	return a += b.data();
+	return a += std::basic_string<CharT, Traits>(b.data(), b.size());
 }
 
 } // namespace rua
