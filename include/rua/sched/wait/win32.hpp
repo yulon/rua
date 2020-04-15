@@ -10,6 +10,17 @@ namespace rua { namespace win32 {
 
 namespace _wait {
 
+inline bool
+wait(scheduler_i sch, HANDLE handle, duration timeout = duration_max()) {
+	assert(sch);
+	assert(handle);
+
+	auto ch = std::make_shared<chan<bool>>();
+	reg_wait(
+		handle, [=](bool r) mutable { *ch << r; }, timeout);
+	return ch->pop(std::move(sch));
+}
+
 inline bool wait(HANDLE handle, duration timeout = duration_max()) {
 	assert(handle);
 
@@ -19,10 +30,7 @@ inline bool wait(HANDLE handle, duration timeout = duration_max()) {
 				   handle, timeout.milliseconds<DWORD, INFINITE>()) !=
 			   WAIT_TIMEOUT;
 	}
-	auto ch = std::make_shared<chan<bool>>();
-	reg_wait(
-		handle, [=](bool r) mutable { *ch << r; }, timeout);
-	return ch->pop(sch);
+	return wait(std::move(sch), handle, timeout);
 }
 
 } // namespace _wait
