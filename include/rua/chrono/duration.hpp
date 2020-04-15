@@ -334,7 +334,7 @@ public:
 		return _revise_count<CountT, Max>(leep_years());
 	}
 
-	constexpr timespec c_timespec() {
+	constexpr timespec c_timespec() const {
 		return {seconds<decltype(timespec::tv_sec)>(),
 				remaining_nanoseconds<decltype(timespec::tv_nsec)>()};
 	}
