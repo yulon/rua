@@ -117,19 +117,15 @@ public:
 	}
 
 	time modified_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_mtime, zone);
+		return time(_data.st_mtime, zone, unix_epoch);
 	}
 
 	time creation_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_ctime, zone);
+		return time(_data.st_ctime, zone, unix_epoch);
 	}
 
 	time access_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_atime, zone);
-	}
-
-	void reset() {
-		memset(&_data, 0, sizeof(struct stat));
+		return time(_data.st_atime, zone, unix_epoch);
 	}
 
 private:
@@ -142,15 +138,15 @@ public:
 
 	file(sys_stream s) : sys_stream(std::move(s)) {}
 
-	file(native_handle_t h, bool need_close = true) :
-		sys_stream(h, need_close) {}
+	file(native_handle_t fd, bool need_close = true) :
+		sys_stream(fd, need_close) {}
 
 	file_stat stat() const {
 		file_stat r;
 		if (!fstat(native_handle(), &r.native_data())) {
 			return r;
 		}
-		r.reset();
+		memset(&r, 0, sizeof(r));
 		return r;
 	}
 
