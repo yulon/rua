@@ -36,7 +36,7 @@ RUA_FORCE_INLINE sys_time_t to_sys_time(const time &ti) {
 RUA_FORCE_INLINE time now(int8_t zone = local_time_zone()) {
 	struct timeval tv;
 	gettimeofday(&tv, nullptr);
-	return from_sys_time(tv);
+	return from_sys_time(tv, zone);
 }
 
 } // namespace _now

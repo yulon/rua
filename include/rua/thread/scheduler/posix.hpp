@@ -72,11 +72,7 @@ public:
 
 	virtual bool sleep(duration timeout, bool wakeable = false) {
 		if (!wakeable) {
-			struct timespec ts {
-				timeout.seconds<decltype(ts.tv_sec)>(),
-					static_cast<decltype(ts.tv_nsec)>(
-						timeout.remaining_nanoseconds())
-			};
+			auto ts = timeout.c_timespec();
 			::nanosleep(&ts, nullptr);
 			return false;
 		}
@@ -84,11 +80,7 @@ public:
 		if (timeout == duration_max()) {
 			return !sem_wait(_wkr->native_handle());
 		}
-		struct timespec ts {
-			timeout.seconds<decltype(ts.tv_sec)>(),
-				static_cast<decltype(ts.tv_nsec)>(
-					timeout.remaining_nanoseconds())
-		};
+		auto ts = timeout.c_timespec();
 		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
 

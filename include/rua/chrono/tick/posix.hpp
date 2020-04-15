@@ -3,16 +3,18 @@
 
 #include "../time.hpp"
 
+#include "../../macros.hpp"
+
 #include <time.h>
 
 namespace rua { namespace posix {
 
 namespace _tick {
 
-inline time tick() {
+RUA_FORCE_INLINE time tick() {
 	timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return time(duration(ts.tv_sec, ts.tv_nsec));
+	return time(ts);
 }
 
 } // namespace _tick

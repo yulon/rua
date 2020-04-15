@@ -9,6 +9,7 @@
 #include "../types/util.hpp"
 
 #include <cstring>
+#include <ctime>
 
 namespace rua {
 
@@ -206,6 +207,20 @@ public:
 	constexpr duration(int64_t seconds, int32_t remaining_nanoseconds) :
 		_s(seconds), _ns(remaining_nanoseconds) {}
 
+	constexpr duration(const timespec &ts) : _s(ts.tv_sec), _ns(ts.tv_nsec) {}
+
+	constexpr explicit operator bool() const {
+		return _s || _ns;
+	}
+
+	constexpr bool is_max() const {
+		return _s == nmax<int64_t>() && _ns == remaining_nanoseconds_max;
+	}
+
+	constexpr bool is_min() const {
+		return _s == nmin<int64_t>() && _ns == remaining_nanoseconds_min;
+	}
+
 	template <int64_t MultipleOfNanosecond>
 	constexpr int64_t count() const {
 		return _count(_out_attr<MultipleOfNanosecond>{});
@@ -319,16 +334,9 @@ public:
 		return _revise_count<CountT, Max>(leep_years());
 	}
 
-	constexpr explicit operator bool() const {
-		return _s || _ns;
-	}
-
-	constexpr bool is_max() const {
-		return _s == nmax<int64_t>() && _ns == remaining_nanoseconds_max;
-	}
-
-	constexpr bool is_min() const {
-		return _s == nmin<int64_t>() && _ns == remaining_nanoseconds_min;
+	constexpr timespec c_timespec() {
+		return {seconds<decltype(timespec::tv_sec)>(),
+				remaining_nanoseconds<decltype(timespec::tv_nsec)>()};
 	}
 
 	constexpr bool operator==(duration target) const {
