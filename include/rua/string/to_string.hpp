@@ -28,6 +28,10 @@ RUA_FORCE_INLINE const char *to_string(std::nullptr_t) {
 	return null_str;
 }
 
+RUA_FORCE_INLINE std::string to_string(const char *c_str) {
+	return std::string(c_str);
+}
+
 RUA_FORCE_INLINE std::string to_string(string_view sv) {
 	return std::string(sv.data(), sv.size());
 }
