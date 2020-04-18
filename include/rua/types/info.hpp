@@ -17,6 +17,323 @@
 
 namespace rua {
 
+template <typename T, typename = void>
+struct type_name {
+	static string_view get() {
+#ifdef RUA_RTTI
+		return typeid(T).name();
+#else
+		return "unknown_type";
+#endif
+	}
+};
+
+template <>
+struct type_name<void> {
+	static string_view get() {
+		return "void";
+	}
+};
+
+template <>
+struct type_name<std::nullptr_t> {
+	static string_view get() {
+		return "nullptr_t";
+	}
+};
+
+template <>
+struct type_name<int> {
+	static string_view get() {
+		return "int";
+	}
+};
+
+template <>
+struct type_name<uint> {
+	static string_view get() {
+		return "uint";
+	}
+};
+
+template <>
+struct type_name<char> {
+	static string_view get() {
+		return "char";
+	}
+};
+
+template <typename T>
+struct type_name<T, enable_if_t<std::is_same<T, schar>::value>> {
+	static string_view get() {
+		return "schar";
+	}
+};
+
+template <typename T>
+struct type_name<T, enable_if_t<std::is_same<T, uchar>::value>> {
+	static string_view get() {
+		return "uchar";
+	}
+};
+
+template <>
+struct type_name<bool> {
+	static string_view get() {
+		return "bool";
+	}
+};
+
+template <typename T>
+struct type_name<
+	T,
+	enable_if_t<
+		std::is_signed<T>::value && !std::is_same<T, schar>::value &&
+		!std::is_const<T>::value && !std::is_volatile<T>::value>> {
+	static string_view get() {
+		static const auto n =
+			str_join("int", std::to_string(sizeof(T) * 8), "_t");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_name<
+	T,
+	enable_if_t<
+		std::is_unsigned<T>::value && !std::is_same<T, uchar>::value &&
+		!std::is_const<T>::value && !std::is_volatile<T>::value>> {
+	static string_view get() {
+		static const auto n =
+			str_join("uint", std::to_string(sizeof(T) * 8), "_t");
+		return n;
+	}
+};
+
+template <>
+struct type_name<float> {
+	static string_view get() {
+		return "float";
+	}
+};
+
+template <>
+struct type_name<double> {
+	static string_view get() {
+		return "double";
+	}
+};
+
+template <typename T>
+struct type_name<
+	T,
+	enable_if_t<
+		std::is_same<T, max_align_t>::value && !std::is_integral<T>::value &&
+		!std::is_floating_point<T>::value>> {
+	static string_view get() {
+		return "max_align_t";
+	}
+};
+
+#ifdef __cpp_lib_byte
+template <>
+struct type_name<std::byte> {
+	static string_view get() {
+		return "std::byte";
+	}
+};
+#endif
+
+template <typename T>
+struct type_name<T const, enable_if_t<!std::is_pointer<T>::value>> {
+	static string_view get() {
+		static const auto n = str_join("const ", type_name<T>::get());
+		return n;
+	}
+};
+
+template <typename T>
+struct type_name<T *> {
+	static string_view get() {
+		static const auto n = str_join(type_name<T>::get(), " *");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_name<T *const> {
+	static string_view get() {
+		static const auto n = str_join(type_name<T>::get(), " *const");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_name<T &> {
+	static string_view get() {
+		static const auto n = str_join(type_name<T>::get(), " &");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_name<T &&> {
+	static string_view get() {
+		static const auto n = str_join(type_name<T>::get(), " &&");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_name<R(Args...)> {
+	static string_view get() {
+		static const auto n = str_join(type_name<R>::get(), "(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_name<R (*)(Args...)> {
+	static string_view get() {
+		static const auto n = str_join(type_name<R>::get(), " (*)(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_name<R (&)(Args...)> {
+	static string_view get() {
+		static const auto n = str_join(type_name<R>::get(), " (&)(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_name<R (*const)(Args...)> {
+	static string_view get() {
+		static const auto n = str_join(type_name<R>::get(), " (*const)(...)");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_name<T[N]> {
+	static string_view get() {
+		static const auto n =
+			str_join(type_name<T>::get(), "[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_name<T (&)[N]> {
+	static string_view get() {
+		static const auto n =
+			str_join(type_name<T>::get(), " (&)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_name<T(&&)[N]> {
+	static string_view get() {
+		static const auto n =
+			str_join(type_name<T>::get(), " (&&)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_name<T (*)[N]> {
+	static string_view get() {
+		static const auto n =
+			str_join(type_name<T>::get(), " (*)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_name<T (*const)[N]> {
+	static string_view get() {
+		static const auto n =
+			str_join(type_name<T>::get(), " (*const)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <>
+struct type_name<std::string> {
+	static string_view get() {
+		return "std::string";
+	}
+};
+
+template <>
+struct type_name<std::wstring> {
+	static string_view get() {
+		return "std::wstring";
+	}
+};
+
+template <typename CharT, typename Traits, typename Allocator>
+struct type_name<std::basic_string<CharT, Traits, Allocator>> {
+	static string_view get() {
+		static const auto n = str_join(
+			"std::basic_string<",
+			type_name<CharT>::get(),
+			", ",
+			type_name<Traits>::get(),
+			", ",
+			type_name<Allocator>::get(),
+			">");
+		return n;
+	}
+};
+
+template <>
+struct type_name<string_view> {
+	static string_view get() {
+		return
+#ifdef __cpp_lib_string_view
+			"std::string_view"
+#else
+			"rua::string_view"
+#endif
+			;
+	}
+};
+
+template <>
+struct type_name<wstring_view> {
+	static string_view get() {
+		return
+#ifdef __cpp_lib_string_view
+			"std::wstring_view"
+#else
+			"rua::wstring_view"
+#endif
+			;
+	}
+};
+
+template <typename CharT, typename Traits>
+struct type_name<basic_string_view<CharT, Traits>> {
+	static string_view get() {
+		static const auto n = str_join(
+#ifdef __cpp_lib_string_view
+			"std::basic_string_view<"
+#else
+			"rua::basic_string_view<"
+#endif
+			,
+			type_name<CharT>::get(),
+			", ",
+			type_name<Traits>::get(),
+			">");
+		return n;
+	}
+};
+
 class type_info {
 public:
 	constexpr type_info() : _tab(nullptr) {}
@@ -45,12 +362,8 @@ public:
 		return _tab ? _tab->is_trivial : false;
 	}
 
-	RUA_FORCE_INLINE const std::string &name() const {
-		return _tab ? _tab->name() : _void_name();
-	}
-
-	RUA_FORCE_INLINE std::string &name() {
-		return _tab ? _tab->name() : _void_name();
+	RUA_FORCE_INLINE string_view name() const {
+		return _tab ? _tab->name() : type_name<void>::get();
 	}
 
 	RUA_FORCE_INLINE size_t hash_code() const {
@@ -117,7 +430,7 @@ private:
 
 		const bool is_trivial;
 
-		std::string &(*const name)();
+		string_view (*const name)();
 
 		void (*const dtor)(void *);
 
@@ -232,19 +545,6 @@ private:
 		}
 	};
 
-	template <typename T, typename = void>
-	struct _name {
-		static std::string &value() {
-			static std::string n("unknown_type");
-			return n;
-		}
-	};
-
-	static std::string &_void_name() {
-		static std::string n("void");
-		return n;
-	}
-
 #ifdef RUA_RTTI
 	template <typename T>
 	static const std::type_info &_std_id() {
@@ -259,7 +559,7 @@ private:
 		static const _table_t tab{size_of<T>::value,
 								  align_of<T>::value,
 								  std::is_trivial<T>::value,
-								  _name<T>::value,
+								  type_name<T>::get,
 								  _dtor<T>::value,
 								  _del<T>::value,
 								  _copy_ctor<T>::value,
@@ -282,287 +582,6 @@ private:
 	friend RUA_FORCE_INLINE constexpr type_info type_id();
 };
 
-template <>
-struct type_info::_name<void, void> {
-	static std::string &value() {
-		return _void_name();
-	}
-};
-
-template <>
-struct type_info::_name<int, void> {
-	static std::string &value() {
-		static std::string n("int");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<uint, void> {
-	static std::string &value() {
-		static std::string n("uint");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<char, void> {
-	static std::string &value() {
-		static std::string n("char");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<
-	schar,
-	enable_if_t<
-		!std::is_same<schar, char>::value &&
-		!std::is_same<schar, int>::value>> {
-	static std::string &value() {
-		static std::string n("schar");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<
-	uchar,
-	enable_if_t<
-		!std::is_same<uchar, char>::value &&
-		!std::is_same<uchar, uint>::value>> {
-	static std::string &value() {
-		static std::string n("uchar");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<bool, void> {
-	static std::string &value() {
-		static std::string n("bool");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<
-	T,
-	enable_if_t<
-		std::is_signed<T>::value && !std::is_const<T>::value &&
-		!std::is_volatile<T>::value>> {
-	static std::string &value() {
-		static auto n = str_join("int", std::to_string(sizeof(T) * 8), "_t");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<
-	T,
-	enable_if_t<
-		std::is_unsigned<T>::value && !std::is_const<T>::value &&
-		!std::is_volatile<T>::value>> {
-	static std::string &value() {
-		static auto n = str_join("uint", std::to_string(sizeof(T) * 8), "_t");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<T const, enable_if_t<!std::is_pointer<T>::value>> {
-	static std::string &value() {
-		static auto n = str_join("const ", _name<T>::value());
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<T *, void> {
-	static std::string &value() {
-		static auto n = str_join(_name<T>::value(), " *");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<T *const, void> {
-	static std::string &value() {
-		static auto n = str_join(_name<T>::value(), " *const");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<T &, void> {
-	static std::string &value() {
-		static auto n = str_join(_name<T>::value(), " &");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_info::_name<T &&, void> {
-	static std::string &value() {
-		static auto n = str_join(_name<T>::value(), " &&");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_info::_name<R(Args...), void> {
-	static std::string &value() {
-		static auto n = str_join(_name<R>::value(), "(...)");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_info::_name<R (*)(Args...), void> {
-	static std::string &value() {
-		static auto n = str_join(_name<R>::value(), " (*)(...)");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_info::_name<R (&)(Args...), void> {
-	static std::string &value() {
-		static auto n = str_join(_name<R>::value(), " (&)(...)");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_info::_name<R (*const)(Args...), void> {
-	static std::string &value() {
-		static auto n = str_join(_name<R>::value(), " (*const)(...)");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_info::_name<T[N], void> {
-	static std::string &value() {
-		static auto n =
-			str_join(_name<T>::value(), "[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_info::_name<T (&)[N], void> {
-	static std::string &value() {
-		static auto n =
-			str_join(_name<T>::value(), " (&)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_info::_name<T(&&)[N], void> {
-	static std::string &value() {
-		static auto n =
-			str_join(_name<T>::value(), " (&&)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_info::_name<T (*)[N], void> {
-	static std::string &value() {
-		static auto n =
-			str_join(_name<T>::value(), " (*)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_info::_name<T (*const)[N], void> {
-	static std::string &value() {
-		static auto n =
-			str_join(_name<T>::value(), " (*const)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<std::string, void> {
-	static std::string &value() {
-		static std::string n("std::string");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<std::wstring, void> {
-	static std::string &value() {
-		static std::string n("std::wstring");
-		return n;
-	}
-};
-
-template <typename CharT, typename Traits, typename Allocator>
-struct type_info::_name<std::basic_string<CharT, Traits, Allocator>, void> {
-	static std::string &value() {
-		static auto n = str_join(
-			"std::basic_string<",
-			_name<CharT>::value(),
-			", ",
-			_name<Traits>::value(),
-			", ",
-			_name<Allocator>::value(),
-			">");
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<string_view, void> {
-	static std::string &value() {
-		static std::string n(
-#ifdef __cpp_lib_string_view
-			"std::string_view"
-#else
-			"rua::string_view"
-#endif
-		);
-		return n;
-	}
-};
-
-template <>
-struct type_info::_name<wstring_view, void> {
-	static std::string &value() {
-		static std::string n(
-#ifdef __cpp_lib_string_view
-			"std::wstring_view"
-#else
-			"rua::wstring_view"
-#endif
-		);
-		return n;
-	}
-};
-
-template <typename CharT, typename Traits>
-struct type_info::_name<basic_string_view<CharT, Traits>, void> {
-	static std::string &value() {
-		static auto n = str_join(
-#ifdef __cpp_lib_string_view
-			"std::basic_string_view<"
-#else
-			"rua::basic_string_view<"
-#endif
-			,
-			_name<CharT>::value(),
-			", ",
-			_name<Traits>::value(),
-			">");
-		return n;
-	}
-};
-
 template <typename T>
 RUA_FORCE_INLINE constexpr type_info type_id() {
 	return type_info(type_info::_table<T>());
@@ -572,6 +591,45 @@ template <>
 RUA_FORCE_INLINE constexpr type_info type_id<void>() {
 	return type_info();
 }
+
+template <typename T>
+struct type_name<T, enable_if_t<std::is_class<T>::value>> {
+	static string_view get() {
+#ifdef RUA_RTTI
+		return typeid(T).name();
+#else
+		static const auto n =
+			str_join("class _", std::to_string(type_id<T>().hash_code()));
+		return n;
+#endif
+	}
+};
+
+template <typename T>
+struct type_name<T, enable_if_t<std::is_enum<T>::value>> {
+	static string_view get() {
+#ifdef RUA_RTTI
+		return typeid(T).name();
+#else
+		static const auto n =
+			str_join("enum _", std::to_string(type_id<T>().hash_code()));
+		return n;
+#endif
+	}
+};
+
+template <typename T>
+struct type_name<T, enable_if_t<std::is_union<T>::value>> {
+	static string_view get() {
+#ifdef RUA_RTTI
+		return typeid(T).name();
+#else
+		static const auto n =
+			str_join("union _", std::to_string(type_id<T>().hash_code()));
+		return n;
+#endif
+	}
+};
 
 #ifdef RUA_RTTI
 
