@@ -82,8 +82,8 @@ private:
 		auto buf_sz = abs_w_len + 1;
 		auto abs_c_wstr = new WCHAR[buf_sz];
 
-		abs_w_len =
-			GetFullPathNameW(rel_c_wstr, abs_w_len, abs_c_wstr, nullptr);
+		abs_w_len = GetFullPathNameW(
+			rel_c_wstr, static_cast<DWORD>(abs_w_len), abs_c_wstr, nullptr);
 
 		auto r = w_to_u8(wstring_view(abs_c_wstr, abs_w_len));
 		delete[] abs_c_wstr;
