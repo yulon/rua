@@ -1,9 +1,9 @@
-#ifndef _RUA_STRING_ENCODING_IO_HPP
-#define _RUA_STRING_ENCODING_IO_HPP
+#ifndef _RUA_STRING_ENCODING_STREAM_HPP
+#define _RUA_STRING_ENCODING_STREAM_HPP
 
 #ifdef _WIN32
 
-#include "io/win32.hpp"
+#include "stream/win32.hpp"
 
 namespace rua {
 
@@ -17,7 +17,7 @@ using u8_to_loc_writer = win32::u8_to_loc_writer;
 
 #else
 
-#include "io/uni.hpp"
+#include "stream/uni.hpp"
 
 namespace rua {
 

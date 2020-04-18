@@ -5,6 +5,8 @@
 #include "util.hpp"
 
 #include "../macros.hpp"
+#include "../string/str_join.hpp"
+#include "../string/string_view.hpp"
 
 #include <cassert>
 #include <string>
@@ -43,12 +45,12 @@ public:
 		return _tab ? _tab->is_trivial : false;
 	}
 
-	RUA_FORCE_INLINE const std::string &desc() const {
-		return _tab ? _tab->desc() : _desc<void>();
+	RUA_FORCE_INLINE const std::string &name() const {
+		return _tab ? _tab->name() : _void_name();
 	}
 
-	RUA_FORCE_INLINE std::string &desc() {
-		return _tab ? _tab->desc() : _desc<void>();
+	RUA_FORCE_INLINE std::string &name() {
+		return _tab ? _tab->name() : _void_name();
 	}
 
 	RUA_FORCE_INLINE size_t hash_code() const {
@@ -115,7 +117,7 @@ private:
 
 		const bool is_trivial;
 
-		std::string &(*const desc)();
+		std::string &(*const name)();
 
 		void (*const dtor)(void *);
 
@@ -142,9 +144,11 @@ private:
 	template <typename T>
 	struct _dtor<
 		T,
-		enable_if_t<size_of<T>::value && !std::is_trivial<T>::value>> {
+		enable_if_t<
+			size_of<T>::value && !std::is_trivial<T>::value &&
+			!std::is_reference<T>::value>> {
 		static void value(void *ptr) {
-			reinterpret_cast<T *>(ptr)->~T();
+			reinterpret_cast<remove_cv_t<T> *>(ptr)->~T();
 		}
 	};
 
@@ -154,9 +158,11 @@ private:
 	};
 
 	template <typename T>
-	struct _del<T, enable_if_t<(size_of<T>::value > 0)>> {
+	struct _del<
+		T,
+		enable_if_t<(size_of<T>::value > 0) && !std::is_reference<T>::value>> {
 		static void value(void *ptr) {
-			delete reinterpret_cast<T *>(ptr);
+			delete reinterpret_cast<remove_cv_t<T> *>(ptr);
 		}
 	};
 
@@ -166,7 +172,11 @@ private:
 	};
 
 	template <typename T>
-	struct _copy_ctor<T, enable_if_t<std::is_copy_constructible<T>::value>> {
+	struct _copy_ctor<
+		T,
+		enable_if_t<
+			std::is_copy_constructible<T>::value &&
+			!std::is_reference<T>::value>> {
 		static void value(void *ptr, const void *src) {
 			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 				T(*reinterpret_cast<const T *>(src));
@@ -179,9 +189,13 @@ private:
 	};
 
 	template <typename T>
-	struct _copy_new<T, enable_if_t<std::is_copy_constructible<T>::value>> {
+	struct _copy_new<
+		T,
+		enable_if_t<
+			std::is_copy_constructible<T>::value &&
+			!std::is_reference<T>::value>> {
 		static void *value(const void *src) {
-			return new T(*reinterpret_cast<const T *>(src));
+			return new remove_cv_t<T>(*reinterpret_cast<const T *>(src));
 		}
 	};
 
@@ -191,7 +205,11 @@ private:
 	};
 
 	template <typename T>
-	struct _move_ctor<T, enable_if_t<std::is_move_constructible<T>::value>> {
+	struct _move_ctor<
+		T,
+		enable_if_t<
+			std::is_move_constructible<T>::value &&
+			!std::is_reference<T>::value>> {
 		static void value(void *ptr, void *src) {
 			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 				T(std::move(*reinterpret_cast<T *>(src)));
@@ -204,16 +222,27 @@ private:
 	};
 
 	template <typename T>
-	struct _move_new<T, enable_if_t<std::is_move_constructible<T>::value>> {
+	struct _move_new<
+		T,
+		enable_if_t<
+			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
+			!std::is_reference<T>::value>> {
 		static void *value(void *src) {
-			return new T(std::move(*reinterpret_cast<T *>(src)));
+			return new remove_cv_t<T>(std::move(*reinterpret_cast<T *>(src)));
 		}
 	};
 
-	template <typename T>
-	static std::string &_desc() {
-		static std::string desc;
-		return desc;
+	template <typename T, typename = void>
+	struct _name {
+		static std::string &value() {
+			static std::string n("unknown_type");
+			return n;
+		}
+	};
+
+	static std::string &_void_name() {
+		static std::string n("void");
+		return n;
 	}
 
 #ifdef RUA_RTTI
@@ -230,7 +259,7 @@ private:
 		static const _table_t tab{size_of<T>::value,
 								  align_of<T>::value,
 								  std::is_trivial<T>::value,
-								  &_desc<T>,
+								  _name<T>::value,
 								  _dtor<T>::value,
 								  _del<T>::value,
 								  _copy_ctor<T>::value,
@@ -251,6 +280,287 @@ private:
 
 	template <typename T>
 	friend RUA_FORCE_INLINE constexpr type_info type_id();
+};
+
+template <>
+struct type_info::_name<void, void> {
+	static std::string &value() {
+		return _void_name();
+	}
+};
+
+template <>
+struct type_info::_name<int, void> {
+	static std::string &value() {
+		static std::string n("int");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<uint, void> {
+	static std::string &value() {
+		static std::string n("uint");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<char, void> {
+	static std::string &value() {
+		static std::string n("char");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<
+	schar,
+	enable_if_t<
+		!std::is_same<schar, char>::value &&
+		!std::is_same<schar, int>::value>> {
+	static std::string &value() {
+		static std::string n("schar");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<
+	uchar,
+	enable_if_t<
+		!std::is_same<uchar, char>::value &&
+		!std::is_same<uchar, uint>::value>> {
+	static std::string &value() {
+		static std::string n("uchar");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<bool, void> {
+	static std::string &value() {
+		static std::string n("bool");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<
+	T,
+	enable_if_t<
+		std::is_signed<T>::value && !std::is_const<T>::value &&
+		!std::is_volatile<T>::value>> {
+	static std::string &value() {
+		static auto n = str_join("int", std::to_string(sizeof(T) * 8), "_t");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<
+	T,
+	enable_if_t<
+		std::is_unsigned<T>::value && !std::is_const<T>::value &&
+		!std::is_volatile<T>::value>> {
+	static std::string &value() {
+		static auto n = str_join("uint", std::to_string(sizeof(T) * 8), "_t");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<T const, enable_if_t<!std::is_pointer<T>::value>> {
+	static std::string &value() {
+		static auto n = str_join("const ", _name<T>::value());
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<T *, void> {
+	static std::string &value() {
+		static auto n = str_join(_name<T>::value(), " *");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<T *const, void> {
+	static std::string &value() {
+		static auto n = str_join(_name<T>::value(), " *const");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<T &, void> {
+	static std::string &value() {
+		static auto n = str_join(_name<T>::value(), " &");
+		return n;
+	}
+};
+
+template <typename T>
+struct type_info::_name<T &&, void> {
+	static std::string &value() {
+		static auto n = str_join(_name<T>::value(), " &&");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_info::_name<R(Args...), void> {
+	static std::string &value() {
+		static auto n = str_join(_name<R>::value(), "(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_info::_name<R (*)(Args...), void> {
+	static std::string &value() {
+		static auto n = str_join(_name<R>::value(), " (*)(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_info::_name<R (&)(Args...), void> {
+	static std::string &value() {
+		static auto n = str_join(_name<R>::value(), " (&)(...)");
+		return n;
+	}
+};
+
+template <typename R, typename... Args>
+struct type_info::_name<R (*const)(Args...), void> {
+	static std::string &value() {
+		static auto n = str_join(_name<R>::value(), " (*const)(...)");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_info::_name<T[N], void> {
+	static std::string &value() {
+		static auto n =
+			str_join(_name<T>::value(), "[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_info::_name<T (&)[N], void> {
+	static std::string &value() {
+		static auto n =
+			str_join(_name<T>::value(), " (&)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_info::_name<T(&&)[N], void> {
+	static std::string &value() {
+		static auto n =
+			str_join(_name<T>::value(), " (&&)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_info::_name<T (*)[N], void> {
+	static std::string &value() {
+		static auto n =
+			str_join(_name<T>::value(), " (*)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <typename T, size_t N>
+struct type_info::_name<T (*const)[N], void> {
+	static std::string &value() {
+		static auto n =
+			str_join(_name<T>::value(), " (*const)[", std::to_string(N), "]");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<std::string, void> {
+	static std::string &value() {
+		static std::string n("std::string");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<std::wstring, void> {
+	static std::string &value() {
+		static std::string n("std::wstring");
+		return n;
+	}
+};
+
+template <typename CharT, typename Traits, typename Allocator>
+struct type_info::_name<std::basic_string<CharT, Traits, Allocator>, void> {
+	static std::string &value() {
+		static auto n = str_join(
+			"std::basic_string<",
+			_name<CharT>::value(),
+			", ",
+			_name<Traits>::value(),
+			", ",
+			_name<Allocator>::value(),
+			">");
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<string_view, void> {
+	static std::string &value() {
+		static std::string n(
+#ifdef __cpp_lib_string_view
+			"std::string_view"
+#else
+			"rua::string_view"
+#endif
+		);
+		return n;
+	}
+};
+
+template <>
+struct type_info::_name<wstring_view, void> {
+	static std::string &value() {
+		static std::string n(
+#ifdef __cpp_lib_string_view
+			"std::wstring_view"
+#else
+			"rua::wstring_view"
+#endif
+		);
+		return n;
+	}
+};
+
+template <typename CharT, typename Traits>
+struct type_info::_name<basic_string_view<CharT, Traits>, void> {
+	static std::string &value() {
+		static auto n = str_join(
+#ifdef __cpp_lib_string_view
+			"std::basic_string_view<"
+#else
+			"rua::basic_string_view<"
+#endif
+			,
+			_name<CharT>::value(),
+			", ",
+			_name<Traits>::value(),
+			">");
+		return n;
+	}
 };
 
 template <typename T>

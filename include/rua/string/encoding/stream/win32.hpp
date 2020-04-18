@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_ENCODING_IO_WIN32_HPP
-#define _RUA_STRING_ENCODING_IO_WIN32_HPP
+#ifndef _RUA_STRING_ENCODING_STREAM_WIN32_HPP
+#define _RUA_STRING_ENCODING_STREAM_WIN32_HPP
 
 #include "../base/win32.hpp"
 
@@ -13,8 +13,7 @@ public:
 	loc_to_u8_reader() : _lr(nullptr), _data_sz(0) {}
 
 	loc_to_u8_reader(reader_i loc_reader) :
-		_lr(std::move(loc_reader)),
-		_data_sz(0) {}
+		_lr(std::move(loc_reader)), _data_sz(0) {}
 
 	virtual ~loc_to_u8_reader() = default;
 

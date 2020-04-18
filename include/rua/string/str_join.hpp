@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_STR_JOIN_HPP
 #define _RUA_STRING_STR_JOIN_HPP
 
-#include "line.hpp"
+#include "line/base.hpp"
 #include "string_view.hpp"
 
 #include "../macros.hpp"
