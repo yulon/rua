@@ -197,6 +197,16 @@ struct size_of<R(Args...)> {
 	static constexpr size_t value = 0;
 };
 
+template <typename T>
+struct size_of<T &> {
+	static constexpr size_t value = 0;
+};
+
+template <typename T>
+struct size_of<T &&> {
+	static constexpr size_t value = 0;
+};
+
 #if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto size_of_v = size_of<T>::value;
@@ -216,6 +226,16 @@ struct align_of<void> {
 
 template <typename R, typename... Args>
 struct align_of<R(Args...)> {
+	static constexpr size_t value = 0;
+};
+
+template <typename T>
+struct align_of<T &> {
+	static constexpr size_t value = 0;
+};
+
+template <typename T>
+struct align_of<T &&> {
 	static constexpr size_t value = 0;
 };
 
