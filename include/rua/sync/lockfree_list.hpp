@@ -20,7 +20,7 @@ public:
 
 	constexpr lockfree_list() : _front(nullptr) {}
 
-	constexpr explicit lockfree_list(node_t *front) : _front(nullptr) {}
+	constexpr explicit lockfree_list(node_t *front) : _front(front) {}
 
 	constexpr explicit lockfree_list(forward_list<T> li) :
 		_front(li.release()) {}
