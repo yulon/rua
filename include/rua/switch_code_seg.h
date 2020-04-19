@@ -18,7 +18,7 @@
 #define RUA_CODE(name) static const unsigned char name[]
 #endif
 
-#pragma const_seg(push, _rua_code_seg, ".rua")
+#pragma const_seg(push, _rua_code_seg, ".text")
 
 #endif
 
@@ -41,7 +41,6 @@
 #elif defined(_MSC_VER)
 
 #pragma const_seg(pop, _rua_code_seg)
-#pragma comment(linker, "/SECTION:.rua,ER")
 
 #endif
 
