@@ -975,7 +975,10 @@ bytes_base<Span>::match(const masked_bytes &target) {
 	return mr;
 }
 
-template <typename Derived, size_t Size = sizeof(Derived)>
+template <
+	typename Derived,
+	size_t Size = !std::is_same<Derived, void>::value ? size_of<Derived>::value
+													  : nmax<size_t>()>
 class enable_bytes_accessor
 	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
@@ -984,12 +987,17 @@ public:
 	}
 
 	static constexpr size_t size() {
-		return sizeof(Derived);
+		return Size;
 	}
 
 protected:
 	constexpr enable_bytes_accessor() = default;
 };
+
+template <>
+RUA_FORCE_INLINE generic_ptr enable_bytes_accessor<void>::data() const {
+	return this;
+}
 
 template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
@@ -1004,26 +1012,6 @@ public:
 
 private:
 	alignas(Align) char _raw[Size];
-};
-
-class _bytes_hacker_base {
-public:
-	generic_ptr data() const {
-		return this;
-	}
-
-	static constexpr size_t size() {
-		return nmax<size_t>();
-	}
-
-protected:
-	constexpr _bytes_hacker_base() = default;
-};
-
-class bytes_hacker : public _bytes_hacker_base,
-					 public bytes_base<bytes_hacker> {
-protected:
-	constexpr bytes_hacker() = default;
 };
 
 } // namespace rua
