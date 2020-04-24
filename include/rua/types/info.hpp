@@ -59,7 +59,9 @@ struct type_name<size_t> {
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_same<T, uint>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_same<T, uint>::value>> {
 	static constexpr string_view get() {
 		return "uint";
 	}
@@ -73,14 +75,18 @@ struct type_name<char> {
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_same<T, schar>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_same<T, schar>::value>> {
 	static constexpr string_view get() {
 		return "schar";
 	}
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_same<T, uchar>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_same<T, uchar>::value>> {
 	static constexpr string_view get() {
 		return "uchar";
 	}
@@ -97,9 +103,9 @@ template <typename T>
 struct type_name<
 	T,
 	enable_if_t<
-		std::is_signed<T>::value && !std::is_same<T, schar>::value &&
-		!std::is_same<T, max_align_t>::value && !std::is_const<T>::value &&
-		!std::is_volatile<T>::value>> {
+		!std::is_const<T>::value && std::is_signed<T>::value &&
+		!std::is_same<T, schar>::value &&
+		!std::is_same<T, max_align_t>::value && !std::is_volatile<T>::value>> {
 	static string_view get() {
 		static const auto n =
 			str_join("int", std::to_string(sizeof(T) * 8), "_t");
@@ -111,10 +117,9 @@ template <typename T>
 struct type_name<
 	T,
 	enable_if_t<
-		std::is_unsigned<T>::value && !std::is_same<T, uint>::value &&
-		!std::is_same<T, uchar>::value &&
-		!std::is_same<T, max_align_t>::value && !std::is_const<T>::value &&
-		!std::is_volatile<T>::value>> {
+		!std::is_const<T>::value && std::is_unsigned<T>::value &&
+		!std::is_same<T, uint>::value && !std::is_same<T, uchar>::value &&
+		!std::is_same<T, max_align_t>::value && !std::is_volatile<T>::value>> {
 	static string_view get() {
 		static const auto n =
 			str_join("uint", std::to_string(sizeof(T) * 8), "_t");
@@ -137,7 +142,10 @@ struct type_name<double> {
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_same<T, max_align_t>::value>> {
+struct type_name<
+	T,
+	enable_if_t<
+		!std::is_const<T>::value && std::is_same<T, max_align_t>::value>> {
 	static constexpr string_view get() {
 		return "max_align_t";
 	}
@@ -927,6 +935,12 @@ private:
 		}
 	};
 
+	template <typename T>
+	struct _is_initializer_list : std::false_type {};
+
+	template <typename E>
+	struct _is_initializer_list<std::initializer_list<E>> : std::true_type {};
+
 	template <typename T, typename = void>
 	struct _copy_ctor {
 		static constexpr std::nullptr_t value = nullptr;
@@ -937,7 +951,7 @@ private:
 		T,
 		enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			!std::is_reference<T>::value>> {
+			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, const void *src) {
 			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 				T(*reinterpret_cast<const T *>(src));
@@ -954,7 +968,7 @@ private:
 		T,
 		enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			!std::is_reference<T>::value>> {
+			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void *value(const void *src) {
 			return new remove_cv_t<T>(*reinterpret_cast<const T *>(src));
 		}
@@ -969,8 +983,8 @@ private:
 	struct _move_ctor<
 		T,
 		enable_if_t<
-			std::is_move_constructible<T>::value &&
-			!std::is_reference<T>::value>> {
+			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
+			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, void *src) {
 			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
 				T(std::move(*reinterpret_cast<T *>(src)));
@@ -987,7 +1001,7 @@ private:
 		T,
 		enable_if_t<
 			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
-			!std::is_reference<T>::value>> {
+			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void *value(void *src) {
 			return new remove_cv_t<T>(std::move(*reinterpret_cast<T *>(src)));
 		}
@@ -1041,7 +1055,9 @@ RUA_FORCE_INLINE constexpr type_info type_id<void>() {
 }
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_class<T>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_class<T>::value>> {
 	static string_view get() {
 #ifdef RUA_RTTI
 		return typeid(T).name();
@@ -1054,7 +1070,9 @@ struct type_name<T, enable_if_t<std::is_class<T>::value>> {
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_enum<T>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_enum<T>::value>> {
 	static string_view get() {
 #ifdef RUA_RTTI
 		return typeid(T).name();
@@ -1067,7 +1085,9 @@ struct type_name<T, enable_if_t<std::is_enum<T>::value>> {
 };
 
 template <typename T>
-struct type_name<T, enable_if_t<std::is_union<T>::value>> {
+struct type_name<
+	T,
+	enable_if_t<!std::is_const<T>::value && std::is_union<T>::value>> {
 	static string_view get() {
 #ifdef RUA_RTTI
 		return typeid(T).name();
