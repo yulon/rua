@@ -11,15 +11,59 @@ namespace rua {
 
 template <
 	typename T,
-	typename = enable_if_t<std::is_class<decay_t<T>>::value>,
-	typename Pointer = decltype(std::declval<T &&>().data())>
-RUA_FORCE_INLINE enable_if_t<
-	(std::is_convertible<Pointer, void *>::value ||
-	 std::is_convertible<Pointer, const void *>::value) &&
-		!is_null_pointer<decay_t<Pointer>>::value,
-	Pointer>
+	typename DataT = decltype(std::declval<T &&>().data()),
+	typename Pointer = remove_reference_t<DataT>>
+RUA_FORCE_INLINE constexpr enable_if_t<
+	std::is_pointer<Pointer>::value &&
+		!std::is_void<remove_pointer_t<Pointer>>::value &&
+		!is_null_pointer<Pointer>::value,
+	DataT>
 data(T &&target) {
 	return std::forward<T>(target).data();
+}
+
+template <
+	typename T,
+	typename DataT = decltype(std::declval<T &&>().data()),
+	typename Pointer = remove_reference_t<DataT>,
+	typename Element = remove_pointer_t<Pointer>,
+	typename BytePointer = enable_if_t<
+		std::is_void<Element>::value || is_null_pointer<Pointer>::value,
+		conditional_t<std::is_const<Element>::value, const byte *, byte *>>>
+RUA_FORCE_INLINE BytePointer data(T &&target) {
+	return reinterpret_cast<BytePointer>(std::forward<T>(target).data());
+}
+
+template <
+	typename T,
+	typename DataT = decltype(std::declval<T &&>().data()),
+	typename Pointer = remove_reference_t<DataT>,
+	bool IsConst = std::is_const<remove_reference_t<T>>::value,
+	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
+	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
+RUA_FORCE_INLINE enable_if_t<
+	!std::is_pointer<Pointer>::value &&
+		std::is_convertible<DataT, VoidPointer>::value &&
+		!std::is_convertible<DataT, BytePointer>::value,
+	BytePointer>
+data(T &&target) {
+	return reinterpret_cast<BytePointer>(
+		static_cast<VoidPointer>(std::forward<T>(target).data()));
+}
+
+template <
+	typename T,
+	typename DataT = decltype(std::declval<T &&>().data()),
+	typename Pointer = remove_reference_t<DataT>,
+	bool IsConst = std::is_const<remove_reference_t<T>>::value,
+	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
+	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
+RUA_FORCE_INLINE constexpr enable_if_t<
+	!std::is_pointer<Pointer>::value &&
+		std::is_convertible<DataT, BytePointer>::value,
+	BytePointer>
+data(T &&target) {
+	return static_cast<BytePointer>(std::forward<T>(target).data());
 }
 
 #if RUA_CPP < RUA_CPP_17
@@ -39,23 +83,42 @@ data(std::basic_string<CharT, Traits, Allocator> &&target) {
 #endif
 
 template <typename E, size_t N>
-RUA_FORCE_INLINE constexpr E *data(E (&c_ary)[N]) {
-	return c_ary;
+RUA_FORCE_INLINE constexpr E *data(E (&c_ary_lv)[N]) {
+	return &c_ary_lv[0];
 }
 
-template <class E>
-RUA_FORCE_INLINE RUA_CONSTEXPR_14 const E *data(std::initializer_list<E> il) {
-	return il.begin();
+template <typename E, size_t N>
+RUA_FORCE_INLINE constexpr E *data(E(&&c_ary_rv)[N]) {
+	return &c_ary_rv[0];
 }
+
+template <typename E, size_t N>
+RUA_FORCE_INLINE constexpr E *data(E (*c_ary_ptr)[N]) {
+	return &(*c_ary_ptr)[0];
+}
+
+template <typename, typename = void>
+struct _has_data : std::false_type {};
+
+template <typename T>
+struct _has_data<T, void_t<decltype(std::declval<T>().data())>>
+	: std::true_type {};
 
 template <
 	typename T,
-	typename = enable_if_t<std::is_class<decay_t<T>>::value>,
-	typename Index = decltype(std::declval<T &&>().size())>
-RUA_FORCE_INLINE enable_if_t<
-	std::is_integral<remove_reference_t<Index>>::value ||
-		std::is_convertible<Index, size_t>::value,
-	Index>
+	typename = enable_if_t<!_has_data<T &&>::value>,
+	typename Pointer = decltype(std::declval<T &&>().begin())>
+RUA_FORCE_INLINE constexpr enable_if_t<
+	std::is_pointer<Pointer>::value &&
+		!std::is_void<remove_pointer_t<Pointer>>::value &&
+		!is_null_pointer<Pointer>::value,
+	Pointer>
+data(T &&target) {
+	return std::forward<T>(target).begin();
+}
+
+template <typename T>
+RUA_FORCE_INLINE constexpr decltype(std::declval<T &&>().size())
 size(T &&target) {
 	return std::forward<T>(target).size();
 }
@@ -65,73 +128,30 @@ RUA_FORCE_INLINE constexpr size_t size(E (&)[N]) {
 	return N;
 }
 
-template <
-	typename T,
-	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>>
-struct span_pointer {
-	using type = Pointer;
-};
+template <typename, typename = void>
+struct _has_size : std::false_type {};
 
-template <typename T, typename... Others>
-using span_pointer_t = typename span_pointer<T, Others...>::type;
+template <typename T>
+struct _has_size<T, void_t<decltype(std::declval<T>().size())>>
+	: std::true_type {};
 
-template <
-	typename T,
-	typename Pointer = span_pointer_t<T>,
-	typename Element = conditional_t<
-		std::is_pointer<Pointer>::value,
-		remove_pointer_t<Pointer>,
-		conditional_t<
-			(!std::is_base_of<generic_ptr, remove_cv_t<Pointer>>::value &&
-			 !std::is_convertible<Pointer, void *>::value &&
-			 std::is_convertible<Pointer, const void *>::value) ||
-				std::is_const<Pointer>::value ||
-				std::is_const<decay_t<T>>::value,
-			const byte,
-			byte>>,
-	typename Value = remove_cv_t<Element>,
-	typename DecayElement = conditional_t<
-		std::is_void<Value>::value,
-		conditional_t<std::is_const<Element>::value, const byte, byte>,
-		Element>>
-struct span_element {
-	using type = DecayElement;
-};
-
-template <typename T, typename... Others>
-using span_element_t = typename span_element<T, Others...>::type;
+template <typename T>
+RUA_FORCE_INLINE enable_if_t<
+	!_has_size<T &&>::value,
+	decltype(std::declval<T &&>().end() - std::declval<T &&>().begin())>
+size(T &&target) {
+	return std::forward<T>(target).end() - std::forward<T>(target).begin();
+}
 
 template <
 	typename T,
-	typename Element = span_element_t<T>,
-	typename Value = remove_cv_t<Element>>
-struct span_value {
-	using type = Value;
-};
-
-template <typename T, typename... Others>
-using span_value_t = typename span_value<T, Others...>::type;
-
-template <
-	typename T,
+	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Element = remove_pointer_t<Pointer>,
 	typename Size = remove_reference_t<decltype(size(std::declval<T>()))>>
-struct span_size {
-	using type = Size;
-};
-
-template <typename T, typename... Others>
-using span_size_t = typename span_size<T, Others...>::type;
-
-template <
-	typename T,
-	typename Pointer = span_pointer_t<T>,
-	typename Element = span_element_t<T, Pointer>,
-	typename Value = span_value_t<T, Element>,
-	typename Size = span_size_t<T>>
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;
-	using value_type = Value;
+	using value_type = remove_cv_t<Element>;
 	using size_type = Size;
 };
 
