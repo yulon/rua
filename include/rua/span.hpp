@@ -1,7 +1,6 @@
 #ifndef _RUA_SPAN_HPP
 #define _RUA_SPAN_HPP
 
-#include "generic_ptr.hpp"
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
@@ -161,8 +160,10 @@ struct is_span : std::false_type {};
 template <typename T>
 struct is_span<T, void_t<span_traits<T>>> : std::true_type {};
 
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
-using is_span_t = typename is_span<T>::type;
+inline constexpr auto is_span_v = is_span<T>::value;
+#endif
 
 template <typename, typename = void>
 struct is_readonly_span : std::false_type {};
