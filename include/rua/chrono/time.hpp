@@ -320,31 +320,31 @@ private:
 	}
 };
 
-RUA_FORCE_INLINE time operator+(duration dur, const time &tim) {
+inline time operator+(duration dur, const time &tim) {
 	return tim + dur;
 }
 
-RUA_FORCE_INLINE time time_max() {
+inline time time_max() {
 	return time(duration_max());
 }
 
-RUA_FORCE_INLINE time time_max(const date_t &epoch) {
+inline time time_max(const date_t &epoch) {
 	return time(duration_max(), epoch);
 }
 
-RUA_FORCE_INLINE time time_zero() {
+inline time time_zero() {
 	return time(duration_zero());
 }
 
-RUA_FORCE_INLINE time time_zero(const date_t &epoch) {
+inline time time_zero(const date_t &epoch) {
 	return time(duration_zero(), epoch);
 }
 
-RUA_FORCE_INLINE time time_min() {
+inline time time_min() {
 	return time(duration_min());
 }
 
-RUA_FORCE_INLINE time time_min(const date_t &epoch) {
+inline time time_min(const date_t &epoch) {
 	return time(duration_min(), epoch);
 }
 
@@ -354,14 +354,14 @@ namespace std {
 
 template <>
 struct hash<rua::time> {
-	RUA_FORCE_INLINE size_t operator()(const rua::time &t) const {
+	size_t operator()(const rua::time &t) const {
 		return _szt(
 			t.is_monotonic() ? t.elapsed().milliseconds()
 							 : t.to_unix().elapsed().seconds());
 	}
 
 private:
-	static RUA_FORCE_INLINE size_t _szt(int64_t c) {
+	static size_t _szt(int64_t c) {
 		return static_cast<size_t>(c >= 0 ? c : 0);
 	}
 };

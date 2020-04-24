@@ -75,27 +75,27 @@ inline std::string w_to_mb(wstring_view w_str, UINT mb_cp) {
 	return u8_str;
 }
 
-RUA_FORCE_INLINE std::wstring u8_to_w(string_view u8_str) {
+inline std::wstring u8_to_w(string_view u8_str) {
 	return mb_to_w(CP_UTF8, u8_str);
 }
 
-RUA_FORCE_INLINE std::string w_to_u8(wstring_view w_str) {
+inline std::string w_to_u8(wstring_view w_str) {
 	return w_to_mb(w_str, CP_UTF8);
 }
 
-RUA_FORCE_INLINE std::wstring loc_to_w(string_view str) {
+inline std::wstring loc_to_w(string_view str) {
 	return mb_to_w(CP_ACP, str);
 }
 
-RUA_FORCE_INLINE std::string w_to_loc(wstring_view w_str) {
+inline std::string w_to_loc(wstring_view w_str) {
 	return w_to_mb(w_str, CP_ACP);
 }
 
-RUA_FORCE_INLINE std::string loc_to_u8(string_view str) {
+inline std::string loc_to_u8(string_view str) {
 	return w_to_u8(loc_to_w(str));
 }
 
-RUA_FORCE_INLINE std::string u8_to_loc(string_view u8_str) {
+inline std::string u8_to_loc(string_view u8_str) {
 	return w_to_loc(u8_to_w(u8_str));
 }
 

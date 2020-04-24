@@ -74,18 +74,18 @@ private:
 	std::vector<writer_i> _li;
 };
 
-RUA_FORCE_INLINE bool is_stack_data(bytes_view data) {
+inline bool is_stack_data(bytes_view data) {
 	auto ptr = data.data().uintptr();
 	auto end = reinterpret_cast<uintptr_t>(&data);
 	auto begin = end - 2048;
 	return begin < ptr && ptr < end;
 }
 
-RUA_FORCE_INLINE bytes make_stackless_data(bytes_view data) {
+inline bytes make_stackless_data(bytes_view data) {
 	return is_stack_data(data) ? data : nullptr;
 }
 
-RUA_FORCE_INLINE bytes make_stackless_buffer(bytes_ref buf) {
+inline bytes make_stackless_buffer(bytes_ref buf) {
 	return is_stack_data(buf) ? bytes(buf.size()) : nullptr;
 }
 

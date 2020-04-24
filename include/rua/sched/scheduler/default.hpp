@@ -10,7 +10,7 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE scheduler_i make_default_scheduler(
+inline scheduler_i make_default_scheduler(
 	std::function<scheduler_i()> make_scheduler = []() -> scheduler_i {
 		return std::make_shared<thread_scheduler>();
 	}) {

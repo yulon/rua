@@ -26,36 +26,36 @@ template <typename Span>
 class const_bytes_base {
 public:
 	template <typename T>
-	RUA_FORCE_INLINE T get() const {
+	T get() const {
 		return bit_get<T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T get(ptrdiff_t offset) const {
+	T get(ptrdiff_t offset) const {
 		return bit_get<T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T aligned_get(ptrdiff_t ix) const {
+	T aligned_get(ptrdiff_t ix) const {
 		return bit_aligned_get<T>(_this()->data(), ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &as() const {
+	const T &as() const {
 		return bit_as<const T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &as(ptrdiff_t offset) const {
+	const T &as(ptrdiff_t offset) const {
 		return bit_as<const T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &aligned_as(ptrdiff_t ix) const {
+	const T &aligned_as(ptrdiff_t ix) const {
 		return bit_aligned_as<const T>(_this()->data(), ix);
 	}
 
-	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
+	const byte &operator[](ptrdiff_t offset) const {
 		return as<const byte>(offset);
 	}
 
@@ -73,14 +73,13 @@ public:
 	inline size_t copy_to(DestArgs &&... dest) const;
 
 	template <typename CharT, typename Traits>
-	RUA_FORCE_INLINE operator basic_string_view<CharT, Traits>() const {
+	operator basic_string_view<CharT, Traits>() const {
 		return basic_string_view<CharT, Traits>(
 			generic_ptr(_this()->data()).template as<const CharT *>(),
 			_this()->size() / sizeof(CharT));
 	}
 
 	template <typename CharT, typename Traits, typename Allocator>
-	RUA_FORCE_INLINE
 	operator std::basic_string<CharT, Traits, Allocator>() const {
 		return std::basic_string<CharT, Traits, Allocator>(
 			generic_ptr(_this()->data()).template as<const CharT *>(),
@@ -110,7 +109,7 @@ protected:
 	const_bytes_base() = default;
 
 private:
-	RUA_FORCE_INLINE const Span *_this() const {
+	const Span *_this() const {
 		return static_cast<const Span *>(this);
 	}
 };
@@ -119,56 +118,56 @@ template <typename Span>
 class bytes_base : public const_bytes_base<Span> {
 public:
 	template <typename T>
-	RUA_FORCE_INLINE void set(const T &val) {
+	void set(const T &val) {
 		return bit_set<T>(_this()->data(), val);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE void set(const T &val, ptrdiff_t offset) {
+	void set(const T &val, ptrdiff_t offset) {
 		return bit_set<T>(_this()->data(), offset, val);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE void aligned_set(const T &val, ptrdiff_t ix) {
+	void aligned_set(const T &val, ptrdiff_t ix) {
 		return bit_aligned_set<T>(_this()->data(), val, ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &as() const {
+	const T &as() const {
 		return bit_as<const T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &as() {
+	T &as() {
 		return bit_as<T>(_this()->data());
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &as(ptrdiff_t offset) const {
+	const T &as(ptrdiff_t offset) const {
 		return bit_as<const T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &as(ptrdiff_t offset) {
+	T &as(ptrdiff_t offset) {
 		return bit_as<T>(_this()->data(), offset);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE const T &aligned_as(ptrdiff_t ix) const {
+	const T &aligned_as(ptrdiff_t ix) const {
 		return bit_aligned_as<const T>(_this()->data(), ix);
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE T &aligned_as(ptrdiff_t ix) {
+	T &aligned_as(ptrdiff_t ix) {
 		return bit_aligned_as<T>(_this()->data(), ix);
 	}
 
-	RUA_FORCE_INLINE const byte &operator[](ptrdiff_t offset) const {
+	const byte &operator[](ptrdiff_t offset) const {
 		return as<const byte>(offset);
 		;
 	}
 
-	RUA_FORCE_INLINE byte &operator[](ptrdiff_t offset) {
+	byte &operator[](ptrdiff_t offset) {
 		return as<byte>(offset);
 		;
 	}
@@ -226,11 +225,11 @@ public:
 	inline std::vector<bytes_ref> match(const masked_bytes &);
 
 private:
-	RUA_FORCE_INLINE Span *_this() {
+	Span *_this() {
 		return static_cast<Span *>(this);
 	}
 
-	RUA_FORCE_INLINE const Span *_this() const {
+	const Span *_this() const {
 		return static_cast<const Span *>(this);
 	}
 };
@@ -675,18 +674,18 @@ public:
 		}
 	}
 
-	RUA_FORCE_INLINE bytes &operator=(const bytes &val) {
+	bytes &operator=(const bytes &val) {
 		reset(val);
 		return *this;
 	}
 
-	RUA_FORCE_INLINE bytes &operator=(bytes &&val) {
+	bytes &operator=(bytes &&val) {
 		reset(std::move(val));
 		return *this;
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE enable_if_t<
+	enable_if_t<
 		!std::is_base_of<bytes, decay_t<T>>::value &&
 			std::is_convertible<T &&, bytes_view>::value,
 		bytes &>
@@ -695,7 +694,7 @@ public:
 		return *this;
 	}
 
-	RUA_FORCE_INLINE bytes &operator+=(bytes_view tail) {
+	bytes &operator+=(bytes_view tail) {
 		resize(size() + tail.size());
 		slice(size()).copy_from(tail);
 		return *this;
@@ -766,13 +765,13 @@ public:
 	}
 
 private:
-	RUA_FORCE_INLINE void _alloc(size_t size) {
+	void _alloc(size_t size) {
 		bytes_ref::reset(
 			new char[sizeof(size_t) + size] + sizeof(size_t), size);
 		bit_set<size_t>(data() - sizeof(size_t), size);
 	}
 
-	RUA_FORCE_INLINE size_t _capacity() const {
+	size_t _capacity() const {
 		return bit_get<size_t>(data() - sizeof(size_t));
 	}
 };
@@ -782,7 +781,7 @@ template <
 	typename B,
 	typename DecayA = decay_t<A>,
 	typename DecayB = decay_t<B>>
-RUA_FORCE_INLINE enable_if_t<
+inline enable_if_t<
 	(std::is_base_of<bytes_view, DecayA>::value ||
 	 std::is_base_of<bytes_ref, DecayA>::value) &&
 		(std::is_base_of<bytes_view, DecayB>::value ||
@@ -800,7 +799,7 @@ template <
 	typename B,
 	typename DecayA = decay_t<A>,
 	typename DecayB = decay_t<B>>
-RUA_FORCE_INLINE enable_if_t<
+inline enable_if_t<
 	(std::is_base_of<bytes_view, DecayA>::value ||
 	 std::is_base_of<bytes_ref, DecayA>::value) &&
 		(!std::is_base_of<bytes_view, DecayB>::value &&
@@ -815,7 +814,7 @@ template <
 	typename B,
 	typename DecayA = decay_t<A>,
 	typename DecayB = decay_t<B>>
-RUA_FORCE_INLINE enable_if_t<
+inline enable_if_t<
 	(!std::is_base_of<bytes_view, DecayA>::value &&
 	 !std::is_base_of<bytes_ref, DecayA>::value) &&
 		(std::is_base_of<bytes_view, DecayB>::value ||
@@ -995,7 +994,7 @@ protected:
 };
 
 template <>
-RUA_FORCE_INLINE generic_ptr enable_bytes_accessor<void>::data() const {
+inline generic_ptr enable_bytes_accessor<void>::data() const {
 	return this;
 }
 

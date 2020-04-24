@@ -11,7 +11,7 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE scheduler_i &_this_scheduler_ref() {
+inline scheduler_i &_this_scheduler_ref() {
 	static thread_var<scheduler_i> sto;
 	if (!sto.has_value()) {
 		return sto.emplace(make_default_scheduler());
@@ -20,7 +20,7 @@ RUA_FORCE_INLINE scheduler_i &_this_scheduler_ref() {
 	return sto.value();
 }
 
-RUA_FORCE_INLINE scheduler_i this_scheduler() {
+inline scheduler_i this_scheduler() {
 	return _this_scheduler_ref();
 }
 
@@ -48,11 +48,11 @@ private:
 	scheduler_i _prev;
 };
 
-RUA_FORCE_INLINE void yield() {
+inline void yield() {
 	this_scheduler()->yield();
 }
 
-RUA_FORCE_INLINE void sleep(duration timeout) {
+inline void sleep(duration timeout) {
 	this_scheduler()->sleep(timeout);
 }
 

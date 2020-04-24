@@ -95,7 +95,7 @@ using std_byte = uchar;
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename A, typename B>
-RUA_FORCE_INLINE decltype(std::declval<A &&>() = std::declval<B &&>())
+inline decltype(std::declval<A &&>() = std::declval<B &&>())
 assign(A &&a, B &&b) {
 	return std::forward<A>(a) = std::forward<B>(b);
 }
@@ -320,17 +320,17 @@ inline constexpr auto index_of_v = index_of<T, Types...>::value;
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-RUA_FORCE_INLINE constexpr T nmax() {
+inline constexpr T nmax() {
 	return (std::numeric_limits<T>::max)();
 }
 
 template <typename T>
-RUA_FORCE_INLINE constexpr T nmin() {
+inline constexpr T nmin() {
 	return (std::numeric_limits<T>::min)();
 }
 
 template <typename T>
-RUA_FORCE_INLINE constexpr T nlowest() {
+inline constexpr T nlowest() {
 	return (std::numeric_limits<T>::lowest)();
 }
 

@@ -22,7 +22,7 @@ using pid_t = ::pid_t;
 
 namespace _this_pid {
 
-RUA_FORCE_INLINE pid_t this_pid() {
+inline pid_t this_pid() {
 	return getpid();
 }
 
@@ -176,7 +176,7 @@ private:
 
 namespace _this_process {
 
-RUA_FORCE_INLINE process this_process() {
+inline process this_process() {
 	return process(this_pid());
 }
 

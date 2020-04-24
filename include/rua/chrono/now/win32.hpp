@@ -13,7 +13,7 @@ namespace rua { namespace win32 {
 
 namespace _now {
 
-RUA_FORCE_INLINE int8_t local_time_zone() {
+inline int8_t local_time_zone() {
 	TIME_ZONE_INFORMATION info;
 	GetTimeZoneInformation(&info);
 	return static_cast<int8_t>(info.Bias / 60 + 16);
@@ -26,7 +26,7 @@ RUA_INLINE_CONST auto _FILETIME_high_bsz = 64 - _FILETIME_low_bsz;
 
 using sys_time_t = FILETIME;
 
-RUA_FORCE_INLINE time
+inline time
 from_sys_time(const sys_time_t &ft, int8_t zone = local_time_zone()) {
 	return time(
 		duration::from<100>(
@@ -36,7 +36,7 @@ from_sys_time(const sys_time_t &ft, int8_t zone = local_time_zone()) {
 		sys_epoch);
 }
 
-RUA_FORCE_INLINE sys_time_t to_sys_time(const time &ti) {
+inline sys_time_t to_sys_time(const time &ti) {
 	auto num = ti.to(sys_epoch).elapsed().count<100>();
 	return {static_cast<decltype(FILETIME::dwLowDateTime)>(
 				num << _FILETIME_high_bsz >> _FILETIME_high_bsz),
@@ -44,7 +44,7 @@ RUA_FORCE_INLINE sys_time_t to_sys_time(const time &ti) {
 				num >> _FILETIME_low_bsz)};
 }
 
-RUA_FORCE_INLINE time now(int8_t zone = local_time_zone()) {
+inline time now(int8_t zone = local_time_zone()) {
 	FILETIME ft;
 	GetSystemTimeAsFileTime(&ft);
 	return from_sys_time(ft, zone);

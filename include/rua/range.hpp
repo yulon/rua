@@ -11,7 +11,7 @@ template <
 	typename T,
 	typename BeginT = decltype(std::declval<T &&>().begin()),
 	typename = decltype(*std::declval<BeginT>())>
-RUA_FORCE_INLINE constexpr BeginT begin(T &&target) {
+inline constexpr BeginT begin(T &&target) {
 	return std::forward<T>(target).begin();
 }
 
@@ -19,7 +19,7 @@ template <
 	typename T,
 	typename EndT = decltype(std::declval<T &&>().end()),
 	typename = decltype(*std::declval<EndT>())>
-RUA_FORCE_INLINE constexpr EndT end(T &&target) {
+inline constexpr EndT end(T &&target) {
 	return std::forward<T>(target).end();
 }
 
@@ -34,7 +34,7 @@ struct _has_begin_end<
 		decltype(std::declval<T>().end())>> : std::true_type {};
 
 template <typename T>
-RUA_FORCE_INLINE constexpr enable_if_t<
+inline constexpr enable_if_t<
 	!_has_begin_end<T &&>::value,
 	typename span_traits<T &&>::pointer>
 begin(T &&target) {
@@ -42,7 +42,7 @@ begin(T &&target) {
 }
 
 template <typename T>
-RUA_FORCE_INLINE constexpr enable_if_t<
+inline constexpr enable_if_t<
 	!_has_begin_end<T &&>::value,
 	typename span_traits<T &&>::pointer>
 end(T &&target) {
@@ -57,7 +57,7 @@ template <
 	typename T,
 	typename BeginT = decltype(begin(std::declval<T &&>())),
 	typename = decltype(*std::declval<BeginT>())>
-RUA_FORCE_INLINE constexpr rua::enable_if_t<
+inline constexpr rua::enable_if_t<
 	!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value,
 	BeginT>
 _begin(T &&target) {
@@ -68,7 +68,7 @@ template <
 	typename T,
 	typename EndT = decltype(end(std::declval<T &&>())),
 	typename = decltype(*std::declval<EndT>())>
-RUA_FORCE_INLINE constexpr rua::enable_if_t<
+inline constexpr rua::enable_if_t<
 	!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value,
 	EndT>
 _end(T &&target) {
@@ -80,14 +80,13 @@ _end(T &&target) {
 namespace rua {
 
 template <typename T>
-RUA_FORCE_INLINE constexpr decltype(
-	_rua_range_adl::_begin(std::declval<T &&>()))
+inline constexpr decltype(_rua_range_adl::_begin(std::declval<T &&>()))
 begin(T &&target) {
 	return _rua_range_adl::_begin(std::forward<T>(target));
 }
 
 template <typename T>
-RUA_FORCE_INLINE constexpr decltype(_rua_range_adl::_end(std::declval<T &&>()))
+inline constexpr decltype(_rua_range_adl::_end(std::declval<T &&>()))
 end(T &&target) {
 	return _rua_range_adl::_end(std::forward<T>(target));
 }

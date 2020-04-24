@@ -12,7 +12,7 @@ template <
 	typename T,
 	typename DataT = decltype(std::declval<T &&>().data()),
 	typename Pointer = remove_reference_t<DataT>>
-RUA_FORCE_INLINE constexpr enable_if_t<
+inline constexpr enable_if_t<
 	std::is_pointer<Pointer>::value &&
 		!std::is_void<remove_pointer_t<Pointer>>::value &&
 		!is_null_pointer<Pointer>::value,
@@ -29,7 +29,7 @@ template <
 	typename BytePointer = enable_if_t<
 		std::is_void<Element>::value || is_null_pointer<Pointer>::value,
 		conditional_t<std::is_const<Element>::value, const byte *, byte *>>>
-RUA_FORCE_INLINE BytePointer data(T &&target) {
+inline BytePointer data(T &&target) {
 	return reinterpret_cast<BytePointer>(std::forward<T>(target).data());
 }
 
@@ -40,7 +40,7 @@ template <
 	bool IsConst = std::is_const<remove_reference_t<T>>::value,
 	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
 	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
-RUA_FORCE_INLINE enable_if_t<
+inline enable_if_t<
 	!std::is_pointer<Pointer>::value &&
 		std::is_convertible<DataT, VoidPointer>::value &&
 		!std::is_convertible<DataT, BytePointer>::value,
@@ -57,7 +57,7 @@ template <
 	bool IsConst = std::is_const<remove_reference_t<T>>::value,
 	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
 	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
-RUA_FORCE_INLINE constexpr enable_if_t<
+inline constexpr enable_if_t<
 	!std::is_pointer<Pointer>::value &&
 		std::is_convertible<DataT, BytePointer>::value,
 	BytePointer>
@@ -68,31 +68,29 @@ data(T &&target) {
 #if RUA_CPP < RUA_CPP_17
 
 template <typename CharT, typename Traits, typename Allocator>
-RUA_FORCE_INLINE CharT *
-data(std::basic_string<CharT, Traits, Allocator> &target) {
+inline CharT *data(std::basic_string<CharT, Traits, Allocator> &target) {
 	return &target[0];
 }
 
 template <typename CharT, typename Traits, typename Allocator>
-RUA_FORCE_INLINE CharT *
-data(std::basic_string<CharT, Traits, Allocator> &&target) {
+inline CharT *data(std::basic_string<CharT, Traits, Allocator> &&target) {
 	return data(target);
 }
 
 #endif
 
 template <typename E, size_t N>
-RUA_FORCE_INLINE constexpr E *data(E (&c_ary_lv)[N]) {
+inline constexpr E *data(E (&c_ary_lv)[N]) {
 	return &c_ary_lv[0];
 }
 
 template <typename E, size_t N>
-RUA_FORCE_INLINE constexpr E *data(E(&&c_ary_rv)[N]) {
+inline constexpr E *data(E(&&c_ary_rv)[N]) {
 	return &c_ary_rv[0];
 }
 
 template <typename E, size_t N>
-RUA_FORCE_INLINE constexpr E *data(E (*c_ary_ptr)[N]) {
+inline constexpr E *data(E (*c_ary_ptr)[N]) {
 	return &(*c_ary_ptr)[0];
 }
 
@@ -107,7 +105,7 @@ template <
 	typename T,
 	typename = enable_if_t<!_has_data<T &&>::value>,
 	typename Pointer = decltype(std::declval<T &&>().begin())>
-RUA_FORCE_INLINE constexpr enable_if_t<
+inline constexpr enable_if_t<
 	std::is_pointer<Pointer>::value &&
 		!std::is_void<remove_pointer_t<Pointer>>::value &&
 		!is_null_pointer<Pointer>::value,
@@ -117,13 +115,12 @@ data(T &&target) {
 }
 
 template <typename T>
-RUA_FORCE_INLINE constexpr decltype(std::declval<T &&>().size())
-size(T &&target) {
+inline constexpr decltype(std::declval<T &&>().size()) size(T &&target) {
 	return std::forward<T>(target).size();
 }
 
 template <typename E, size_t N>
-RUA_FORCE_INLINE constexpr size_t size(E (&)[N]) {
+inline constexpr size_t size(E (&)[N]) {
 	return N;
 }
 
@@ -135,7 +132,7 @@ struct _has_size<T, void_t<decltype(std::declval<T>().size())>>
 	: std::true_type {};
 
 template <typename T>
-RUA_FORCE_INLINE enable_if_t<
+inline enable_if_t<
 	!_has_size<T &&>::value,
 	decltype(std::declval<T &&>().end() - std::declval<T &&>().begin())>
 size(T &&target) {

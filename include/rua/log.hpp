@@ -33,23 +33,23 @@ private:
 
 #endif
 
-RUA_FORCE_INLINE mutex &log_mutex() {
+inline mutex &log_mutex() {
 	static mutex mtx;
 	return mtx;
 }
 
-RUA_FORCE_INLINE printer &log_printer() {
+inline printer &log_printer() {
 	static printer p(sout(), eol::sys_con);
 	return p;
 }
 
 template <typename... Args>
-RUA_FORCE_INLINE void log(Args &&... args) {
+inline void log(Args &&... args) {
 	auto lg = make_lock_guard(log_mutex());
 	log_printer().println(std::forward<Args>(args)...);
 }
 
-RUA_FORCE_INLINE printer &err_log_printer() {
+inline printer &err_log_printer() {
 	static printer p(
 #ifdef _WIN32
 		write_group(
@@ -64,7 +64,7 @@ RUA_FORCE_INLINE printer &err_log_printer() {
 }
 
 template <typename... Args>
-RUA_FORCE_INLINE void err_log(Args &&... args) {
+inline void err_log(Args &&... args) {
 	auto lg = make_lock_guard(log_mutex());
 	err_log_printer().println(std::forward<Args>(args)...);
 }

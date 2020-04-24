@@ -806,27 +806,27 @@ public:
 		return _tab != target._tab;
 	}
 
-	RUA_FORCE_INLINE size_t size() const {
+	size_t size() const {
 		return _tab ? _tab->size : 0;
 	}
 
-	RUA_FORCE_INLINE size_t align() const {
+	size_t align() const {
 		return _tab ? _tab->size : 0;
 	}
 
-	RUA_FORCE_INLINE bool is_trivial() const {
+	bool is_trivial() const {
 		return _tab ? _tab->is_trivial : false;
 	}
 
-	RUA_FORCE_INLINE string_view name() const {
+	string_view name() const {
 		return _tab ? _tab->name() : type_name<void>::get();
 	}
 
-	RUA_FORCE_INLINE size_t hash_code() const {
+	size_t hash_code() const {
 		return static_cast<size_t>(reinterpret_cast<uintptr_t>(_tab));
 	}
 
-	RUA_FORCE_INLINE void dtor(void *ptr) const {
+	void dtor(void *ptr) const {
 		assert(_tab);
 		if (!_tab->dtor) {
 			return;
@@ -834,46 +834,46 @@ public:
 		_tab->dtor(ptr);
 	}
 
-	RUA_FORCE_INLINE void del(void *ptr) const {
+	void del(void *ptr) const {
 		assert(_tab);
 		assert(_tab->del);
 		_tab->del(ptr);
 	}
 
-	RUA_FORCE_INLINE bool is_copyable() const {
+	bool is_copyable() const {
 		return _tab && _tab->copy_ctor;
 	}
 
-	RUA_FORCE_INLINE void copy_ctor(void *ptr, const void *src) const {
+	void copy_ctor(void *ptr, const void *src) const {
 		assert(_tab);
 		assert(_tab->copy_ctor);
 		_tab->copy_ctor(ptr, src);
 	}
 
-	RUA_FORCE_INLINE void *copy_new(const void *src) const {
+	void *copy_new(const void *src) const {
 		assert(_tab);
 		assert(_tab->copy_new);
 		return _tab->copy_new(src);
 	}
 
-	RUA_FORCE_INLINE bool is_moveable() const {
+	bool is_moveable() const {
 		return _tab && _tab->move_ctor;
 	}
 
-	RUA_FORCE_INLINE void move_ctor(void *ptr, void *src) const {
+	void move_ctor(void *ptr, void *src) const {
 		assert(_tab);
 		assert(_tab->move_ctor);
 		_tab->move_ctor(ptr, src);
 	}
 
-	RUA_FORCE_INLINE void *move_new(void *src) const {
+	void *move_new(void *src) const {
 		assert(_tab);
 		assert(_tab->move_new);
 		return _tab->move_new(src);
 	}
 
 #ifdef RUA_RTTI
-	RUA_FORCE_INLINE const std::type_info &std_id() const {
+	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);
 	}
 #endif
@@ -1015,7 +1015,7 @@ private:
 #endif
 
 	template <typename T>
-	static RUA_FORCE_INLINE const _table_t &_table() {
+	static const _table_t &_table() {
 		RUA_SASSERT((!std::is_same<T, void>::value));
 
 		static const _table_t tab{size_of<T>::value,
@@ -1041,16 +1041,16 @@ private:
 	type_info(const _table_t &tab) : _tab(&tab) {}
 
 	template <typename T>
-	friend RUA_FORCE_INLINE constexpr type_info type_id();
+	friend inline constexpr type_info type_id();
 };
 
 template <typename T>
-RUA_FORCE_INLINE constexpr type_info type_id() {
+inline constexpr type_info type_id() {
 	return type_info(type_info::_table<T>());
 }
 
 template <>
-RUA_FORCE_INLINE constexpr type_info type_id<void>() {
+inline constexpr type_info type_id<void>() {
 	return type_info();
 }
 
@@ -1101,19 +1101,19 @@ struct type_name<
 
 #ifdef RUA_RTTI
 
-RUA_FORCE_INLINE bool operator==(const type_info &a, std::type_index b) {
+inline bool operator==(const type_info &a, std::type_index b) {
 	return b == a.std_id();
 }
 
-RUA_FORCE_INLINE bool operator!=(const type_info &a, std::type_index b) {
+inline bool operator!=(const type_info &a, std::type_index b) {
 	return b != a.std_id();
 }
 
-RUA_FORCE_INLINE bool operator==(std::type_index a, const type_info &b) {
+inline bool operator==(std::type_index a, const type_info &b) {
 	return a == b.std_id();
 }
 
-RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info &b) {
+inline bool operator!=(std::type_index a, const type_info &b) {
 	return a != b.std_id();
 }
 
@@ -1121,12 +1121,12 @@ RUA_FORCE_INLINE bool operator!=(std::type_index a, const type_info &b) {
 
 class enable_type_info {
 public:
-	RUA_FORCE_INLINE type_info type() const {
+	type_info type() const {
 		return _type;
 	}
 
 	template <typename T>
-	RUA_FORCE_INLINE bool type_is() const {
+	bool type_is() const {
 		return _type == type_id<T>();
 	}
 

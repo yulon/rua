@@ -164,14 +164,14 @@ private:
 	alignas(StorageAlign) char _sto[StorageLen];
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE enable_if_t<!is_dynamic_allocation<T>::value, T &>
+	enable_if_t<!is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
 		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
-	RUA_FORCE_INLINE enable_if_t<is_dynamic_allocation<T>::value, T &>
+	enable_if_t<is_dynamic_allocation<T>::value, T &>
 	_emplace(Args &&... args) {
 		_type = type_id<T>();
 		return *(

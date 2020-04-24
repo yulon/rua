@@ -89,7 +89,7 @@ template <
 	typename = enable_if_t<std::is_convertible<
 		decltype(*std::declval<const StrList &>().begin()),
 		string_view>::value>>
-RUA_FORCE_INLINE void str_join(
+inline void str_join(
 	std::string &buf,
 	const StrList &strs,
 	const char sep,
@@ -102,7 +102,7 @@ template <
 	typename = enable_if_t<std::is_convertible<
 		decltype(*std::declval<const StrList &>().begin()),
 		string_view>::value>>
-RUA_FORCE_INLINE std::string str_join(
+inline std::string str_join(
 	const StrList &strs,
 	string_view sep = "",
 	const str_join_options &opt = {}) {
@@ -116,7 +116,7 @@ template <
 	typename = enable_if_t<std::is_convertible<
 		decltype(*std::declval<const StrList &>().begin()),
 		string_view>::value>>
-RUA_FORCE_INLINE std::string str_join(
+inline std::string str_join(
 	const StrList &strs, const char sep, const str_join_options &opt = {}) {
 	std::string r;
 	str_join(r, strs, sep, opt);
@@ -127,7 +127,7 @@ template <
 	typename... Strs,
 	typename = decltype(std::initializer_list<string_view>{
 		std::declval<Strs &&>()...})>
-RUA_FORCE_INLINE std::string str_join(Strs &&... strs) {
+inline std::string str_join(Strs &&... strs) {
 	return str_join({strs...});
 }
 

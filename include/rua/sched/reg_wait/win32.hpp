@@ -28,7 +28,7 @@ inline VOID CALLBACK _reg_wait_sys_h_cb(PVOID _ctx, BOOLEAN timeouted) {
 
 namespace _reg_wait {
 
-RUA_FORCE_INLINE void reg_wait(
+inline void reg_wait(
 	HANDLE handle,
 	std::function<void(bool)> callback,
 	duration timeout = duration_max()) {
@@ -216,7 +216,7 @@ private:
 
 namespace _reg_wait {
 
-RUA_FORCE_INLINE void reg_wait(
+inline void reg_wait(
 	HANDLE handle,
 	std::function<void(bool)> callback,
 	duration timeout = duration_max()) {

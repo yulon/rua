@@ -99,12 +99,12 @@ private:
 };
 
 template <char Sep>
-RUA_FORCE_INLINE std::string to_string(basic_path<Sep> p) {
+inline std::string to_string(basic_path<Sep> p) {
 	return std::move(p).string();
 }
 
 template <char Sep>
-RUA_FORCE_INLINE const std::string &to_tmp_string(const basic_path<Sep> &p) {
+inline const std::string &to_tmp_string(const basic_path<Sep> &p) {
 	return p.string();
 }
 

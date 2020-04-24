@@ -128,7 +128,7 @@ private:
 
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 
-	static RUA_FORCE_INLINE constexpr duration
+	static constexpr duration
 	_from_overflowable__pan(int64_t seconds, int64_t nanoseconds) {
 		return (seconds < 0 && nanoseconds > 0)
 				   ? duration(
@@ -145,7 +145,7 @@ private:
 								seconds, static_cast<int32_t>(nanoseconds)));
 	}
 
-	static RUA_FORCE_INLINE constexpr duration _from_overflowable__overflow(
+	static constexpr duration _from_overflowable__overflow(
 		int64_t seconds,
 		int64_t nanoseconds,
 		int64_t carrys,
@@ -445,101 +445,101 @@ private:
 	int32_t _ns;
 };
 
-RUA_FORCE_INLINE constexpr duration operator*(int64_t a, duration b) {
+inline constexpr duration operator*(int64_t a, duration b) {
 	return b * a;
 }
 
-RUA_FORCE_INLINE constexpr duration duration_max() {
+inline constexpr duration duration_max() {
 	return duration(nmax<int64_t>(), duration::remaining_nanoseconds_max);
 }
 
-RUA_FORCE_INLINE constexpr duration duration_zero() {
+inline constexpr duration duration_zero() {
 	return duration();
 }
 
-RUA_FORCE_INLINE constexpr duration duration_min() {
+inline constexpr duration duration_min() {
 	return duration(nmin<int64_t>(), duration::remaining_nanoseconds_min);
 }
 
-RUA_FORCE_INLINE constexpr duration nanoseconds(int64_t count) {
+inline constexpr duration nanoseconds(int64_t count) {
 	return duration::from<multiple_of_nanosecond::nanosecond>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration microseconds(int64_t count) {
+inline constexpr duration microseconds(int64_t count) {
 	return duration::from<multiple_of_nanosecond::microsecond>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration milliseconds(int64_t count) {
+inline constexpr duration milliseconds(int64_t count) {
 	return duration::from<multiple_of_nanosecond::millisecond>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration seconds(int64_t count) {
+inline constexpr duration seconds(int64_t count) {
 	return duration::from<multiple_of_nanosecond::second>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration minutes(int64_t count) {
+inline constexpr duration minutes(int64_t count) {
 	return duration::from<multiple_of_nanosecond::minute>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration hours(int64_t count) {
+inline constexpr duration hours(int64_t count) {
 	return duration::from<multiple_of_nanosecond::hour>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration days(int64_t count) {
+inline constexpr duration days(int64_t count) {
 	return duration::from<multiple_of_nanosecond::day>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration weeks(int64_t count) {
+inline constexpr duration weeks(int64_t count) {
 	return duration::from<multiple_of_nanosecond::week>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration years(int64_t count) {
+inline constexpr duration years(int64_t count) {
 	return duration::from<multiple_of_nanosecond::year>(count);
 }
 
-RUA_FORCE_INLINE constexpr duration leep_years(int64_t count) {
+inline constexpr duration leep_years(int64_t count) {
 	return duration::from<multiple_of_nanosecond::leep_year>(count);
 }
 
 namespace duration_literals {
 
-RUA_FORCE_INLINE constexpr duration operator""_ns(unsigned long long count) {
+inline constexpr duration operator""_ns(unsigned long long count) {
 	return nanoseconds(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_us(unsigned long long count) {
+inline constexpr duration operator""_us(unsigned long long count) {
 	return microseconds(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_ms(unsigned long long count) {
+inline constexpr duration operator""_ms(unsigned long long count) {
 	return milliseconds(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_s(unsigned long long count) {
+inline constexpr duration operator""_s(unsigned long long count) {
 	return seconds(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_m(unsigned long long count) {
+inline constexpr duration operator""_m(unsigned long long count) {
 	return minutes(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_h(unsigned long long count) {
+inline constexpr duration operator""_h(unsigned long long count) {
 	return hours(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_d(unsigned long long count) {
+inline constexpr duration operator""_d(unsigned long long count) {
 	return days(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_w(unsigned long long count) {
+inline constexpr duration operator""_w(unsigned long long count) {
 	return weeks(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_y(unsigned long long count) {
+inline constexpr duration operator""_y(unsigned long long count) {
 	return years(static_cast<int64_t>(count));
 }
 
-RUA_FORCE_INLINE constexpr duration operator""_ly(unsigned long long count) {
+inline constexpr duration operator""_ly(unsigned long long count) {
 	return leep_years(static_cast<int64_t>(count));
 }
 

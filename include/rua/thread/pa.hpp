@@ -10,7 +10,7 @@
 
 namespace rua {
 
-RUA_FORCE_INLINE void pa(std::function<void()> task) {
+inline void pa(std::function<void()> task) {
 	static chan<std::function<void()>> que;
 	if (que.emplace(std::move(task))) {
 		return;

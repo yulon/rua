@@ -28,7 +28,7 @@ using pid_t = DWORD;
 
 namespace _this_pid {
 
-RUA_FORCE_INLINE pid_t this_pid() {
+inline pid_t this_pid() {
 	return GetCurrentProcessId();
 }
 
@@ -373,7 +373,7 @@ private:
 
 namespace _this_process {
 
-RUA_FORCE_INLINE process this_process() {
+inline process this_process() {
 	return process(this_pid());
 }
 

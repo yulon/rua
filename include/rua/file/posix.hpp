@@ -64,14 +64,14 @@ private:
 
 namespace _wkdir {
 
-RUA_FORCE_INLINE file_path getcwd() {
+inline file_path getcwd() {
 	auto c_str = get_current_dir_name();
 	file_path r(c_str);
 	::free(c_str);
 	return r;
 }
 
-RUA_FORCE_INLINE bool chdir(file_path path) {
+inline bool chdir(file_path path) {
 #ifndef NDEBUG
 	auto r =
 #else
@@ -177,19 +177,19 @@ public:
 
 namespace _make_file {
 
-RUA_FORCE_INLINE file new_file(file_path path) {
+inline file new_file(file_path path) {
 	return open(path.string().c_str(), O_CREAT | O_TRUNC | O_RDWR);
 }
 
-RUA_FORCE_INLINE file open_or_new_file(file_path path) {
+inline file open_or_new_file(file_path path) {
 	return open(path.string().c_str(), O_CREAT | O_RDWR);
 }
 
-RUA_FORCE_INLINE file open_file(file_path path, bool = false) {
+inline file open_file(file_path path, bool = false) {
 	return open(path.string().c_str(), O_RDWR);
 }
 
-RUA_FORCE_INLINE file view_file(file_path path, bool = false) {
+inline file view_file(file_path path, bool = false) {
 	return open(path.string().c_str(), O_RDONLY);
 }
 
@@ -394,11 +394,11 @@ private:
 	}
 };
 
-RUA_FORCE_INLINE dir_iterator &begin(dir_iterator &target) {
+inline dir_iterator &begin(dir_iterator &target) {
 	return target;
 }
 
-RUA_FORCE_INLINE dir_iterator end(const dir_iterator &) {
+inline dir_iterator end(const dir_iterator &) {
 	return {};
 }
 

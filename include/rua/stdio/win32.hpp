@@ -72,32 +72,32 @@ private:
 	friend stdin_stream &in();
 };
 
-RUA_FORCE_INLINE stdout_stream &out() {
+inline stdout_stream &out() {
 	static stdout_stream s;
 	return s;
 }
 
-RUA_FORCE_INLINE stderr_stream &err() {
+inline stderr_stream &err() {
 	static stderr_stream s;
 	return s;
 }
 
-RUA_FORCE_INLINE stdin_stream &in() {
+inline stdin_stream &in() {
 	static stdin_stream s;
 	return s;
 }
 
-RUA_FORCE_INLINE u8_to_loc_writer &sout() {
+inline u8_to_loc_writer &sout() {
 	static u8_to_loc_writer s(out());
 	return s;
 }
 
-RUA_FORCE_INLINE u8_to_loc_writer &serr() {
+inline u8_to_loc_writer &serr() {
 	static u8_to_loc_writer s(err());
 	return s;
 }
 
-RUA_FORCE_INLINE loc_to_u8_reader &sin() {
+inline loc_to_u8_reader &sin() {
 	static loc_to_u8_reader s(in());
 	return s;
 }

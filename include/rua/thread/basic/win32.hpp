@@ -16,7 +16,7 @@ using tid_t = DWORD;
 
 namespace _this_tid {
 
-RUA_FORCE_INLINE tid_t this_tid() {
+inline tid_t this_tid() {
 	return GetCurrentThreadId();
 }
 
@@ -43,8 +43,7 @@ public:
 	}
 
 	explicit thread(tid_t id) :
-		_h(id ? OpenThread(SYNCHRONIZE, FALSE, id) : nullptr),
-		_id(id) {}
+		_h(id ? OpenThread(SYNCHRONIZE, FALSE, id) : nullptr), _id(id) {}
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
@@ -170,7 +169,7 @@ private:
 
 namespace _this_thread {
 
-RUA_FORCE_INLINE thread this_thread() {
+inline thread this_thread() {
 	return thread(this_tid());
 }
 

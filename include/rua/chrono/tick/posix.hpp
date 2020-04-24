@@ -11,7 +11,7 @@ namespace rua { namespace posix {
 
 namespace _tick {
 
-RUA_FORCE_INLINE time tick() {
+inline time tick() {
 	timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
 	return time(ts);

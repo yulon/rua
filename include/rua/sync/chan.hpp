@@ -117,13 +117,13 @@ protected:
 };
 
 template <typename T, typename V>
-RUA_FORCE_INLINE chan<T> &operator<<(chan<T> &ch, V &&val) {
+inline chan<T> &operator<<(chan<T> &ch, V &&val) {
 	ch.emplace(std::forward<V>(val));
 	return ch;
 }
 
 template <typename T, typename R>
-RUA_FORCE_INLINE chan<T> &operator<<(R &receiver, chan<T> &ch) {
+inline chan<T> &operator<<(R &receiver, chan<T> &ch) {
 	receiver = ch.pop();
 	return ch;
 }

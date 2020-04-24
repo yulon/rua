@@ -43,7 +43,7 @@ private:
 };
 
 template <typename Lock>
-RUA_FORCE_INLINE lock_guard<Lock>
+inline lock_guard<Lock>
 make_lock_guard(Lock &lck, duration try_lock_timeout = duration_max()) {
 	return lock_guard<Lock>(lck, try_lock_timeout);
 }

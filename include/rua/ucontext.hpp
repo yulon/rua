@@ -56,11 +56,11 @@ struct ucontext_t {
 		generic_ptr limit;
 	} stack;
 
-	RUA_FORCE_INLINE uintptr_t &sp() {
+	uintptr_t &sp() {
 		return regs.sp;
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &sp() const {
+	const uintptr_t &sp() const {
 		return regs.sp;
 	}
 };
@@ -168,43 +168,43 @@ namespace rua {
 struct ucontext_t {
 	uintptr_t r[16];
 
-	RUA_FORCE_INLINE uintptr_t &fp() {
+	uintptr_t &fp() {
 		return r[11];
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &fp() const {
+	const uintptr_t &fp() const {
 		return r[11];
 	}
 
-	RUA_FORCE_INLINE uintptr_t &ip() {
+	uintptr_t &ip() {
 		return r[12];
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &ip() const {
+	const uintptr_t &ip() const {
 		return r[12];
 	}
 
-	RUA_FORCE_INLINE uintptr_t &sp() {
+	uintptr_t &sp() {
 		return r[13];
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &sp() const {
+	const uintptr_t &sp() const {
 		return r[13];
 	}
 
-	RUA_FORCE_INLINE uintptr_t &lr() {
+	uintptr_t &lr() {
 		return r[14];
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &lr() const {
+	const uintptr_t &lr() const {
 		return r[14];
 	}
 
-	RUA_FORCE_INLINE uintptr_t &pc() {
+	uintptr_t &pc() {
 		return r[15];
 	}
 
-	RUA_FORCE_INLINE const uintptr_t &pc() const {
+	const uintptr_t &pc() const {
 		return r[15];
 	}
 };
@@ -266,11 +266,11 @@ namespace rua {
 struct ucontext_t : ::ucontext_t {
 	generic_ptr _sp;
 
-	RUA_FORCE_INLINE generic_ptr &sp() {
+	generic_ptr &sp() {
 		return _sp;
 	}
 
-	RUA_FORCE_INLINE const generic_ptr &sp() const {
+	const generic_ptr &sp() const {
 		return _sp;
 	}
 };

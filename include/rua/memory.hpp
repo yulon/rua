@@ -36,7 +36,7 @@ static constexpr int mem_exec = 0x0100;
 
 #endif
 
-RUA_FORCE_INLINE bool mem_chmod(
+inline bool mem_chmod(
 	generic_ptr ptr, size_t size, int flags = mem_read | mem_write | mem_exec) {
 
 #ifdef _WIN32
@@ -78,7 +78,7 @@ RUA_FORCE_INLINE bool mem_chmod(
 	return false;
 }
 
-RUA_FORCE_INLINE bool
+inline bool
 mem_chmod(bytes_view data, int flags = mem_read | mem_write | mem_exec) {
 	return mem_chmod(data.data(), data.size(), flags);
 }

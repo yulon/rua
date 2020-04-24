@@ -15,7 +15,7 @@ using tid_t = pthread_t;
 
 namespace _this_tid {
 
-RUA_FORCE_INLINE tid_t this_tid() {
+inline tid_t this_tid() {
 	return pthread_self();
 }
 
@@ -134,9 +134,7 @@ private:
 		}
 
 		_res_t(_res_t &&src) :
-			id(src.id),
-			attr(src.attr),
-			fn(std::move(src.fn)) {
+			id(src.id), attr(src.attr), fn(std::move(src.fn)) {
 			if (src.id) {
 				src.id = 0;
 			}
@@ -150,7 +148,7 @@ private:
 
 namespace _this_thread {
 
-RUA_FORCE_INLINE thread this_thread() {
+inline thread this_thread() {
 	return thread(this_tid());
 }
 

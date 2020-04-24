@@ -108,7 +108,7 @@ inline file_path getcwd() {
 	return r;
 }
 
-RUA_FORCE_INLINE bool chdir(file_path path) {
+inline bool chdir(file_path path) {
 #ifndef NDEBUG
 	auto r =
 #else
@@ -492,11 +492,11 @@ private:
 	}
 };
 
-RUA_FORCE_INLINE dir_iterator &begin(dir_iterator &target) {
+inline dir_iterator &begin(dir_iterator &target) {
 	return target;
 }
 
-RUA_FORCE_INLINE dir_iterator end(const dir_iterator &) {
+inline dir_iterator end(const dir_iterator &) {
 	return {};
 }
 
