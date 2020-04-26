@@ -75,7 +75,7 @@ private:
 };
 
 inline bool is_stack_data(bytes_view data) {
-	auto ptr = data.data().uintptr();
+	auto ptr = reinterpret_cast<uintptr_t>(data.data());
 	auto end = reinterpret_cast<uintptr_t>(&data);
 	auto begin = end - 2048;
 	return begin < ptr && ptr < end;

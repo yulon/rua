@@ -25,6 +25,10 @@ class masked_bytes;
 template <typename Span>
 class const_bytes_base {
 public:
+	generic_ptr data_generic() const {
+		return _this()->data();
+	}
+
 	template <typename T>
 	T get() const {
 		return bit_get<T>(_this()->data());
@@ -75,14 +79,14 @@ public:
 	template <typename CharT, typename Traits>
 	operator basic_string_view<CharT, Traits>() const {
 		return basic_string_view<CharT, Traits>(
-			generic_ptr(_this()->data()).template as<const CharT *>(),
+			data_generic().template as<const CharT *>(),
 			_this()->size() / sizeof(CharT));
 	}
 
 	template <typename CharT, typename Traits, typename Allocator>
 	operator std::basic_string<CharT, Traits, Allocator>() const {
 		return std::basic_string<CharT, Traits, Allocator>(
-			generic_ptr(_this()->data()).template as<const CharT *>(),
+			data_generic().template as<const CharT *>(),
 			_this()->size() / sizeof(CharT));
 	}
 
@@ -246,7 +250,11 @@ public:
 		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
 	constexpr bytes_view(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
 
-	bytes_view(const void *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+	constexpr bytes_view(const byte *ptr, size_t size) :
+		_p(ptr), _n(ptr ? size : 0) {}
+
+	bytes_view(const void *ptr, size_t size) :
+		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -254,34 +262,41 @@ public:
 			size_of<remove_cv_t<T>>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_view(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
+	bytes_view(T *ptr, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <typename R, typename... Args>
 	bytes_view(R (*fn_ptr)(Args...), size_t size) :
-		_p(fn_ptr), _n(fn_ptr ? size : 0) {}
+		_p(reinterpret_cast<const byte *>(fn_ptr)), _n(fn_ptr ? size : 0) {}
 
 	template <typename T, typename R, typename... Args>
 	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
-		_p(mem_fn_ptr), _n(mem_fn_ptr ? size : 0) {}
+		_p(bit_cast<const byte *>(mem_fn_ptr)), _n(mem_fn_ptr ? size : 0) {}
 
 	template <
 		typename T,
 		typename = enable_if_t<
 			!std::is_convertible<T &&, generic_ptr>::value &&
 			!is_span<T &&>::value>>
-	bytes_view(T &&ref, size_t size = sizeof(T)) : _p(&ref), _n(size) {}
+	bytes_view(T &&ref, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<const byte *>(&ref)), _n(size) {}
 
-	bytes_view(std::initializer_list<const byte> il) :
-		_p(il.begin()), _n(il.size()) {}
+	bytes_view(std::initializer_list<byte> il) :
+		bytes_view(reinterpret_cast<const void *>(il.begin()), il.size()) {}
 
-	bytes_view(const char *c_str, size_t size) : _p(c_str), _n(size) {}
+	bytes_view(const char *c_str, size_t size) :
+		_p(reinterpret_cast<const byte *>(c_str)), _n(size) {}
 
-	bytes_view(const char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
+	bytes_view(const char *c_str) :
+		_p(reinterpret_cast<const byte *>(c_str)),
+		_n(c_str ? str_len(c_str) : 0) {}
 
-	bytes_view(const wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
+	bytes_view(const wchar_t *c_wstr, size_t size) :
+		_p(reinterpret_cast<const byte *>(c_wstr)), _n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
-		_p(c_wstr), _n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
+		_p(reinterpret_cast<const byte *>(c_wstr)),
+		_n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
 
 	template <
 		typename T,
@@ -293,7 +308,7 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_view(T &&span) :
 		bytes_view(
-			generic_ptr(rua::data(std::forward<T>(span))),
+			reinterpret_cast<const byte *>(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
@@ -301,7 +316,7 @@ public:
 		return _p;
 	}
 
-	generic_ptr data() const {
+	const byte *data() const {
 		return _p;
 	}
 
@@ -336,7 +351,7 @@ public:
 	}
 
 private:
-	generic_ptr _p;
+	const byte *_p;
 	size_t _n;
 };
 
@@ -453,7 +468,10 @@ public:
 		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
 	constexpr bytes_ref(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
 
-	bytes_ref(void *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+	constexpr bytes_ref(byte *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	bytes_ref(void *ptr, size_t size) :
+		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -461,7 +479,8 @@ public:
 			size_of<remove_cv_t<T>>::value && !std::is_const<T>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_ref(T *ptr, size_t size = sizeof(T)) : _p(ptr), _n(ptr ? size : 0) {}
+	bytes_ref(T *ptr, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -469,18 +488,21 @@ public:
 			!std::is_const<remove_reference_t<T>>::value &&
 			!std::is_convertible<T &&, generic_ptr>::value &&
 			!is_span<T &&>::value>>
-	bytes_ref(T &&ref, size_t size = sizeof(T)) : _p(&ref), _n(size) {}
+	bytes_ref(T &&ref, size_t size = sizeof(T)) :
+		_p(reinterpret_cast<byte *>(&ref)), _n(size) {}
 
-	bytes_ref(std::initializer_list<byte> il) : _p(il.begin()), _n(il.size()) {}
+	bytes_ref(char *c_str, size_t size) :
+		_p(reinterpret_cast<byte *>(c_str)), _n(size) {}
 
-	bytes_ref(char *c_str, size_t size) : _p(c_str), _n(size) {}
+	bytes_ref(char *c_str) :
+		_p(reinterpret_cast<byte *>(c_str)), _n(c_str ? str_len(c_str) : 0) {}
 
-	bytes_ref(char *c_str) : _p(c_str), _n(c_str ? str_len(c_str) : 0) {}
-
-	bytes_ref(wchar_t *c_wstr, size_t size) : _p(c_wstr), _n(size) {}
+	bytes_ref(wchar_t *c_wstr, size_t size) :
+		_p(reinterpret_cast<byte *>(c_wstr)), _n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
-		_p(c_wstr), _n(str_len(c_wstr) * sizeof(wchar_t)) {}
+		_p(reinterpret_cast<byte *>(c_wstr)),
+		_n(str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
 		typename T,
@@ -493,7 +515,7 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_ref(T &&span) :
 		bytes_ref(
-			generic_ptr(rua::data(std::forward<T>(span))),
+			reinterpret_cast<byte *>(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
@@ -501,7 +523,11 @@ public:
 		return _p;
 	}
 
-	generic_ptr data() const {
+	byte *data() {
+		return _p;
+	}
+
+	const byte *data() const {
 		return _p;
 	}
 
@@ -536,12 +562,12 @@ public:
 	}
 
 private:
-	generic_ptr _p;
+	byte *_p;
 	size_t _n;
 };
 
 inline bytes_ref as_bytes_ref(bytes_view src) {
-	return bytes_ref(src.data(), src.size());
+	return bytes_ref(const_cast<byte *>(src.data()), src.size());
 }
 
 template <typename Span>
@@ -722,7 +748,7 @@ public:
 		if (!data()) {
 			return;
 		}
-		delete (data().as<char *>() - sizeof(size_t));
+		delete (data() - sizeof(size_t));
 		bytes_ref::reset();
 	}
 
@@ -898,10 +924,7 @@ inline bool const_bytes_base<Span>::has(const masked_bytes &target) const {
 		return false;
 	}
 	return bit_has(
-		_this()->data(),
-		target.masked().data().as<const byte *>(),
-		target.mask().data().as<const byte *>(),
-		sz);
+		_this()->data(), target.masked().data(), target.mask().data(), sz);
 }
 
 template <typename Span>
@@ -981,8 +1004,14 @@ template <
 class enable_bytes_accessor
 	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
-	generic_ptr data() const {
-		return static_cast<const Derived *>(this);
+	byte *data() {
+		return reinterpret_cast<const byte *>(
+			static_cast<const Derived *>(this));
+	}
+
+	const byte *data() const {
+		return reinterpret_cast<const byte *>(
+			static_cast<const Derived *>(this));
 	}
 
 	static constexpr size_t size() {
@@ -994,14 +1023,23 @@ protected:
 };
 
 template <>
-inline generic_ptr enable_bytes_accessor<void>::data() const {
-	return this;
+inline byte *enable_bytes_accessor<void>::data() {
+	return reinterpret_cast<byte *>(this);
+}
+
+template <>
+inline const byte *enable_bytes_accessor<void>::data() const {
+	return reinterpret_cast<const byte *>(this);
 }
 
 template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
 public:
-	generic_ptr data() const {
+	byte *data() {
+		return &_raw[0];
+	}
+
+	const byte *data() const {
 		return &_raw[0];
 	}
 
@@ -1010,7 +1048,7 @@ public:
 	}
 
 private:
-	alignas(Align) char _raw[Size];
+	alignas(Align) byte _raw[Size];
 };
 
 } // namespace rua

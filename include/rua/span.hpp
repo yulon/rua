@@ -11,58 +11,15 @@ namespace rua {
 template <
 	typename T,
 	typename DataT = decltype(std::declval<T &&>().data()),
-	typename Pointer = remove_reference_t<DataT>>
+	typename Pointer = remove_reference_t<DataT>,
+	typename Element = remove_pointer_t<Pointer>>
 inline constexpr enable_if_t<
-	std::is_pointer<Pointer>::value &&
-		!std::is_void<remove_pointer_t<Pointer>>::value &&
+	std::is_pointer<Pointer>::value && !std::is_void<Element>::value &&
+		!std::is_function<remove_cv_t<Element>>::value &&
 		!is_null_pointer<Pointer>::value,
 	DataT>
 data(T &&target) {
 	return std::forward<T>(target).data();
-}
-
-template <
-	typename T,
-	typename DataT = decltype(std::declval<T &&>().data()),
-	typename Pointer = remove_reference_t<DataT>,
-	typename Element = remove_pointer_t<Pointer>,
-	typename BytePointer = enable_if_t<
-		std::is_void<Element>::value || is_null_pointer<Pointer>::value,
-		conditional_t<std::is_const<Element>::value, const byte *, byte *>>>
-inline BytePointer data(T &&target) {
-	return reinterpret_cast<BytePointer>(std::forward<T>(target).data());
-}
-
-template <
-	typename T,
-	typename DataT = decltype(std::declval<T &&>().data()),
-	typename Pointer = remove_reference_t<DataT>,
-	bool IsConst = std::is_const<remove_reference_t<T>>::value,
-	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
-	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
-inline enable_if_t<
-	!std::is_pointer<Pointer>::value &&
-		std::is_convertible<DataT, VoidPointer>::value &&
-		!std::is_convertible<DataT, BytePointer>::value,
-	BytePointer>
-data(T &&target) {
-	return reinterpret_cast<BytePointer>(
-		static_cast<VoidPointer>(std::forward<T>(target).data()));
-}
-
-template <
-	typename T,
-	typename DataT = decltype(std::declval<T &&>().data()),
-	typename Pointer = remove_reference_t<DataT>,
-	bool IsConst = std::is_const<remove_reference_t<T>>::value,
-	typename VoidPointer = conditional_t<IsConst, const void *, void *>,
-	typename BytePointer = conditional_t<IsConst, const byte *, byte *>>
-inline constexpr enable_if_t<
-	!std::is_pointer<Pointer>::value &&
-		std::is_convertible<DataT, BytePointer>::value,
-	BytePointer>
-data(T &&target) {
-	return static_cast<BytePointer>(std::forward<T>(target).data());
 }
 
 #if RUA_CPP < RUA_CPP_17
@@ -104,10 +61,11 @@ struct _has_data<T, void_t<decltype(std::declval<T>().data())>>
 template <
 	typename T,
 	typename = enable_if_t<!_has_data<T &&>::value>,
-	typename Pointer = decltype(std::declval<T &&>().begin())>
+	typename Pointer = decltype(std::declval<T &&>().begin()),
+	typename Element = remove_pointer_t<Pointer>>
 inline constexpr enable_if_t<
-	std::is_pointer<Pointer>::value &&
-		!std::is_void<remove_pointer_t<Pointer>>::value &&
+	std::is_pointer<Pointer>::value && !std::is_void<Element>::value &&
+		!std::is_function<remove_cv_t<Element>>::value &&
 		!is_null_pointer<Pointer>::value,
 	Pointer>
 data(T &&target) {

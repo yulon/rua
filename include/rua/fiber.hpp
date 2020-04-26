@@ -312,7 +312,8 @@ private:
 		assert(!_prev._ctx->stk_bak.size());
 
 		auto &stk = _stks[_prev._ctx->stk_ix];
-		auto stk_used = stk(_prev._ctx->_uc.sp() - stk.data().uintptr());
+		auto stk_used =
+			stk(_prev._ctx->_uc.sp() - reinterpret_cast<uintptr_t>(stk.data()));
 		auto rmdr = stk_used.size() % 1024;
 		_prev._ctx->stk_bak.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
 		_prev._ctx->stk_bak = stk_used;
