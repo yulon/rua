@@ -64,14 +64,14 @@ private:
 
 namespace _wkdir {
 
-inline file_path getcwd() {
+inline file_path working_dir() {
 	auto c_str = get_current_dir_name();
 	file_path r(c_str);
 	::free(c_str);
 	return r;
 }
 
-inline bool chdir(file_path path) {
+inline bool work_at(file_path path) {
 #ifndef NDEBUG
 	auto r =
 #else

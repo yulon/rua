@@ -93,7 +93,7 @@ private:
 
 namespace _wkdir {
 
-inline file_path getcwd() {
+inline file_path working_dir() {
 	auto w_len = GetCurrentDirectoryW(0, nullptr);
 	if (!w_len) {
 		return "";
@@ -108,7 +108,7 @@ inline file_path getcwd() {
 	return r;
 }
 
-inline bool chdir(file_path path) {
+inline bool work_at(file_path path) {
 #ifndef NDEBUG
 	auto r =
 #else
