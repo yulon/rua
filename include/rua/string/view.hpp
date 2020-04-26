@@ -37,34 +37,14 @@ public:
 
 	constexpr basic_string_view(std::nullptr_t) : basic_string_view() {}
 
-#ifdef RUA_CONSTEXPR_14_SUPPORTED
 	constexpr basic_string_view(const CharT *s, size_type count) :
 		_s(s), _c(count) {}
 	constexpr basic_string_view(const CharT *s) : _s(s), _c(c_str_len(s)) {}
-#else
-	static constexpr auto _nullsz = static_cast<size_type>(-3);
-	constexpr basic_string_view(const CharT *s, size_type count = _nullsz) :
-		_s(s), _c(count) {}
-#endif
 
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :
 		basic_string_view(s.c_str(), s.size()) {}
 
-	RUA_CONSTEXPR_14 size_type size() {
-#ifndef RUA_CONSTEXPR_14_SUPPORTED
-		if (_c == _nullsz) {
-			_c = c_str_len(_s);
-		}
-#endif
-		return _c;
-	}
-
-	RUA_CONSTEXPR_14 size_type size() const {
-#ifndef RUA_CONSTEXPR_14_SUPPORTED
-		if (_c == _nullsz) {
-			return c_str_len(_s);
-		}
-#endif
+	constexpr size_type size() const {
 		return _c;
 	}
 
@@ -72,11 +52,7 @@ public:
 		return static_cast<size_type>(-1);
 	}
 
-	RUA_CONSTEXPR_14 size_type length() {
-		return size();
-	}
-
-	RUA_CONSTEXPR_14 size_type length() const {
+	constexpr size_type length() const {
 		return size();
 	}
 
@@ -84,7 +60,7 @@ public:
 		return _s;
 	}
 
-	RUA_CONSTEXPR_14 bool empty() const {
+	constexpr bool empty() const {
 		return !size();
 	}
 
