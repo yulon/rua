@@ -3,8 +3,8 @@
 
 #include "macros.hpp"
 #include "span.hpp"
-#include "string/str_join.hpp"
-#include "string/string_view.hpp"
+#include "string/join.hpp"
+#include "string/view.hpp"
 #include "types/traits.hpp"
 
 #include <string>

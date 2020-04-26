@@ -2,7 +2,7 @@
 #define _RUA_STRING_TO_STRING_HPP
 
 #include "encoding/base.hpp"
-#include "string_view.hpp"
+#include "view.hpp"
 
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"

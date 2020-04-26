@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_ENCODING_BASE_UNI_HPP
 #define _RUA_STRING_ENCODING_BASE_UNI_HPP
 
-#include "../../string_view.hpp"
+#include "../../view.hpp"
 
 #include <string>
 

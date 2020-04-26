@@ -3,7 +3,7 @@
 
 #include "../bytes.hpp"
 #include "../macros.hpp"
-#include "../string/str_len.hpp"
+#include "../string/len.hpp"
 #include "../string/to_string.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
@@ -638,7 +638,7 @@ inline std::string to_string(duration dur) {
 			prec = 3;
 			// U+00B5 'µ' micro sign == 0xC2 0xB5
 			w--; // Need room for two bytes.
-			memcpy(buf + w, "µ", str_len("µ"));
+			memcpy(buf + w, "µ", c_str_len("µ"));
 		} else {
 			// print ms
 			prec = 6;

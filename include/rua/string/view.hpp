@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_STRING_VIEW_HPP
-#define _RUA_STRING_STRING_VIEW_HPP
+#ifndef _RUA_STRING_VIEW_HPP
+#define _RUA_STRING_VIEW_HPP
 
 #include "../macros.hpp"
 
@@ -16,7 +16,7 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 
 #else
 
-#include "str_len.hpp"
+#include "len.hpp"
 
 #include "../types/util.hpp"
 
@@ -40,7 +40,7 @@ public:
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
 	constexpr basic_string_view(const CharT *s, size_type count) :
 		_s(s), _c(count) {}
-	constexpr basic_string_view(const CharT *s) : _s(s), _c(str_len(s)) {}
+	constexpr basic_string_view(const CharT *s) : _s(s), _c(c_str_len(s)) {}
 #else
 	static constexpr auto _nullsz = static_cast<size_type>(-3);
 	constexpr basic_string_view(const CharT *s, size_type count = _nullsz) :
@@ -53,7 +53,7 @@ public:
 	RUA_CONSTEXPR_14 size_type size() {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
-			_c = str_len(_s);
+			_c = c_str_len(_s);
 		}
 #endif
 		return _c;
@@ -62,7 +62,7 @@ public:
 	RUA_CONSTEXPR_14 size_type size() const {
 #ifndef RUA_CONSTEXPR_14_SUPPORTED
 		if (_c == _nullsz) {
-			return str_len(_s);
+			return c_str_len(_s);
 		}
 #endif
 		return _c;

@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_LINE_BASE_HPP
 #define _RUA_STRING_LINE_BASE_HPP
 
-#include "../string_view.hpp"
+#include "../view.hpp"
 
 #include "../../macros.hpp"
 

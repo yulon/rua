@@ -5,7 +5,7 @@
 
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
-#include "../string/string_view.hpp"
+#include "../string/view.hpp"
 
 #include <dlfcn.h>
 

@@ -5,8 +5,8 @@
 #include "util.hpp"
 
 #include "../macros.hpp"
-#include "../string/str_join.hpp"
-#include "../string/string_view.hpp"
+#include "../string/join.hpp"
+#include "../string/view.hpp"
 
 #include <cassert>
 #include <string>

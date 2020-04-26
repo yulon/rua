@@ -6,7 +6,7 @@
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../string/encoding/base/win32.hpp"
-#include "../string/string_view.hpp"
+#include "../string/view.hpp"
 
 #include <windows.h>
 

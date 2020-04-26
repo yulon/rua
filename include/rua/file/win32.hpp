@@ -7,7 +7,7 @@
 #include "../io/sys_stream/win32.hpp"
 #include "../path.hpp"
 #include "../string/encoding/base/win32.hpp"
-#include "../string/str_join.hpp"
+#include "../string/join.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 

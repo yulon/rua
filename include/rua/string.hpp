@@ -2,11 +2,11 @@
 #define _RUA_STRING_HPP
 
 #include "string/encoding.hpp"
+#include "string/join.hpp"
+#include "string/len.hpp"
 #include "string/line.hpp"
-#include "string/str_join.hpp"
-#include "string/str_len.hpp"
-#include "string/string_view.hpp"
 #include "string/to_string.hpp"
+#include "string/view.hpp"
 
 #include <string>
 

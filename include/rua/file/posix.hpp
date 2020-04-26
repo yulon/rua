@@ -6,7 +6,7 @@
 #include "../chrono/now/posix.hpp"
 #include "../io/sys_stream/posix.hpp"
 #include "../path.hpp"
-#include "../string/str_join.hpp"
+#include "../string/join.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 

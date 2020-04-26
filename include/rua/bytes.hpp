@@ -5,8 +5,8 @@
 #include "macros.hpp"
 #include "optional.hpp"
 #include "span.hpp"
-#include "string/str_len.hpp"
-#include "string/string_view.hpp"
+#include "string/len.hpp"
+#include "string/view.hpp"
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
@@ -288,15 +288,14 @@ public:
 		_p(reinterpret_cast<const byte *>(c_str)), _n(size) {}
 
 	bytes_view(const char *c_str) :
-		_p(reinterpret_cast<const byte *>(c_str)),
-		_n(c_str ? str_len(c_str) : 0) {}
+		_p(reinterpret_cast<const byte *>(c_str)), _n(c_str_len(c_str)) {}
 
 	bytes_view(const wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<const byte *>(c_wstr)), _n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
 		_p(reinterpret_cast<const byte *>(c_wstr)),
-		_n(c_wstr ? str_len(c_wstr) * sizeof(wchar_t) : 0) {}
+		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
 		typename T,
@@ -495,14 +494,14 @@ public:
 		_p(reinterpret_cast<byte *>(c_str)), _n(size) {}
 
 	bytes_ref(char *c_str) :
-		_p(reinterpret_cast<byte *>(c_str)), _n(c_str ? str_len(c_str) : 0) {}
+		_p(reinterpret_cast<byte *>(c_str)), _n(c_str_len(c_str)) {}
 
 	bytes_ref(wchar_t *c_wstr, size_t size) :
 		_p(reinterpret_cast<byte *>(c_wstr)), _n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
 		_p(reinterpret_cast<byte *>(c_wstr)),
-		_n(str_len(c_wstr) * sizeof(wchar_t)) {}
+		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
 		typename T,
