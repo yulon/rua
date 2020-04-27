@@ -1054,8 +1054,7 @@ class enable_bytes_accessor
 	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
 	byte *data() {
-		return reinterpret_cast<const byte *>(
-			static_cast<const Derived *>(this));
+		return reinterpret_cast<byte *>(static_cast<Derived *>(this));
 	}
 
 	const byte *data() const {
