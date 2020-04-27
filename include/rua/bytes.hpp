@@ -12,7 +12,6 @@
 
 #include <cassert>
 #include <cstring>
-#include <list>
 #include <string>
 #include <vector>
 
@@ -828,13 +827,13 @@ public:
 		size_t offset, size;
 	};
 
-	const std::list<sub_area_t> &variable_areas() const {
+	const std::vector<sub_area_t> &variable_areas() const {
 		return _vas;
 	}
 
 private:
 	bytes _v, _m;
-	std::list<sub_area_t> _vas;
+	std::vector<sub_area_t> _vas;
 
 	template <typename IntList>
 	void _input(IntList &&li) {
@@ -959,14 +958,6 @@ public:
 			return;
 		}
 		_found = _place(pos, pos + _find_data.size());
-
-		if (_find_data.variable_areas().empty()) {
-			return;
-		}
-		_found_subs.reserve(_find_data.variable_areas().size());
-		for (auto &sub : _find_data.variable_areas()) {
-			_found_subs.emplace_back(_found(sub.offset, sub.offset + sub.size));
-		}
 	}
 
 	operator bool() const {
@@ -989,12 +980,14 @@ public:
 		return &_found;
 	}
 
-	Bytes &operator[](size_t ix) {
-		return _found_subs[ix];
+	Bytes operator[](size_t ix) {
+		auto &sub = _find_data.variable_areas()[ix];
+		return _found(sub.offset, sub.offset + sub.size);
 	}
 
-	const Bytes &operator[](size_t ix) const {
-		return _found_subs[ix];
+	bytes_view operator[](size_t ix) const {
+		auto &sub = _find_data.variable_areas()[ix];
+		return _found(sub.offset, sub.offset + sub.size);
 	}
 
 	basic_bytes_finder &operator++() {
@@ -1002,7 +995,7 @@ public:
 	}
 
 	size_t pos() const {
-		return _found.data() - _place.data();
+		return _found ? _found.data() - _place.data() : nullpos;
 	}
 
 	Bytes beforces() {
@@ -1025,7 +1018,6 @@ private:
 	Bytes _place;
 	bytes_pattern _find_data;
 	Bytes _found;
-	std::vector<Bytes> _found_subs;
 };
 
 template <typename Span>
