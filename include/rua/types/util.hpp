@@ -94,6 +94,23 @@ using std_byte = uchar;
 
 ////////////////////////////////////////////////////////////////////////////
 
+template <typename T>
+inline constexpr T nmax() {
+	return (std::numeric_limits<T>::max)();
+}
+
+template <typename T>
+inline constexpr T nmin() {
+	return (std::numeric_limits<T>::min)();
+}
+
+template <typename T>
+inline constexpr T nlowest() {
+	return (std::numeric_limits<T>::lowest)();
+}
+
+////////////////////////////////////////////////////////////////////////////
+
 template <typename A, typename B>
 inline decltype(std::declval<A &&>() = std::declval<B &&>())
 assign(A &&a, B &&b) {
@@ -292,14 +309,14 @@ inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
 
 ////////////////////////////////////////////////////////////////////////////
 
-RUA_INLINE_CONST size_t nullindex = static_cast<size_t>(-1);
+RUA_INLINE_CONST auto nullpos = nmax<size_t>();
 
 template <size_t C, typename T, typename... Types>
 struct _index_of;
 
 template <size_t C, typename T>
 struct _index_of<C, T> {
-	static constexpr size_t value = nullindex;
+	static constexpr size_t value = nullpos;
 };
 
 template <size_t C, typename T, typename Cur, typename... Others>
@@ -316,23 +333,6 @@ struct index_of : _index_of<sizeof...(Types), T, Types...> {};
 template <typename T, typename... Types>
 inline constexpr auto index_of_v = index_of<T, Types...>::value;
 #endif
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-inline constexpr T nmax() {
-	return (std::numeric_limits<T>::max)();
-}
-
-template <typename T>
-inline constexpr T nmin() {
-	return (std::numeric_limits<T>::min)();
-}
-
-template <typename T>
-inline constexpr T nlowest() {
-	return (std::numeric_limits<T>::lowest)();
-}
 
 } // namespace rua
 

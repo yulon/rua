@@ -15,7 +15,7 @@ public:
 	template <
 		typename T,
 		typename =
-			enable_if_t<index_of<decay_t<T>, Types...>::value != nullindex>>
+			enable_if_t<index_of<decay_t<T>, Types...>::value != nullpos>>
 	variant(T &&val) {
 		_emplace<decay_t<T>>(std::forward<T>(val));
 	}
@@ -114,7 +114,7 @@ private:
 
 	template <typename T, typename... Args>
 	T &_emplace(Args &&... args) {
-		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullindex));
+		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullpos));
 
 		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));

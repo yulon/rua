@@ -28,48 +28,84 @@ TEST_CASE("memory find") {
 
 	dat(pat_pos).copy_from(&pat[0]);
 
-	// bytes::find_pos
+	// bytes::index_of(bytes_view)
 
 	auto tp = rua::tick();
 
-	auto fpo = dat.find_pos({255, 255, 255, 255, 255, 6, 7, 255});
+	auto fp =
+		dat.index_of(rua::bytes_view({255, 255, 255, 255, 255, 6, 7, 255}));
 
-	rua::log("bytes::find_pos:", rua::tick() - tp);
+	rua::log("bytes::index_of(bytes_view):", rua::tick() - tp);
 
-	REQUIRE(fpo);
-	REQUIRE(fpo.value() == pat_pos);
+	REQUIRE(fp != rua::nullpos);
+	REQUIRE(fp == pat_pos);
 
-	// bytes::find
+	// bytes::index_of(bytes_pattern)
 
 	tp = rua::tick();
 
-	auto fr = dat.find({255, 255, 255, 255, 255, 6, 7, 255});
+	fp = dat.index_of({255, 255, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::find:", rua::tick() - tp);
+	rua::log("bytes::index_of(bytes_pattern):", rua::tick() - tp);
+
+	REQUIRE(fp != rua::nullpos);
+	REQUIRE(fp == pat_pos);
+
+	// bytes::index_of(masked_bytes_pattern)
+
+	tp = rua::tick();
+
+	fp = dat.index_of({255, 1111, 255, 255, 255, 6, 7, 255});
+
+	rua::log("bytes::index_of(masked_bytes_pattern):", rua::tick() - tp);
+
+	REQUIRE(fp != rua::nullpos);
+	REQUIRE(fp == pat_pos);
+
+	// bytes::find(bytes_view)
+
+	tp = rua::tick();
+
+	auto fr = dat.find(rua::bytes_view({255, 255, 255, 255, 255, 6, 7, 255}));
+
+	rua::log("bytes::find(bytes_view):", rua::tick() - tp);
 
 	REQUIRE(fr);
-	REQUIRE(fr.data() - dat.data() == pat_pos);
-	REQUIRE(fr.size() == 8);
+	REQUIRE(fr.pos() == pat_pos);
+	REQUIRE(fr->size() == 8);
 
-	// bytes::match
+	// bytes::find(bytes_pattern)
 
 	tp = rua::tick();
 
-	auto mr = dat.match({255, 1111, 255, 255, 255, 6, 7, 255});
+	fr = dat.find({255, 255, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::match:", rua::tick() - tp);
+	rua::log("bytes::find(bytes_pattern):", rua::tick() - tp);
 
-	REQUIRE(mr.size() == 2);
-	REQUIRE(mr[0].data() - dat.data() == pat_pos);
-	REQUIRE(mr[0].size() == 8);
-	REQUIRE(mr[1].data() - dat.data() == pat_pos + 1);
-	REQUIRE(mr[1].size() == 1);
+	REQUIRE(fr);
+	REQUIRE(fr.pos() == pat_pos);
+	REQUIRE(fr->size() == 8);
+
+	// bytes::find(masked_bytes_pattern)
+
+	tp = rua::tick();
+
+	fr = dat.find({255, 1111, 255, 255, 255, 6, 7, 255});
+
+	rua::log("bytes::find(masked_bytes_pattern):", rua::tick() - tp);
+
+	REQUIRE(fr);
+	REQUIRE(fr.pos() == pat_pos);
+	REQUIRE(fr->size() == 8);
+	REQUIRE(fr[0].data() - fr->data() == 1);
+	REQUIRE(fr[0].data() - dat.data() == pat_pos + 1);
+	REQUIRE(fr[0].size() == 1);
 
 	// std::string::find
 
 	tp = rua::tick();
 
-	auto fp = dat_str.find(pat);
+	fp = dat_str.find(pat);
 
 	rua::log("std::string::find:", rua::tick() - tp);
 
