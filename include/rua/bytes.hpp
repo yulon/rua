@@ -998,11 +998,11 @@ public:
 		return _found ? _found.data() - _place.data() : nullpos;
 	}
 
-	Bytes beforces() {
+	Bytes befores() {
 		return _place(0, pos());
 	}
 
-	bytes_view beforces() const {
+	bytes_view befores() const {
 		return _place(0, pos());
 	}
 
