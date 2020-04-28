@@ -21,7 +21,7 @@ inline constexpr size_t c_str_len_us(const CharT *c_str) {
 
 template <typename CharT>
 inline constexpr size_t _c_str_len_us(const CharT *begin, const CharT *end) {
-	return *end ? _c_str_len_us<CharT>(begin, ++end) : end - begin;
+	return *end ? _c_str_len_us<CharT>(begin, end + 1) : end - begin;
 }
 
 template <typename CharT>
