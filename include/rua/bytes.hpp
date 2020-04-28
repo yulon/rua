@@ -903,20 +903,13 @@ inline size_t const_bytes_base<Span>::index_of(
 	}
 
 	auto begin = reinterpret_cast<const uchar *>(_this()->data()) + start_pos;
+	auto end = begin + _this()->size() - f_sz;
 	auto f_begin = reinterpret_cast<const uchar *>(find_data.view().data());
 
 	auto m_begin = reinterpret_cast<const uchar *>(find_data.mask().data());
 	if (m_begin) {
 		assert(find_data.variable_areas().size());
 
-		if (sz == f_sz) {
-			if (bit_has(begin, f_begin, m_begin, sz)) {
-				return 0;
-			}
-			return nullpos;
-		}
-
-		auto end = begin + _this()->size() - f_sz;
 		for (auto it = begin; it != end; ++it) {
 			if (bit_has(it, f_begin, m_begin, f_sz)) {
 				return it - begin;
@@ -938,7 +931,6 @@ inline size_t const_bytes_base<Span>::index_of(
 		f_h += f_begin[i];
 	}
 
-	auto end = begin + _this()->size() - f_sz;
 	auto f_back_ix = f_sz - 1;
 	for (auto it = begin; it != end; ++it) {
 		if (it == begin) {
@@ -973,6 +965,8 @@ inline size_t const_bytes_base<Span>::last_index_of(
 		start_pos = sz;
 	}
 
+	auto begin = reinterpret_cast<const uchar *>(_this()->data());
+	auto begin_before = begin - 1;
 	auto end =
 		reinterpret_cast<const uchar *>(_this()->data()) + start_pos - f_sz;
 	auto f_begin = reinterpret_cast<const uchar *>(find_data.view().data());
@@ -981,15 +975,6 @@ inline size_t const_bytes_base<Span>::last_index_of(
 	if (m_begin) {
 		assert(find_data.variable_areas().size());
 
-		if (sz == f_sz) {
-			if (bit_has(end, f_begin, m_begin, sz)) {
-				return 0;
-			}
-			return nullpos;
-		}
-
-		auto begin = reinterpret_cast<const uchar *>(_this()->data());
-		auto begin_before = begin - 1;
 		for (auto it = end; it != begin_before; --it) {
 			if (bit_has(it, f_begin, m_begin, f_sz)) {
 				return it - begin;
@@ -1011,8 +996,6 @@ inline size_t const_bytes_base<Span>::last_index_of(
 		f_h += f_begin[i];
 	}
 
-	auto begin = reinterpret_cast<const uchar *>(_this()->data());
-	auto begin_before = begin - 1;
 	for (auto it = end; it != begin_before; --it) {
 		if (it == end) {
 			for (size_t j = 0; j < f_sz; ++j) {
