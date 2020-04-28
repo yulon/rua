@@ -4,6 +4,7 @@
 #include "bit.hpp"
 #include "macros.hpp"
 #include "optional.hpp"
+#include "range.hpp"
 #include "span.hpp"
 #include "string/len.hpp"
 #include "string/view.hpp"
@@ -27,6 +28,9 @@ class basic_bytes_finder;
 
 using const_bytes_finder = basic_bytes_finder<bytes_view>;
 using bytes_finder = basic_bytes_finder<bytes_ref>;
+
+using const_bytes_rfinder = reverse_iterator<const_bytes_finder>;
+using bytes_rfinder = reverse_iterator<bytes_finder>;
 
 template <typename Span>
 class const_bytes_base {
@@ -107,11 +111,15 @@ public:
 
 	inline bool has(const bytes_pattern &) const;
 
-	inline size_t
-	index_of(const bytes_pattern &, ptrdiff_t start_pos = 0) const;
+	inline size_t index_of(const bytes_pattern &, size_t start_pos = 0) const;
 
-	inline const_bytes_finder
-	find(bytes_pattern, ptrdiff_t start_pos = 0) const;
+	inline const_bytes_finder find(bytes_pattern, size_t start_pos = 0) const;
+
+	inline size_t
+	last_index_of(const bytes_pattern &, size_t start_pos = nullpos) const;
+
+	inline const_bytes_rfinder
+	rfind(bytes_pattern, size_t start_pos = nullpos) const;
 
 protected:
 	const_bytes_base() = default;
@@ -224,10 +232,14 @@ public:
 		}
 	}
 
-	inline bytes_finder find(bytes_pattern, ptrdiff_t start_pos = 0);
+	inline bytes_finder find(bytes_pattern, size_t start_pos = 0);
 
-	inline const_bytes_finder
-	find(bytes_pattern, ptrdiff_t start_pos = 0) const;
+	inline const_bytes_finder find(bytes_pattern, size_t start_pos = 0) const;
+
+	inline bytes_rfinder rfind(bytes_pattern, size_t start_pos = nullpos);
+
+	inline const_bytes_rfinder
+	rfind(bytes_pattern, size_t start_pos = nullpos) const;
 
 private:
 	Span *_this() {
@@ -882,7 +894,7 @@ inline bool const_bytes_base<Span>::has(const bytes_pattern &target) const {
 
 template <typename Span>
 inline size_t const_bytes_base<Span>::index_of(
-	const bytes_pattern &find_data, ptrdiff_t start_pos) const {
+	const bytes_pattern &find_data, size_t start_pos) const {
 
 	auto sz = _this()->size();
 	auto f_sz = find_data.size();
@@ -903,8 +915,8 @@ inline size_t const_bytes_base<Span>::index_of(
 			}
 			return nullpos;
 		}
-		auto end = begin + _this()->size() - f_sz;
 
+		auto end = begin + _this()->size() - f_sz;
 		for (auto it = begin; it != end; ++it) {
 			if (bit_has(it, f_begin, m_begin, f_sz)) {
 				return it - begin;
@@ -919,14 +931,15 @@ inline size_t const_bytes_base<Span>::index_of(
 		}
 		return nullpos;
 	}
-	auto end = begin + _this()->size() - f_sz;
-	auto f_back_ix = f_sz - 1;
 
+	size_t h = 0;
 	size_t f_h = 0;
 	for (size_t i = 0; i < f_sz; ++i) {
 		f_h += f_begin[i];
 	}
-	size_t h = 0;
+
+	auto end = begin + _this()->size() - f_sz;
+	auto f_back_ix = f_sz - 1;
 	for (auto it = begin; it != end; ++it) {
 		if (it == begin) {
 			for (size_t j = 0; j < f_sz; ++j) {
@@ -946,19 +959,101 @@ inline size_t const_bytes_base<Span>::index_of(
 	return nullpos;
 }
 
+template <typename Span>
+inline size_t const_bytes_base<Span>::last_index_of(
+	const bytes_pattern &find_data, size_t start_pos) const {
+
+	auto sz = _this()->size();
+	auto f_sz = find_data.size();
+	if (sz < f_sz) {
+		return nullpos;
+	}
+
+	if (start_pos >= sz) {
+		start_pos = sz;
+	}
+
+	auto end =
+		reinterpret_cast<const uchar *>(_this()->data()) + start_pos - f_sz;
+	auto f_begin = reinterpret_cast<const uchar *>(find_data.view().data());
+
+	auto m_begin = reinterpret_cast<const uchar *>(find_data.mask().data());
+	if (m_begin) {
+		assert(find_data.variable_areas().size());
+
+		if (sz == f_sz) {
+			if (bit_has(end, f_begin, m_begin, sz)) {
+				return 0;
+			}
+			return nullpos;
+		}
+
+		auto begin = reinterpret_cast<const uchar *>(_this()->data());
+		auto begin_before = begin - 1;
+		for (auto it = end; it != begin_before; --it) {
+			if (bit_has(it, f_begin, m_begin, f_sz)) {
+				return it - begin;
+			}
+		}
+		return nullpos;
+	}
+
+	if (sz == f_sz) {
+		if (bit_eq(end, f_begin, sz)) {
+			return 0;
+		}
+		return nullpos;
+	}
+
+	size_t h = 0;
+	size_t f_h = 0;
+	for (size_t i = 0; i < f_sz; ++i) {
+		f_h += f_begin[i];
+	}
+
+	auto begin = reinterpret_cast<const uchar *>(_this()->data());
+	auto begin_before = begin - 1;
+	for (auto it = end; it != begin_before; --it) {
+		if (it == end) {
+			for (size_t j = 0; j < f_sz; ++j) {
+				h += it[j];
+			}
+		} else {
+			h -= it[f_sz];
+			h += it[0];
+		}
+		if (h != f_h) {
+			continue;
+		}
+		if (bit_eq(it, f_begin, f_sz)) {
+			return it - begin;
+		}
+	}
+	return nullpos;
+}
+
 template <typename Bytes>
 class basic_bytes_finder {
 public:
-	basic_bytes_finder(
-		Bytes place, bytes_pattern find_data, ptrdiff_t start_pos = 0) :
-		_place(place), _find_data(std::move(find_data)) {
-
-		auto pos = _place.index_of(_find_data, start_pos);
+	static basic_bytes_finder
+	first(Bytes place, bytes_pattern find_data, size_t start_pos = 0) {
+		auto pos = place.index_of(find_data, start_pos);
 		if (pos == nullpos) {
-			return;
+			return basic_bytes_finder();
 		}
-		_found = _place(pos, pos + _find_data.size());
+		return basic_bytes_finder(place, find_data, pos);
 	}
+
+	static basic_bytes_finder
+	last(Bytes place, bytes_pattern find_data, size_t start_pos = nullpos) {
+		auto pos = place.last_index_of(find_data, start_pos);
+		if (pos == nullpos) {
+			return basic_bytes_finder();
+		}
+		return basic_bytes_finder(place, find_data, pos);
+	}
+
+	basic_bytes_finder() = default;
 
 	operator bool() const {
 		return _found;
@@ -991,11 +1086,30 @@ public:
 	}
 
 	basic_bytes_finder &operator++() {
-		return *this = basic_bytes_finder(_place, std::move(_find_data), pos());
+		return *this = basic_bytes_finder::first(
+				   _place, std::move(_find_data), pos());
+	}
+
+	basic_bytes_finder operator++(int) {
+		basic_bytes_finder old(*this);
+		++*this;
+		return old;
+	}
+
+	basic_bytes_finder &operator--() {
+		return *this = basic_bytes_finder::last(
+				   _place, std::move(_find_data), pos());
+	}
+
+	basic_bytes_finder operator--(int) {
+		basic_bytes_finder old(*this);
+		--*this;
+		return old;
 	}
 
 	size_t pos() const {
-		return _found ? _found.data() - _place.data() : nullpos;
+		assert(_found);
+		return _found.data() - _place.data();
 	}
 
 	Bytes befores() {
@@ -1018,24 +1132,50 @@ private:
 	Bytes _place;
 	bytes_pattern _find_data;
 	Bytes _found;
+
+	basic_bytes_finder(Bytes place, bytes_pattern find_data, size_t found_pos) :
+		_place(place),
+		_find_data(std::move(find_data)),
+		_found(place(found_pos, found_pos + _find_data.size())) {}
 };
 
 template <typename Span>
-inline const_bytes_finder const_bytes_base<Span>::find(
-	bytes_pattern find_data, ptrdiff_t start_pos) const {
-	return const_bytes_finder(*this, std::move(find_data), start_pos);
+inline const_bytes_finder
+const_bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) const {
+	return const_bytes_finder::first(*this, std::move(find_data), start_pos);
+}
+
+template <typename Span>
+inline const_bytes_rfinder
+const_bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
+	return const_bytes_rfinder(
+		const_bytes_finder::last(*this, std::move(find_data), start_pos));
 }
 
 template <typename Span>
 inline bytes_finder
-bytes_base<Span>::find(bytes_pattern find_data, ptrdiff_t start_pos) {
-	return bytes_finder(*_this(), std::move(find_data), start_pos);
+bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) {
+	return bytes_finder::first(*_this(), std::move(find_data), start_pos);
 }
 
 template <typename Span>
 inline const_bytes_finder
-bytes_base<Span>::find(bytes_pattern find_data, ptrdiff_t start_pos) const {
-	return const_bytes_finder(*_this(), std::move(find_data), start_pos);
+bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) const {
+	return const_bytes_finder::first(*_this(), std::move(find_data), start_pos);
+}
+
+template <typename Span>
+inline bytes_rfinder
+bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) {
+	return bytes_rfinder(
+		bytes_finder::last(*_this(), std::move(find_data), start_pos));
+}
+
+template <typename Span>
+inline const_bytes_rfinder
+bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
+	return const_bytes_rfinder(
+		const_bytes_finder::last(*_this(), std::move(find_data), start_pos));
 }
 
 template <
