@@ -140,6 +140,104 @@ template <typename T>
 inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 #endif
 
+template <typename Iter>
+class reverse_iterator : public Iter {
+public:
+	constexpr reverse_iterator() = default;
+	constexpr explicit reverse_iterator(Iter &&it) : Iter(std::move(it)) {}
+	constexpr explicit reverse_iterator(const Iter &it) : Iter(it) {}
+
+	reverse_iterator &operator++() {
+		--*static_cast<Iter *>(this);
+		return *this;
+	}
+
+	reverse_iterator operator++(int) {
+		return reverse_iterator(*static_cast<Iter *>(this)--);
+	}
+
+	reverse_iterator operator+(ptrdiff_t offset) {
+		return reverse_iterator(*static_cast<Iter *>(this) - offset);
+	}
+
+	reverse_iterator &operator+=(ptrdiff_t offset) {
+		*static_cast<Iter *>(this) -= offset;
+		return *this;
+	}
+
+	reverse_iterator &operator--() {
+		++*static_cast<Iter *>(this);
+		return *this;
+	}
+
+	reverse_iterator operator--(int) {
+		return reverse_iterator(*static_cast<Iter *>(this)++);
+	}
+
+	reverse_iterator operator-(ptrdiff_t offset) {
+		return reverse_iterator(*static_cast<Iter *>(this) + offset);
+	}
+
+	reverse_iterator &operator-=(ptrdiff_t offset) {
+		*static_cast<Iter *>(this) += offset;
+		return *this;
+	}
+};
+
+template <typename Value>
+class reverse_iterator<Value *> {
+public:
+	constexpr reverse_iterator() = default;
+	constexpr explicit reverse_iterator(Value *ptr) : _ptr(ptr) {}
+
+	Value &operator*() const {
+		return *_ptr;
+	}
+
+	Value *operator->() const {
+		return _ptr;
+	}
+
+	reverse_iterator &operator++() {
+		--_ptr;
+		return *this;
+	}
+
+	reverse_iterator operator++(int) {
+		return reverse_iterator(_ptr--);
+	}
+
+	reverse_iterator operator+(ptrdiff_t offset) {
+		return reverse_iterator(_ptr - offset);
+	}
+
+	reverse_iterator &operator+=(ptrdiff_t offset) {
+		_ptr -= offset;
+		return *this;
+	}
+
+	reverse_iterator &operator--() {
+		++_ptr;
+		return *this;
+	}
+
+	reverse_iterator operator--(int) {
+		return reverse_iterator(_ptr++);
+	}
+
+	reverse_iterator operator-(ptrdiff_t offset) {
+		return reverse_iterator(_ptr + offset);
+	}
+
+	reverse_iterator &operator-=(ptrdiff_t offset) {
+		_ptr += offset;
+		return *this;
+	}
+
+private:
+	Value *_ptr;
+};
+
 } // namespace rua
 
 #endif
