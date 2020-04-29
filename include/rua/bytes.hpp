@@ -1019,7 +1019,7 @@ template <typename Bytes>
 class basic_bytes_finder {
 public:
 	static basic_bytes_finder
-	first(Bytes place, bytes_pattern find_data, size_t start_pos = 0) {
+	find(Bytes place, bytes_pattern find_data, size_t start_pos = 0) {
 		auto pos = place.index_of(find_data, start_pos);
 		if (pos == nullpos) {
 			return basic_bytes_finder();
@@ -1028,7 +1028,7 @@ public:
 	}
 
 	static basic_bytes_finder
-	last(Bytes place, bytes_pattern find_data, size_t start_pos = nullpos) {
+	rfind(Bytes place, bytes_pattern find_data, size_t start_pos = nullpos) {
 		auto pos = place.last_index_of(find_data, start_pos);
 		if (pos == nullpos) {
 			return basic_bytes_finder();
@@ -1069,7 +1069,7 @@ public:
 	}
 
 	basic_bytes_finder &operator++() {
-		return *this = basic_bytes_finder::first(
+		return *this = basic_bytes_finder::find(
 				   _place, std::move(_find_data), pos());
 	}
 
@@ -1080,7 +1080,7 @@ public:
 	}
 
 	basic_bytes_finder &operator--() {
-		return *this = basic_bytes_finder::last(
+		return *this = basic_bytes_finder::rfind(
 				   _place, std::move(_find_data), pos());
 	}
 
@@ -1125,40 +1125,40 @@ private:
 template <typename Span>
 inline const_bytes_finder
 const_bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) const {
-	return const_bytes_finder::first(*this, std::move(find_data), start_pos);
+	return const_bytes_finder::find(*this, std::move(find_data), start_pos);
 }
 
 template <typename Span>
 inline const_bytes_rfinder
 const_bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
 	return const_bytes_rfinder(
-		const_bytes_finder::last(*this, std::move(find_data), start_pos));
+		const_bytes_finder::rfind(*this, std::move(find_data), start_pos));
 }
 
 template <typename Span>
 inline bytes_finder
 bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) {
-	return bytes_finder::first(*_this(), std::move(find_data), start_pos);
+	return bytes_finder::find(*_this(), std::move(find_data), start_pos);
 }
 
 template <typename Span>
 inline const_bytes_finder
 bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) const {
-	return const_bytes_finder::first(*_this(), std::move(find_data), start_pos);
+	return const_bytes_finder::find(*_this(), std::move(find_data), start_pos);
 }
 
 template <typename Span>
 inline bytes_rfinder
 bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) {
 	return bytes_rfinder(
-		bytes_finder::last(*_this(), std::move(find_data), start_pos));
+		bytes_finder::rfind(*_this(), std::move(find_data), start_pos));
 }
 
 template <typename Span>
 inline const_bytes_rfinder
 bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
 	return const_bytes_rfinder(
-		const_bytes_finder::last(*_this(), std::move(find_data), start_pos));
+		const_bytes_finder::rfind(*_this(), std::move(find_data), start_pos));
 }
 
 template <
