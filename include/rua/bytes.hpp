@@ -1016,7 +1016,7 @@ inline size_t const_bytes_base<Span>::last_index_of(
 }
 
 template <typename Bytes>
-class basic_bytes_finder {
+class basic_bytes_finder : private wandering_iterator {
 public:
 	static basic_bytes_finder
 	find(Bytes place, bytes_pattern find_data, size_t start_pos = 0) {

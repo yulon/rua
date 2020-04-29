@@ -6,6 +6,7 @@
 #include "../chrono/now/win32.hpp"
 #include "../io/sys_stream/win32.hpp"
 #include "../path.hpp"
+#include "../range.hpp"
 #include "../string/encoding/base/win32.hpp"
 #include "../string/join.hpp"
 #include "../types/traits.hpp"
@@ -356,12 +357,8 @@ private:
 	friend class dir_iterator;
 };
 
-class dir_iterator {
+class dir_iterator : private wandering_iterator {
 public:
-	using value_type = dir_entry;
-	using difference_type = ptrdiff_t;
-	using pointer = const dir_entry *;
-	using reference = const dir_entry &;
 	using native_handle_t = HANDLE;
 
 	////////////////////////////////////////////////////////////////////////
@@ -491,14 +488,6 @@ private:
 		return false;
 	}
 };
-
-inline dir_iterator &begin(dir_iterator &target) {
-	return target;
-}
-
-inline dir_iterator end(const dir_iterator &) {
-	return {};
-}
 
 }} // namespace rua::win32
 
