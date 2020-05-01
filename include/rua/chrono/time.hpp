@@ -39,19 +39,23 @@ inline bool is_leap_year(int16_t yr) {
 	return !(yr % 4) && (yr % 100 || !(yr % 400));
 }
 
-static constexpr int16_t _yr_days_at_mon[]{
-	31,
-	31 + 28,
-	31 + 28 + 31,
-	31 + 28 + 31 + 30,
-	31 + 28 + 31 + 30 + 31,
-	31 + 28 + 31 + 30 + 31 + 30,
-	31 + 28 + 31 + 30 + 31 + 30 + 31,
-	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
-	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
-	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
-	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30 + 31};
+inline int16_t _yr_days_at_mon(bool is_ly, size_t m) {
+	static const int16_t tab[]{
+		0,
+		31,
+		31 + 28,
+		31 + 28 + 31,
+		31 + 28 + 31 + 30,
+		31 + 28 + 31 + 30 + 31,
+		31 + 28 + 31 + 30 + 31 + 30,
+		31 + 28 + 31 + 30 + 31 + 30 + 31,
+		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
+		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
+		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
+		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
+		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30 + 31};
+	return m && is_ly ? tab[m] + 1 : tab[m];
+}
 
 class time {
 public:
@@ -184,19 +188,12 @@ public:
 
 		// month
 		auto is_leap = is_leap_year(nd.year);
-		for (size_t i = 0; i < sizeof(_yr_days_at_mon); ++i) {
-			auto ydam = _yr_days_at_mon[i];
-			if (i > 0 && is_leap) {
-				++ydam;
-			}
-			if (ela.days() <= ydam) {
-				nd.month = static_cast<int8_t>(i + 1);
+		for (size_t i = 1; i < 13; ++i) {
+			auto ydam = _yr_days_at_mon(is_leap, i);
+			if (ydam > ela.days()) {
+				nd.month = static_cast<int8_t>(i);
 				if (i > 0) {
-					auto ydabm = _yr_days_at_mon[i - 1];
-					if (i > 1 && is_leap) {
-						++ydabm;
-					}
-					ela -= days(ydabm);
+					ela -= days(_yr_days_at_mon(is_leap, i - 1));
 				}
 				break;
 			}
@@ -309,10 +306,7 @@ private:
 	static duration _date2dur_exc_yr(const date_t &d8) {
 		duration r;
 		if (d8.month > 1) {
-			r += days(_yr_days_at_mon[d8.month - 2]);
-			if (d8.month > 2 && is_leap_year(d8.year)) {
-				r += 1_d;
-			}
+			r += days(_yr_days_at_mon(is_leap_year(d8.year), d8.month - 1));
 		}
 		r += days(d8.day - 1) + hours(d8.hour) + minutes(d8.minute) +
 			 seconds(d8.second) + nanoseconds(d8.nanoseconds);
