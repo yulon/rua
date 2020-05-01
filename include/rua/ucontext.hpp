@@ -16,6 +16,8 @@
 
 #ifndef RUA_USING_NATIVE_UCONTEXT
 
+#include "code_seg.hpp"
+
 #ifdef RUA_X86
 
 #ifdef _WIN32
@@ -72,8 +74,6 @@ RUA_SASSERT(sizeof(uintptr_t) == 4);
 RUA_SASSERT(sizeof(ucontext_t::regs_t) == 48);
 #endif
 
-#include "switch_code_seg.h"
-
 RUA_CODE(_get_ucontext_code) {
 #if RUA_X86 == 64
 #ifdef RUA_MS64_FASTCALL
@@ -121,8 +121,6 @@ RUA_CODE(_swap_ucontext_code) {
 #endif
 #endif
 };
-
-#include "switch_code_seg.h"
 
 RUA_CODE_FN(bool, get_ucontext, (ucontext_t * ucp), _get_ucontext_code)
 
