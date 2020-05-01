@@ -1125,14 +1125,14 @@ private:
 template <typename Span>
 inline const_bytes_finder
 const_bytes_base<Span>::find(bytes_pattern find_data, size_t start_pos) const {
-	return const_bytes_finder::find(*this, std::move(find_data), start_pos);
+	return const_bytes_finder::find(*_this(), std::move(find_data), start_pos);
 }
 
 template <typename Span>
 inline const_bytes_rfinder
 const_bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
 	return const_bytes_rfinder(
-		const_bytes_finder::rfind(*this, std::move(find_data), start_pos));
+		const_bytes_finder::rfind(*_this(), std::move(find_data), start_pos));
 }
 
 template <typename Span>
