@@ -31,6 +31,34 @@ public:
 		_emplace<T>(il, std::forward<Args>(args)...);
 	}
 
+	template <
+		typename... Subset,
+		typename = enable_if_t<
+			!std::is_same<variant<Subset...>, variant>::value &&
+			conjunction<bool_constant<
+				index_of<Subset, Types...>::value != nullpos>...>::value>>
+	variant(const variant<Subset...> &src) : enable_type_info(src.type()) {
+		if (!_type) {
+			return;
+		}
+		assert(_type.is_copyable());
+		_type.copy_ctor(&_sto[0], &src.data());
+	}
+
+	template <
+		typename... Subset,
+		typename = enable_if_t<
+			!std::is_same<variant<Subset...>, variant>::value &&
+			conjunction<bool_constant<
+				index_of<Subset, Types...>::value != nullpos>...>::value>>
+	variant(variant<Subset...> &&src) : enable_type_info(src.type()) {
+		if (!_type) {
+			return;
+		}
+		assert(_type.is_moveable());
+		_type.move_ctor(&_sto[0], &src.data());
+	}
+
 	~variant() {
 		reset();
 	}
@@ -108,9 +136,17 @@ public:
 		_type = type_id<void>();
 	}
 
+	byte *data() {
+		return &_sto[0];
+	}
+
+	const byte *data() const {
+		return &_sto[0];
+	}
+
 private:
 	alignas(
-		max_align_of<Types...>::value) char _sto[max_size_of<Types...>::value];
+		max_align_of<Types...>::value) byte _sto[max_size_of<Types...>::value];
 
 	template <typename T, typename... Args>
 	T &_emplace(Args &&... args) {
@@ -121,15 +157,14 @@ private:
 	}
 };
 
-template <typename T, typename... Types, typename... Args>
-variant<Types...> make_variant(Args &&... args) {
-	return variant<Types...>(in_place_type_t<T>{}, std::forward<Args>(args)...);
+template <typename T, typename... Args>
+variant<T> make_variant(Args &&... args) {
+	return variant<T>(in_place_type_t<T>{}, std::forward<Args>(args)...);
 }
 
-template <typename T, typename... Types, typename U, typename... Args>
-variant<Types...> make_variant(std::initializer_list<U> il, Args &&... args) {
-	return variant<Types...>(
-		in_place_type_t<T>{}, il, std::forward<Args>(args)...);
+template <typename T, typename U, typename... Args>
+variant<T> make_variant(std::initializer_list<U> il, Args &&... args) {
+	return variant<T>(in_place_type_t<T>{}, il, std::forward<Args>(args)...);
 }
 
 } // namespace rua
