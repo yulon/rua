@@ -25,6 +25,10 @@ public:
 		_w.reset();
 	}
 
+	operator bool() const {
+		return _w;
+	}
+
 	template <typename... Args>
 	void print(Args &&... args) {
 		if (!_w) {

@@ -45,8 +45,12 @@ inline printer &log_printer() {
 
 template <typename... Args>
 inline void log(Args &&... args) {
+	auto &p = log_printer();
+	if (!p) {
+		return;
+	}
 	auto lg = make_lock_guard(log_mutex());
-	log_printer().println(std::forward<Args>(args)...);
+	p.println(std::forward<Args>(args)...);
 }
 
 inline printer &err_log_printer() {
@@ -65,8 +69,12 @@ inline printer &err_log_printer() {
 
 template <typename... Args>
 inline void err_log(Args &&... args) {
+	auto &p = err_log_printer();
+	if (!p) {
+		return;
+	}
 	auto lg = make_lock_guard(log_mutex());
-	err_log_printer().println(std::forward<Args>(args)...);
+	p.println(std::forward<Args>(args)...);
 }
 
 } // namespace rua
