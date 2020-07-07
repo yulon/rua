@@ -109,8 +109,6 @@ public:
 
 	inline bool operator==(bytes_view) const;
 
-	inline bool has(const bytes_pattern &) const;
-
 	inline size_t index_of(const bytes_pattern &, size_t start_pos = 0) const;
 
 	inline const_bytes_finder find(bytes_pattern, size_t start_pos = 0) const;
@@ -843,6 +841,14 @@ public:
 		return _vas;
 	}
 
+	inline bool contains(bytes_view byts) const {
+		auto sz = byts.size();
+		if (sz != size()) {
+			return false;
+		}
+		return bit_contains(view().data(), mask().data(), byts.data(), sz);
+	}
+
 private:
 	bytes _v, _m;
 	std::vector<sub_area_t> _vas;
@@ -883,13 +889,15 @@ private:
 };
 
 template <typename Span>
-inline bool const_bytes_base<Span>::has(const bytes_pattern &target) const {
-	auto sz = _this()->size();
-	if (sz != target.size()) {
-		return false;
-	}
-	return bit_has(
-		_this()->data(), target.view().data(), target.mask().data(), sz);
+inline bool
+operator>=(const bytes_pattern &byts_pat, const const_bytes_base<Span> &byts) {
+	return byts_pat.contains(byts);
+}
+
+template <typename Span>
+inline bool
+operator<=(const const_bytes_base<Span> &byts, const bytes_pattern &byts_pat) {
+	return byts_pat.contains(byts);
 }
 
 template <typename Span>
@@ -911,7 +919,7 @@ inline size_t const_bytes_base<Span>::index_of(
 		assert(find_data.variable_areas().size());
 
 		for (auto it = begin; it != end; ++it) {
-			if (bit_has(it, f_begin, m_begin, f_sz)) {
+			if (bit_contains(f_begin, m_begin, it, f_sz)) {
 				return it - begin;
 			}
 		}
@@ -976,7 +984,7 @@ inline size_t const_bytes_base<Span>::last_index_of(
 		assert(find_data.variable_areas().size());
 
 		for (auto it = end; it != begin_before; --it) {
-			if (bit_has(it, f_begin, m_begin, f_sz)) {
+			if (bit_contains(f_begin, m_begin, it, f_sz)) {
 				return it - begin;
 			}
 		}

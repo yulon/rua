@@ -222,15 +222,15 @@ bit_eq(generic_ptr a, generic_ptr b, generic_ptr mask, size_t size) {
 		size);
 }
 
-// bit_has
+// bit_contains
 
-inline bool
-bit_has(const byte *src, const byte *masked, const byte *mask, size_t size) {
+inline bool bit_contains(
+	const byte *masked_byts, const byte *mask, const byte *byts, size_t size) {
 	size_t i = 0;
 	if (size >= sizeof(uintptr_t)) {
 		for (;;) {
-			if ((bit_get<uintptr_t>(src + i) & bit_get<uintptr_t>(mask + i)) !=
-				bit_get<uintptr_t>(masked + i)) {
+			if ((bit_get<uintptr_t>(byts + i) & bit_get<uintptr_t>(mask + i)) !=
+				bit_get<uintptr_t>(masked_byts + i)) {
 				return false;
 			}
 			i += sizeof(uintptr_t);
@@ -240,18 +240,18 @@ bit_has(const byte *src, const byte *masked, const byte *mask, size_t size) {
 		}
 	}
 	for (; i < size; ++i) {
-		if ((src[i] & mask[i]) != masked[i]) {
+		if ((byts[i] & mask[i]) != masked_byts[i]) {
 			return false;
 		}
 	}
 	return true;
 }
 
-inline bool
-bit_has(generic_ptr src, generic_ptr masked, generic_ptr mask, size_t size) {
+inline bool bit_contains(
+	generic_ptr masked_byts, generic_ptr mask, generic_ptr byts, size_t size) {
 	return bit_eq(
-		src.as<const byte *>(),
-		masked.as<const byte *>(),
+		byts.as<const byte *>(),
+		masked_byts.as<const byte *>(),
 		mask.as<const byte *>(),
 		size);
 }
