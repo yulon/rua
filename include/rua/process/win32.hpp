@@ -36,46 +36,16 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
+class process_finder;
+
 class process {
 public:
 	using native_handle_t = HANDLE;
 
-	////////////////////////////////////////////////////////////////
+	static inline process_finder find(string_view name);
 
-	static process find(string_view name) {
-		std::wstring wname(u8_to_w(name));
-
-		auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (snapshot == INVALID_HANDLE_VALUE) {
-			return nullptr;
-		}
-
-		PROCESSENTRY32W entry;
-		entry.dwSize = sizeof(PROCESSENTRY32W);
-		Process32FirstW(snapshot, &entry);
-		do {
-			if (wname == entry.szExeFile) {
-				CloseHandle(snapshot);
-				if (entry.th32ProcessID) {
-					return process(entry.th32ProcessID);
-				}
-			}
-		} while (Process32NextW(snapshot, &entry));
-
-		return nullptr;
-	}
-
-	static process wait_for_found(string_view name, duration interval = 100) {
-		process p;
-		for (;;) {
-			p = find(name);
-			if (p) {
-				break;
-			}
-			rua::sleep(interval);
-		}
-		return p;
-	}
+	static inline process_finder
+	wait_for_found(string_view name, duration interval = 50);
 
 	////////////////////////////////////////////////////////////////
 
@@ -172,15 +142,12 @@ public:
 		_main_td_h(nullptr) {}
 
 	template <
-		typename NullPtr,
-		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
-	constexpr process(NullPtr) : process() {}
-
-	template <
 		typename T,
-		typename = enable_if_t<!is_null_pointer<T>::value>,
-		typename = enable_if_t<std::is_same<T, native_handle_t>::value>>
-	explicit process(T process) : _h(process), _main_td_h(nullptr) {}
+		typename = enable_if_t<
+			std::is_same<T, native_handle_t>::value &&
+			is_null_pointer<T>::value>>
+	explicit process(T native_handle) :
+		_h(native_handle), _main_td_h(nullptr) {}
 
 	~process() {
 		reset();
@@ -370,6 +337,101 @@ private:
 		_main_td_h = nullptr;
 	}
 };
+
+class process_finder : private wandering_iterator {
+public:
+	process_finder() : _snapshot(INVALID_HANDLE_VALUE) {}
+
+	~process_finder() {
+		if (*this) {
+			_reset();
+		}
+	}
+
+	process_finder(process_finder &&src) :
+		_snapshot(src._snapshot), _entry(src._entry) {
+		if (src) {
+			src._snapshot = INVALID_HANDLE_VALUE;
+		}
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(process_finder)
+
+	operator bool() const {
+		return _snapshot != INVALID_HANDLE_VALUE;
+	}
+
+	process operator*() const {
+		return *this ? process(_entry.th32ProcessID) : process();
+	}
+
+	process_finder &operator++() {
+		assert(*this);
+
+		while (Process32NextW(_snapshot, &_entry)) {
+			if (!_name.size() || _entry.szExeFile == _name) {
+				if (_entry.th32ProcessID) {
+					return *this;
+				}
+			}
+		}
+		_reset();
+		return *this;
+	}
+
+private:
+	std::wstring _name;
+	HANDLE _snapshot;
+	PROCESSENTRY32W _entry;
+
+	void _reset() {
+		CloseHandle(_snapshot);
+		_snapshot = INVALID_HANDLE_VALUE;
+	}
+
+	process_finder(string_view name) {
+		_name = u8_to_w(name);
+
+		_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if (_snapshot == INVALID_HANDLE_VALUE) {
+			return;
+		}
+
+		_entry.dwSize = sizeof(PROCESSENTRY32W);
+
+		if (!Process32FirstW(_snapshot, &_entry)) {
+			_reset();
+			return;
+		}
+		do {
+			if (!_name.size() || _entry.szExeFile == _name) {
+				if (_entry.th32ProcessID) {
+					return;
+				}
+			}
+		} while (Process32NextW(_snapshot, &_entry));
+		_reset();
+	}
+
+	friend process;
+};
+
+inline process_finder process::find(string_view name) {
+	return process_finder(name);
+}
+
+inline process_finder
+process::wait_for_found(string_view name, duration interval) {
+	process_finder pf;
+	for (;;) {
+		pf = find(name);
+		if (pf) {
+			break;
+		}
+		rua::sleep(interval);
+	}
+	return pf;
+}
 
 namespace _this_process {
 
