@@ -22,36 +22,28 @@
 
 namespace rua { namespace posix {
 
-class file_path : public path {
+class file_path : public path_base<file_path> {
 public:
-	file_path() = default;
-
-	template <
-		typename... Parts,
-		typename = enable_if_t<
-			(sizeof...(Parts) > 1) ||
-			!std::is_base_of<file_path, decay_t<argments_front_t<Parts...>>>::
-				value>>
-	file_path(Parts &&... parts) : path(std::forward<Parts>(parts)...) {}
+	RUA_PATH_CTOR(file_path)
 
 	bool is_dir() const {
 		return false;
 	}
 
 	file_path absolute() const & {
-		const auto &str = string();
-		if (str.size() > 0 && str[0] == '/') {
+		const auto &s = str();
+		if (s.size() > 0 && s[0] == '/') {
 			return *this;
 		}
-		return _absolute(str);
+		return _absolute(s);
 	}
 
 	file_path absolute() && {
-		const auto &str = string();
-		if (str.size() > 0 && str[0] == '/') {
+		const auto &s = str();
+		if (s.size() > 0 && s[0] == '/') {
 			return std::move(*this);
 		}
-		return _absolute(str);
+		return _absolute(s);
 	}
 
 private:
@@ -78,7 +70,7 @@ inline bool work_at(file_path path) {
 #else
 	return
 #endif
-		!::chdir(path.string().c_str());
+		!::chdir(path.str().c_str());
 #ifndef NDEBUG
 	assert(r);
 	return r;
@@ -179,19 +171,19 @@ public:
 namespace _make_file {
 
 inline file new_file(file_path path) {
-	return open(path.string().c_str(), O_CREAT | O_TRUNC | O_RDWR);
+	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
 }
 
 inline file open_or_new_file(file_path path) {
-	return open(path.string().c_str(), O_CREAT | O_RDWR);
+	return open(path.str().c_str(), O_CREAT | O_RDWR);
 }
 
 inline file open_file(file_path path, bool = false) {
-	return open(path.string().c_str(), O_RDWR);
+	return open(path.str().c_str(), O_RDWR);
 }
 
 inline file view_file(file_path path, bool = false) {
-	return open(path.string().c_str(), O_RDONLY);
+	return open(path.str().c_str(), O_RDONLY);
 }
 
 } // namespace _make_file
@@ -272,13 +264,13 @@ public:
 	dir_iterator() : _dir(nullptr) {}
 
 	dir_iterator(file_path path, size_t depth = 1) :
-		_dir(opendir(path.string().c_str())), _dep(depth), _parent(nullptr) {
+		_dir(opendir(path.str().c_str())), _dep(depth), _parent(nullptr) {
 
 		if (!_dir) {
 			return;
 		}
 
-		_entry._dir_path = std::move(path).absolute().string();
+		_entry._dir_path = std::move(path).absolute().str();
 
 		if (_next()) {
 			return;
@@ -339,7 +331,7 @@ public:
 		if ((_dep > 1 || !_dep) && _entry.is_dir()) {
 			dir_iterator sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
 			if (sub) {
-				sub._entry._dir_rel_path = _entry.relative_path().string();
+				sub._entry._dir_rel_path = _entry.relative_path().str();
 				sub._parent = new dir_iterator(std::move(*this));
 				return *this = std::move(sub);
 			}

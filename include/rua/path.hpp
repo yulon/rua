@@ -12,20 +12,20 @@
 
 namespace rua {
 
-template <char Sep>
-class basic_path {
+template <typename Path, char Sep = '/'>
+class path_base {
 public:
 	static constexpr auto sep = Sep;
 
-	basic_path() = default;
+	path_base() = default;
 
 	template <
 		typename... Parts,
 		typename = enable_if_t<
 			(sizeof...(Parts) > 1) ||
-			!std::is_base_of<basic_path, decay_t<argments_front_t<Parts...>>>::
+			!std::is_base_of<path_base, decay_t<argments_front_t<Parts...>>>::
 				value>>
-	basic_path(Parts &&... parts) :
+	path_base(Parts &&... parts) :
 		_s(str_join(
 			_fix_parts({to_string(std::forward<Parts>(parts))...}),
 			Sep,
@@ -34,11 +34,11 @@ public:
 	template <
 		typename PartList,
 		typename = enable_if_t<
-			!std::is_base_of<basic_path, decay_t<PartList>>::value &&
+			!std::is_base_of<path_base, decay_t<PartList>>::value &&
 			!std::is_convertible<PartList &&, string_view>::value>,
 		typename = decltype(to_string(
 			std::declval<typename span_traits<PartList>::element_type>()))>
-	basic_path(PartList &&part_list) :
+	path_base(PartList &&part_list) :
 		_s(str_join(
 			_fix_part_list(std::forward<PartList>(part_list)),
 			Sep,
@@ -48,16 +48,41 @@ public:
 		return _s.length();
 	}
 
-	const std::string &string() const & {
+	const std::string &str() const & {
 		return _s;
 	}
 
-	const std::string &string() & {
+	const std::string &str() & {
 		return _s;
 	}
 
-	std::string &&string() && {
+	std::string &&str() && {
 		return std::move(_s);
+	}
+
+	Path add_back_sep() const {
+		if (_s[_s.length() - 1] == Sep) {
+			return _s;
+		}
+		return _s + std::string(1, Sep);
+	}
+
+	Path rm_back_sep() const {
+		auto ix = _s.length() - 1;
+		if (_s[ix] == Sep) {
+			return _s.substr(0, ix);
+		}
+		return _s;
+	}
+
+	std::string back() const {
+		for (auto i = static_cast<int>(_s.length() - 1); i >= 0; --i) {
+			if (_s[i] == Sep) {
+				++i;
+				return _s.substr(i, _s.length() - i);
+			}
+		}
+		return _s;
 	}
 
 private:
@@ -98,17 +123,24 @@ private:
 	}
 };
 
-template <char Sep>
-inline std::string to_string(basic_path<Sep> p) {
-	return std::move(p).string();
+template <typename Path, char Sep>
+inline std::string to_string(path_base<Path, Sep> p) {
+	return std::move(p).str();
 }
 
-template <char Sep>
-inline const std::string &to_tmp_string(const basic_path<Sep> &p) {
-	return p.string();
+template <typename Path, char Sep>
+inline const std::string &to_tmp_string(const path_base<Path, Sep> &p) {
+	return p.str();
 }
 
-using path = basic_path<'/'>;
+#define RUA_PATH_CTOR(Path)                                                    \
+	template <                                                                 \
+		typename... Parts,                                                     \
+		typename = enable_if_t<                                                \
+			!(sizeof...(Parts)) || (sizeof...(Parts) > 1) ||                   \
+			!std::is_base_of<Path, decay_t<argments_front_t<Parts...>>>::      \
+				value>>                                                        \
+	Path(Parts &&... parts) : path_base(std::forward<Parts>(parts)...) {}
 
 } // namespace rua
 
