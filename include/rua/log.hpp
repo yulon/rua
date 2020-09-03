@@ -4,6 +4,7 @@
 #include "macros.hpp"
 #include "printer.hpp"
 #include "stdio.hpp"
+#include "string.hpp"
 #include "sync.hpp"
 
 namespace rua {
@@ -76,6 +77,21 @@ inline void err_log(Args &&... args) {
 	auto lg = make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }
+
+#define RUA_CHECK(_exp)                                                        \
+	{                                                                          \
+		if (!(_exp)) {                                                         \
+			rua::err_log(                                                      \
+				"Assertion failed!",                                           \
+				rua::eol::sys_con,                                             \
+				"File:",                                                       \
+				std::string(__FILE__) + ":" + std::to_string(__LINE__),        \
+				rua::eol::sys_con,                                             \
+				"Expression:",                                                 \
+				#_exp);                                                        \
+			abort();                                                           \
+		}                                                                      \
+	}
 
 } // namespace rua
 
