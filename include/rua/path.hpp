@@ -52,7 +52,7 @@ public:
 		return _s;
 	}
 
-	const std::string &str() & {
+	std::string &str() & {
 		return _s;
 	}
 
