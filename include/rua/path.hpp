@@ -60,14 +60,14 @@ public:
 		return std::move(_s);
 	}
 
-	Path add_back_sep() const {
+	Path add_tail_sep() const {
 		if (_s[_s.length() - 1] == Sep) {
 			return _s;
 		}
 		return _s + std::string(1, Sep);
 	}
 
-	Path rm_back_sep() const {
+	Path rm_tail_sep() const {
 		auto ix = _s.length() - 1;
 		if (_s[ix] == Sep) {
 			return _s.substr(0, ix);
@@ -76,13 +76,14 @@ public:
 	}
 
 	std::string back() const {
-		for (auto i = static_cast<int>(_s.length() - 1); i >= 0; --i) {
-			if (_s[i] == Sep) {
-				++i;
-				return _s.substr(i, _s.length() - i);
-			}
-		}
-		return _s;
+		auto pos = _s.find_last_of(Sep);
+		return pos != std::string::npos ? _s.substr(pos, _s.length() - i) : _s;
+										: _s;
+	}
+
+	Path rm_back() const {
+		auto pos = _s.find_last_of(Sep);
+		return pos != std::string::npos ? _s.substr(0, pos) : "";
 	}
 
 private:
