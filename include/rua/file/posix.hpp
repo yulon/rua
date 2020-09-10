@@ -64,7 +64,7 @@ inline file_path working_dir() {
 	return r;
 }
 
-inline bool work_at(file_path path) {
+inline bool work_at(const file_path &path) {
 #ifndef NDEBUG
 	auto r =
 #else
@@ -170,19 +170,19 @@ public:
 
 namespace _make_file {
 
-inline file new_file(file_path path) {
+inline file make_file(const file_path &path) {
 	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
 }
 
-inline file open_or_new_file(file_path path) {
+inline file modify_or_make_file(const file_path &path) {
 	return open(path.str().c_str(), O_CREAT | O_RDWR);
 }
 
-inline file open_file(file_path path, bool = false) {
+inline file modify_file(const file_path &path, bool = false) {
 	return open(path.str().c_str(), O_RDWR);
 }
 
-inline file view_file(file_path path, bool = false) {
+inline file read_file(const file_path &path, bool = false) {
 	return open(path.str().c_str(), O_RDONLY);
 }
 
@@ -225,7 +225,7 @@ public:
 	}
 
 	dir_entry_stat stat() const {
-		return view_file(path()).stat();
+		return read_file(path()).stat();
 	}
 
 	uint64_t size() const {
@@ -263,7 +263,7 @@ public:
 
 	dir_iterator() : _dir(nullptr) {}
 
-	dir_iterator(file_path path, size_t depth = 1) :
+	dir_iterator(const file_path &path, size_t depth = 1) :
 		_dir(opendir(path.str().c_str())), _dep(depth), _parent(nullptr) {
 
 		if (!_dir) {

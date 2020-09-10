@@ -100,7 +100,7 @@ inline file_path working_dir() {
 	return r;
 }
 
-inline bool work_at(file_path path) {
+inline bool work_at(const file_path &path) {
 #ifndef NDEBUG
 	auto r =
 #else
@@ -264,47 +264,47 @@ public:
 
 namespace _make_file {
 
-inline file new_file(file_path path) {
+inline file make_file(const file_path &path) {
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
 		path_w.c_str(),
 		GENERIC_WRITE | GENERIC_READ,
-		0,
+		FILE_SHARE_READ,
 		nullptr,
 		CREATE_ALWAYS,
 		FILE_FLAG_BACKUP_SEMANTICS,
 		nullptr);
 }
 
-inline file open_or_new_file(file_path path) {
+inline file modify_or_make_file(const file_path &path) {
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
 		path_w.c_str(),
 		GENERIC_WRITE | GENERIC_READ,
-		0,
+		FILE_SHARE_READ,
 		nullptr,
 		OPEN_ALWAYS,
 		FILE_FLAG_BACKUP_SEMANTICS,
 		nullptr);
 }
 
-inline file open_file(file_path path, bool stat_only = false) {
+inline file modify_file(const file_path &path, bool stat_only = false) {
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
 		path_w.c_str(),
 		stat_only ? FILE_WRITE_ATTRIBUTES | FILE_READ_ATTRIBUTES
 				  : GENERIC_WRITE | GENERIC_READ,
-		0,
+		FILE_SHARE_READ,
 		nullptr,
 		OPEN_EXISTING,
 		FILE_FLAG_BACKUP_SEMANTICS,
 		nullptr);
 }
 
-inline file view_file(file_path path, bool stat_only = false) {
+inline file read_file(const file_path &path, bool stat_only = false) {
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
@@ -357,7 +357,7 @@ public:
 
 	dir_iterator() : _h(INVALID_HANDLE_VALUE) {}
 
-	dir_iterator(file_path path, size_t depth = 1) :
+	dir_iterator(const file_path &path, size_t depth = 1) :
 		_entry(), _dep(depth), _parent(nullptr) {
 
 		_entry._dir_path = std::move(path).absolute().str();
