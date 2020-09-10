@@ -3,6 +3,7 @@
 
 #include "../any_word.hpp"
 #include "../bytes.hpp"
+#include "../file/win32.hpp"
 #include "../io.hpp"
 #include "../macros.hpp"
 #include "../sched/wait/win32.hpp"
@@ -52,19 +53,19 @@ public:
 	constexpr process() : _h(nullptr), _main_td_h(nullptr) {}
 
 	explicit process(
-		string_view file,
+		const file_path &file,
 		const std::vector<std::string> &args = {},
-		string_view pwd = "",
+		const file_path &pwd = "",
 		bool freeze_at_startup = false,
 		sys_stream stdout_w = out(),
 		sys_stream stderr_w = err(),
 		sys_stream stdin_r = in()) {
 
 		std::wstringstream cmd;
-		if (file.find(' ') == std::string::npos) {
-			cmd << u8_to_w(file);
+		if (file.str().find(' ') == std::string::npos) {
+			cmd << u8_to_w(file.str());
 		} else {
-			cmd << L"\"" << u8_to_w(file) << L"\"";
+			cmd << L"\"" << u8_to_w(file.str()) << L"\"";
 		}
 		for (auto &arg : args) {
 			if (arg.find(' ') == std::string::npos) {
@@ -118,7 +119,7 @@ public:
 				true,
 				freeze_at_startup ? CREATE_SUSPENDED : 0,
 				nullptr,
-				pwd.empty() ? nullptr : u8_to_w(pwd).c_str(),
+				pwd ? u8_to_w(pwd.str()).c_str() : nullptr,
 				&si,
 				&pi)) {
 			CloseHandle(pi.hProcess);
@@ -213,10 +214,10 @@ public:
 
 	using native_module_handle_t = HMODULE;
 
-	std::string file_path(native_module_handle_t mdu = nullptr) {
-		WCHAR path[MAX_PATH + 1];
-		auto path_sz = GetModuleFileNameExW(_h, mdu, path, MAX_PATH);
-		return w_to_u8(std::wstring(path, path_sz));
+	file_path path(native_module_handle_t mdu = nullptr) const {
+		WCHAR pth[MAX_PATH + 1];
+		auto pth_sz = GetModuleFileNameExW(_h, mdu, pth, MAX_PATH);
+		return w_to_u8(std::wstring(pth, pth_sz));
 	}
 
 	void reset() {

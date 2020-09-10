@@ -1,6 +1,7 @@
 #ifndef _RUA_PROCESS_POSIX_HPP
 #define _RUA_PROCESS_POSIX_HPP
 
+#include "../file/posix.hpp"
 #include "../sched/wait/uni.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
@@ -57,9 +58,9 @@ public:
 	constexpr process() : _id(-1) {}
 
 	explicit process(
-		std::string file,
+		file_path file,
 		std::vector<std::string> args = {},
-		std::string pwd = "",
+		file_path pwd = "",
 		bool freeze_at_startup = false,
 		sys_stream stdout_w = out(),
 		sys_stream stderr_w = err(),
@@ -72,7 +73,7 @@ public:
 		_id = -1;
 
 		std::vector<char *> argv(2 + args.size());
-		argv[0] = &file[0];
+		argv[0] = &file.str()[0];
 		size_t i;
 		for (i = 0; i < args.size(); ++i) {
 			argv[i + 1] = &args[i][0];
@@ -83,10 +84,10 @@ public:
 		err() = std::move(stderr_w);
 		in() = std::move(stdin_r);
 
-		if (pwd.size()) {
-			::setenv("PWD", &pwd[0], 1);
+		if (pwd.str().size()) {
+			::setenv("PWD", &pwd.str()[0], 1);
 		}
-		::exit(::execvp(file.data(), argv.data()));
+		::exit(::execvp(file.str().data(), argv.data()));
 	}
 
 	constexpr explicit process(pid_t id) : _id(id) {}
@@ -148,7 +149,7 @@ public:
 		reset();
 	}
 
-	std::string file_path() {
+	file_path path() const {
 		if (_id < 0) {
 			return "";
 		}
