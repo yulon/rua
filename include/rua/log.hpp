@@ -82,7 +82,7 @@ inline void err_log(Args &&... args) {
 	{                                                                          \
 		if (!(_exp)) {                                                         \
 			rua::err_log(                                                      \
-				"Assertion failed!",                                           \
+				"Check failed!",                                               \
 				rua::eol::sys_con,                                             \
 				"File:",                                                       \
 				std::string(__FILE__) + ":" + std::to_string(__LINE__),        \
