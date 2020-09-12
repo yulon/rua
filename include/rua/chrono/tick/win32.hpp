@@ -23,19 +23,21 @@ inline time tick() {
 		if (QueryPerformanceCounter(&end)) {
 			int64_t els = (end.QuadPart - start.QuadPart);
 			int64_t els_s = els / freq.QuadPart;
-			return time(duration(
-				els_s,
-				static_cast<int32_t>(
-					els * 1000000000 / freq.QuadPart - els_s * 1000000000)));
+			return time(
+				duration(
+					els_s,
+					static_cast<int32_t>(
+						els * 1000000000 / freq.QuadPart - els_s * 1000000000)),
+				nullepo);
 		}
 	}
 	static dylib kernel32("kernel32.dll", false);
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
 		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {
-		return time(duration(GetTickCount64_ptr()));
+		return time(duration(GetTickCount64_ptr()), nullepo);
 	}
-	return time(duration(GetTickCount()));
+	return time(duration(GetTickCount()), nullepo);
 }
 
 } // namespace _tick

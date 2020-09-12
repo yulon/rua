@@ -33,7 +33,28 @@ inline bool operator!=(const date_t &a, const date_t &b) {
 	return !(a == b);
 }
 
-static const date_t unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
+inline bool operator>(const date_t &a, const date_t &b) {
+	return &a != &b && (a.year > b.year || a.month > b.month || a.day > b.day ||
+						a.hour > b.hour || a.minute > b.minute ||
+						a.second > b.second || a.nanoseconds > b.nanoseconds);
+}
+
+inline bool operator>=(const date_t &a, const date_t &b) {
+	return a == b || a > b;
+}
+
+inline bool operator<(const date_t &a, const date_t &b) {
+	return &a != &b && (a.year < b.year || a.month < b.month || a.day < b.day ||
+						a.hour < b.hour || a.minute < b.minute ||
+						a.second < b.second || a.nanoseconds < b.nanoseconds);
+}
+
+inline bool operator<=(const date_t &a, const date_t &b) {
+	return a == b || a < b;
+}
+
+RUA_MULTIDEF_VAR const date_t nullepo{0, 0, 0, 0, 0, 0, 0, 0};
+RUA_MULTIDEF_VAR const date_t unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
 
 inline bool is_leap_year(int16_t yr) {
 	return !(yr % 4) && (yr % 100 || !(yr % 400));
@@ -59,18 +80,17 @@ inline int16_t _yr_days_at_mon(bool is_ly, size_t m) {
 
 class time {
 public:
-	constexpr time() : _ela(), _zon(0), _epo(nullptr) {}
+	constexpr time() : _ela(), _zon(0), _epo(&nullepo) {}
 
-	constexpr explicit time(duration elapsed, int8_t zone = 0) :
-		_ela(elapsed), _zon(zone), _epo(nullptr) {}
+	constexpr time(duration elapsed, int8_t zone = 0) :
+		_ela(elapsed), _zon(zone), _epo(&unix_epoch) {}
 
-	constexpr explicit time(duration elapsed, const date_t &epoch) :
+	constexpr time(duration elapsed, const date_t &epoch) :
 		_ela(elapsed), _zon(0), _epo(&epoch) {}
 
 	time(duration elapsed, date_t &&epoch) = delete;
 
-	constexpr explicit time(
-		duration elapsed, int8_t zone, const date_t &epoch) :
+	constexpr time(duration elapsed, int8_t zone, const date_t &epoch) :
 		_ela(elapsed), _zon(zone), _epo(&epoch) {}
 
 	time(duration elapsed, int8_t zone, date_t &&epoch) = delete;
@@ -113,12 +133,12 @@ public:
 
 	time(const date_t &d8, date_t &&epoch) = delete;
 
-	explicit operator bool() const {
-		return _epo || _ela;
+	bool is_monotonic() const {
+		return *_epo == nullepo;
 	}
 
-	bool is_monotonic() const {
-		return !_epo;
+	explicit operator bool() const {
+		return !is_monotonic() || _ela;
 	}
 
 	const date_t &epoch() const {
@@ -231,39 +251,44 @@ public:
 
 	void reset() {
 		_ela = 0;
-		_epo = nullptr;
+		_epo = &nullepo;
 	}
 
 	bool operator==(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela == target.elapsed();
 		}
 		return _ela == time(target.date(), *_epo).elapsed();
 	}
 
 	bool operator>(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela > target.elapsed();
 		}
 		return _ela > time(target.date(), *_epo).elapsed();
 	}
 
 	bool operator>=(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela >= target.elapsed();
 		}
 		return _ela >= time(target.date(), *_epo).elapsed();
 	}
 
 	bool operator<(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela < target.elapsed();
 		}
 		return _ela < time(target.date(), *_epo).elapsed();
 	}
 
 	bool operator<=(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela <= target.elapsed();
 		}
 		return _ela <= time(target.date(), *_epo).elapsed();
@@ -283,7 +308,8 @@ public:
 	}
 
 	duration operator-(const time &target) const {
-		if (!_epo || target.is_monotonic() || *_epo == target.epoch()) {
+		if (is_monotonic() || target.is_monotonic() ||
+			*_epo == target.epoch()) {
 			return _ela - target.elapsed();
 		}
 		return _ela - time(target.date(), *_epo).elapsed();

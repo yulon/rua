@@ -14,7 +14,7 @@ namespace _tick {
 inline time tick() {
 	timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return time(ts);
+	return time(ts, nullepo);
 }
 
 } // namespace _tick

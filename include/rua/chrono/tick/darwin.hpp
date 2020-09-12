@@ -14,7 +14,8 @@ namespace _tick {
 inline time tick() {
 	static auto start = mach_absolute_time();
 	return time(
-		nanoseconds(static_cast<int64_t>(mach_absolute_time() - start)));
+		nanoseconds(static_cast<int64_t>(mach_absolute_time() - start)),
+		nullepo);
 }
 
 } // namespace _tick
