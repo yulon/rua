@@ -196,6 +196,12 @@ public:
 		return static_cast<uint64_t>(sz.QuadPart);
 	}
 
+	bytes read_all() {
+		bytes buf(size());
+		read_full(buf);
+		return buf;
+	}
+
 	file_times times(int8_t zone = local_time_zone()) const {
 		FILETIME lpCreationTime, lpLastAccessTime, lpLastWriteTime;
 		if (!GetFileTime(

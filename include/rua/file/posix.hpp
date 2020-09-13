@@ -151,6 +151,12 @@ public:
 		return stat().size();
 	}
 
+	bytes read_all() {
+		bytes buf(size());
+		read_full(buf);
+		return buf;
+	}
+
 	file_times times(int8_t zone = local_time_zone()) const {
 		return stat().times(zone);
 	}
