@@ -77,8 +77,7 @@ public:
 
 	std::string back() const {
 		auto pos = _s.find_last_of(Sep);
-		return pos != std::string::npos ? _s.substr(pos, _s.length() - i) : _s;
-										: _s;
+		return pos != std::string::npos ? _s.substr(pos, _s.length()) : _s;
 	}
 
 	Path rm_back() const {
@@ -125,7 +124,49 @@ private:
 };
 
 template <typename Path, char Sep>
-inline std::string to_string(path_base<Path, Sep> p) {
+inline Path
+operator/(const path_base<Path, Sep> &a, const path_base<Path, Sep> &b) {
+	return Path(a, b);
+}
+
+template <
+	typename Path,
+	char Sep,
+	typename Part,
+	typename = enable_if_t<
+		!std::is_base_of<path_base<Path, Sep>, decay_t<Part>>::value>>
+inline Path operator/(const path_base<Path, Sep> &path, Part &&part) {
+	return Path(path, std::forward<Part>(part));
+}
+
+template <
+	typename Path,
+	char Sep,
+	typename Part,
+	typename = enable_if_t<
+		!std::is_base_of<path_base<Path, Sep>, decay_t<Part>>::value>>
+inline Path operator/(Part &&part, const path_base<Path, Sep> &path) {
+	return Path(std::forward<Part>(part), path);
+}
+
+template <typename Path, char Sep, typename Part>
+inline Path &operator/=(path_base<Path, Sep> &path, Part &&part) {
+	path = Path(path, std::forward<Part>(part));
+	return path;
+}
+
+template <typename Path, char Sep>
+inline const std::string &to_string(const path_base<Path, Sep> &p) {
+	return p.str();
+}
+
+template <typename Path, char Sep>
+inline std::string &to_string(path_base<Path, Sep> &p) {
+	return p.str();
+}
+
+template <typename Path, char Sep>
+inline std::string &&to_string(path_base<Path, Sep> &&p) {
 	return std::move(p).str();
 }
 
@@ -134,13 +175,14 @@ inline const std::string &to_tmp_string(const path_base<Path, Sep> &p) {
 	return p.str();
 }
 
-#define RUA_PATH_CTOR(Path)                                                    \
+#define RUA_PATH_CTORS(Path)                                                   \
+	Path() = default;                                                          \
+                                                                               \
 	template <                                                                 \
 		typename... Parts,                                                     \
-		typename = enable_if_t<                                                \
-			!(sizeof...(Parts)) || (sizeof...(Parts) > 1) ||                   \
-			!std::is_base_of<Path, decay_t<argments_front_t<Parts...>>>::      \
-				value>>                                                        \
+		typename = enable_if_t<!std::is_base_of<                               \
+			Path,                                                              \
+			decay_t<argments_front_t<Parts...>>>::value>>                      \
 	Path(Parts &&... parts) : path_base(std::forward<Parts>(parts)...) {}
 
 } // namespace rua

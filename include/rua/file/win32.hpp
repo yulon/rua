@@ -22,7 +22,7 @@ namespace rua { namespace win32 {
 
 class file_path : public path_base<file_path, '\\'> {
 public:
-	RUA_PATH_CTOR(file_path)
+	RUA_PATH_CTORS(file_path)
 
 	bool is_dir() const {
 		return GetFileAttributesW(u8_to_w(str()).c_str()) &

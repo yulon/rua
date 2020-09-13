@@ -24,7 +24,7 @@ namespace rua { namespace posix {
 
 class file_path : public path_base<file_path> {
 public:
-	RUA_PATH_CTOR(file_path)
+	RUA_PATH_CTORS(file_path)
 
 	bool is_dir() const {
 		return false;
