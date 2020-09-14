@@ -197,8 +197,12 @@ public:
 	}
 
 	bytes read_all() {
-		bytes buf(size());
-		read_full(buf);
+		auto fsz = size();
+		bytes buf(fsz);
+		auto rsz = read_full(buf);
+		if (rsz != fsz) {
+			buf.reset();
+		}
 		return buf;
 	}
 
