@@ -1,6 +1,8 @@
 #ifndef _RUA_CALLCHAIN_HPP
 #define _RUA_CALLCHAIN_HPP
 
+#include "types/traits.hpp"
+
 #include <functional>
 #include <vector>
 
@@ -12,45 +14,36 @@ public:
 	_callchain_base() = default;
 };
 
-template <typename>
+template <typename Callback, typename = void>
 class callchain;
 
-template <typename... Args>
-class callchain<void(Args...)> : public _callchain_base<void, Args...> {
+template <typename Ret, typename... Args>
+class callchain<
+	Ret(Args...),
+	enable_if_t<!std::is_convertible<Ret, bool>::value>>
+	: public _callchain_base<Ret, Args...> {
 public:
 	callchain() = default;
 
 	void operator()(Args &&... args) const {
-		for (auto &callee : *this) {
-			callee(std::forward<Args>(args)...);
+		for (auto &cb : *this) {
+			cb(std::forward<Args>(args)...);
 		}
-	}
-};
-
-template <typename... Args>
-class callchain<bool(Args...)> : public _callchain_base<bool, Args...> {
-public:
-	callchain() = default;
-
-	bool operator()(Args &&... args) const {
-		for (auto &callee : *this) {
-			if (!callee(std::forward<Args>(args)...)) {
-				return false;
-			}
-		}
-		return true;
 	}
 };
 
 template <typename Ret, typename... Args>
-class callchain<Ret(Args...)> : public _callchain_base<Ret, Args...> {
+class callchain<
+	Ret(Args...),
+	enable_if_t<std::is_convertible<Ret, bool>::value>>
+	: public _callchain_base<Ret, Args...> {
 public:
 	callchain() = default;
 
 	Ret operator()(Args &&... args) const {
-		for (auto &callee : *this) {
-			auto &&r = callee(std::forward<Args>(args)...);
-			if (r) {
+		for (auto &cb : *this) {
+			auto &&r = cb(std::forward<Args>(args)...);
+			if (static_cast<bool>(r)) {
 				return std::move(r);
 			}
 		}
