@@ -155,7 +155,7 @@ public:
 		auto fsz = size();
 		bytes buf(fsz);
 		auto rsz = read_full(buf);
-		if (rsz != fsz) {
+		if (rsz >= 0 && static_cast<uint64_t>(rsz) != fsz) {
 			buf.reset();
 		}
 		return buf;
