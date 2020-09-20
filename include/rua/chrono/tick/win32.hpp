@@ -31,7 +31,7 @@ inline time tick() {
 				nullepo);
 		}
 	}
-	static dylib kernel32("kernel32.dll", false);
+	static auto kernel32 = dylib::from_loaded("kernel32.dll");
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
 		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {

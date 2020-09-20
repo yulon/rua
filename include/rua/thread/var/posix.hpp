@@ -4,7 +4,6 @@
 #include "base.hpp"
 
 #include "../../any_word.hpp"
-#include "../../dylib/posix.hpp"
 #include "../../macros.hpp"
 
 #include <pthread.h>
@@ -30,8 +29,7 @@ public:
 	}
 
 	thread_word_var(thread_word_var &&src) :
-		_key(src._key),
-		_invalid(src._invalid) {
+		_key(src._key), _invalid(src._invalid) {
 		if (src.is_storable()) {
 			src._invalid = true;
 		}

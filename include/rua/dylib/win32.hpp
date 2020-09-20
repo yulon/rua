@@ -16,12 +16,17 @@ class dylib {
 public:
 	using native_handle_t = HMODULE;
 
-	explicit dylib(string_view name, bool always_load = true) {
-		_load(name, always_load);
+	explicit dylib(string_view name) {
+		_h = LoadLibraryW(u8_to_w(name).c_str());
+		_need_unload = _h;
 	}
 
-	constexpr dylib(native_handle_t h = nullptr, bool need_unload = false) :
+	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
 		_h(h), _need_unload(need_unload) {}
+
+	static dylib from_loaded(string_view name) {
+		return dylib(GetModuleHandleW(u8_to_w(name).c_str()), false);
+	}
 
 	~dylib() {
 		unload();
@@ -49,17 +54,11 @@ public:
 	}
 
 	generic_ptr find(string_view name) const {
-		return GetProcAddress(_h, name.data());
+		return _h ? GetProcAddress(_h, name.data()) : nullptr;
 	}
 
 	generic_ptr operator[](string_view name) const {
 		return find(name);
-	}
-
-	bool load(string_view name, bool always_load = true) {
-		unload();
-		_load(name, always_load);
-		return _h;
 	}
 
 	void unload() {
@@ -75,20 +74,9 @@ public:
 private:
 	HMODULE _h;
 	bool _need_unload;
-
-	void _load(string_view name, bool always_load) {
-		auto wname = u8_to_w(name);
-		if (!always_load) {
-			_h = GetModuleHandleW(wname.c_str());
-			if (_h) {
-				_need_unload = false;
-				return;
-			}
-		}
-		_h = LoadLibraryW(wname.c_str());
-		_need_unload = _h;
-	}
 };
+
+// TODO: unique_dylib
 
 }} // namespace rua::win32
 
