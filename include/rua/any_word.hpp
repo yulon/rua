@@ -87,6 +87,10 @@ public:
 
 	any_word(in_place_type_t<void>) : _val(0) {}
 
+	constexpr operator bool() const {
+		return _val;
+	}
+
 	uintptr_t &value() {
 		return _val;
 	}

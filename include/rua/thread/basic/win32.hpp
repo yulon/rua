@@ -30,8 +30,6 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr thread() : _h(nullptr), _id(0) {}
-
 	explicit thread(std::function<void()> fn, size_t stack_size = 0) {
 		_h = CreateThread(
 			nullptr,
@@ -45,7 +43,7 @@ public:
 	explicit thread(tid_t id) :
 		_h(id ? OpenThread(SYNCHRONIZE, FALSE, id) : nullptr), _id(id) {}
 
-	constexpr thread(std::nullptr_t) : thread() {}
+	constexpr thread(std::nullptr_t = nullptr) : _h(nullptr), _id(0) {}
 
 	explicit thread(native_handle_t h) : _h(h), _id(0) {}
 

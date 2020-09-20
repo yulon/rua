@@ -34,9 +34,8 @@ class _optional_base {
 public:
 	using value_type = T;
 
-	constexpr _optional_base() = default;
-
-	constexpr _optional_base(bool has_val) : _empty(), _has_val(has_val) {}
+	constexpr _optional_base(bool has_val = false) :
+		_sto(), _has_val(has_val) {}
 
 	~_optional_base() {
 		reset();
@@ -46,15 +45,15 @@ public:
 		if (!src._has_val) {
 			return;
 		}
-		new (&_val) T(src._val);
+		new (&value()) T(src.value());
 	}
 
 	_optional_base(_optional_base &&src) : _has_val(src._has_val) {
 		if (!src._has_val) {
 			return;
 		}
-		new (&_val) T(std::move(src._val));
-		src._val.~T();
+		new (&value()) T(std::move(src.value()));
+		src.value().~T();
 		src._has_val = false;
 	}
 
@@ -69,27 +68,27 @@ public:
 	}
 
 	T &value() & {
-		return _val;
+		return *reinterpret_cast<T *>(&_sto[0]);
 	}
 
 	const T &value() const & {
-		return _val;
+		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
 
 	T &&value() && {
-		return std::move(_val);
+		return std::move(*reinterpret_cast<T *>(&_sto[0]));
 	}
 
 	T &operator*() & {
-		return _val;
+		return value();
 	}
 
 	const T &operator*() const & {
-		return _val;
+		return value();
 	}
 
 	T &&operator*() && {
-		return std::move(_val);
+		return std::move(value());
 	}
 
 	template <
@@ -98,7 +97,8 @@ public:
 			std::is_copy_constructible<T>::value &&
 			std::is_convertible<U, T>::value>>
 	T value_or(U &&default_value) const & {
-		return _has_val ? _val : static_cast<T>(std::forward<U>(default_value));
+		return _has_val ? value()
+						: static_cast<T>(std::forward<U>(default_value));
 	}
 
 	template <
@@ -107,23 +107,23 @@ public:
 			std::is_move_constructible<T>::value &&
 			std::is_convertible<U, T>::value>>
 	T value_or(U &&default_value) && {
-		return _has_val ? std::move(_val)
+		return _has_val ? std::move(value())
 						: static_cast<T>(std::forward<U>(default_value));
 	}
 
 	T *operator->() {
-		return &_val;
+		return &value();
 	}
 
 	const T *operator->() const {
-		return &_val;
+		return &value();
 	}
 
 	void reset() {
 		if (!_has_val) {
 			return;
 		}
-		_val.~T();
+		value().~T();
 		_has_val = false;
 	}
 
@@ -148,18 +148,14 @@ public:
 	}
 
 protected:
-	struct _empty_t {};
-	union {
-		_empty_t _empty;
-		decay_t<T> _val;
-	};
+	alignas(alignof(T)) byte _sto[sizeof(T)];
 	bool _has_val;
 
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	void _emplace(Args &&... args) {
-		new (&_val) T(std::forward<Args>(args)...);
+		new (&value()) T(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -168,7 +164,7 @@ protected:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	void _emplace(std::initializer_list<U> il, Args &&... args) {
-		new (&_val) T(il, std::forward<Args>(args)...);
+		new (&value()) T(il, std::forward<Args>(args)...);
 	}
 };
 

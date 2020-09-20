@@ -251,9 +251,7 @@ private:
 
 class bytes_view : public const_bytes_base<bytes_view> {
 public:
-	constexpr bytes_view() : _p(nullptr), _n(0) {}
-
-	constexpr bytes_view(std::nullptr_t) : bytes_view() {}
+	constexpr bytes_view(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
 
 	template <
 		typename T,
@@ -416,9 +414,7 @@ inline bool const_bytes_base<Span>::operator==(bytes_view target) const {
 
 class bytes_ref : public bytes_base<bytes_ref> {
 public:
-	constexpr bytes_ref() : _p(nullptr), _n(0) {}
-
-	constexpr bytes_ref(std::nullptr_t) : bytes_ref() {}
+	constexpr bytes_ref(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
 
 	template <
 		typename T,
@@ -601,9 +597,7 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
 
 class bytes : public bytes_ref {
 public:
-	constexpr bytes() = default;
-
-	constexpr bytes(std::nullptr_t) : bytes() {}
+	constexpr bytes(std::nullptr_t = nullptr) : bytes_ref() {}
 
 	explicit bytes(size_t size) {
 		if (!size) {
