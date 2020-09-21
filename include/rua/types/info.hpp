@@ -578,7 +578,7 @@ struct type_name<R (T::*const &)(Args...) const> {
 };
 
 template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...) const &> {
+struct type_name<R (T::*)(Args...) &> {
 	static string_view get() {
 		static const auto n = str_join(
 			type_name<R>::get(),
@@ -586,13 +586,13 @@ struct type_name<R (T::*)(Args...) const &> {
 			type_name<T>::get(),
 			"::*)(",
 			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
+			") &");
 		return n;
 	}
 };
 
 template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...) const &> {
+struct type_name<R (T::*&)(Args...) &> {
 	static string_view get() {
 		static const auto n = str_join(
 			type_name<R>::get(),
@@ -600,13 +600,13 @@ struct type_name<R (T::*&)(Args...) const &> {
 			type_name<T>::get(),
 			"::*&)(",
 			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
+			") &");
 		return n;
 	}
 };
 
 template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...) const &> {
+struct type_name<R (T::*&&)(Args...) &> {
 	static string_view get() {
 		static const auto n = str_join(
 			type_name<R>::get(),
@@ -614,13 +614,13 @@ struct type_name<R (T::*&&)(Args...) const &> {
 			type_name<T>::get(),
 			"::*&&)(",
 			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
+			") &");
 		return n;
 	}
 };
 
 template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...) const &> {
+struct type_name<R (T::*const)(Args...) &> {
 	static string_view get() {
 		static const auto n = str_join(
 			type_name<R>::get(),
@@ -628,13 +628,13 @@ struct type_name<R (T::*const)(Args...) const &> {
 			type_name<T>::get(),
 			"::*const)(",
 			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
+			") &");
 		return n;
 	}
 };
 
 template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...) const &> {
+struct type_name<R (T::*const &)(Args...) &> {
 	static string_view get() {
 		static const auto n = str_join(
 			type_name<R>::get(),
@@ -642,7 +642,7 @@ struct type_name<R (T::*const &)(Args...) const &> {
 			type_name<T>::get(),
 			"::*const &)(",
 			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
+			") &");
 		return n;
 	}
 };
@@ -713,6 +713,76 @@ struct type_name<R (T::*const &)(Args...) &&> {
 			"::*const &)(",
 			str_join({type_name<Args>::get()...}, ", "),
 			") &&");
+		return n;
+	}
+};
+
+template <typename T, typename R, typename... Args>
+struct type_name<R (T::*)(Args...) const &> {
+	static string_view get() {
+		static const auto n = str_join(
+			type_name<R>::get(),
+			" (",
+			type_name<T>::get(),
+			"::*)(",
+			str_join({type_name<Args>::get()...}, ", "),
+			") const &");
+		return n;
+	}
+};
+
+template <typename T, typename R, typename... Args>
+struct type_name<R (T::*&)(Args...) const &> {
+	static string_view get() {
+		static const auto n = str_join(
+			type_name<R>::get(),
+			" (",
+			type_name<T>::get(),
+			"::*&)(",
+			str_join({type_name<Args>::get()...}, ", "),
+			") const &");
+		return n;
+	}
+};
+
+template <typename T, typename R, typename... Args>
+struct type_name<R (T::*&&)(Args...) const &> {
+	static string_view get() {
+		static const auto n = str_join(
+			type_name<R>::get(),
+			" (",
+			type_name<T>::get(),
+			"::*&&)(",
+			str_join({type_name<Args>::get()...}, ", "),
+			") const &");
+		return n;
+	}
+};
+
+template <typename T, typename R, typename... Args>
+struct type_name<R (T::*const)(Args...) const &> {
+	static string_view get() {
+		static const auto n = str_join(
+			type_name<R>::get(),
+			" (",
+			type_name<T>::get(),
+			"::*const)(",
+			str_join({type_name<Args>::get()...}, ", "),
+			") const &");
+		return n;
+	}
+};
+
+template <typename T, typename R, typename... Args>
+struct type_name<R (T::*const &)(Args...) const &> {
+	static string_view get() {
+		static const auto n = str_join(
+			type_name<R>::get(),
+			" (",
+			type_name<T>::get(),
+			"::*const &)(",
+			str_join({type_name<Args>::get()...}, ", "),
+			") const &");
 		return n;
 	}
 };
@@ -1018,19 +1088,20 @@ private:
 	static const _table_t &_table() {
 		RUA_SASSERT((!std::is_same<T, void>::value));
 
-		static const _table_t tab{size_of<T>::value,
-								  align_of<T>::value,
-								  std::is_trivial<T>::value,
-								  type_name<T>::get,
-								  _dtor<T>::value,
-								  _del<T>::value,
-								  _copy_ctor<T>::value,
-								  _copy_new<T>::value,
-								  _move_ctor<T>::value,
-								  _move_new<T>::value
+		static const _table_t tab{
+			size_of<T>::value,
+			align_of<T>::value,
+			std::is_trivial<T>::value,
+			type_name<T>::get,
+			_dtor<T>::value,
+			_del<T>::value,
+			_copy_ctor<T>::value,
+			_copy_new<T>::value,
+			_move_ctor<T>::value,
+			_move_new<T>::value
 #ifdef RUA_RTTI
-								  ,
-								  &_std_id<T>
+			,
+			&_std_id<T>
 #endif
 		};
 		return tab;

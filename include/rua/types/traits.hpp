@@ -7,7 +7,7 @@
 
 namespace rua {
 
-// Non-standard
+// Standard enhancement
 
 template <bool Cond, typename T, typename... Args>
 struct rebind_if;
@@ -69,14 +69,6 @@ struct conditional<false, T, F, FArgs...> {
 
 template <bool Cond, typename T, typename... F>
 using conditional_t = typename conditional<Cond, T, F...>::type;
-
-template <typename FirstArg, typename... Args>
-struct argments_front {
-	using type = FirstArg;
-};
-
-template <typename... Args>
-using argments_front_t = typename argments_front<Args...>::type;
 
 // Standard alias
 
@@ -149,7 +141,7 @@ using common_type_t = typename std::common_type<T...>::type;
 template <typename T>
 using underlying_type_t = typename std::underlying_type<T>::type;
 
-// Standard Compatibility
+// Standard compatibility
 
 template <typename...>
 using void_t = void;
@@ -219,6 +211,16 @@ struct conjunction<B1> : B1 {};
 template <typename B1, typename... Bn>
 struct conjunction<B1, Bn...>
 	: conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+
+// Non-standard
+
+template <typename FirstArg, typename... Args>
+struct argments_front {
+	using type = FirstArg;
+};
+
+template <typename... Args>
+using argments_front_t = typename argments_front<Args...>::type;
 
 } // namespace rua
 
