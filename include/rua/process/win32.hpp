@@ -212,14 +212,6 @@ public:
 		reset();
 	}
 
-	using native_module_handle_t = HMODULE;
-
-	file_path path(native_module_handle_t mdu = nullptr) const {
-		WCHAR pth[MAX_PATH + 1];
-		auto pth_sz = GetModuleFileNameExW(_h, mdu, pth, MAX_PATH);
-		return w_to_u8(std::wstring(pth, pth_sz));
-	}
-
 	void reset() {
 		unfreeze();
 		if (!_h) {
@@ -229,19 +221,33 @@ public:
 		_h = nullptr;
 	}
 
+	using native_module_handle_t = HMODULE;
+
+	file_path path(native_module_handle_t mdu = nullptr) const {
+		WCHAR pth[MAX_PATH + 1];
+		auto pth_sz = GetModuleFileNameExW(_h, mdu, pth, MAX_PATH);
+		return w_to_u8(std::wstring(pth, pth_sz));
+	}
+
+	size_t memory_usage() const {
+		PROCESS_MEMORY_COUNTERS pmc;
+		return GetProcessMemoryInfo(_h, &pmc, sizeof(pmc)) ? pmc.WorkingSetSize
+														   : 0;
+	}
+
 	////////////////////////////////////////////////////////////////
 
-	class mem_t {
+	class memory_block {
 	public:
-		mem_t() {}
+		memory_block() {}
 
-		mem_t(process &p, size_t n) :
+		memory_block(process &p, size_t n) :
 			_owner(&p),
 			_ptr(VirtualAllocEx(
 				p.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE)),
 			_sz(n) {}
 
-		~mem_t() {
+		~memory_block() {
 			reset();
 		}
 
@@ -282,7 +288,7 @@ public:
 		size_t _sz;
 	};
 
-	bytes_view mem_view() const {
+	bytes_view memory_view() const {
 		assert(id() == GetCurrentProcessId());
 
 		MODULEINFO mi;
@@ -291,28 +297,43 @@ public:
 		return bytes_view(mi.lpBaseOfDll, mi.SizeOfImage);
 	}
 
-	mem_t mem_alloc(size_t size) {
-		return mem_t(*this, size);
+	memory_block memory_alloc(size_t size) {
+		return memory_block(*this, size);
 	}
 
-	mem_t mem_alloc(string_view str) {
+	memory_block memory_alloc(string_view str) {
 		auto sz = str.length() + 1;
-		mem_t data(*this, sz);
+		memory_block data(*this, sz);
 		data.write_at(0, bytes_view(str.data(), sz));
 		return data;
 	}
 
-	mem_t mem_alloc(wstring_view wstr) {
+	memory_block memory_alloc(wstring_view wstr) {
 		auto sz = (wstr.length() + 1) * sizeof(wchar_t);
-		mem_t data(*this, sz);
+		memory_block data(*this, sz);
 		data.write_at(0, bytes_view(wstr.data(), sz));
 		return data;
 	}
 
+	bool start(void *func, any_word param = nullptr) {
+		auto td = CreateRemoteThread(
+			_h,
+			nullptr,
+			0,
+			reinterpret_cast<LPTHREAD_START_ROUTINE>(func),
+			param,
+			0,
+			nullptr);
+		if (!td) {
+			return false;
+		}
+		CloseHandle(td);
+		return true;
+	}
+
 	any_word call(void *func, any_word param = nullptr) {
-		HANDLE td;
 		DWORD tid;
-		td = CreateRemoteThread(
+		auto td = CreateRemoteThread(
 			_h,
 			nullptr,
 			0,
@@ -429,7 +450,7 @@ process::wait_for_found(string_view name, duration interval) {
 		if (pf) {
 			break;
 		}
-		rua::sleep(interval);
+		sleep(interval);
 	}
 	return pf;
 }
