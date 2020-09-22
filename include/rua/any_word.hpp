@@ -91,6 +91,10 @@ public:
 		return _val;
 	}
 
+	constexpr bool operator!() const {
+		return !_val;
+	}
+
 	uintptr_t &value() {
 		return _val;
 	}
