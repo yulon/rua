@@ -4,6 +4,7 @@
 #include "bytes.hpp"
 #include "chrono.hpp"
 #include "sched.hpp"
+#include "sorted_list.hpp"
 #include "sync.hpp"
 #include "types/util.hpp"
 #include "ucontext.hpp"
@@ -12,8 +13,6 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
-#include <list>
-#include <map>
 #include <memory>
 #include <queue>
 
@@ -80,12 +79,12 @@ public:
 		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
 
 	fiber execute(std::function<void()> task, duration lifetime = 0) {
-		fiber f(std::make_shared<fiber::_ctx_t>());
-		f._ctx->tsk = std::move(task);
-		f._ctx->is_stoped.store(false);
-		f.reset_lifetime(lifetime);
-		_exs.emplace(f);
-		return f;
+		fiber fbr(std::make_shared<fiber::_ctx_t>());
+		fbr._ctx->tsk = std::move(task);
+		fbr._ctx->is_stoped.store(false);
+		fbr.reset_lifetime(lifetime);
+		_exs.emplace(fbr);
+		return fbr;
 	}
 
 	fiber executing() const {
@@ -145,10 +144,10 @@ public:
 
 				if (_cws.size()) {
 					time wake_ti;
-					if (_cws.begin()->first < _slps.begin()->first) {
-						wake_ti = _cws.begin()->first;
+					if (_cws.begin()->wake_ti < _slps.begin()->wake_ti) {
+						wake_ti = _cws.begin()->wake_ti;
 					} else {
-						wake_ti = _slps.begin()->first;
+						wake_ti = _slps.begin()->wake_ti;
 					}
 					if (wake_ti > now) {
 						orig_sch->sleep(wake_ti - now, true);
@@ -163,7 +162,7 @@ public:
 					continue;
 				}
 
-				auto wake_ti = _slps.begin()->first;
+				auto wake_ti = _slps.begin()->wake_ti;
 				if (wake_ti > now) {
 					orig_sch->sleep(wake_ti - now);
 				} else {
@@ -175,7 +174,7 @@ public:
 
 			} else if (_cws.size()) {
 
-				auto wake_ti = _cws.begin()->first;
+				auto wake_ti = _cws.begin()->wake_ti;
 				if (wake_ti > now) {
 					orig_sch->sleep(wake_ti - now, true);
 				} else {
@@ -198,8 +197,8 @@ public:
 
 		virtual ~scheduler() = default;
 
-		template <typename SlpMap>
-		void _sleep(SlpMap &&slp_map, duration timeout) {
+		template <typename SleepingList>
+		void _sleep(SleepingList &sl, duration timeout) {
 			time wake_ti;
 			if (!timeout) {
 				wake_ti.reset();
@@ -211,7 +210,7 @@ public:
 
 			_fe->_cur._ctx->has_yielded = true;
 			_fe->_cur._ctx->stk_ix = _fe->_stk_ix;
-			slp_map.emplace(wake_ti, _fe->_cur);
+			sl.emplace(wake_ti, _fe->_cur);
 
 			_fe->_prev = std::move(_fe->_cur);
 			if (_fe->_exs.size()) {
@@ -265,23 +264,30 @@ private:
 	std::queue<fiber> _exs;
 	fiber _cur, _prev;
 
-	// TODO: time wheel
-	std::multimap<time, fiber> _slps;
-	std::multimap<time, fiber> _cws;
+	struct _sleeping_t {
+		time wake_ti;
+		fiber fbr;
+
+		bool operator<(const _sleeping_t &s) const {
+			return wake_ti < s.wake_ti;
+		}
+	};
+	sorted_list<_sleeping_t> _slps;
+	sorted_list<_sleeping_t> _cws;
 
 	void _check_slps(time now) {
 		for (auto it = _slps.begin(); it != _slps.end(); it = _slps.erase(it)) {
-			if (now < it->first) {
+			if (now < it->wake_ti) {
 				break;
 			}
-			_exs.emplace(std::move(it->second));
+			_exs.emplace(std::move(it->fbr));
 		}
 	}
 
 	void _check_cws(time now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->second._ctx->wkr->state() || now >= it->first) {
-				_exs.emplace(std::move(it->second));
+			if (it->fbr._ctx->wkr->state() || now >= it->wake_ti) {
+				_exs.emplace(std::move(it->fbr));
 				it = _cws.erase(it);
 				continue;
 			}
