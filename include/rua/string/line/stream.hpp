@@ -5,70 +5,74 @@
 
 #include "../../bytes.hpp"
 #include "../../io.hpp"
+#include "../../optional.hpp"
 #include "../../types/util.hpp"
 
+#include <list>
 #include <string>
 
 namespace rua {
 
 class line_reader {
 public:
-	constexpr line_reader() : _r(nullptr), _1st_chr_is_cr(false) {}
+	line_reader() : _r(nullptr), _buf(), _data(), prev_b(0) {}
 
-	line_reader(reader_i r) : _r(std::move(r)), _1st_chr_is_cr(false) {}
+	line_reader(reader_i r) : _r(std::move(r)), prev_b(0) {}
 
-	std::string read_line(size_t buf_sz = 256) {
-		std::string r;
-		for (;;) {
+	optional<std::string> read_line(size_t buf_sz = 1024) {
+		if (_buf.size() != buf_sz) {
 			_buf.resize(buf_sz);
+		}
+		std::string ln;
+		for (;;) {
+			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(_data.size());
+				 ++i) {
+				if (_data[i] == byte{'\n'}) {
+					if (prev_b != byte{'\r'}) {
+						ln += as_string(_data(0, i));
+						prev_b = _data[i];
+						_data = _data(i + 1);
+						return ln;
+					}
+					prev_b = _data[i];
+					_data = _data(i + 1);
+					i = -1;
+				} else if (_buf[i] == byte{'\r'}) {
+					ln += as_string(_data(0, i));
+					prev_b = _data[i];
+					_data = _data(i + 1);
+					return ln;
+				} else {
+					prev_b = _data[i];
+				}
+			}
+			if (_data) {
+				ln += as_string(_data);
+				_data.reset();
+			}
+
 			auto sz = _r->read(_buf);
 			if (sz <= 0) {
-				_r = nullptr;
-				_1st_chr_is_cr = false;
-				r = static_cast<std::string>(_cache);
-				_cache.resize(0);
-				return r;
-			}
-			if (_1st_chr_is_cr) {
-				_1st_chr_is_cr = false;
-				if (_buf[0] == static_cast<byte>('\n')) {
-					_buf = _buf(1);
+				if (ln.length()) {
+					return ln;
 				}
+				return nullopt;
 			}
-			for (ptrdiff_t i = 0; i < sz; ++i) {
-				if (_buf[i] == static_cast<byte>('\r')) {
-					_cache += _buf(0, i);
-					if (i == sz - 1) {
-						_1st_chr_is_cr = true;
-						r = static_cast<std::string>(_cache);
-						_cache.resize(0);
-						return r;
-					}
-
-					auto end = i + 1;
-					if (_buf[i + 1] == static_cast<byte>('\n')) {
-						_1st_chr_is_cr = true;
-						end = i + 1;
-					} else {
-						end = i;
-					}
-
-					r = static_cast<std::string>(_cache);
-					_cache = _buf(end);
-					return r;
-
-				} else if (_buf[i] == static_cast<byte>('\n')) {
-					_cache += _buf(0, i);
-					r = static_cast<std::string>(_cache);
-					_cache.resize(0);
-					return r;
-				}
-			}
-			if (_buf) {
-				_cache += _buf(0, sz);
-			}
+			_data = _buf(0, sz);
 		}
-		return r;
+		return nullopt;
+	}
+
+	std::list<std::string> read_lines(size_t buf_sz = 1024) {
+		std::list<std::string> li;
+		for (;;) {
+			auto ln_opt = read_line(buf_sz);
+			if (!ln_opt) {
+				return li;
+			}
+			li.push_back(*ln_opt);
+		}
+		return li;
 	}
 
 	operator bool() const {
@@ -77,8 +81,7 @@ public:
 
 	void reset(reader_i r) {
 		_r = std::move(r);
-		_1st_chr_is_cr = false;
-		_cache = "";
+		prev_b = 0;
 	}
 
 	void reset() {
@@ -86,14 +89,15 @@ public:
 			return;
 		}
 		_r = nullptr;
-		_1st_chr_is_cr = false;
-		_cache = "";
+		prev_b = 0;
+		_buf.resize(0);
 	}
 
 private:
 	reader_i _r;
-	bool _1st_chr_is_cr;
-	bytes _buf, _cache;
+	bytes _buf;
+	bytes_ref _data;
+	byte prev_b;
 };
 
 } // namespace rua
