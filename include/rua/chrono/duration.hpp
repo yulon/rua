@@ -3,8 +3,8 @@
 
 #include "../bytes.hpp"
 #include "../macros.hpp"
+#include "../string/conv.hpp"
 #include "../string/len.hpp"
-#include "../string/to_string.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -335,8 +335,9 @@ public:
 	}
 
 	constexpr timespec c_timespec() const {
-		return {seconds<decltype(timespec::tv_sec)>(),
-				remaining_nanoseconds<decltype(timespec::tv_nsec)>()};
+		return {
+			seconds<decltype(timespec::tv_sec)>(),
+			remaining_nanoseconds<decltype(timespec::tv_nsec)>()};
 	}
 
 	constexpr bool operator==(duration target) const {

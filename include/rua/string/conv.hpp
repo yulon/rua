@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_TO_STRING_HPP
-#define _RUA_STRING_TO_STRING_HPP
+#ifndef _RUA_STRING_CONV_HPP
+#define _RUA_STRING_CONV_HPP
 
 #include "encoding/base.hpp"
 #include "view.hpp"
@@ -75,30 +75,28 @@ to_string(Bool val) {
 	return val ? true_c_str : false_c_str;
 }
 
-////////////////////////////////////////////////////////////////////////////
-
-inline string_view to_temp_string(string_view sv) {
-	return sv;
+template <typename... Args>
+constexpr inline enable_if_t<
+	std::is_constructible<string_view, Args &&...>::value,
+	string_view>
+as_string(Args &&... args) {
+	return string_view(std::forward<Args>(args)...);
 }
 
-template <typename T>
-inline enable_if_t<
-	!std::is_convertible<T, string_view>::value &&
-		!std::is_same<decltype(to_string(std::declval<T>())), const char *>::
-			value,
-	std::string>
-to_temp_string(T &&src) {
-	return to_string(std::forward<T>(src));
+template <typename... Args>
+constexpr inline enable_if_t<
+	std::is_constructible<string_view, Args &&...>::value,
+	string_view>
+to_temp_string(Args &&... args) {
+	return string_view(std::forward<Args>(args)...);
 }
 
-template <typename T>
+template <typename... Args>
 inline enable_if_t<
-	!std::is_convertible<T, string_view>::value &&
-		std::is_same<decltype(to_string(std::declval<T>())), const char *>::
-			value,
-	const char *>
-to_temp_string(T &&src) {
-	return to_string(std::forward<T>(src));
+	!std::is_constructible<string_view, Args &&...>::value,
+	decltype(to_string(std::declval<Args &&>()...))>
+to_temp_string(Args &&... args) {
+	return to_string(std::forward<Args>(args)...);
 }
 
 } // namespace rua

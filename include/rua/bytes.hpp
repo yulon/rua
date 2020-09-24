@@ -6,6 +6,7 @@
 #include "optional.hpp"
 #include "range.hpp"
 #include "span.hpp"
+#include "string/conv.hpp"
 #include "string/len.hpp"
 #include "string/view.hpp"
 #include "types/traits.hpp"
@@ -321,7 +322,7 @@ public:
 				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
-		return _p;
+		return _n;
 	}
 
 	const byte *data() const {
@@ -366,8 +367,11 @@ private:
 template <typename Span>
 inline bytes_view const_bytes_base<Span>::slice(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	assert(end_offset_from_begin > begin_offset);
+	assert(end_offset_from_begin >= begin_offset);
 
+	if (begin_offset == end_offset_from_begin) {
+		return nullptr;
+	}
 	return bytes_view(
 		_this()->data() + begin_offset,
 		static_cast<size_t>(end_offset_from_begin - begin_offset));
@@ -474,7 +478,7 @@ public:
 				sizeof(typename SpanTraits::element_type)) {}
 
 	constexpr operator bool() const {
-		return _p;
+		return _n;
 	}
 
 	byte *data() {
@@ -520,15 +524,26 @@ private:
 	size_t _n;
 };
 
-inline bytes_ref as_bytes_ref(bytes_view src) {
-	return bytes_ref(const_cast<byte *>(src.data()), src.size());
+inline bytes_ref as_writable_bytes(bytes_view bv) {
+	return bytes_ref(const_cast<byte *>(bv.data()), bv.size());
+}
+
+inline string_view as_string(bytes_view bv) {
+	return bv ? string_view(bv.data_generic(), bv.size()) : "";
+}
+
+inline std::string to_string(bytes_view bv) {
+	return bv ? std::string(bv.data_generic(), bv.size()) : "";
 }
 
 template <typename Span>
 inline bytes_view bytes_base<Span>::slice(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	assert(end_offset_from_begin > begin_offset);
+	assert(end_offset_from_begin >= begin_offset);
 
+	if (begin_offset == end_offset_from_begin) {
+		return nullptr;
+	}
 	return bytes_view(
 		_this()->data() + begin_offset,
 		static_cast<size_t>(end_offset_from_begin - begin_offset));
@@ -542,8 +557,11 @@ inline bytes_view bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
 template <typename Span>
 inline bytes_ref bytes_base<Span>::slice(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) {
-	assert(end_offset_from_begin > begin_offset);
+	assert(end_offset_from_begin >= begin_offset);
 
+	if (begin_offset == end_offset_from_begin) {
+		return nullptr;
+	}
 	return bytes_ref(
 		_this()->data() + begin_offset,
 		static_cast<size_t>(end_offset_from_begin - begin_offset));
