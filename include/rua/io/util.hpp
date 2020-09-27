@@ -74,19 +74,19 @@ private:
 	std::vector<writer_i> _li;
 };
 
-inline bool is_stack_data(bytes_view data) {
+inline bool _is_stack_data(bytes_view data) {
 	auto ptr = reinterpret_cast<uintptr_t>(data.data());
 	auto end = reinterpret_cast<uintptr_t>(&data);
 	auto begin = end - 2048;
 	return begin < ptr && ptr < end;
 }
 
-inline bytes make_stackless_data(bytes_view data) {
-	return is_stack_data(data) ? data : nullptr;
+inline bytes try_make_heap_data(bytes_view data) {
+	return _is_stack_data(data) ? data : nullptr;
 }
 
-inline bytes make_stackless_buffer(bytes_ref buf) {
-	return is_stack_data(buf) ? bytes(buf.size()) : nullptr;
+inline bytes try_make_heap_buffer(bytes_ref buf) {
+	return _is_stack_data(buf) ? bytes(buf.size()) : nullptr;
 }
 
 } // namespace rua

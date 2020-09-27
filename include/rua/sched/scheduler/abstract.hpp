@@ -87,6 +87,10 @@ public:
 		return wkr;
 	}
 
+	virtual bool is_own_stack() const {
+		return true;
+	}
+
 protected:
 	constexpr scheduler() = default;
 };

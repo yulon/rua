@@ -248,6 +248,10 @@ public:
 			return wkr;
 		}
 
+		virtual bool is_own_stack() const {
+			return false;
+		}
+
 		fiber_executor &get_executor() {
 			return *_fe;
 		}

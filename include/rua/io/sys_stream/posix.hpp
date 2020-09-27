@@ -66,28 +66,30 @@ public:
 		assert(*this);
 
 		auto sch = this_scheduler();
-		if (sch.type_is<rua::thread_scheduler>()) {
-			return _read(_fd, p);
+		if (!sch->is_own_stack()) {
+			auto buf = try_make_heap_buffer(p);
+			if (buf) {
+				auto sz = rua::wait(std::move(sch), _read, _fd, bytes_ref(buf));
+				if (sz > 0) {
+					p.copy_from(buf);
+				}
+				return sz;
+			}
 		}
-		auto buf = make_stackless_buffer(p);
-		auto sz =
-			rua::wait(std::move(sch), _read, _fd, buf ? bytes_ref(buf) : p);
-		if (sz > 0) {
-			p.copy_from(buf);
-		}
-		return sz;
+		return rua::wait(std::move(sch), _read, _fd, p);
 	}
 
 	virtual ptrdiff_t write(bytes_view p) {
 		assert(*this);
 
 		auto sch = this_scheduler();
-		if (sch.type_is<rua::thread_scheduler>()) {
-			return _write(_fd, p);
+		if (!sch->is_own_stack()) {
+			auto data = try_make_heap_data(p);
+			if (data) {
+				return rua::wait(std::move(sch), _write, _fd, bytes_view(data));
+			}
 		}
-		auto data = make_stackless_data(p);
-		return rua::wait(
-			std::move(sch), _write, _fd, data ? bytes_view(data) : p);
+		return rua::wait(std::move(sch), _write, _fd, p);
 	}
 
 	bool is_need_close() const {

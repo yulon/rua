@@ -22,6 +22,9 @@ inline enable_if_t<
 wait(scheduler_i sch, Callee &&callee, Args &&... args) {
 	assert(sch);
 
+	if (sch.type_is<thread_scheduler>()) {
+		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
+	}
 	auto ch = std::make_shared<chan<bool>>();
 	pa([=]() mutable {
 		callee(args...);
@@ -42,6 +45,9 @@ inline enable_if_t<
 wait(scheduler_i sch, Callee &&callee, Args &&... args) {
 	assert(sch);
 
+	if (sch.type_is<thread_scheduler>()) {
+		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
+	}
 	auto ch = std::make_shared<chan<Ret>>();
 	pa([=]() mutable { *ch << callee(args...); });
 	return ch->pop(std::move(sch));
@@ -59,12 +65,8 @@ template <
 		decltype(std::declval<Callee &&>()(std::declval<Args &&>()...))>
 inline enable_if_t<!std::is_function<remove_reference_t<Callee>>::value, Ret>
 wait(Callee &&callee, Args &&... args) {
-	auto sch = this_scheduler();
-	if (sch.type_is<thread_scheduler>()) {
-		return std::forward<Callee>(callee)(std::forward<Args>(args)...);
-	}
 	return wait(
-		std::move(sch),
+		this_scheduler(),
 		std::forward<Callee>(callee),
 		std::forward<Args>(args)...);
 }
