@@ -3,7 +3,7 @@
 
 #include "../io/sys_stream/win32.hpp"
 #include "../macros.hpp"
-#include "../string/encoding/stream/win32.hpp"
+#include "../string/char_enc/stream/win32.hpp"
 #include "../types/util.hpp"
 
 #include "windows.h"

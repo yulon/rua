@@ -29,7 +29,7 @@ public:
 		_s(str_join(
 			_fix_parts({to_string(std::forward<Parts>(parts))...}),
 			Sep,
-			RUA_DI(str_join_options, $.is_ignore_empty = true))) {}
+			RUA_DI(str_join_options, $.is_ignore_space = true))) {}
 
 	template <
 		typename PartList,
@@ -42,7 +42,7 @@ public:
 		_s(str_join(
 			_fix_part_list(std::forward<PartList>(part_list)),
 			Sep,
-			RUA_DI(str_join_options, $.is_ignore_empty = true))) {}
+			RUA_DI(str_join_options, $.is_ignore_space = true))) {}
 
 	explicit operator bool() const {
 		return _s.length();

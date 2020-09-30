@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_JOIN_HPP
 #define _RUA_STRING_JOIN_HPP
 
-#include "line/base.hpp"
+#include "char_set.hpp"
 #include "view.hpp"
 
 #include "../macros.hpp"
@@ -13,8 +13,7 @@
 namespace rua {
 
 struct str_join_options {
-	bool is_ignore_empty = false;
-	bool is_multi_line = false;
+	bool is_ignore_space = false;
 	size_t pre_reserved_size = 0;
 };
 
@@ -45,20 +44,22 @@ inline void str_join(
 	}
 
 	size_t len = 0;
-	bool bf_is_eol = true;
+	bool no_add_sep = true;
 	for (auto &str : strs) {
-		if (!str.size() && (opt.is_ignore_empty)) {
+		if (opt.is_ignore_space && is_space(str)) {
 			continue;
 		}
-		if (bf_is_eol) {
-			bf_is_eol = false;
+		if (is_control(str)) {
+			no_add_sep = true;
+			len += str.size();
+			continue;
+		}
+		if (no_add_sep) {
+			no_add_sep = false;
 		} else {
 			len += sep.size();
 		}
 		len += str.size();
-		if (opt.is_multi_line && is_eol(str)) {
-			bf_is_eol = true;
-		}
 	}
 
 	if (!len) {
@@ -66,20 +67,22 @@ inline void str_join(
 	}
 	buf.reserve(buf.size() + len + opt.pre_reserved_size);
 
-	bf_is_eol = true;
+	no_add_sep = true;
 	for (auto &str : strs) {
-		if (!str.size() && opt.is_ignore_empty) {
+		if (!str.size() && opt.is_ignore_space) {
 			continue;
 		}
-		if (bf_is_eol) {
-			bf_is_eol = false;
+		if (is_control(str)) {
+			no_add_sep = true;
+			buf += str;
+			continue;
+		}
+		if (no_add_sep) {
+			no_add_sep = false;
 		} else {
 			buf += sep;
 		}
 		buf += str;
-		if (opt.is_multi_line && is_eol(str)) {
-			bf_is_eol = true;
-		}
 	}
 	return;
 }

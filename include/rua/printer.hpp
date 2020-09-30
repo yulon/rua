@@ -34,11 +34,7 @@ public:
 		if (!_w) {
 			return;
 		}
-		str_join(
-			_buf,
-			{to_temp_string(args)...},
-			" ",
-			RUA_DI(str_join_options, $.is_multi_line = true));
+		str_join(_buf, {to_temp_string(args)...}, " ");
 		_w->write_all(_buf);
 		_buf.resize(0);
 	}

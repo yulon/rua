@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_ENCODING_BASE_WIN32_HPP
-#define _RUA_STRING_ENCODING_BASE_WIN32_HPP
+#ifndef _RUA_STRING_CHAR_ENC_BASE_WIN32_HPP
+#define _RUA_STRING_CHAR_ENC_BASE_WIN32_HPP
 
 #include "../../view.hpp"
 
@@ -13,7 +13,7 @@
 
 namespace rua { namespace win32 {
 
-namespace _string_encoding_base {
+namespace _string_char_enc_base {
 
 inline std::wstring mb_to_w(UINT mb_cp, string_view mb_str) {
 	if (mb_str.empty()) {
@@ -99,9 +99,9 @@ inline std::string u8_to_loc(string_view u8_str) {
 	return w_to_loc(u8_to_w(u8_str));
 }
 
-} // namespace _string_encoding_base
+} // namespace _string_char_enc_base
 
-using namespace _string_encoding_base;
+using namespace _string_char_enc_base;
 
 }} // namespace rua::win32
 

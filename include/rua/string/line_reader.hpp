@@ -1,12 +1,12 @@
-#ifndef _RUA_STRING_LINE_STREAM_HPP
-#define _RUA_STRING_LINE_STREAM_HPP
+#ifndef _RUA_STRING_LINE_READER_HPP
+#define _RUA_STRING_LINE_READER_HPP
 
-#include "base.hpp"
+#include "char_set.hpp"
 
-#include "../../bytes.hpp"
-#include "../../io.hpp"
-#include "../../optional.hpp"
-#include "../../types/util.hpp"
+#include "../bytes.hpp"
+#include "../io.hpp"
+#include "../optional.hpp"
+#include "../types/util.hpp"
 
 #include <list>
 #include <string>
@@ -77,11 +77,6 @@ public:
 
 	operator bool() const {
 		return _r;
-	}
-
-	void reset(reader_i r) {
-		_r = std::move(r);
-		prev_b = 0;
 	}
 
 	void reset() {

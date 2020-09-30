@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_ENCODING_BASE_UNI_HPP
-#define _RUA_STRING_ENCODING_BASE_UNI_HPP
+#ifndef _RUA_STRING_CHAR_ENC_BASE_UNI_HPP
+#define _RUA_STRING_CHAR_ENC_BASE_UNI_HPP
 
 #include "../../view.hpp"
 
@@ -7,7 +7,7 @@
 
 namespace rua { namespace uni {
 
-namespace _string_encoding_base {
+namespace _string_char_enc_base {
 
 inline std::string loc_to_u8(string_view str) {
 	return std::string(str.data(), str.size());
@@ -27,9 +27,9 @@ inline std::string w_to_u8(wstring_view) {
 	return "";
 }
 
-} // namespace _string_encoding_base
+} // namespace _string_char_enc_base
 
-using namespace _string_encoding_base;
+using namespace _string_char_enc_base;
 
 }} // namespace rua::uni
 

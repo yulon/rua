@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_ENCODING_BASE_HPP
-#define _RUA_STRING_ENCODING_BASE_HPP
+#ifndef _RUA_STRING_CHAR_ENC_BASE_HPP
+#define _RUA_STRING_CHAR_ENC_BASE_HPP
 
 #ifdef _WIN32
 
@@ -7,7 +7,7 @@
 
 namespace rua {
 
-using namespace win32::_string_encoding_base;
+using namespace win32::_string_char_enc_base;
 
 } // namespace rua
 
@@ -20,7 +20,7 @@ using namespace win32::_string_encoding_base;
 
 namespace rua {
 
-using namespace uni::_string_encoding_base;
+using namespace uni::_string_char_enc_base;
 
 } // namespace rua
 

@@ -5,7 +5,7 @@
 
 #include "../generic_ptr.hpp"
 #include "../macros.hpp"
-#include "../string/encoding/base/win32.hpp"
+#include "../string/char_enc/base/win32.hpp"
 #include "../string/view.hpp"
 
 #include <windows.h>

@@ -8,7 +8,7 @@
 #include "../macros.hpp"
 #include "../sched/wait/win32.hpp"
 #include "../stdio/win32.hpp"
-#include "../string/encoding/base/win32.hpp"
+#include "../string/char_enc/base/win32.hpp"
 #include "../string/view.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"

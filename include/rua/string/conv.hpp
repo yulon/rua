@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_CONV_HPP
 #define _RUA_STRING_CONV_HPP
 
-#include "encoding/base.hpp"
+#include "char_enc/base.hpp"
 #include "view.hpp"
 
 #include "../generic_ptr.hpp"
