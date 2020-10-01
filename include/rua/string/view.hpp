@@ -84,6 +84,10 @@ public:
 		return cbegin() + size();
 	}
 
+	constexpr basic_string_view substr(size_t pos, size_t len) const {
+		return basic_string_view(data() + pos, len);
+	}
+
 	static constexpr auto npos = static_cast<size_type>(-1);
 
 	RUA_CONSTEXPR_14 size_type
