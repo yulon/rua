@@ -314,7 +314,7 @@ inline file modify_file(const file_path &path, bool stat_only = false) {
 		nullptr);
 }
 
-inline file read_file(const file_path &path, bool stat_only = false) {
+inline file view_file(const file_path &path, bool stat_only = false) {
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(

@@ -192,7 +192,7 @@ inline file modify_file(const file_path &path, bool = false) {
 	return open(path.str().c_str(), O_RDWR);
 }
 
-inline file read_file(const file_path &path, bool = false) {
+inline file view_file(const file_path &path, bool = false) {
 	return open(path.str().c_str(), O_RDONLY);
 }
 
@@ -235,7 +235,7 @@ public:
 	}
 
 	dir_entry_stat stat() const {
-		return read_file(path()).stat();
+		return view_file(path()).stat();
 	}
 
 	uint64_t size() const {
