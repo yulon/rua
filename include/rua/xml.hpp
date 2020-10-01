@@ -3,6 +3,7 @@
 
 #include "interface_ptr.hpp"
 #include "string.hpp"
+#include "types/util.hpp"
 
 #include <list>
 #include <map>
@@ -17,7 +18,7 @@ using _xml_attribute_map = std::map<std::string, std::string>;
 
 using _xml_node_list = std::list<_xml_node_i>;
 
-inline _xml_node_list _xml_parse(string_view xml);
+inline _xml_node_list _parse_xml_nodes(string_view xml);
 
 class _xml_node {
 public:
@@ -25,7 +26,9 @@ public:
 
 	virtual ~_xml_node() {}
 
-	virtual string_view name() const = 0;
+	virtual string_view node_name() const {
+		return "#unknown";
+	}
 
 	virtual const _xml_attribute_map *attributes() const {
 		return nullptr;
@@ -60,207 +63,166 @@ public:
 	}
 };
 
-class _xml_unclosed_tag_node : public _xml_node {
+class _xml_container : public _xml_node {
 public:
-	_xml_unclosed_tag_node(std::string name) : _name(std::move(name)) {}
+	_xml_container() = default;
 
-	virtual ~_xml_unclosed_tag_node() {}
+	virtual ~_xml_container() {}
 
-	virtual string_view name() const {
+	virtual _xml_node_list *child_nodes() {
+		return &_cns;
+	}
+
+	virtual const _xml_node_list *child_nodes() const {
+		return &_cns;
+	}
+
+	virtual std::string get_inner_text() const {
+		std::string text;
+		for (auto &node : _cns) {
+			text += node->get_inner_text();
+		}
+		return text;
+	}
+
+	virtual void set_inner_text(std::string) {}
+
+	virtual std::string get_inner_xml(bool xml_style) const {
+		std::string xml;
+		for (auto &node : _cns) {
+			xml += node->get_outer_xml(xml_style);
+		}
+		return xml;
+	}
+
+	virtual void set_inner_xml(string_view xml) {
+		_cns = _parse_xml_nodes(xml);
+	}
+
+private:
+	_xml_node_list _cns;
+};
+
+class _xml_element : public _xml_container {
+public:
+	_xml_element(std::string node_name) : _name(std::move(node_name)) {}
+
+	virtual ~_xml_element() {}
+
+	virtual string_view node_name() const {
 		return _name;
 	}
 
 	virtual _xml_attribute_map *attributes() {
-		return &_attributes;
+		return &_attrs;
 	}
 
 	virtual const _xml_attribute_map *attributes() const {
-		return &_attributes;
+		return &_attrs;
 	}
 
-	virtual std::string get_outer_xml(bool slash_in_unclosed_tag) const {
-		if (_attributes.size()) {
-			std::string r = str_join({"<", _name});
-			for (auto &attr : _attributes) {
-				r += str_join({" ", attr.first});
-				if (attr.second.length()) {
-					r += str_join({"=\"", attr.second, "\""});
-				}
+	virtual std::string get_outer_xml(bool xml_style) const {
+		std::string attrs_str;
+		for (auto &attr : _attrs) {
+			attrs_str += str_join({" ", attr.first});
+			if (attr.second.length() || xml_style) {
+				attrs_str += str_join({"=\"", attr.second, "\""});
 			}
-			if (slash_in_unclosed_tag) {
-				r += '/';
-			}
-			r += '>';
-			return r;
 		}
-		if (slash_in_unclosed_tag) {
-			return str_join({"<", _name, "/>"});
+		if (child_nodes()->empty() && xml_style) {
+			return str_join({"<", _name, attrs_str, " />"});
 		}
-		return str_join({"<", _name, ">"});
-	}
-
-private:
-	std::string _name;
-	std::map<std::string, std::string> _attributes;
-};
-
-class _xml_tag_node : public _xml_unclosed_tag_node {
-public:
-	_xml_tag_node(std::string name) : _xml_unclosed_tag_node(std::move(name)) {}
-
-	virtual ~_xml_tag_node() {}
-
-	virtual _xml_node_list *child_nodes() {
-		return &_child_nodes;
-	}
-
-	virtual const _xml_node_list *child_nodes() const {
-		return &_child_nodes;
-	}
-
-	virtual std::string get_inner_text() const {
-		std::string text;
-		for (auto &node : _child_nodes) {
-			text += node->get_inner_text();
-		}
-		return text;
-	}
-
-	virtual void set_inner_text(std::string) {}
-
-	virtual std::string get_inner_xml(bool slash_in_unclosed_tag) const {
-		std::string xml;
-		for (auto &node : _child_nodes) {
-			xml += node->get_outer_xml(slash_in_unclosed_tag);
-		}
-		return xml;
-	}
-
-	virtual void set_inner_xml(string_view xml) {
-		_child_nodes = _xml_parse(xml);
-	}
-
-	virtual std::string get_outer_xml(bool slash_in_unclosed_tag) const {
 		return str_join(
-			{_xml_unclosed_tag_node::get_outer_xml(false),
-			 get_inner_xml(slash_in_unclosed_tag),
+			{"<",
+			 _name,
+			 attrs_str,
+			 ">",
+			 get_inner_xml(xml_style),
 			 "</",
-			 name(),
+			 node_name(),
 			 ">"});
 	}
 
 private:
-	_xml_node_list _child_nodes;
+	std::string _name;
+	std::map<std::string, std::string> _attrs;
 };
 
-class _xml_document_node : public _xml_node {
+class _xml_document : public _xml_container {
 public:
-	_xml_document_node() = default;
+	_xml_document() = default;
 
-	virtual ~_xml_document_node() {}
+	virtual ~_xml_document() {}
 
-	virtual string_view name() const {
+	virtual string_view node_name() const {
 		return "#document";
 	}
 
-	virtual _xml_node_list *child_nodes() {
-		return &_child_nodes;
+	virtual std::string get_outer_xml(bool xml_style) const {
+		return get_inner_xml(xml_style);
 	}
-
-	virtual const _xml_node_list *child_nodes() const {
-		return &_child_nodes;
-	}
-
-	virtual std::string get_inner_text() const {
-		std::string text;
-		for (auto &node : _child_nodes) {
-			text += node->get_inner_text();
-		}
-		return text;
-	}
-
-	virtual void set_inner_text(std::string) {}
-
-	virtual std::string get_inner_xml(bool slash_in_unclosed_tag) const {
-		std::string xml;
-		for (auto &node : _child_nodes) {
-			xml += node->get_outer_xml(slash_in_unclosed_tag);
-		}
-		return xml;
-	}
-
-	virtual void set_inner_xml(string_view xml) {
-		_child_nodes = _xml_parse(xml);
-	}
-
-	virtual std::string get_outer_xml(bool slash_in_unclosed_tag) const {
-		return get_inner_xml(slash_in_unclosed_tag);
-	}
-
-private:
-	_xml_node_list _child_nodes;
 };
 
-class _xml_text_node : public _xml_node {
+class _xml_text : public _xml_node {
 public:
-	_xml_text_node(std::string content) : _content(std::move(content)) {}
+	_xml_text(std::string content) : _cont(std::move(content)) {}
 
-	virtual ~_xml_text_node() {}
+	virtual ~_xml_text() {}
 
-	virtual string_view name() const {
+	virtual string_view node_name() const {
 		return "#text";
 	}
 
 	virtual std::string get_inner_text() const {
-		return _content;
+		return _cont;
 	}
 
 	virtual void set_inner_text(std::string content) {
-		_content = std::move(content);
+		_cont = std::move(content);
 	}
 
 	virtual std::string get_inner_xml(bool) const {
-		return _content;
+		return _cont;
 	}
 
 	virtual std::string get_outer_xml(bool) const {
-		return _content;
+		return _cont;
 	}
 
 private:
-	std::string _content;
+	std::string _cont;
 };
 
-bool _xml_skip_space(string_view sv, size_t &i) {
-	while (is_space(sv[i])) {
-		++i;
-		if (i >= sv.length()) {
-			return false;
-		}
-	};
-	return true;
-}
+enum class _xml_tag_status : uchar { closed = 0, opening = 1, closing = 2 };
 
-inline _xml_node_list _xml_parse(string_view xml) {
+inline _xml_node_list _parse_xml_nodes(string_view xml) {
 	_xml_node_list nodes;
+	std::list<_xml_node_list::iterator> uncloseds;
 
 	for (size_t i = 0; i < xml.length();) {
 		if (xml[i] == '<') {
 			++i;
 
-			if (!_xml_skip_space(xml, i)) {
+			if (!skip_space(xml, i)) {
 				return nodes;
 			}
 
-			bool is_positive = true;
+			_xml_tag_status status;
+
 			switch (xml[i]) {
+
 			case '/':
-				is_positive = false;
-				RUA_FALLTHROUGH;
-			case '?':
+				status = _xml_tag_status::closing;
 				++i;
 				break;
+
+			case '?':
+				status = _xml_tag_status::closed;
+				++i;
+				break;
+
 			case '!':
+				status = _xml_tag_status::closed;
 				++i;
 				if (xml.length() - i >= c_str_len("---->") &&
 					string_view(&xml[i], 2) == "--") {
@@ -272,28 +234,43 @@ inline _xml_node_list _xml_parse(string_view xml) {
 					} while (string_view(&xml[i], 3) != "-->");
 					continue;
 				}
+				break;
+
+			default:
+				status = _xml_tag_status::opening;
 			}
 
-			if (!_xml_skip_space(xml, i)) {
+			if (!skip_space(xml, i)) {
 				return nodes;
 			}
 
-			auto name_start = i;
+			auto node_name_start = i;
 			do {
 				++i;
 				if (i >= xml.length()) {
 					return nodes;
 				}
-			} while (!is_space(xml[i]) && xml[i] != '>');
+			} while (!is_space(xml[i]) && xml[i] != '>' && xml[i] != '/' &&
+					 xml[i] != '?');
 
-			auto name = to_string(xml.substr(name_start, i - name_start));
+			auto node_name =
+				to_string(xml.substr(node_name_start, i - node_name_start));
 
-			if (is_positive) {
+			if (status < _xml_tag_status::closing) {
 				auto node =
-					std::make_shared<_xml_unclosed_tag_node>(std::move(name));
+					std::make_shared<_xml_element>(std::move(node_name));
 
 				for (;;) {
-					if (!_xml_skip_space(xml, i)) {
+					if (!skip_space(xml, i)) {
+						return nodes;
+					}
+
+					if (xml[i] == '/' || xml[i] == '?') {
+						status = _xml_tag_status::closed;
+						++i;
+					}
+
+					if (!skip_space(xml, i)) {
 						return nodes;
 					}
 
@@ -309,12 +286,12 @@ inline _xml_node_list _xml_parse(string_view xml) {
 							return nodes;
 						}
 					} while (!is_space(xml[i]) && xml[i] != '=' &&
-							 xml[i] != '>');
+							 xml[i] != '>' && xml[i] != '/' && xml[i] != '?');
 
 					auto attr_name = to_string(
 						xml.substr(attr_name_start, i - attr_name_start));
 
-					if (!_xml_skip_space(xml, i)) {
+					if (!skip_space(xml, i)) {
 						return nodes;
 					}
 
@@ -348,6 +325,11 @@ inline _xml_node_list _xml_parse(string_view xml) {
 				}
 
 				nodes.emplace_back(std::move(node));
+
+				if (status == _xml_tag_status::opening) {
+					uncloseds.emplace_front(--nodes.end());
+				}
+
 				continue;
 			}
 
@@ -359,24 +341,17 @@ inline _xml_node_list _xml_parse(string_view xml) {
 			}
 			++i;
 
-			// bool found = false;
-			for (auto rit = --nodes.end(); rit != --nodes.begin(); --rit) {
-				if (!rit->type_is<_xml_unclosed_tag_node>() ||
-					rit->as<_xml_unclosed_tag_node>()->name() != name) {
+			for (auto itit = uncloseds.begin(); itit != uncloseds.end();
+				 ++itit) {
+				if (!(*itit)->type_is<_xml_element>() ||
+					(*(*itit))->node_name() != node_name) {
 					continue;
 				}
-				auto closed_tag = std::make_shared<_xml_tag_node>(name);
-				*closed_tag->attributes() = std::move(*((*rit)->attributes()));
-				(*rit) = closed_tag;
-				while (--nodes.end() != rit) {
-					closed_tag->child_nodes()->emplace_front(
-						std::move(nodes.back()));
-					nodes.pop_back();
-				}
-				// found = true;
+				auto it = (*itit);
+				auto cns = (*it)->child_nodes();
+				cns->splice(cns->end(), nodes, ++it, nodes.end());
 				break;
 			}
-			// assert(found);
 			continue;
 		}
 
@@ -385,12 +360,21 @@ inline _xml_node_list _xml_parse(string_view xml) {
 			++i;
 		} while (i < xml.length() && xml[i] != '<');
 
-		nodes.emplace_back(std::make_shared<_xml_text_node>(
+		auto text = xml.substr(text_start, i - text_start);
+		if (is_space(text)) {
+			continue;
+		}
+
+		nodes.emplace_back(std::make_shared<_xml_text>(
 			to_string(xml.substr(text_start, i - text_start))));
 	}
 
 	return nodes;
 }
+
+class xml_node;
+
+using xml_node_list = std::list<xml_node>;
 
 class xml_node {
 public:
@@ -398,10 +382,10 @@ public:
 		return _n;
 	}
 
-	string_view name() const {
+	string_view node_name() const {
 		assert(_n);
 
-		return _n->name();
+		return _n->node_name();
 	}
 
 	string_view get_attribute(const std::string &name) const {
@@ -439,7 +423,7 @@ public:
 			return true;
 		}
 		for (auto it = cns->begin(); it != cns->end();) {
-			if (skip_text && it->type_is<_xml_text_node>()) {
+			if (skip_text && it->type_is<_xml_text>()) {
 				++it;
 				continue;
 			}
@@ -455,15 +439,15 @@ public:
 		return true;
 	}
 
-	std::list<xml_node>
+	xml_node_list
 	query_all(string_view selector, size_t max_count = nmax<size_t>()) const {
 		assert(_n);
 
-		std::list<xml_node> li;
+		xml_node_list li;
 
 		each(
 			[selector, &li, max_count](xml_node n) -> bool {
-				if (n.name() != selector) {
+				if (n.node_name() != selector) {
 					return true;
 				}
 				li.push_back(std::move(n));
@@ -506,13 +490,13 @@ public:
 	}
 
 	void set_outer_text(std::string text) {
-		_n = std::make_shared<_xml_text_node>(std::move(text));
+		_n = std::make_shared<_xml_text>(std::move(text));
 	}
 
-	std::string get_inner_xml(bool slash_in_unclosed_tag = true) const {
+	std::string get_inner_xml(bool xml_style = true) const {
 		assert(_n);
 
-		return _n->get_inner_xml(slash_in_unclosed_tag);
+		return _n->get_inner_xml(xml_style);
 	}
 
 	void set_inner_xml(string_view xml) {
@@ -521,14 +505,14 @@ public:
 		_n->set_inner_xml(xml);
 	}
 
-	std::string get_outer_xml(bool slash_in_unclosed_tag = true) const {
+	std::string get_outer_xml(bool xml_style = true) const {
 		assert(_n);
 
-		return _n->get_outer_xml(slash_in_unclosed_tag);
+		return _n->get_outer_xml(xml_style);
 	}
 
 	void set_outer_xml(string_view xml) {
-		auto nodes = _xml_parse(xml);
+		auto nodes = _parse_xml_nodes(xml);
 		if (nodes.empty()) {
 			return;
 		}
@@ -542,13 +526,42 @@ private:
 
 	xml_node(_xml_node_i n) : _n(std::move(n)){};
 
-	friend inline xml_node xml_parse(string_view);
+	friend inline xml_node make_xml_unknown();
+
+	friend inline xml_node make_xml_element(std::string node_name);
+
+	friend inline xml_node make_xml_text(std::string content);
+
+	friend inline xml_node make_xml_document();
 };
 
-inline xml_node xml_parse(string_view xml) {
-	xml_node doc(std::make_shared<_xml_document_node>());
+inline xml_node make_xml_unknown() {
+	static _xml_document inst;
+	return xml_node(&inst);
+}
+
+inline xml_node make_xml_element(std::string node_name) {
+	return xml_node(std::make_shared<_xml_element>(std::move(node_name)));
+}
+
+inline xml_node make_xml_text(std::string content) {
+	return xml_node(std::make_shared<_xml_text>(std::move(content)));
+}
+
+inline xml_node make_xml_document() {
+	return xml_node(std::make_shared<_xml_document>());
+}
+
+inline xml_node parse_xml_document(string_view xml) {
+	auto doc = make_xml_document();
 	doc.set_inner_xml(xml);
 	return doc;
+}
+
+inline xml_node parse_xml_node(string_view xml) {
+	auto n = make_xml_unknown();
+	n.set_outer_xml(xml);
+	return n;
 }
 
 } // namespace rua
