@@ -27,7 +27,11 @@ public:
 	RUA_PATH_CTORS(file_path)
 
 	bool is_dir() const {
-		return false;
+		struct stat st;
+		if (stat(str().c_str(), &st) != 0) {
+			return false;
+		}
+		return S_ISDIR(st.st_mode);
 	}
 
 	file_path absolute() const & {
@@ -180,11 +184,30 @@ public:
 
 namespace _make_file {
 
+inline bool make_dir(const file_path &path, mode_t mode = 0777) {
+	if (!path) {
+		return false;
+	}
+	if (path.is_dir()) {
+		return true;
+	}
+	if (!make_dir(path.rm_back(), mode)) {
+		return false;
+	}
+	return mkdir(path.str().c_str(), mode) == 0;
+}
+
 inline file make_file(const file_path &path) {
+	if (!make_dir(path.rm_back())) {
+		return nullptr;
+	}
 	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
 }
 
 inline file modify_or_make_file(const file_path &path) {
+	if (!make_dir(path.rm_back())) {
+		return nullptr;
+	}
 	return open(path.str().c_str(), O_CREAT | O_RDWR);
 }
 

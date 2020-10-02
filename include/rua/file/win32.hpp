@@ -25,8 +25,10 @@ public:
 	RUA_PATH_CTORS(file_path)
 
 	bool is_dir() const {
-		return GetFileAttributesW(u8_to_w(str()).c_str()) &
-			   FILE_ATTRIBUTE_DIRECTORY;
+		auto path_w = u8_to_w("\\\\?\\" + absolute().str());
+
+		auto fa = GetFileAttributesW(path_w.c_str());
+		return fa == nmax<DWORD>() ? false : fa & FILE_ATTRIBUTE_DIRECTORY;
 	}
 
 	file_path absolute() const & {
@@ -106,8 +108,7 @@ inline bool work_at(const file_path &path) {
 #else
 	return
 #endif
-		SetCurrentDirectoryW(
-			u8_to_w("\\\\?\\" + std::move(path).absolute().str()).c_str());
+		SetCurrentDirectoryW(u8_to_w(std::move(path).absolute().str()).c_str());
 #ifndef NDEBUG
 	assert(r);
 	return r;
@@ -274,7 +275,27 @@ public:
 
 namespace _make_file {
 
+inline bool make_dir(const file_path &path) {
+	auto path_w = u8_to_w("\\\\?\\" + path.absolute().str());
+	if (path_w.empty()) {
+		return false;
+	}
+
+	auto fa = GetFileAttributesW(path_w.c_str());
+	if (fa != nmax<DWORD>() && fa & FILE_ATTRIBUTE_DIRECTORY) {
+		return true;
+	}
+	if (!make_dir(path.rm_back())) {
+		return false;
+	}
+	return CreateDirectoryW(path_w.c_str(), nullptr);
+}
+
 inline file make_file(const file_path &path) {
+	if (!make_dir(path.rm_back())) {
+		return nullptr;
+	}
+
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
@@ -288,6 +309,10 @@ inline file make_file(const file_path &path) {
 }
 
 inline file modify_or_make_file(const file_path &path) {
+	if (!make_dir(path.rm_back())) {
+		return nullptr;
+	}
+
 	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
 
 	return CreateFileW(
