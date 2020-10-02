@@ -77,7 +77,7 @@ public:
 
 	std::string back() const {
 		auto pos = _s.find_last_of(Sep);
-		return pos != std::string::npos ? _s.substr(pos, _s.length()) : _s;
+		return pos != std::string::npos ? _s.substr(pos + 1) : _s;
 	}
 
 	Path rm_back() const {
