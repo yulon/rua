@@ -26,32 +26,34 @@ class file_path : public path_base<file_path> {
 public:
 	RUA_PATH_CTORS(file_path)
 
-	bool is_dir() const {
+	bool is_exist() const {
 		struct stat st;
-		if (stat(str().c_str(), &st) != 0) {
-			return false;
-		}
-		return S_ISDIR(st.st_mode);
+		return stat(str().c_str(), &st) == 0;
 	}
 
-	file_path absolute() const & {
+	bool is_dir() const {
+		struct stat st;
+		return stat(str().c_str(), &st) == 0 ? S_ISDIR(st.st_mode) : false;
+	}
+
+	file_path abs() const & {
 		const auto &s = str();
 		if (s.size() > 0 && s[0] == '/') {
 			return *this;
 		}
-		return _absolute(s);
+		return _abs(s);
 	}
 
-	file_path absolute() && {
+	file_path abs() && {
 		const auto &s = str();
 		if (s.size() > 0 && s[0] == '/') {
 			return std::move(*this);
 		}
-		return _absolute(s);
+		return _abs(s);
 	}
 
 private:
-	static file_path _absolute(const std::string &str) {
+	static file_path _abs(const std::string &str) {
 		auto c_str = realpath(str.c_str(), nullptr);
 		file_path r(c_str);
 		::free(c_str);
@@ -85,13 +87,13 @@ inline bool work_at(const file_path &path) {
 
 using namespace _wkdir;
 
-class file_stat {
+class file_info {
 public:
 	using native_data_t = struct stat;
 
 	////////////////////////////////////////////////////////////////////////
 
-	file_stat() = default;
+	file_info() = default;
 
 	native_data_t &native_data() {
 		return _data;
@@ -138,8 +140,8 @@ public:
 	file(native_handle_t fd, bool need_close = true) :
 		sys_stream(fd, need_close) {}
 
-	file_stat stat() const {
-		file_stat r;
+	file_info info() const {
+		file_info r;
 		if (!fstat(native_handle(), &r.native_data())) {
 			return r;
 		}
@@ -148,11 +150,11 @@ public:
 	}
 
 	bool is_dir() const {
-		return stat().is_dir();
+		return info().is_dir();
 	}
 
 	uint64_t size() const {
-		return stat().size();
+		return info().size();
 	}
 
 	bytes read_all() {
@@ -166,7 +168,7 @@ public:
 	}
 
 	file_times times(int8_t zone = local_time_zone()) const {
-		return stat().times(zone);
+		return info().times(zone);
 	}
 
 	time modified_time(int8_t zone = local_time_zone()) const {
@@ -223,7 +225,7 @@ inline file view_file(const file_path &path, bool = false) {
 
 using namespace _make_file;
 
-using dir_entry_stat = file_stat;
+using dir_entry_info = file_info;
 
 class dir_entry {
 public:
@@ -257,53 +259,58 @@ public:
 		return _data->d_type == DT_DIR;
 	}
 
-	dir_entry_stat stat() const {
-		return view_file(path()).stat();
+	dir_entry_info info() const {
+		dir_entry_info r;
+		if (!stat(path().str().c_str(), &r.native_data())) {
+			return r;
+		}
+		memset(&r, 0, sizeof(r));
+		return r;
 	}
 
 	uint64_t size() const {
-		return stat().size();
+		return info().size();
 	}
 
 	file_times times(int8_t zone = local_time_zone()) const {
-		return stat().times(zone);
+		return info().times(zone);
 	}
 
 	time modified_time(int8_t zone = local_time_zone()) const {
-		return stat().modified_time(zone);
+		return info().modified_time(zone);
 	}
 
 	time creation_time(int8_t zone = local_time_zone()) const {
-		return stat().creation_time(zone);
+		return info().creation_time(zone);
 	}
 
 	time access_time(int8_t zone = local_time_zone()) const {
-		return stat().access_time(zone);
+		return info().access_time(zone);
 	}
 
 private:
 	struct dirent *_data;
 	std::string _dir_path, _dir_rel_path;
 
-	friend class dir_iterator;
+	friend class view_dir;
 };
 
-class dir_iterator : private wandering_iterator {
+class view_dir : private wandering_iterator {
 public:
 	using native_handle_t = DIR *;
 
 	////////////////////////////////////////////////////////////////////////
 
-	dir_iterator() : _dir(nullptr) {}
+	view_dir() : _dir(nullptr) {}
 
-	dir_iterator(const file_path &path, size_t depth = 1) :
+	view_dir(const file_path &path, size_t depth = 1) :
 		_dir(opendir(path.str().c_str())), _dep(depth), _parent(nullptr) {
 
 		if (!_dir) {
 			return;
 		}
 
-		_entry._dir_path = std::move(path).absolute().str();
+		_entry._dir_path = std::move(path).abs().str();
 
 		if (_next()) {
 			return;
@@ -313,7 +320,7 @@ public:
 		_dir = nullptr;
 	}
 
-	~dir_iterator() {
+	~view_dir() {
 		if (!_dir) {
 			return;
 		}
@@ -324,7 +331,7 @@ public:
 		}
 	}
 
-	dir_iterator(dir_iterator &&src) :
+	view_dir(view_dir &&src) :
 		_dir(src._dir),
 		_entry(std::move(src._entry)),
 		_dep(src._dep),
@@ -334,11 +341,11 @@ public:
 		}
 	}
 
-	dir_iterator(dir_iterator &src) : dir_iterator(std::move(src)) {}
+	view_dir(view_dir &src) : view_dir(std::move(src)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(dir_iterator)
+	RUA_OVERLOAD_ASSIGNMENT_R(view_dir)
 
-	dir_iterator &operator=(dir_iterator &src) {
+	view_dir &operator=(view_dir &src) {
 		return *this = std::move(src);
 	}
 
@@ -358,14 +365,14 @@ public:
 		return &_entry;
 	}
 
-	dir_iterator &operator++() {
+	view_dir &operator++() {
 		assert(_dir);
 
 		if ((_dep > 1 || !_dep) && _entry.is_dir()) {
-			dir_iterator sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
+			view_dir sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
 			if (sub) {
 				sub._entry._dir_rel_path = _entry.relative_path().str();
-				sub._parent = new dir_iterator(std::move(*this));
+				sub._parent = new view_dir(std::move(*this));
 				return *this = std::move(sub);
 			}
 		}
@@ -394,7 +401,7 @@ private:
 	DIR *_dir;
 	dir_entry _entry;
 	size_t _dep;
-	dir_iterator *_parent;
+	view_dir *_parent;
 
 	static bool _is_dots(const char *c_str) {
 		for (; *c_str; ++c_str) {

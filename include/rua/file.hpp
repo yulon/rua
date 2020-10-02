@@ -11,13 +11,13 @@ namespace rua {
 
 using file_path = win32::file_path;
 using namespace win32::_wkdir;
-using file_stat = win32::file_stat;
+using file_info = win32::file_info;
 using file = win32::file;
 using namespace win32::_make_file;
 
-using dir_entry_stat = win32::dir_entry_stat;
+using dir_entry_info = win32::dir_entry_info;
 using dir_entry = win32::dir_entry;
-using dir_iterator = win32::dir_iterator;
+using view_dir = win32::view_dir;
 
 } // namespace rua
 
@@ -29,13 +29,13 @@ namespace rua {
 
 using file_path = posix::file_path;
 using namespace posix::_wkdir;
-using file_stat = posix::file_stat;
+using file_info = posix::file_info;
 using file = posix::file;
 using namespace posix::_make_file;
 
-using dir_entry_stat = posix::dir_entry_stat;
+using dir_entry_info = posix::dir_entry_info;
 using dir_entry = posix::dir_entry;
-using dir_iterator = posix::dir_iterator;
+using view_dir = posix::view_dir;
 
 } // namespace rua
 

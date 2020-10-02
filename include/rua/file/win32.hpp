@@ -24,14 +24,21 @@ class file_path : public path_base<file_path, '\\'> {
 public:
 	RUA_PATH_CTORS(file_path)
 
-	bool is_dir() const {
-		auto path_w = u8_to_w("\\\\?\\" + absolute().str());
+	bool is_exist() const {
+		auto path_w = u8_to_w("\\\\?\\" + abs().str());
 
-		auto fa = GetFileAttributesW(path_w.c_str());
-		return fa == nmax<DWORD>() ? false : fa & FILE_ATTRIBUTE_DIRECTORY;
+		return GetFileAttributesW(path_w.c_str()) != INVALID_FILE_ATTRIBUTES;
 	}
 
-	file_path absolute() const & {
+	bool is_dir() const {
+		auto path_w = u8_to_w("\\\\?\\" + abs().str());
+
+		auto fa = GetFileAttributesW(path_w.c_str());
+		return fa != INVALID_FILE_ATTRIBUTES ? fa & FILE_ATTRIBUTE_DIRECTORY
+											 : false;
+	}
+
+	file_path abs() const & {
 		const auto &s = str();
 		if (s.size() > 1) {
 			switch (s[1]) {
@@ -48,10 +55,10 @@ public:
 		if (!abs_w_len) {
 			return *this;
 		}
-		return _absolute(rel_w.c_str(), abs_w_len);
+		return _abs(rel_w.c_str(), abs_w_len);
 	}
 
-	file_path absolute() && {
+	file_path abs() && {
 		const auto &s = str();
 		if (s.size() > 1) {
 			switch (s[1]) {
@@ -68,11 +75,11 @@ public:
 		if (!abs_w_len) {
 			return std::move(*this);
 		}
-		return _absolute(rel_w.c_str(), abs_w_len);
+		return _abs(rel_w.c_str(), abs_w_len);
 	}
 
 private:
-	static std::string _absolute(const WCHAR *rel_c_wstr, size_t abs_w_len) {
+	static std::string _abs(const WCHAR *rel_c_wstr, size_t abs_w_len) {
 		auto buf_sz = abs_w_len + 1;
 		auto abs_c_wstr = new WCHAR[buf_sz];
 
@@ -108,7 +115,7 @@ inline bool work_at(const file_path &path) {
 #else
 	return
 #endif
-		SetCurrentDirectoryW(u8_to_w(std::move(path).absolute().str()).c_str());
+		SetCurrentDirectoryW(u8_to_w(std::move(path).abs().str()).c_str());
 #ifndef NDEBUG
 	assert(r);
 	return r;
@@ -120,13 +127,13 @@ inline bool work_at(const file_path &path) {
 using namespace _wkdir;
 
 template <typename T>
-class basic_file_stat {
+class basic_file_info {
 public:
 	using native_data_t = T;
 
 	////////////////////////////////////////////////////////////////////////
 
-	basic_file_stat() = default;
+	basic_file_info() = default;
 
 	native_data_t &native_data() {
 		return _data;
@@ -165,7 +172,7 @@ private:
 	T _data;
 };
 
-using file_stat = basic_file_stat<BY_HANDLE_FILE_INFORMATION>;
+using file_info = basic_file_info<BY_HANDLE_FILE_INFORMATION>;
 
 class file : public sys_stream {
 public:
@@ -176,8 +183,8 @@ public:
 	file(native_handle_t h, bool need_close = true) :
 		sys_stream(h, need_close) {}
 
-	file_stat stat() const {
-		file_stat r;
+	file_info info() const {
+		file_info r;
 		if (GetFileInformationByHandle(native_handle(), &r.native_data())) {
 			return r;
 		}
@@ -186,7 +193,7 @@ public:
 	}
 
 	bool is_dir() const {
-		return stat().is_dir();
+		return info().is_dir();
 	}
 
 	uint64_t size() const {
@@ -276,13 +283,13 @@ public:
 namespace _make_file {
 
 inline bool make_dir(const file_path &path) {
-	auto path_w = u8_to_w("\\\\?\\" + path.absolute().str());
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 	if (path_w.empty()) {
 		return false;
 	}
 
 	auto fa = GetFileAttributesW(path_w.c_str());
-	if (fa != nmax<DWORD>() && fa & FILE_ATTRIBUTE_DIRECTORY) {
+	if (fa != INVALID_FILE_ATTRIBUTES && fa & FILE_ATTRIBUTE_DIRECTORY) {
 		return true;
 	}
 	if (!make_dir(path.rm_back())) {
@@ -296,7 +303,7 @@ inline file make_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
+	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -313,7 +320,7 @@ inline file modify_or_make_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
+	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -326,7 +333,7 @@ inline file modify_or_make_file(const file_path &path) {
 }
 
 inline file modify_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
+	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -340,7 +347,7 @@ inline file modify_file(const file_path &path, bool stat_only = false) {
 }
 
 inline file view_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).absolute().str());
+	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -356,9 +363,9 @@ inline file view_file(const file_path &path, bool stat_only = false) {
 
 using namespace _make_file;
 
-using dir_entry_stat = basic_file_stat<WIN32_FIND_DATAW>;
+using dir_entry_info = basic_file_info<WIN32_FIND_DATAW>;
 
-class dir_entry : public dir_entry_stat {
+class dir_entry : public dir_entry_info {
 public:
 	dir_entry() = default;
 
@@ -374,28 +381,28 @@ public:
 		return {_dir_rel_path, name()};
 	}
 
-	const dir_entry_stat &stat() const {
-		return *static_cast<const dir_entry_stat *>(this);
+	const dir_entry_info &info() const {
+		return *static_cast<const dir_entry_info *>(this);
 	}
 
 private:
 	std::string _dir_path, _dir_rel_path;
 
-	friend class dir_iterator;
+	friend class view_dir;
 };
 
-class dir_iterator : private wandering_iterator {
+class view_dir : private wandering_iterator {
 public:
 	using native_handle_t = HANDLE;
 
 	////////////////////////////////////////////////////////////////////////
 
-	dir_iterator() : _h(INVALID_HANDLE_VALUE) {}
+	view_dir() : _h(INVALID_HANDLE_VALUE) {}
 
-	dir_iterator(const file_path &path, size_t depth = 1) :
+	view_dir(const file_path &path, size_t depth = 1) :
 		_entry(), _dep(depth), _parent(nullptr) {
 
-		_entry._dir_path = std::move(path).absolute().str();
+		_entry._dir_path = std::move(path).abs().str();
 
 		auto find_path = u8_to_w("\\\\?\\" + _entry._dir_path + "\\*");
 
@@ -413,7 +420,7 @@ public:
 		}
 	}
 
-	~dir_iterator() {
+	~view_dir() {
 		if (!*this) {
 			return;
 		}
@@ -424,7 +431,7 @@ public:
 		}
 	}
 
-	dir_iterator(dir_iterator &&src) :
+	view_dir(view_dir &&src) :
 		_h(src._h),
 		_entry(std::move(src._entry)),
 		_dep(src._dep),
@@ -434,11 +441,11 @@ public:
 		}
 	}
 
-	dir_iterator(dir_iterator &src) : dir_iterator(std::move(src)) {}
+	view_dir(view_dir &src) : view_dir(std::move(src)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(dir_iterator)
+	RUA_OVERLOAD_ASSIGNMENT_R(view_dir)
 
-	dir_iterator &operator=(dir_iterator &src) {
+	view_dir &operator=(view_dir &src) {
 		return *this = std::move(src);
 	}
 
@@ -458,14 +465,14 @@ public:
 		return &_entry;
 	}
 
-	dir_iterator &operator++() {
+	view_dir &operator++() {
 		assert(*this);
 
 		if ((_dep > 1 || !_dep) && _entry.is_dir()) {
-			dir_iterator sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
+			view_dir sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
 			if (sub) {
 				sub._entry._dir_rel_path = _entry.relative_path().str();
-				sub._parent = new dir_iterator(std::move(*this));
+				sub._parent = new view_dir(std::move(*this));
 				return *this = std::move(sub);
 			}
 		}
@@ -494,7 +501,7 @@ private:
 	HANDLE _h;
 	dir_entry _entry;
 	size_t _dep;
-	dir_iterator *_parent;
+	view_dir *_parent;
 
 	static bool _is_dots(const WCHAR *c_wstr) {
 		for (; *c_wstr; ++c_wstr) {
