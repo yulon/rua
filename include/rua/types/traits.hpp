@@ -212,6 +212,23 @@ template <typename B1, typename... Bn>
 struct conjunction<B1, Bn...>
 	: conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
 
+#ifdef __cpp_lib_is_invocable
+
+template <typename F, typename... Args>
+using invoke_result = std::invoke_result<F, Args...>;
+
+#else
+
+template <typename F, typename... Args>
+struct invoke_result {
+	using type = decltype(std::declval<F>()(std::declval<Args>()...));
+};
+
+#endif
+
+template <typename F, typename... Args>
+using invoke_result_t = typename invoke_result<F, Args...>::type;
+
 // Non-standard
 
 template <typename FirstArg, typename... Args>

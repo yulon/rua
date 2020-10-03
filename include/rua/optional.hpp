@@ -10,12 +10,30 @@
 
 namespace rua {
 
-template <typename T>
-using optional = std::optional<T>;
-
 using nullopt_t = std::nullopt_t;
 
 RUA_INLINE_CONST auto nullopt = std::nullopt;
+
+template <typename T>
+class optional : public std::optional<T> {
+public:
+	using std::optional<T>::optional;
+
+	template <class... Args>
+	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
+		return this->value()(std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	invoke_result_t<const T &, Args &&...> operator()(Args &&... args) const & {
+		return this->value()(std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	invoke_result_t<T &&, Args &&...> operator()(Args &&... args) && {
+		return std::move(*this).value()(std::forward<Args>(args)...);
+	}
+};
 
 } // namespace rua
 
@@ -117,6 +135,21 @@ public:
 
 	const T *operator->() const {
 		return &value();
+	}
+
+	template <class... Args>
+	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
+		return value()(std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	invoke_result_t<const T &, Args &&...> operator()(Args &&... args) const & {
+		return value()(std::forward<Args>(args)...);
+	}
+
+	template <class... Args>
+	invoke_result_t<T &&, Args &&...> operator()(Args &&... args) && {
+		return std::move(value())(std::forward<Args>(args)...);
 	}
 
 	void reset() {
