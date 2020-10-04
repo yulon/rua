@@ -172,10 +172,7 @@ using enable_copy_move_like = enable_copy_move<
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(__cpp_lib_optional) || defined(__cpp_lib_variant) ||               \
-	defined(__cpp_lib_any)
-
-using in_place_t = std::in_place_t;
+#if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
 
 template <typename T>
 using in_place_type_t = std::in_place_type_t<T>;
@@ -185,8 +182,6 @@ using in_place_index_t = std::in_place_index_t<I>;
 
 #else
 
-struct in_place_t {};
-
 template <typename T>
 struct in_place_type_t {};
 
@@ -194,8 +189,6 @@ template <size_t I>
 struct in_place_index_t {};
 
 #endif
-
-RUA_INLINE_CONST in_place_t in_place{};
 
 ////////////////////////////////////////////////////////////////////////////
 

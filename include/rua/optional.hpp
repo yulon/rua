@@ -3,6 +3,7 @@
 
 #include "macros.hpp"
 #include "types/traits.hpp"
+#include "types/util.hpp"
 
 #ifdef __cpp_lib_optional
 
@@ -17,7 +18,41 @@ RUA_INLINE_CONST auto nullopt = std::nullopt;
 template <typename T>
 class optional : public std::optional<T> {
 public:
-	using std::optional<T>::optional;
+	constexpr optional(nullopt_t = nullopt) : std::optional<T>(nullopt) {}
+
+	template <
+		typename... Args,
+		typename = enable_if_t<
+			std::is_constructible<T, Args &&...>::value &&
+			(sizeof...(Args) > 1 ||
+			 !std::is_base_of<
+				 std::optional<T>,
+				 decay_t<argments_front_t<Args...>>>::value)>>
+	constexpr optional(Args &&... args) :
+		std::optional<T>(std::in_place, std::forward<Args>(args)...) {}
+
+	template <
+		typename U,
+		typename... Args,
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
+				value>>
+	constexpr optional(std::initializer_list<U> il, Args &&... args) :
+		std::optional<T>(std::in_place, il, std::forward<Args>(args)...) {}
+
+	template <
+		typename U,
+		typename = enable_if_t<
+			std::is_constructible<T, const U &>::value &&
+			!std::is_constructible<T, optional<U> &&>::value>>
+	optional(const std::optional<U> &src) : std::optional<T>(src) {}
+
+	template <
+		typename U,
+		typename = enable_if_t<
+			std::is_constructible<T, U &&>::value &&
+			!std::is_constructible<T, optional<U> &&>::value>>
+	optional(std::optional<U> &&src) : std::optional<T>(std::move(src)) {}
 
 	template <class... Args>
 	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
@@ -38,8 +73,6 @@ public:
 } // namespace rua
 
 #else
-
-#include "types/util.hpp"
 
 namespace rua {
 
@@ -204,17 +237,27 @@ protected:
 template <typename T>
 class optional : public _optional_base<T>, private enable_copy_move_like<T> {
 public:
-	constexpr optional() : _optional_base<T>(false) {}
-
-	constexpr optional(nullopt_t) : _optional_base<T>(false) {}
+	constexpr optional(nullopt_t = nullopt) : _optional_base<T>(false) {}
 
 	template <
-		typename U = T,
+		typename... Args,
 		typename = enable_if_t<
-			std::is_constructible<T, U &&>::value &&
-			!std::is_base_of<optional<T>, decay_t<U>>::value>>
-	optional(U &&val) : _optional_base<T>(true) {
-		this->_emplace(std::forward<U>(val));
+			std::is_constructible<T, Args...>::value &&
+			(sizeof...(Args) > 1 ||
+			 !std::is_base_of<optional, decay_t<argments_front_t<Args...>>>::
+				 value)>>
+	optional(Args &&... args) : _optional_base<T>(true) {
+		this->_emplace(std::forward<Args>(args)...);
+	}
+
+	template <
+		typename U,
+		typename... Args,
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
+	optional(std::initializer_list<U> il, Args &&... args) :
+		_optional_base<T>(true) {
+		this->_emplace(il, std::forward<Args>(args)...);
 	}
 
 	template <
@@ -240,50 +283,10 @@ public:
 		}
 		this->_emplace(std::move(src).value());
 	}
-
-	template <
-		typename... Args,
-		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
-	explicit optional(in_place_t, Args &&... args) : _optional_base<T>(true) {
-		this->_emplace(std::forward<Args>(args)...);
-	}
-
-	template <
-		typename U,
-		typename... Args,
-		typename = enable_if_t<
-			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	explicit optional(
-		in_place_t, std::initializer_list<U> il, Args &&... args) :
-		_optional_base<T>(true) {
-		this->_emplace(il, std::forward<Args>(args)...);
-	}
 };
 
 } // namespace rua
 
 #endif
-
-#include <initializer_list>
-#include <utility>
-
-namespace rua {
-
-template <typename T>
-optional<decay_t<T>> make_optional(T &&val) {
-	return optional<decay_t<T>>(std::forward<T>(val));
-}
-
-template <typename T, typename... Args>
-optional<T> make_optional(Args &&... args) {
-	return optional<T>(in_place, std::forward<Args>(args)...);
-}
-
-template <typename T, typename U, typename... Args>
-optional<T> make_optional(std::initializer_list<U> il, Args &&... args) {
-	return optional<T>(in_place, il, std::forward<Args>(args)...);
-}
-
-} // namespace rua
 
 #endif

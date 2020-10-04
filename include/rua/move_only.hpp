@@ -18,12 +18,23 @@ public:
 		typename... Args,
 		typename ArgsFront = decay_t<argments_front_t<Args...>>,
 		typename = enable_if_t<
-			std::is_constructible<T, Args...>::value &&
+			std::is_constructible<T, Args &&...>::value &&
 			(sizeof...(Args) > 1 ||
 			 (!std::is_base_of<T, ArgsFront>::value &&
 			  !std::is_base_of<move_only, ArgsFront>::value))>>
 	move_only(Args &&... args) {
 		new (&value()) T(std::forward<Args>(args)...);
+	}
+
+	template <
+		typename U,
+		typename... Args,
+		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
+				value>>
+	move_only(std::initializer_list<U> il, Args &&... args) {
+		new (&value()) T(il, std::forward<Args>(args)...);
 	}
 
 	move_only(T &&val) {
