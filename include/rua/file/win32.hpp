@@ -115,7 +115,7 @@ inline bool work_at(const file_path &path) {
 #else
 	return
 #endif
-		SetCurrentDirectoryW(u8_to_w(std::move(path).abs().str()).c_str());
+		SetCurrentDirectoryW(u8_to_w(path.abs().str()).c_str());
 #ifndef NDEBUG
 	assert(r);
 	return r;
@@ -206,7 +206,7 @@ public:
 
 	bytes read_all() {
 		auto fsz = size();
-		bytes buf(fsz);
+		bytes buf(static_cast<size_t>(fsz));
 		auto rsz = read_full(buf);
 		if (rsz >= 0 && static_cast<uint64_t>(rsz) != fsz) {
 			buf.reset();
@@ -303,7 +303,7 @@ inline file make_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -320,7 +320,7 @@ inline file modify_or_make_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -333,7 +333,7 @@ inline file modify_or_make_file(const file_path &path) {
 }
 
 inline file modify_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -347,7 +347,7 @@ inline file modify_file(const file_path &path, bool stat_only = false) {
 }
 
 inline file view_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + std::move(path).abs().str());
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -402,7 +402,7 @@ public:
 	view_dir(const file_path &path, size_t depth = 1) :
 		_entry(), _dep(depth), _parent(nullptr) {
 
-		_entry._dir_path = std::move(path).abs().str();
+		_entry._dir_path = path.abs().str();
 
 		auto find_path = u8_to_w("\\\\?\\" + _entry._dir_path + "\\*");
 
