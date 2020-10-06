@@ -174,7 +174,7 @@ RUA_INLINE_CONST rune_t w1cjksp = 12288;
 } // namespace rune
 
 inline constexpr bool is_control(const rune_t c) {
-	return (c >= rune::nul && c < rune::sp) || c == rune::del ||
+	return c < rune::sp || c == rune::del ||
 		   (c >= rune::nel && c <= rune::apc) || c == rune::shy ||
 		   c == rune::cgj || c == rune::sam || c == rune::mvs ||
 		   (c >= rune::zwsp && c <= rune::rlo) ||
