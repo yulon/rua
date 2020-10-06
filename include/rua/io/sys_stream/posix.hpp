@@ -1,11 +1,13 @@
 #ifndef _RUA_IO_SYS_STREAM_POSIX_HPP
 #define _RUA_IO_SYS_STREAM_POSIX_HPP
 
+#include "../abstract.hpp"
+#include "../util.hpp"
+
 #include "../../macros.hpp"
 #include "../../sched/scheduler.hpp"
 #include "../../sched/wait/uni.hpp"
-#include "../abstract.hpp"
-#include "../util.hpp"
+#include "../../types/traits.hpp"
 
 #include <unistd.h>
 
@@ -18,12 +20,12 @@ public:
 	using native_handle_t = int;
 
 	constexpr sys_stream(native_handle_t fd = -1, bool need_close = true) :
-		_fd(fd), _nc(need_close) {}
+		_fd(fd), _nc(_fd >= 0 ? need_close : false) {}
 
 	template <
 		typename NullPtr,
 		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
-	constexpr sys_stream(NullPtr) : sys_stream(-1, false) {}
+	constexpr sys_stream(NullPtr) : sys_stream() {}
 
 	sys_stream(const sys_stream &src) {
 		if (!src._fd) {

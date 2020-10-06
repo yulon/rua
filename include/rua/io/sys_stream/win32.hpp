@@ -1,11 +1,12 @@
 #ifndef _RUA_IO_SYS_STREAM_WIN32_HPP
 #define _RUA_IO_SYS_STREAM_WIN32_HPP
 
+#include "../abstract.hpp"
+#include "../util.hpp"
+
 #include "../../macros.hpp"
 #include "../../sched/scheduler.hpp"
 #include "../../sched/wait/uni.hpp"
-#include "../abstract.hpp"
-#include "../util.hpp"
 
 #include <windows.h>
 
@@ -20,7 +21,8 @@ public:
 
 	sys_stream(
 		native_handle_t h = INVALID_HANDLE_VALUE, bool need_close = true) :
-		_h(h ? h : INVALID_HANDLE_VALUE), _nc(need_close) {}
+		_h(h ? h : INVALID_HANDLE_VALUE),
+		_nc(h && h != INVALID_HANDLE_VALUE ? need_close : false) {}
 
 	sys_stream(const sys_stream &src) {
 		if (!src) {

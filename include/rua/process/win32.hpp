@@ -145,7 +145,7 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			std::is_same<T, native_handle_t>::value &&
+			std::is_same<T, native_handle_t>::value ||
 			is_null_pointer<T>::value>>
 	explicit process(T native_handle) :
 		_h(native_handle), _main_td_h(nullptr) {}

@@ -140,6 +140,11 @@ public:
 	file(native_handle_t fd, bool need_close = true) :
 		sys_stream(fd, need_close) {}
 
+	template <
+		typename NullPtr,
+		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
+	constexpr file(NullPtr) : sys_stream() {}
+
 	file_info info() const {
 		file_info r;
 		if (!fstat(native_handle(), &r.native_data())) {
