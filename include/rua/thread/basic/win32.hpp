@@ -45,7 +45,12 @@ public:
 
 	constexpr thread(std::nullptr_t = nullptr) : _h(nullptr), _id(0) {}
 
-	explicit thread(native_handle_t h) : _h(h), _id(0) {}
+	template <
+		typename NativeHandle,
+		typename = enable_if_t<
+			std::is_same<NativeHandle, native_handle_t>::value &&
+			!is_null_pointer<NativeHandle>::value>>
+	explicit thread(NativeHandle h) : _h(h), _id(0) {}
 
 	~thread() {
 		reset();

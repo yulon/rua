@@ -3,13 +3,17 @@
 
 #include "../any_word.hpp"
 #include "../bytes.hpp"
+#include "../dylib/win32.hpp"
 #include "../file/win32.hpp"
+#include "../generic_ptr.hpp"
 #include "../io.hpp"
 #include "../macros.hpp"
 #include "../sched/wait/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/char_enc/base/win32.hpp"
 #include "../string/view.hpp"
+#include "../sys/info/win32.hpp"
+#include "../thread/wait/win32.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -50,13 +54,11 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr process() : _h(nullptr), _main_td_h(nullptr) {}
-
 	explicit process(
 		const file_path &file,
 		const std::vector<std::string> &args = {},
 		const file_path &pwd = "",
-		bool freeze_at_startup = false,
+		bool lazy_start = false,
 		sys_stream stdout_w = out(),
 		sys_stream stderr_w = err(),
 		sys_stream stdin_r = in()) {
@@ -117,7 +119,7 @@ public:
 				nullptr,
 				nullptr,
 				true,
-				freeze_at_startup ? CREATE_SUSPENDED : 0,
+				lazy_start ? CREATE_SUSPENDED : 0,
 				nullptr,
 				pwd ? u8_to_w(pwd.str()).c_str() : nullptr,
 				&si,
@@ -130,7 +132,7 @@ public:
 
 		_h = pi.hProcess;
 
-		if (freeze_at_startup) {
+		if (lazy_start) {
 			_main_td_h = pi.hThread;
 		} else {
 			CloseHandle(pi.hThread);
@@ -142,13 +144,15 @@ public:
 		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, FALSE, id) : nullptr),
 		_main_td_h(nullptr) {}
 
+	constexpr process(std::nullptr_t = nullptr) :
+		_h(nullptr), _main_td_h(nullptr) {}
+
 	template <
-		typename T,
+		typename NativeHandle,
 		typename = enable_if_t<
-			std::is_same<T, native_handle_t>::value ||
-			is_null_pointer<T>::value>>
-	explicit process(T native_handle) :
-		_h(native_handle), _main_td_h(nullptr) {}
+			std::is_same<NativeHandle, native_handle_t>::value &&
+			!is_null_pointer<NativeHandle>::value>>
+	explicit process(NativeHandle h) : _h(h), _main_td_h(nullptr) {}
 
 	~process() {
 		reset();
@@ -182,7 +186,7 @@ public:
 		return _h;
 	}
 
-	void unfreeze() {
+	void start() {
 		if (!_main_td_h) {
 			return;
 		}
@@ -195,7 +199,7 @@ public:
 		if (!_h) {
 			return -1;
 		}
-		unfreeze();
+		start();
 		wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
@@ -213,7 +217,7 @@ public:
 	}
 
 	void reset() {
-		unfreeze();
+		start();
 		if (!_h) {
 			return;
 		}
@@ -243,7 +247,7 @@ public:
 
 		memory_block(process &p, size_t n) :
 			_owner(&p),
-			_ptr(VirtualAllocEx(
+			_p(VirtualAllocEx(
 				p.native_handle(), nullptr, n, MEM_COMMIT, PAGE_READWRITE)),
 			_sz(n) {}
 
@@ -251,40 +255,44 @@ public:
 			reset();
 		}
 
-		void *ptr() const {
-			return _ptr;
+		void *data() const {
+			return _p;
 		}
 
 		size_t size() const {
 			return _sz;
 		}
 
-		size_t write_at(ptrdiff_t pos, bytes_view data) {
+		ptrdiff_t write_at(ptrdiff_t pos, bytes_view data) {
 			SIZE_T sz;
-			WriteProcessMemory(
-				_owner->native_handle(),
-				reinterpret_cast<void *>(
-					reinterpret_cast<uintptr_t>(_ptr) + pos),
-				data.data(),
-				data.size(),
-				&sz);
-			assert(sz <= static_cast<SIZE_T>(nmax<size_t>()));
-			return static_cast<size_t>(sz);
+			if (!WriteProcessMemory(
+					_owner->native_handle(),
+					reinterpret_cast<void *>(
+						reinterpret_cast<uintptr_t>(_p) + pos),
+					data.data(),
+					data.size(),
+					&sz)) {
+				return -1;
+			}
+			return static_cast<ptrdiff_t>(sz);
+		}
+
+		void detach() {
+			_owner = nullptr;
 		}
 
 		void reset() {
-			if (!_owner) {
-				return;
+			if (_owner) {
+				VirtualFreeEx(_owner->native_handle(), _p, _sz, MEM_RELEASE);
+				_owner = nullptr;
 			}
-			VirtualFreeEx(_owner->native_handle(), _ptr, _sz, MEM_RELEASE);
-			_owner = nullptr;
-			_ptr = nullptr;
+			_p = nullptr;
 			_sz = 0;
 		}
 
 	private:
 		const process *_owner;
-		void *_ptr;
+		void *_p;
 		size_t _sz;
 	};
 
@@ -301,54 +309,55 @@ public:
 		return memory_block(*this, size);
 	}
 
-	memory_block memory_alloc(string_view str) {
+	memory_block memory_alloc(const std::string &str) {
 		auto sz = str.length() + 1;
 		memory_block data(*this, sz);
 		data.write_at(0, bytes_view(str.data(), sz));
 		return data;
 	}
 
-	memory_block memory_alloc(wstring_view wstr) {
+	memory_block memory_alloc(const std::wstring &wstr) {
 		auto sz = (wstr.length() + 1) * sizeof(wchar_t);
 		memory_block data(*this, sz);
 		data.write_at(0, bytes_view(wstr.data(), sz));
 		return data;
 	}
 
-	bool start(void *func, any_word param = nullptr) {
-		auto td = CreateRemoteThread(
-			_h,
-			nullptr,
-			0,
-			reinterpret_cast<LPTHREAD_START_ROUTINE>(func),
-			param,
-			0,
-			nullptr);
-		if (!td) {
-			return false;
+	thread make_thread(generic_ptr func, any_word param = nullptr) {
+		if (sys_version() >= 6) {
+			static auto ntdll = dylib::from_loaded("ntdll.dll");
+			static HRESULT(WINAPI * NtCreateThreadEx_ptr)(
+				PHANDLE ThreadHandle,
+				ACCESS_MASK DesiredAccess,
+				std::nullptr_t ObjectAttributes,
+				HANDLE ProcessHandle,
+				PVOID StartRoutine,
+				PVOID StartContext,
+				ULONG Flags,
+				ULONG_PTR StackZeroBits,
+				SIZE_T StackCommit,
+				SIZE_T StackReserve,
+				PVOID AttributeList) = ntdll["NtCreateThreadEx"];
+			if (NtCreateThreadEx_ptr) {
+				HANDLE td;
+				if (SUCCEEDED(NtCreateThreadEx_ptr(
+						&td,
+						0x1FFFFF,
+						nullptr,
+						_h,
+						func,
+						param,
+						0,
+						0,
+						0,
+						0,
+						nullptr))) {
+					return thread(td);
+				}
+			}
 		}
-		CloseHandle(td);
-		return true;
-	}
-
-	any_word call(void *func, any_word param = nullptr) {
-		DWORD tid;
-		auto td = CreateRemoteThread(
-			_h,
-			nullptr,
-			0,
-			reinterpret_cast<LPTHREAD_START_ROUTINE>(func),
-			param,
-			0,
-			&tid);
-		if (!td) {
-			return 0;
-		}
-		WaitForSingleObject(td, INFINITE);
-		DWORD result;
-		GetExitCodeThread(td, &result);
-		CloseHandle(td);
-		return result;
+		return thread(
+			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
 private:

@@ -61,7 +61,7 @@ public:
 		file_path file,
 		std::vector<std::string> args = {},
 		file_path pwd = "",
-		bool freeze_at_startup = false,
+		bool lazy_start = false,
 		sys_stream stdout_w = out(),
 		sys_stream stderr_w = err(),
 		sys_stream stdin_r = in()) {
@@ -129,13 +129,13 @@ public:
 		return _id >= 0;
 	}
 
-	void unfreeze() {}
+	void start() {}
 
 	int wait_for_exit() {
 		if (_id <= 0) {
 			return -1;
 		}
-		unfreeze();
+		start();
 		int status;
 		wait(waitpid, _id, &status, 0);
 		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
