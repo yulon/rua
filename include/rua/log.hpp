@@ -21,7 +21,7 @@ public:
 		_tit(u8_to_w(title)), _ico(icon) {}
 
 	virtual ptrdiff_t write(bytes_view p) {
-		MessageBoxW(0, u8_to_w(p).c_str(), _tit.c_str(), _ico);
+		MessageBoxW(0, u8_to_w(as_string(p)).c_str(), _tit.c_str(), _ico);
 		return static_cast<ptrdiff_t>(p.size());
 	}
 

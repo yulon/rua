@@ -87,20 +87,6 @@ public:
 	template <typename... DestArgs>
 	inline size_t copy_to(DestArgs &&... dest) const;
 
-	template <typename CharT, typename Traits>
-	operator basic_string_view<CharT, Traits>() const {
-		return basic_string_view<CharT, Traits>(
-			data_generic().template as<const CharT *>(),
-			_this()->size() / sizeof(CharT));
-	}
-
-	template <typename CharT, typename Traits, typename Allocator>
-	operator std::basic_string<CharT, Traits, Allocator>() const {
-		return std::basic_string<CharT, Traits, Allocator>(
-			data_generic().template as<const CharT *>(),
-			_this()->size() / sizeof(CharT));
-	}
-
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	generic_ptr derel(ptrdiff_t pos = 0) const {
 		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
@@ -684,8 +670,9 @@ public:
 	}
 
 	bytes &operator+=(bytes_view tail) {
-		resize(size() + tail.size());
-		slice(size()).copy_from(tail);
+		auto old_sz = size();
+		resize(old_sz + tail.size());
+		slice(old_sz).copy_from(tail);
 		return *this;
 	}
 

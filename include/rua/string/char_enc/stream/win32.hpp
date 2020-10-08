@@ -24,7 +24,7 @@ public:
 			auto rsz = _lr->read(_buf);
 			if (rsz <= 0) {
 				if (_data_sz) {
-					_cache = loc_to_u8(_buf(0, _data_sz));
+					_cache = loc_to_u8(as_string(_buf(0, _data_sz)));
 				}
 				break;
 			}
@@ -33,7 +33,7 @@ public:
 			for (auto i = _data_sz - 1; i >= 0; ++i) {
 				if (static_cast<char>(_buf[i]) >= 0) {
 					auto valid_sz = i + 1;
-					_cache = loc_to_u8(_buf(0, valid_sz));
+					_cache = loc_to_u8(as_string(_buf(0, valid_sz)));
 					_data_sz -= valid_sz;
 					_buf = _buf(valid_sz);
 					break;
@@ -61,7 +61,7 @@ public:
 	virtual ~u8_to_loc_writer() = default;
 
 	virtual ptrdiff_t write(bytes_view p) {
-		_lw->write_all(u8_to_loc(p));
+		_lw->write_all(u8_to_loc(as_string(p)));
 		return static_cast<ptrdiff_t>(p.size());
 	}
 
