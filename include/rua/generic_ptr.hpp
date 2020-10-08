@@ -2,6 +2,7 @@
 #define _RUA_GENERIC_PTR_HPP
 
 #include "macros.hpp"
+#include "string/conv.hpp"
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
@@ -212,13 +213,17 @@ private:
 	uintptr_t _val;
 };
 
+inline std::string to_string(const generic_ptr ptr) {
+	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
+}
+
 } // namespace rua
 
 namespace std {
 
 template <>
 struct hash<rua::generic_ptr> {
-	constexpr size_t operator()(rua::generic_ptr p) const {
+	constexpr size_t operator()(const rua::generic_ptr p) const {
 		return static_cast<size_t>(p.uintptr());
 	}
 };

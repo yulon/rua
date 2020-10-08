@@ -4,7 +4,6 @@
 #include "char_enc/base.hpp"
 #include "view.hpp"
 
-#include "../generic_ptr.hpp"
 #include "../macros.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
@@ -16,16 +15,13 @@
 namespace rua {
 
 template <typename T>
-inline enable_if_t<
-	!std::is_same<decay_t<T>, bool>::value,
-	decltype(std::to_string(std::declval<decay_t<T>>()))>
+inline enable_if_t<!std::is_same<decay_t<T>, bool>::value, std::string>
 to_string(T &&val) {
 	return std::to_string(std::forward<T>(val));
 }
 
-inline const char *to_string(std::nullptr_t) {
-	static const auto null_str = "null";
-	return null_str;
+inline std::string to_string(std::nullptr_t) {
+	return "null";
 }
 
 inline std::string to_string(const char *c_str) {
@@ -40,18 +36,13 @@ inline std::string to_string(wstring_view wsv) {
 	return w_to_u8(wsv.data());
 }
 
-inline const std::string &to_string(const std::string &s) {
-	return s;
+inline std::string to_string(std::string s) {
+	return std::string(std::move(s));
 }
 
-inline std::string &&to_string(std::string &&s) {
-	return std::move(s);
-}
-
-template <
-	typename T,
-	typename = enable_if_t<!std::is_same<decay_t<T>, unsigned char>::value>>
-inline std::string to_hex(T val, size_t width = sizeof(T) * 2) {
+template <typename T>
+inline enable_if_t<!std::is_same<decay_t<T>, unsigned char>::value, std::string>
+to_hex(T val, size_t width = sizeof(T) * 2) {
 	std::stringstream ss;
 	ss << "0x" << std::hex << std::uppercase << std::setw(width)
 	   << std::setfill('0') << val;
@@ -63,40 +54,83 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 	return to_hex(static_cast<uintptr_t>(val), width);
 }
 
-inline std::string to_string(generic_ptr ptr) {
-	return ptr ? to_hex(ptr.uintptr()) : to_string(nullptr);
+template <typename T>
+inline enable_if_t<!std::is_same<decay_t<T>, char>::value, std::string>
+to_string(T *ptr) {
+	return ptr ? to_hex(reinterpret_cast<uintptr_t>(ptr)) : to_string(nullptr);
 }
 
 template <typename Bool>
-inline enable_if_t<std::is_same<Bool, bool>::value, const char *>
+inline enable_if_t<std::is_same<Bool, bool>::value, std::string>
 to_string(Bool val) {
-	static const auto true_c_str = "true";
-	static const auto false_c_str = "false";
-	return val ? true_c_str : false_c_str;
+	return val ? "true" : "false";
 }
 
-template <typename... Args>
-constexpr inline enable_if_t<
-	std::is_constructible<string_view, Args &&...>::value,
+template <typename T, typename = void>
+struct is_constructible_to_string {
+	static constexpr auto value = false;
+};
+
+template <typename T>
+struct is_constructible_to_string<
+	T,
+	void_t<decltype(to_string(std::declval<T>()))>> {
+	static constexpr auto value = true;
+};
+
+template <typename Char>
+constexpr inline enable_if_t<std::is_same<Char, char>::value, string_view>
+as_string(const Char *c_str) {
+	return c_str;
+}
+
+template <typename StringView>
+inline constexpr enable_if_t<
+	std::is_base_of<string_view, StringView>::value,
 	string_view>
-as_string(Args &&... args) {
-	return string_view(std::forward<Args>(args)...);
+as_string(StringView sv) {
+	return sv;
 }
 
-template <typename... Args>
+template <typename NullPtr>
+inline constexpr enable_if_t<is_null_pointer<NullPtr>::value, string_view>
+as_string(NullPtr) {
+	return "null";
+}
+
+template <typename Bool>
+inline constexpr enable_if_t<std::is_same<Bool, bool>::value, string_view>
+as_string(Bool val) {
+	return val ? "true" : "false";
+}
+
+template <typename T, typename = void>
+struct is_constructible_as_string {
+	static constexpr auto value = false;
+};
+
+template <typename T>
+struct is_constructible_as_string<
+	T,
+	void_t<decltype(as_string(std::declval<T>()))>> {
+	static constexpr auto value = true;
+};
+
+template <typename T>
 constexpr inline enable_if_t<
-	std::is_constructible<string_view, Args &&...>::value,
+	is_constructible_as_string<T &&>::value,
 	string_view>
-to_temp_string(Args &&... args) {
-	return string_view(std::forward<Args>(args)...);
+to_temp_string(T &&val) {
+	return as_string(std::forward<T>(val));
 }
 
-template <typename... Args>
+template <typename T>
 inline enable_if_t<
-	!std::is_constructible<string_view, Args &&...>::value,
-	decltype(to_string(std::declval<Args &&>()...))>
-to_temp_string(Args &&... args) {
-	return to_string(std::forward<Args>(args)...);
+	is_constructible_to_string<T &&>::value &&
+		!is_constructible_as_string<T &&>::value,
+	std::string>
+to_temp_string(T &&val) {
+	return to_string(std::forward<T>(val));
 }
 
 } // namespace rua

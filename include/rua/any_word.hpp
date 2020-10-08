@@ -2,6 +2,8 @@
 #define _RUA_ANY_WORD_HPP
 
 #include "bit.hpp"
+#include "macros.hpp"
+#include "string/conv.hpp"
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
@@ -95,7 +97,7 @@ public:
 		return !_val;
 	}
 
-	uintptr_t &value() {
+	RUA_CONSTEXPR_14 uintptr_t &value() {
 		return _val;
 	}
 
@@ -201,6 +203,21 @@ private:
 	uintptr_t _val;
 };
 
+inline std::string to_string(const any_word w) {
+	return to_string(w.value());
+}
+
 } // namespace rua
+
+namespace std {
+
+template <>
+struct hash<rua::any_word> {
+	constexpr size_t operator()(const rua::any_word w) const {
+		return static_cast<size_t>(w.value());
+	}
+};
+
+} // namespace std
 
 #endif

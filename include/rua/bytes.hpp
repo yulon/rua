@@ -528,12 +528,20 @@ inline bytes_ref as_writable_bytes(bytes_view bv) {
 	return bytes_ref(const_cast<byte *>(bv.data()), bv.size());
 }
 
-inline string_view as_string(bytes_view bv) {
-	return bv ? string_view(bv.data_generic(), bv.size()) : "";
+template <typename Bytes>
+inline string_view as_string(const const_bytes_base<Bytes> &b) {
+	return static_cast<const Bytes &>(b).size()
+			   ? string_view(
+					 b.data_generic(), static_cast<const Bytes &>(b).size())
+			   : "";
 }
 
-inline std::string to_string(bytes_view bv) {
-	return bv ? std::string(bv.data_generic(), bv.size()) : "";
+template <typename Bytes>
+inline std::string to_string(const const_bytes_base<Bytes> &b) {
+	return static_cast<const Bytes &>(b).size()
+			   ? std::string(
+					 b.data_generic(), static_cast<const Bytes &>(b).size())
+			   : "";
 }
 
 template <typename Span>
