@@ -249,21 +249,18 @@ public:
 	constexpr bytes_view(const byte *ptr, size_t size) :
 		_p(ptr), _n(ptr ? size : 0) {}
 
-	bytes_view(const void *ptr, size_t size) :
-		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
-
 	template <
 		typename T,
 		typename = enable_if_t<
 			size_of<remove_cv_t<T>>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_view(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
+	bytes_view(T *ptr) :
+		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? sizeof(T) : 0) {}
 
-	template <typename R, typename... Args>
-	bytes_view(R (*fn_ptr)(Args...), size_t size) :
-		_p(reinterpret_cast<const byte *>(fn_ptr)), _n(fn_ptr ? size : 0) {}
+	template <typename T>
+	bytes_view(T *ptr, size_t size) :
+		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <typename T, typename R, typename... Args>
 	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
@@ -280,14 +277,8 @@ public:
 	bytes_view(std::initializer_list<byte> il) :
 		bytes_view(reinterpret_cast<const void *>(il.begin()), il.size()) {}
 
-	bytes_view(const char *c_str, size_t size) :
-		_p(reinterpret_cast<const byte *>(c_str)), _n(size) {}
-
 	bytes_view(const char *c_str) :
 		_p(reinterpret_cast<const byte *>(c_str)), _n(c_str_len(c_str)) {}
-
-	bytes_view(const wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<const byte *>(c_wstr)), _n(size) {}
 
 	bytes_view(const wchar_t *c_wstr) :
 		_p(reinterpret_cast<const byte *>(c_wstr)),
@@ -423,8 +414,7 @@ public:
 			size_of<remove_cv_t<T>>::value && !std::is_const<T>::value &&
 			!std::is_convertible<T *, string_view>::value &&
 			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_ref(T *ptr, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? size : 0) {}
+	bytes_ref(T *ptr) : _p(reinterpret_cast<byte *>(ptr)), _n(sizeof(T)) {}
 
 	template <
 		typename T,
@@ -435,14 +425,8 @@ public:
 	bytes_ref(T &&ref, size_t size = sizeof(T)) :
 		_p(reinterpret_cast<byte *>(&ref)), _n(size) {}
 
-	bytes_ref(char *c_str, size_t size) :
-		_p(reinterpret_cast<byte *>(c_str)), _n(size) {}
-
 	bytes_ref(char *c_str) :
 		_p(reinterpret_cast<byte *>(c_str)), _n(c_str_len(c_str)) {}
-
-	bytes_ref(wchar_t *c_wstr, size_t size) :
-		_p(reinterpret_cast<byte *>(c_wstr)), _n(size) {}
 
 	bytes_ref(wchar_t *c_wstr) :
 		_p(reinterpret_cast<byte *>(c_wstr)),
