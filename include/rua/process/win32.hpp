@@ -286,9 +286,24 @@ public:
 	using native_module_handle_t = HMODULE;
 
 	file_path path(native_module_handle_t mdu = nullptr) const {
-		WCHAR pth[MAX_PATH + 1];
-		auto pth_sz = GetModuleFileNameExW(_h, mdu, pth, MAX_PATH);
-		return w_to_u8(std::wstring(pth, pth_sz));
+		static decltype(&GetModuleFileNameExW) GetModuleFileNameExW_ptr = []() {
+			auto kernel32 = dylib::from_loaded("kernel32.dll");
+			auto fp = kernel32["K32GetModuleFileNameExW"];
+			if (fp) {
+				return fp;
+			}
+			static dylib psapi("psapi.dll");
+			return psapi["GetModuleFileNameExW"];
+		}();
+		if (!GetModuleFileNameExW_ptr) {
+			return "";
+		}
+		WCHAR pth[MAX_PATH];
+		auto pth_sz = GetModuleFileNameExW_ptr(_h, mdu, pth, MAX_PATH);
+		if (!pth_sz) {
+			return "";
+		}
+		return w_to_u8({pth, pth_sz});
 	}
 
 	bytes_view image() const {
@@ -466,7 +481,7 @@ public:
 			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
-	HANDLE load_dylib(string_view name) {
+	native_module_handle_t load_dylib(string_view name) {
 		bytes names(((name.length() + 1) + 1) * sizeof(wchar_t));
 		names.resize(0);
 		names += u8_to_w(name);
@@ -501,7 +516,8 @@ private:
 
 	struct _load_dll_ctx {
 		HRESULT(WINAPI *RtlInitUnicodeString)(_UNICODE_STRING *, PCWSTR);
-		HRESULT(WINAPI *LdrLoadDll)(PWCHAR, ULONG, _UNICODE_STRING *, PHANDLE);
+		HRESULT(WINAPI *LdrLoadDll)
+		(PWCHAR, ULONG, _UNICODE_STRING *, HMODULE *);
 		const wchar_t *names;
 
 		void(RUA_REGPARM(3) * RtlUserThreadStart)(PTHREAD_START_ROUTINE, PVOID);
@@ -509,8 +525,8 @@ private:
 		PVOID td_param;
 	};
 
-	static HANDLE WINAPI _dll_loader(_load_dll_ctx *ctx) {
-		HANDLE h = nullptr;
+	static HMODULE WINAPI _dll_loader(_load_dll_ctx *ctx) {
+		HMODULE h = nullptr;
 
 		auto names = ctx->names;
 
