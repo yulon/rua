@@ -2,7 +2,6 @@
 #define _RUA_RANGE_HPP
 
 #include "span.hpp"
-#include "types/traits.hpp"
 #include "types/util.hpp"
 
 namespace rua {

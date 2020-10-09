@@ -9,7 +9,6 @@
 #include "string/conv.hpp"
 #include "string/len.hpp"
 #include "string/view.hpp"
-#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #include <cassert>
@@ -604,7 +603,7 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
 			(sizeof...(Args) > 1) ||
 			(!std::is_base_of<bytes, ArgsFront>::value &&
@@ -701,7 +700,7 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront = argments_front_t<Args...>,
+		typename ArgsFront = front_t<Args...>,
 		typename DecayArgsFront = decay_t<ArgsFront>,
 		typename = enable_if_t<
 			(sizeof...(Args) > 1) ||
@@ -790,7 +789,7 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
 			(sizeof...(Args) > 1) ||
 			(!std::is_base_of<bytes_pattern, ArgsFront>::value &&

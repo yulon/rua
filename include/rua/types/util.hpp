@@ -1,13 +1,14 @@
 #ifndef _RUA_TYPES_UTIL_HPP
 #define _RUA_TYPES_UTIL_HPP
 
+#include "traits.hpp"
+
 #include "../macros.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <new>
-#include <type_traits>
 #include <utility>
 
 #define RUA_CONTAINER_OF(member_ptr, type, member)                             \
@@ -111,6 +112,10 @@ inline constexpr T nlowest() {
 
 ////////////////////////////////////////////////////////////////////////////
 
+RUA_INLINE_CONST auto nullpos = nmax<size_t>();
+
+////////////////////////////////////////////////////////////////////////////
+
 template <typename A, typename B>
 inline decltype(std::declval<A &&>() = std::declval<B &&>())
 assign(A &&a, B &&b) {
@@ -188,143 +193,6 @@ struct in_place_type_t {};
 template <size_t I>
 struct in_place_index_t {};
 
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-struct size_of {
-	static constexpr size_t value = sizeof(T);
-};
-
-template <>
-struct size_of<void> {
-	static constexpr size_t value = 0;
-};
-
-template <typename R, typename... Args>
-struct size_of<R(Args...)> {
-	static constexpr size_t value = 0;
-};
-
-template <typename T>
-struct size_of<T &> {
-	static constexpr size_t value = 0;
-};
-
-template <typename T>
-struct size_of<T &&> {
-	static constexpr size_t value = 0;
-};
-
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
-template <typename T>
-inline constexpr auto size_of_v = size_of<T>::value;
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-struct align_of {
-	static constexpr size_t value = alignof(T);
-};
-
-template <>
-struct align_of<void> {
-	static constexpr size_t value = 0;
-};
-
-template <typename R, typename... Args>
-struct align_of<R(Args...)> {
-	static constexpr size_t value = 0;
-};
-
-template <typename T>
-struct align_of<T &> {
-	static constexpr size_t value = 0;
-};
-
-template <typename T>
-struct align_of<T &&> {
-	static constexpr size_t value = 0;
-};
-
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
-template <typename T>
-inline constexpr auto align_of_v = align_of<T>::value;
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename... Types>
-struct max_size_of;
-
-template <typename Last>
-struct max_size_of<Last> {
-	static constexpr size_t value = size_of<Last>::value;
-};
-
-template <typename First, typename... Others>
-struct max_size_of<First, Others...> {
-	static constexpr size_t value =
-		size_of<First>::value > max_size_of<Others...>::value
-			? size_of<First>::value
-			: max_size_of<Others...>::value;
-};
-
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
-template <typename... Types>
-inline constexpr auto max_size_of_v = max_size_of<Types...>::value;
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename... Types>
-struct max_align_of;
-
-template <typename Last>
-struct max_align_of<Last> {
-	static constexpr size_t value = align_of<Last>::value;
-};
-
-template <typename First, typename... Others>
-struct max_align_of<First, Others...> {
-	static constexpr size_t value =
-		align_of<First>::value > max_align_of<Others...>::value
-			? align_of<First>::value
-			: max_align_of<Others...>::value;
-};
-
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
-template <typename... Types>
-inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
-RUA_INLINE_CONST auto nullpos = nmax<size_t>();
-
-template <size_t C, typename T, typename... Types>
-struct _index_of;
-
-template <size_t C, typename T>
-struct _index_of<C, T> {
-	static constexpr size_t value = nullpos;
-};
-
-template <size_t C, typename T, typename Cur, typename... Others>
-struct _index_of<C, T, Cur, Others...> {
-	static constexpr size_t value = std::is_same<T, Cur>::value
-										? C - sizeof...(Others) - 1
-										: _index_of<C, T, Others...>::value;
-};
-
-template <typename T, typename... Types>
-struct index_of : _index_of<sizeof...(Types), T, Types...> {};
-
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
-template <typename T, typename... Types>
-inline constexpr auto index_of_v = index_of<T, Types...>::value;
 #endif
 
 } // namespace rua

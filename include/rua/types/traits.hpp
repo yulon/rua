@@ -1,13 +1,12 @@
 #ifndef _RUA_TYPES_TRAITS_HPP
 #define _RUA_TYPES_TRAITS_HPP
 
-#include "util.hpp"
-
+#include <cstddef>
 #include <type_traits>
 
 namespace rua {
 
-// Standard enhancement
+////////////////////////// Standard enhancement ////////////////////////////
 
 template <bool Cond, typename T, typename... Args>
 struct rebind_if;
@@ -70,7 +69,7 @@ struct conditional<false, T, F, FArgs...> {
 template <bool Cond, typename T, typename... F>
 using conditional_t = typename conditional<Cond, T, F...>::type;
 
-// Standard alias
+///////////////////////////// Standard alias ///////////////////////////////
 
 #ifdef __cpp_lib_bool_constant
 
@@ -141,7 +140,7 @@ using common_type_t = typename std::common_type<T...>::type;
 template <typename T>
 using underlying_type_t = typename std::underlying_type<T>::type;
 
-// Standard compatibility
+///////////////////////// Standard compatibility ///////////////////////////
 
 template <typename...>
 using void_t = void;
@@ -195,7 +194,7 @@ using remove_cvref = std::remove_cvref<T>;
 #else
 
 template <typename T>
-struct remove_cvref : std::remove_cv<remove_reference_t<T> > {};
+struct remove_cvref : std::remove_cv<remove_reference_t<T>> {};
 
 #endif
 
@@ -229,15 +228,134 @@ struct invoke_result {
 template <typename F, typename... Args>
 using invoke_result_t = typename invoke_result<F, Args...>::type;
 
-// Non-standard
+////////////////////////////// Non-standard ////////////////////////////////
+
+template <typename T, typename = void>
+struct size_of {
+	static constexpr size_t value = 0;
+};
+
+template <>
+struct size_of<void> {
+	static constexpr size_t value = 0;
+};
+
+template <typename T>
+struct size_of<
+	T,
+	enable_if_t<!std::is_function<T>::value && !std::is_reference<T>::value>> {
+	static constexpr size_t value = sizeof(T);
+};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename T>
+inline constexpr auto size_of_v = size_of<T>::value;
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename = void>
+struct align_of {
+	static constexpr size_t value = 0;
+};
+
+template <>
+struct align_of<void> {
+	static constexpr size_t value = 0;
+};
+
+template <typename T>
+struct align_of<
+	T,
+	enable_if_t<!std::is_function<T>::value && !std::is_reference<T>::value>> {
+	static constexpr size_t value = alignof(T);
+};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename T>
+inline constexpr auto align_of_v = align_of<T>::value;
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename... Types>
+struct max_size_of;
+
+template <typename Last>
+struct max_size_of<Last> {
+	static constexpr size_t value = size_of<Last>::value;
+};
+
+template <typename First, typename... Others>
+struct max_size_of<First, Others...> {
+	static constexpr size_t value =
+		size_of<First>::value > max_size_of<Others...>::value
+			? size_of<First>::value
+			: max_size_of<Others...>::value;
+};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename... Types>
+inline constexpr auto max_size_of_v = max_size_of<Types...>::value;
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename... Types>
+struct max_align_of;
+
+template <typename Last>
+struct max_align_of<Last> {
+	static constexpr size_t value = align_of<Last>::value;
+};
+
+template <typename First, typename... Others>
+struct max_align_of<First, Others...> {
+	static constexpr size_t value =
+		align_of<First>::value > max_align_of<Others...>::value
+			? align_of<First>::value
+			: max_align_of<Others...>::value;
+};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename... Types>
+inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
+#endif
+
+////////////////////////////////////////////////////////////////////////////
 
 template <typename FirstArg, typename... Args>
-struct argments_front {
+struct front {
 	using type = FirstArg;
 };
 
 template <typename... Args>
-using argments_front_t = typename argments_front<Args...>::type;
+using front_t = typename front<Args...>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <size_t C, typename T, typename... Types>
+struct _index_of;
+
+template <size_t C, typename T>
+struct _index_of<C, T> {
+	static constexpr size_t value = static_cast<size_t>(-1);
+};
+
+template <size_t C, typename T, typename Cur, typename... Others>
+struct _index_of<C, T, Cur, Others...> {
+	static constexpr size_t value = std::is_same<T, Cur>::value
+										? C - sizeof...(Others) - 1
+										: _index_of<C, T, Others...>::value;
+};
+
+template <typename T, typename... Types>
+struct index_of : _index_of<sizeof...(Types), T, Types...> {};
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename T, typename... Types>
+inline constexpr auto index_of_v = index_of<T, Types...>::value;
+#endif
 
 } // namespace rua
 

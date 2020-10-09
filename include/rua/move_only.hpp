@@ -2,7 +2,6 @@
 #define _RUA_MOVE_ONLY_HPP
 
 #include "macros.hpp"
-#include "types/traits.hpp"
 #include "types/util.hpp"
 
 namespace rua {
@@ -16,7 +15,7 @@ public:
 
 	template <
 		typename... Args,
-		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
 			std::is_constructible<T, Args &&...>::value &&
 			(sizeof...(Args) > 1 ||
@@ -29,7 +28,7 @@ public:
 	template <
 		typename U,
 		typename... Args,
-		typename ArgsFront = decay_t<argments_front_t<Args...>>,
+		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>

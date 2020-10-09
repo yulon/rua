@@ -5,8 +5,6 @@
 #include "string.hpp"
 #include "types/util.hpp"
 
-#include <string>
-
 namespace rua {
 
 class printer {

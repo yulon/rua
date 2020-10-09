@@ -5,7 +5,6 @@
 #include "../sched/wait/uni.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
-#include "../types/traits.hpp"
 #include "../types/util.hpp"
 
 #include <limits.h>

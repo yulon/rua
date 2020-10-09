@@ -2,7 +2,6 @@
 #define _RUA_OPTIONAL_HPP
 
 #include "macros.hpp"
-#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #ifdef __cpp_lib_optional
@@ -25,9 +24,8 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, Args &&...>::value &&
 			(sizeof...(Args) > 1 ||
-			 !std::is_base_of<
-				 std::optional<T>,
-				 decay_t<argments_front_t<Args...>>>::value)>>
+			 !std::is_base_of<std::optional<T>, decay_t<front_t<Args...>>>::
+				 value)>>
 	constexpr optional(Args &&... args) :
 		std::optional<T>(std::in_place, std::forward<Args>(args)...) {}
 
@@ -244,8 +242,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
-			 !std::is_base_of<optional, decay_t<argments_front_t<Args...>>>::
-				 value)>>
+			 !std::is_base_of<optional, decay_t<front_t<Args...>>>::value)>>
 	optional(Args &&... args) : _optional_base<T>(true) {
 		this->_emplace(std::forward<Args>(args)...);
 	}

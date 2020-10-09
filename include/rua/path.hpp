@@ -23,8 +23,7 @@ public:
 		typename... Parts,
 		typename = enable_if_t<
 			(sizeof...(Parts) > 1) ||
-			!std::is_base_of<path_base, decay_t<argments_front_t<Parts...>>>::
-				value>>
+			!std::is_base_of<path_base, decay_t<front_t<Parts...>>>::value>>
 	path_base(Parts &&... parts) :
 		_s(str_join(
 			_fix_parts({to_string(std::forward<Parts>(parts))...}),
@@ -180,9 +179,8 @@ inline const std::string &to_tmp_string(const path_base<Path, Sep> &p) {
                                                                                \
 	template <                                                                 \
 		typename... Parts,                                                     \
-		typename = enable_if_t<!std::is_base_of<                               \
-			Path,                                                              \
-			decay_t<argments_front_t<Parts...>>>::value>>                      \
+		typename = enable_if_t<                                                \
+			!std::is_base_of<Path, decay_t<front_t<Parts...>>>::value>>        \
 	Path(Parts &&... parts) : path_base(std::forward<Parts>(parts)...) {}
 
 } // namespace rua

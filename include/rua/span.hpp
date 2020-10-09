@@ -1,7 +1,6 @@
 #ifndef _RUA_SPAN_HPP
 #define _RUA_SPAN_HPP
 
-#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #include <string>

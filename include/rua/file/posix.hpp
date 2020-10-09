@@ -8,7 +8,6 @@
 #include "../path.hpp"
 #include "../range.hpp"
 #include "../string/join.hpp"
-#include "../types/traits.hpp"
 #include "../types/util.hpp"
 
 #include <dirent.h>
