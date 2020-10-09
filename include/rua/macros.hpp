@@ -167,6 +167,12 @@
 #define RUA_MS64_FASTCALL
 #endif
 
+#ifndef _MSC_VER
+#define RUA_REGPARM(n) __attribute__((regparm(n)))
+#else
+#define RUA_REGPARM(n)
+#endif
+
 #if defined(__arm64) || defined(_M_ARM64) || defined(_M_ARM64)
 
 #define RUA_ARM 64
