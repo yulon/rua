@@ -6,6 +6,8 @@
 
 #include <windows.h>
 
+#include <vector>
+
 namespace rua { namespace win32 {
 
 namespace _sys_version {
