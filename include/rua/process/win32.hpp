@@ -22,8 +22,11 @@
 #include <tlhelp32.h>
 #include <windows.h>
 
+#include <array>
 #include <cassert>
 #include <cstring>
+#include <list>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -88,7 +91,7 @@ public:
 							stdout_w.native_handle(),
 							HANDLE_FLAG_INHERIT,
 							HANDLE_FLAG_INHERIT)) {
-			_reset();
+			_h = nullptr;
 			return;
 		}
 		si.hStdOutput = stdout_w.native_handle();
@@ -97,7 +100,7 @@ public:
 							stderr_w.native_handle(),
 							HANDLE_FLAG_INHERIT,
 							HANDLE_FLAG_INHERIT)) {
-			_reset();
+			_h = nullptr;
 			return;
 		}
 		si.hStdError = stderr_w.native_handle();
@@ -106,7 +109,7 @@ public:
 						   stdin_r.native_handle(),
 						   HANDLE_FLAG_INHERIT,
 						   HANDLE_FLAG_INHERIT)) {
-			_reset();
+			_h = nullptr;
 			return;
 		}
 		si.hStdInput = stdin_r.native_handle();
@@ -127,41 +130,40 @@ public:
 				&pi)) {
 			CloseHandle(pi.hProcess);
 			CloseHandle(pi.hThread);
-			_reset();
+			_h = nullptr;
 			return;
 		}
 
 		_h = pi.hProcess;
 
-		if (lazy_start) {
-			_main_td_h = pi.hThread;
-		} else {
+		if (!lazy_start) {
 			CloseHandle(pi.hThread);
-			_main_td_h = nullptr;
+			return;
 		}
+		_ext.reset(new _ext_t);
+		_ext->main_td = thread(pi.hThread);
 	}
 
 	explicit process(pid_t id) :
 		_h(id ? OpenProcess(_all_access(), false, id) : nullptr),
-		_main_td_h(nullptr) {}
+		_ext(nullptr) {}
 
-	constexpr process(std::nullptr_t = nullptr) :
-		_h(nullptr), _main_td_h(nullptr) {}
+	constexpr process(std::nullptr_t = nullptr) : _h(nullptr), _ext(nullptr) {}
 
 	template <
 		typename NativeHandle,
 		typename = enable_if_t<
 			std::is_same<NativeHandle, native_handle_t>::value &&
 			!is_null_pointer<NativeHandle>::value>>
-	explicit process(NativeHandle h) : _h(h), _main_td_h(nullptr) {}
+	explicit process(NativeHandle h) : _h(h), _ext(nullptr) {}
 
 	~process() {
 		reset();
 	}
 
-	process(process &&src) : _h(src._h), _main_td_h(src._main_td_h) {
+	process(process &&src) : _h(src._h), _ext(std::move(src._ext)) {
 		if (src) {
-			src._reset();
+			src._h = nullptr;
 		}
 	}
 
@@ -188,72 +190,14 @@ public:
 	}
 
 	void start() {
-		if (!_main_td_h) {
+		if (!_ext || !_ext->main_td) {
 			return;
 		}
-		ResumeThread(_main_td_h);
-		CloseHandle(_main_td_h);
-		_main_td_h = nullptr;
-	}
-
-	bool start_with_dylibs(const std::vector<string_view> &names) {
-		if (!_main_td_h) {
-			return false;
+		if (_ext->lazy_load_dlls.size()) {
+			_start_with_load_dlls();
 		}
-
-		bytes names_b;
-		for (auto &name : names) {
-			names_b += u8_to_w(name);
-			names_b += L'\0';
-		}
-		names_b += L'\0';
-
-		CONTEXT main_td_ctx;
-		main_td_ctx.ContextFlags = CONTEXT_FULL;
-		if (!GetThreadContext(_main_td_h, &main_td_ctx)) {
-			return false;
-		}
-
-		_load_dll_ctx ctx;
-
-#if RUA_X86 == 64
-		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Rip);
-		ctx.td_start = generic_ptr(main_td_ctx.Rcx);
-		ctx.td_param = generic_ptr(main_td_ctx.Rdx);
-#elif RUA_X86 == 32
-		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Eip);
-		ctx.td_start = generic_ptr(main_td_ctx.Eax);
-		ctx.td_param = generic_ptr(main_td_ctx.Edx);
-#endif
-
-		auto data = _make_load_dll_data(names_b, ctx);
-		if (!data) {
-			return false;
-		}
-
-#if RUA_X86 == 64
-		main_td_ctx.Rip = data.dll_loader.data().uintptr();
-		main_td_ctx.Rcx = data.ctx.data().uintptr();
-#elif RUA_X86 == 32
-		main_td_ctx.Eip = data.dll_loader.data().uintptr();
-		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
-		auto stk =
-			memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
-		if (stk.write_at(sizeof(uintptr_t), data.ctx.data().uintptr()) <= 0) {
-			return false;
-		}
-#endif
-
-		if (!SetThreadContext(_main_td_h, &main_td_ctx)) {
-			return false;
-		}
-
-		data.ctx.detach();
-		data.names.detach();
-		data.dll_loader.detach();
-
-		start();
-		return true;
+		ResumeThread(_ext->main_td.native_handle());
+		_ext->main_td.reset();
 	}
 
 	int wait_for_exit() {
@@ -264,7 +208,7 @@ public:
 		wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
-		reset();
+		_reset();
 		return static_cast<int>(exit_code);
 	}
 
@@ -273,8 +217,7 @@ public:
 			return;
 		}
 		TerminateProcess(_h, 1);
-		_main_td_h = nullptr;
-		reset();
+		_reset();
 	}
 
 	using native_module_handle_t = HMODULE;
@@ -314,17 +257,6 @@ public:
 		return GetProcessMemoryInfo(_h, &pmc, sizeof(pmc)) ? pmc.WorkingSetSize
 														   : 0;
 	}
-
-	void reset() {
-		start();
-		if (!_h) {
-			return;
-		}
-		CloseHandle(_h);
-		_h = nullptr;
-	}
-
-	////////////////////////////////////////////////////////////////
 
 	class memory_block {
 	public:
@@ -403,10 +335,15 @@ public:
 		return memory_block(*this, data, size, false);
 	}
 
-	memory_block memory_alloc(size_t size) {
+	memory_block memory_alloc(size_t size, bool is_executable = true) {
 		return memory_block(
 			*this,
-			VirtualAllocEx(_h, nullptr, size, MEM_COMMIT, PAGE_READWRITE),
+			VirtualAllocEx(
+				_h,
+				nullptr,
+				size,
+				MEM_COMMIT,
+				is_executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE),
 			size,
 			true);
 	}
@@ -417,9 +354,9 @@ public:
 			!std::is_convertible<T &&, string_view>::value &&
 			!std::is_convertible<T &&, wstring_view>::value,
 		memory_block>
-	memory_alloc(T &&val) {
+	memory_alloc(T &&val, bool is_executable = true) {
 		bytes_view bv(val);
-		auto data = memory_alloc(bv.size());
+		auto data = memory_alloc(bv.size(), is_executable);
 		data.write_at(0, bv);
 		return data;
 	}
@@ -475,31 +412,51 @@ public:
 			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
-	native_module_handle_t load_dylib(string_view name) {
-		bytes names(((name.length() + 1) + 1) * sizeof(wchar_t));
-		names.resize(0);
-		names += u8_to_w(name);
-		names += L'\0';
-		names += L'\0';
+	native_module_handle_t load_dylib(std::string name) {
+		if (_ext && _ext->main_td) {
+			_ext->lazy_load_dlls.emplace_back(std::move(name));
+			return reinterpret_cast<native_module_handle_t>(
+				INVALID_HANDLE_VALUE);
+		}
 
 		_load_dll_ctx ctx;
 		ctx.RtlUserThreadStart = nullptr;
 
-		auto data = _make_load_dll_data(names, ctx);
+		auto data = _make_load_dll_data(
+			std::array<std::string, 1>{std::move(name)}, ctx);
 		if (!data) {
 			return nullptr;
 		}
 
-		return make_thread(data.dll_loader.data(), data.ctx.data())
+		return make_thread(_ext->dll_loader.data(), data.ctx.data())
 			.wait_for_exit();
 	}
 
+	void reset() {
+		if (!_h) {
+			return;
+		}
+		start();
+		_reset();
+	}
+
 private:
-	HANDLE _h, _main_td_h;
+	HANDLE _h;
+
+	struct _ext_t {
+		thread main_td;
+		memory_block dll_loader;
+		std::list<std::string> lazy_load_dlls;
+	};
+
+	std::unique_ptr<_ext_t> _ext;
 
 	void _reset() {
+		assert(_h);
+
+		_ext.reset();
+		CloseHandle(_h);
 		_h = nullptr;
-		_main_td_h = nullptr;
 	}
 
 	static DWORD _all_access() {
@@ -509,22 +466,7 @@ private:
 		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
 	}
 
-	memory_block _code_memory_alloc(bytes_view code) {
-		auto data = memory_block(
-			*this,
-			VirtualAllocEx(
-				_h, nullptr, code.size(), MEM_COMMIT, PAGE_EXECUTE_READWRITE),
-			code.size(),
-			true);
-		data.write_at(0, code);
-		return data;
-	}
-
-	struct _UNICODE_STRING {
-		USHORT Length;
-		USHORT MaximumLength;
-		PWSTR Buffer;
-	};
+	struct _UNICODE_STRING;
 
 	struct _load_dll_ctx {
 		HRESULT(WINAPI *RtlInitUnicodeString)(_UNICODE_STRING *, PCWSTR);
@@ -680,18 +622,41 @@ private:
 		return bytes_view(code);
 	}
 
+	bool _make_dll_loader() {
+		if (!_ext) {
+			_ext.reset(new _ext_t);
+		}
+		if (_ext->dll_loader) {
+			return true;
+		}
+		_ext->dll_loader = memory_alloc(_dll_loader_code(), true);
+		return _ext->dll_loader;
+	}
+
 	struct _load_dll_data {
-		memory_block names, dll_loader, ctx;
+		memory_block names, ctx;
 
 		operator bool() const {
-			return names && dll_loader && ctx;
+			return names && ctx;
 		}
 	};
 
-	_load_dll_data _make_load_dll_data(bytes_view names, _load_dll_ctx &ctx) {
+	template <typename NameList>
+	_load_dll_data _make_load_dll_data(NameList &&names, _load_dll_ctx &ctx) {
 		_load_dll_data data;
 
-		data.names = memory_alloc(names);
+		if (!_make_dll_loader()) {
+			return data;
+		}
+
+		bytes names_buf;
+		for (auto &name : names) {
+			names_buf += u8_to_w(name);
+			names_buf += L'\0';
+		}
+		names_buf += L'\0';
+
+		data.names = memory_alloc(names_buf);
 		if (!data.names) {
 			return data;
 		}
@@ -710,12 +675,61 @@ private:
 			return data;
 		}
 
-		data.dll_loader = _code_memory_alloc(_dll_loader_code());
-		if (!data.dll_loader) {
-			return data;
+		return data;
+	}
+
+	bool _start_with_load_dlls() {
+		assert(_ext);
+
+		if (_ext->lazy_load_dlls.empty()) {
+			return true;
 		}
 
-		return data;
+		CONTEXT main_td_ctx;
+		main_td_ctx.ContextFlags = CONTEXT_FULL;
+		if (!GetThreadContext(_ext->main_td.native_handle(), &main_td_ctx)) {
+			return false;
+		}
+
+		_load_dll_ctx ctx;
+
+#if RUA_X86 == 64
+		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Rip);
+		ctx.td_start = generic_ptr(main_td_ctx.Rcx);
+		ctx.td_param = generic_ptr(main_td_ctx.Rdx);
+#elif RUA_X86 == 32
+		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Eip);
+		ctx.td_start = generic_ptr(main_td_ctx.Eax);
+		ctx.td_param = generic_ptr(main_td_ctx.Edx);
+#endif
+
+		auto data = _make_load_dll_data(_ext->lazy_load_dlls, ctx);
+		if (!data) {
+			return false;
+		}
+
+#if RUA_X86 == 64
+		main_td_ctx.Rip = _ext->dll_loader.data().uintptr();
+		main_td_ctx.Rcx = data.ctx.data().uintptr();
+#elif RUA_X86 == 32
+		main_td_ctx.Eip = _ext->dll_loader.data().uintptr();
+		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
+		auto stk =
+			memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
+		if (stk.write_at(sizeof(uintptr_t), data.ctx.data().uintptr()) <= 0) {
+			return false;
+		}
+#endif
+
+		if (!SetThreadContext(_ext->main_td.native_handle(), &main_td_ctx)) {
+			return false;
+		}
+
+		data.ctx.detach();
+		data.names.detach();
+		_ext->dll_loader.detach();
+
+		return true;
 	}
 };
 
