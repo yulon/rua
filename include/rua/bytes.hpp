@@ -250,12 +250,15 @@ public:
 
 	template <
 		typename T,
+		typename Ptr = remove_cvref_t<T>,
+		typename E = remove_pointer_t<Ptr>,
 		typename = enable_if_t<
-			size_of<remove_cv_t<T>>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_view(T *ptr) :
-		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? sizeof(T) : 0) {}
+			std::is_pointer<Ptr>::value && !std::is_array<Ptr>::value &&
+			size_of<E>::value &&
+			!std::is_convertible<Ptr, string_view>::value &&
+			!std::is_convertible<Ptr, wstring_view>::value>>
+	bytes_view(T &&ptr) :
+		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
 
 	template <typename T>
 	bytes_view(T *ptr, size_t size) :
@@ -409,11 +412,15 @@ public:
 
 	template <
 		typename T,
+		typename Ptr = remove_cvref_t<T>,
+		typename E = remove_pointer_t<Ptr>,
 		typename = enable_if_t<
-			size_of<remove_cv_t<T>>::value && !std::is_const<T>::value &&
-			!std::is_convertible<T *, string_view>::value &&
-			!std::is_convertible<T *, wstring_view>::value>>
-	bytes_ref(T *ptr) : _p(reinterpret_cast<byte *>(ptr)), _n(sizeof(T)) {}
+			std::is_pointer<Ptr>::value && !std::is_array<Ptr>::value &&
+			size_of<E>::value && !std::is_const<E>::value &&
+			!std::is_convertible<Ptr, string_view>::value &&
+			!std::is_convertible<Ptr, wstring_view>::value>>
+	bytes_ref(T &&ptr) :
+		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
 
 	template <
 		typename T,
