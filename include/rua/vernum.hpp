@@ -60,7 +60,7 @@ private:
 	uint64_t _whole;
 };
 
-std::string to_string(const vernum &vn) {
+inline std::string to_string(const vernum &vn) {
 	return str_join(
 		{to_string(vn.whole() >> 48),
 		 to_string(vn.whole() >> 32 & 0xFFFF),
