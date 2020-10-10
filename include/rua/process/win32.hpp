@@ -217,17 +217,13 @@ public:
 		_load_dll_ctx ctx;
 
 #if RUA_X86 == 64
-
 		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Rip);
 		ctx.td_start = generic_ptr(main_td_ctx.Rcx);
 		ctx.td_param = generic_ptr(main_td_ctx.Rdx);
-
 #elif RUA_X86 == 32
-
 		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Eip);
 		ctx.td_start = generic_ptr(main_td_ctx.Eax);
 		ctx.td_param = generic_ptr(main_td_ctx.Edx);
-
 #endif
 
 		auto data = _make_load_dll_data(names_b, ctx);
@@ -236,18 +232,16 @@ public:
 		}
 
 #if RUA_X86 == 64
-
 		main_td_ctx.Rip = data.dll_loader.data().uintptr();
 		main_td_ctx.Rcx = data.ctx.data().uintptr();
-
 #elif RUA_X86 == 32
-
 		main_td_ctx.Eip = data.dll_loader.data().uintptr();
-		auto stk = memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(void *));
-		if (stk.write_at(sizeof(void *), data.ctx.data().uintptr()) <= 0) {
+		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
+		auto stk =
+			memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
+		if (stk.write_at(sizeof(uintptr_t), data.ctx.data().uintptr()) <= 0) {
 			return false;
 		}
-
 #endif
 
 		if (!SetThreadContext(_main_td_h, &main_td_ctx)) {
@@ -525,6 +519,7 @@ private:
 		PVOID td_param;
 	};
 
+#ifdef RUA_PROTOTYPE
 	static HMODULE WINAPI _dll_loader(_load_dll_ctx *ctx) {
 		HMODULE h = nullptr;
 
@@ -562,6 +557,110 @@ private:
 
 		return h;
 	}
+#endif
+
+	static bytes_view _dll_loader_code() {
+		// clang-format off
+		static const byte code[] {
+#if RUA_X86 == 64
+			0x55,                                                  // push   %rbp
+			0x57,                                                  // push   %rdi
+			0x56,                                                  // push   %rsi
+			0x53,                                                  // push   %rbx
+			0x48, 0x83, 0xec, 0x48,                                // sub    $0x48,%rsp
+			0x48, 0x8b, 0x51, 0x10,                                // mov    0x10(%rcx),%rdx
+			0x48, 0x8d, 0x5a, 0x02,                                // lea    0x2(%rdx),%rbx
+			0x48, 0x89, 0xce,                                      // mov    %rcx,%rsi
+			0x48, 0x8d, 0x7c, 0x24, 0x30,                          // lea    0x30(%rsp),%rdi
+			0x48, 0x8d, 0x6c, 0x24, 0x28,                          // lea    0x28(%rsp),%rbp
+			0x48, 0xc7, 0x44, 0x24, 0x28, 0x00, 0x00, 0x00, 0x00,  // movq   $0x0,0x28(%rsp)
+			0xeb, 0x21,                                            // jmp    49 <_dll_loader+0x49>
+			0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,        // nopl   0x0(%rax,%rax,1)
+			// 30:
+			0x48, 0x89, 0xf9,                                      // mov    %rdi,%rcx
+			0xff, 0x16,                                            // callq  *(%rsi)
+			0x31, 0xd2,                                            // xor    %edx,%edx
+			0x49, 0x89, 0xe9,                                      // mov    %rbp,%r9
+			0x49, 0x89, 0xf8,                                      // mov    %rdi,%r8
+			0x31, 0xc9,                                            // xor    %ecx,%ecx
+			0xff, 0x56, 0x08,                                      // callq  *0x8(%rsi)
+			0x48, 0x89, 0xda,                                      // mov    %rbx,%rdx
+			// 45:
+			0x48, 0x83, 0xc3, 0x02,                                // add    $0x2,%rbx
+			// 49:
+			0x66, 0x83, 0x7b, 0xfe, 0x00,                          // cmpw   $0x0,-0x2(%rbx)
+			0x75, 0xf5,                                            // jne    45 <_dll_loader+0x45>
+			0x48, 0x8d, 0x43, 0xfe,                                // lea    -0x2(%rbx),%rax
+			0x48, 0x39, 0xc2,                                      // cmp    %rax,%rdx
+			0x75, 0xd7,                                            // jne    30 <_dll_loader+0x30>
+			0x48, 0x8b, 0x46, 0x18,                                // mov    0x18(%rsi),%rax
+			0x48, 0x85, 0xc0,                                      // test   %rax,%rax
+			0x74, 0x0a,                                            // je     6c <_dll_loader+0x6c>
+			0x48, 0x8b, 0x56, 0x28,                                // mov    0x28(%rsi),%rdx
+			0x48, 0x8b, 0x4e, 0x20,                                // mov    0x20(%rsi),%rcx
+			0xff, 0xd0,                                            // callq  *%rax
+			// 6c:
+			0x48, 0x8b, 0x44, 0x24, 0x28,                          // mov    0x28(%rsp),%rax
+			0x48, 0x83, 0xc4, 0x48,                                // add    $0x48,%rsp
+			0x5b,                                                  // pop    %rbx
+			0x5e,                                                  // pop    %rsi
+			0x5f,                                                  // pop    %rdi
+			0x5d,                                                  // pop    %rbp
+			0xc3                                                   // retq
+#elif RUA_X86 == 32
+			0x55,                                                        // push   %ebp
+			0x53,                                                        // push   %ebx
+			0x57,                                                        // push   %edi
+			0x56,                                                        // push   %esi
+			0x83, 0xec, 0x0c,                                            // sub    $0xc,%esp
+			0x8b, 0x74, 0x24, 0x20,                                      // mov    0x20(%esp),%esi
+			0xc7, 0x04, 0x24, 0x00, 0x00, 0x00, 0x00,                    // movl   $0x0,(%esp)
+			0x8d, 0x7c, 0x24, 0x04,                                      // lea    0x4(%esp),%edi
+			0x89, 0xe3,                                                  // mov    %esp,%ebx
+			0x8b, 0x46, 0x08,                                            // mov    0x8(%esi),%eax
+			0x89, 0xc5,                                                  // mov    %eax,%ebp
+			0x0f, 0x1f, 0x00,                                            // nopl   (%eax)
+			// 20:
+			0xb9, 0x02, 0x00, 0x00, 0x00,                                // mov    $0x2,%ecx
+			0x66, 0x2e, 0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,  // nopw   %cs:0x0(%eax,%eax,1)
+			0x90,                                                        // nop
+			// 30:
+			0x83, 0xc1, 0xfe,                                            // add    $0xfffffffe,%ecx
+			0x66, 0x83, 0x7d, 0x00, 0x00,                                // cmpw   $0x0,0x0(%ebp)
+			0x8d, 0x6d, 0x02,                                            // lea    0x2(%ebp),%ebp
+			0x75, 0xf3,                                                  // jne    30 <_dll_loader@4+0x30>
+			0x85, 0xc9,                                                  // test   %ecx,%ecx
+			0x74, 0x11,                                                  // je     52 <_dll_loader@4+0x52>
+			0x50,                                                        // push   %eax
+			0x57,                                                        // push   %edi
+			0xff, 0x16,                                                  // call   *(%esi)
+			0x53,                                                        // push   %ebx
+			0x57,                                                        // push   %edi
+			0x6a, 0x00,                                                  // push   $0x0
+			0x6a, 0x00,                                                  // push   $0x0
+			0xff, 0x56, 0x04,                                            // call   *0x4(%esi)
+			0x89, 0xe8,                                                  // mov    %ebp,%eax
+			0xeb, 0xce,                                                  // jmp    20 <_dll_loader@4+0x20>
+			// 52:
+			0x8b, 0x4e, 0x0c,                                            // mov    0xc(%esi),%ecx
+			0x85, 0xc9,                                                  // test   %ecx,%ecx
+			0x74, 0x08,                                                  // je     61 <_dll_loader@4+0x61>
+			0x8b, 0x46, 0x10,                                            // mov    0x10(%esi),%eax
+			0x8b, 0x56, 0x14,                                            // mov    0x14(%esi),%edx
+			0xff, 0xd1,                                                  // call   *%ecx
+			// 61:
+			0x8b, 0x04, 0x24,                                            // mov    (%esp),%eax
+			0x83, 0xc4, 0x0c,                                            // add    $0xc,%esp
+			0x5e,                                                        // pop    %esi
+			0x5f,                                                        // pop    %edi
+			0x5b,                                                        // pop    %ebx
+			0x5d,                                                        // pop    %ebp
+			0xc2, 0x04, 0x00                                             // ret    $0x4
+#endif
+		};
+		// clang-format on
+		return bytes_view(code);
+	}
 
 	struct _load_dll_data {
 		memory_block names, dll_loader, ctx;
@@ -593,7 +692,7 @@ private:
 			return data;
 		}
 
-		data.dll_loader = memory_alloc(bytes_view(&_dll_loader, 512));
+		data.dll_loader = memory_alloc(_dll_loader_code());
 		if (!data.dll_loader) {
 			return data;
 		}
