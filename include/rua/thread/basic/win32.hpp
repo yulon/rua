@@ -4,6 +4,7 @@
 #include "../../any_word.hpp"
 #include "../../dylib/win32.hpp"
 #include "../../macros.hpp"
+#include "../../sys/info/win32.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -41,7 +42,7 @@ public:
 	}
 
 	explicit thread(tid_t id) :
-		_h(id ? OpenThread(SYNCHRONIZE, FALSE, id) : nullptr), _id(id) {}
+		_h(id ? OpenThread(_all_access(), false, id) : nullptr), _id(id) {}
 
 	constexpr thread(std::nullptr_t = nullptr) : _h(nullptr), _id(0) {}
 
@@ -167,6 +168,13 @@ private:
 		}
 		CloseHandle(snap);
 		return 0;
+	}
+
+	static DWORD _all_access() {
+		if (sys_version() >= 6) {
+			return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
+		}
+		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0x3FF;
 	}
 };
 

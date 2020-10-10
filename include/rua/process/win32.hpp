@@ -142,7 +142,7 @@ public:
 	}
 
 	explicit process(pid_t id) :
-		_h(id ? OpenProcess(PROCESS_ALL_ACCESS, false, id) : nullptr),
+		_h(id ? OpenProcess(_all_access(), false, id) : nullptr),
 		_main_td_h(nullptr) {}
 
 	constexpr process(std::nullptr_t = nullptr) :
@@ -502,6 +502,24 @@ private:
 		_main_td_h = nullptr;
 	}
 
+	static DWORD _all_access() {
+		if (sys_version() >= 6) {
+			return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
+		}
+		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
+	}
+
+	memory_block _code_memory_alloc(bytes_view code) {
+		auto data = memory_block(
+			*this,
+			VirtualAllocEx(
+				_h, nullptr, code.size(), MEM_COMMIT, PAGE_EXECUTE_READWRITE),
+			code.size(),
+			true);
+		data.write_at(0, code);
+		return data;
+	}
+
 	struct _UNICODE_STRING {
 		USHORT Length;
 		USHORT MaximumLength;
@@ -692,18 +710,8 @@ private:
 			return data;
 		}
 
-		data.dll_loader = memory_alloc(_dll_loader_code());
+		data.dll_loader = _code_memory_alloc(_dll_loader_code());
 		if (!data.dll_loader) {
-			return data;
-		}
-
-		DWORD old_mode;
-		if (!VirtualProtectEx(
-				_h,
-				data.dll_loader.data(),
-				data.dll_loader.size(),
-				PAGE_EXECUTE_READWRITE,
-				&old_mode)) {
 			return data;
 		}
 
