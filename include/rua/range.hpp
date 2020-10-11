@@ -128,8 +128,10 @@ struct is_range : std::false_type {};
 template <typename T>
 struct is_range<T, void_t<range_traits<T>>> : std::true_type {};
 
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
-using is_range_t = typename is_range<T>::type;
+inline constexpr auto is_range_v = is_range<T>::value;
+#endif
 
 template <typename, typename = void>
 struct is_readonly_range : std::false_type {};
