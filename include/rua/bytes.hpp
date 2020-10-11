@@ -666,10 +666,6 @@ public:
 		return *this;
 	}
 
-	size_t capacity() const {
-		return data() ? _capacity() : 0;
-	}
-
 	void resize(size_t size = 0) {
 		if (!data()) {
 			reset(size);
@@ -682,6 +678,16 @@ public:
 		bytes new_byts(size);
 		new_byts.copy_from(*this);
 		reset(std::move(new_byts));
+	}
+
+	size_t capacity() const {
+		return data() ? _capacity() : 0;
+	}
+
+	void reserve(size_t cap) {
+		auto sz = size();
+		resize(cap);
+		resize(sz);
 	}
 
 	void reset() {
