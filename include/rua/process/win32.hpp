@@ -223,45 +223,31 @@ public:
 	using native_module_handle_t = HMODULE;
 
 	file_path path(native_module_handle_t mdu = nullptr) const {
-		static decltype(&GetModuleFileNameExW) GetModuleFileNameExW_ptr = []() {
-			auto kernel32 = dylib::from_loaded("kernel32.dll");
-			auto fp = kernel32["K32GetModuleFileNameExW"];
-			if (fp) {
-				return fp;
-			}
-			static dylib psapi("psapi.dll");
-			return psapi["GetModuleFileNameExW"];
-		}();
-		if (!GetModuleFileNameExW_ptr) {
+		auto fp = _psapi().get_module_file_name_ex_w;
+		if (!fp) {
 			return "";
 		}
 		WCHAR pth[MAX_PATH];
-		auto pth_sz = GetModuleFileNameExW_ptr(_h, mdu, pth, MAX_PATH);
+		auto pth_sz = fp(_h, mdu, pth, MAX_PATH);
 		if (!pth_sz) {
 			return "";
 		}
 		return w_to_u8({pth, pth_sz});
 	}
 
-	bytes_view image() const {
-		assert(id() == GetCurrentProcessId());
-
-		MODULEINFO mi;
-		GetModuleInformation(
-			_h, GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
-		return bytes_view(mi.lpBaseOfDll, mi.SizeOfImage);
-	}
-
 	size_t memory_usage() const {
+		auto fp = _psapi().get_process_memoryinfo;
+		if (!fp) {
+			return 0;
+		}
 		PROCESS_MEMORY_COUNTERS pmc;
-		return GetProcessMemoryInfo(_h, &pmc, sizeof(pmc)) ? pmc.WorkingSetSize
-														   : 0;
+		return fp(_h, &pmc, sizeof(pmc)) ? pmc.WorkingSetSize : 0;
 	}
 
 	class memory_block {
 	public:
 		constexpr memory_block() :
-			_owner(nullptr), _p(nullptr), _sz(0), _need_free(false) {}
+			_h(nullptr), _p(nullptr), _sz(0), _need_free(false) {}
 
 		~memory_block() {
 			reset();
@@ -282,11 +268,7 @@ public:
 		ptrdiff_t read_at(ptrdiff_t pos, bytes_ref data) {
 			SIZE_T sz;
 			if (!ReadProcessMemory(
-					_owner->native_handle(),
-					_p + pos,
-					data.data(),
-					data.size(),
-					&sz)) {
+					_h, _p + pos, data.data(), data.size(), &sz)) {
 				return -1;
 			}
 			return static_cast<ptrdiff_t>(sz);
@@ -295,11 +277,7 @@ public:
 		ptrdiff_t write_at(ptrdiff_t pos, bytes_view data) {
 			SIZE_T sz;
 			if (!WriteProcessMemory(
-					_owner->native_handle(),
-					_p + pos,
-					data.data(),
-					data.size(),
-					&sz)) {
+					_h, _p + pos, data.data(), data.size(), &sz)) {
 				return -1;
 			}
 			return static_cast<ptrdiff_t>(sz);
@@ -311,33 +289,44 @@ public:
 
 		void reset() {
 			if (_need_free) {
-				VirtualFreeEx(_owner->native_handle(), _p, _sz, MEM_RELEASE);
+				VirtualFreeEx(_h, _p, _sz, MEM_RELEASE);
 				_need_free = false;
 			}
-			_owner = nullptr;
+			_h = nullptr;
 			_p = nullptr;
 			_sz = 0;
 		}
 
 	private:
-		const process *_owner;
+		native_handle_t _h;
 		generic_ptr _p;
 		size_t _sz;
 		bool _need_free;
 
-		memory_block(process &p, generic_ptr data, size_t n, bool need_free) :
-			_owner(&p), _p(data), _sz(n), _need_free(need_free) {}
+		memory_block(
+			native_handle_t h, generic_ptr data, size_t n, bool need_free) :
+			_h(h), _p(data), _sz(n), _need_free(need_free) {}
 
 		friend process;
 	};
 
-	memory_block memory_ref(generic_ptr data, size_t size) {
-		return memory_block(*this, data, size, false);
+	memory_block memory_ref(generic_ptr data, size_t size) const {
+		return memory_block(_h, data, size, false);
+	}
+
+	memory_block memory_image(native_module_handle_t mdu = nullptr) const {
+		auto fp = _psapi().get_module_information;
+		if (!fp) {
+			return {};
+		}
+		MODULEINFO mi;
+		fp(_h, mdu ? mdu : GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+		return memory_ref(mi.lpBaseOfDll, mi.SizeOfImage);
 	}
 
 	memory_block memory_alloc(size_t size, bool is_executable = true) {
 		return memory_block(
-			*this,
+			_h,
 			VirtualAllocEx(
 				_h,
 				nullptr,
@@ -464,6 +453,30 @@ private:
 			return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
 		}
 		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
+	}
+
+	struct _psapi_t {
+		decltype(&GetModuleFileNameExW) get_module_file_name_ex_w;
+		decltype(&GetModuleInformation) get_module_information;
+		decltype(&GetProcessMemoryInfo) get_process_memoryinfo;
+	};
+
+	static generic_ptr _load_psapi(string_view name) {
+		static auto kernel32 = dylib::from_loaded("kernel32.dll");
+		auto fp = kernel32[str_join("K32", name)];
+		if (fp) {
+			return fp;
+		}
+		static dylib psapi("psapi.dll");
+		return psapi[name];
+	}
+
+	static const _psapi_t &_psapi() {
+		static const _psapi_t inst{
+			_load_psapi("GetModuleFileNameExW"),
+			_load_psapi("GetModuleInformation"),
+			_load_psapi("GetProcessMemoryInfo")};
+		return inst;
 	}
 
 	struct _UNICODE_STRING;
