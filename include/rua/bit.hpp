@@ -3,6 +3,7 @@
 
 #include "generic_ptr.hpp"
 #include "macros.hpp"
+#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #include <cstdio>

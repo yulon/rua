@@ -1,7 +1,8 @@
 #ifndef _RUA_TYPES_TRAITS_HPP
 #define _RUA_TYPES_TRAITS_HPP
 
-#include <cstddef>
+#include "util.hpp"
+
 #include <type_traits>
 
 namespace rua {
@@ -673,9 +674,9 @@ using decay_function_t = typename decay_function<T>::type;
 template <typename Callable, typename = void>
 struct callable_prototype {};
 
-template <typename Func>
-struct callable_prototype<Func *, enable_if_t<std::is_function<Func>::value>> {
-	using type = Func;
+template <typename Ret, typename... Args>
+struct callable_prototype<Ret (*)(Args...)> {
+	using type = Ret(Args...);
 };
 
 template <typename Callable>

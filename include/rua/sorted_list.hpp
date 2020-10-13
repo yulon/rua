@@ -1,6 +1,7 @@
 #ifndef _RUA_SORTED_LIST_HPP
 #define _RUA_SORTED_LIST_HPP
 
+#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #include <functional>

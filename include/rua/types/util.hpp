@@ -1,8 +1,6 @@
 #ifndef _RUA_TYPES_UTIL_HPP
 #define _RUA_TYPES_UTIL_HPP
 
-#include "traits.hpp"
-
 #include "../macros.hpp"
 
 #include <cstddef>

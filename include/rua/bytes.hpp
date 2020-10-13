@@ -22,6 +22,7 @@
 #include "string/conv.hpp"
 #include "string/len.hpp"
 #include "string/view.hpp"
+#include "types/traits.hpp"
 #include "types/util.hpp"
 
 #include <cassert>

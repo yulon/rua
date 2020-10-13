@@ -5,6 +5,7 @@
 #include "view.hpp"
 
 #include "../macros.hpp"
+#include "../types/traits.hpp"
 #include "../types/util.hpp"
 
 #include <iomanip>

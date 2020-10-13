@@ -2,6 +2,7 @@
 #define _RUA_MOVE_ONLY_HPP
 
 #include "macros.hpp"
+#include "types/traits.hpp"
 #include "types/util.hpp"
 
 namespace rua {

@@ -9,6 +9,7 @@
 #include "../range.hpp"
 #include "../string/char_enc/base/win32.hpp"
 #include "../string/join.hpp"
+#include "../types/traits.hpp"
 #include "../types/util.hpp"
 
 #include <windows.h>
