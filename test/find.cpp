@@ -19,14 +19,14 @@ TEST_CASE("memory find") {
 	rua::string_view dat_sv(dat_str);
 	REQUIRE(dat_sv.size() == dat_sz);
 
-	rua::bytes_ref dat(dat_str);
+	auto dat = rua::as_bytes(dat_str);
 	REQUIRE(dat.size() == dat_sz);
 
 	char pat[]{-1, -1, -1, -1, -1, 6, 7, -1, 0};
 
 	auto pat_pos = dat_str.length() - 100;
 
-	dat(pat_pos).copy_from(&pat[0]);
+	dat(pat_pos).copy_from(rua::as_bytes(&pat[0]));
 
 	// bytes::index_of
 

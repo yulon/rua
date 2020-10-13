@@ -337,14 +337,7 @@ public:
 			true);
 	}
 
-	template <typename T>
-	enable_if_t<
-		std::is_constructible<bytes_view, T &&>::value &&
-			!std::is_convertible<T &&, string_view>::value &&
-			!std::is_convertible<T &&, wstring_view>::value,
-		memory_block>
-	memory_alloc(T &&val, bool is_executable = true) {
-		bytes_view bv(val);
+	memory_block memory_alloc(bytes_view bv, bool is_executable = true) {
 		auto data = memory_alloc(bv.size(), is_executable);
 		data.write_at(0, bv);
 		return data;
@@ -353,14 +346,14 @@ public:
 	memory_block memory_alloc(const std::string &str) {
 		auto sz = str.length() + 1;
 		auto data = memory_alloc(sz);
-		data.write_at(0, bytes_view(str.data(), sz));
+		data.write_at(0, as_bytes(str.data(), sz));
 		return data;
 	}
 
 	memory_block memory_alloc(const std::wstring &wstr) {
 		auto sz = (wstr.length() + 1) * sizeof(wchar_t);
 		auto data = memory_alloc(sz);
-		data.write_at(0, bytes_view(wstr.data(), sz));
+		data.write_at(0, as_bytes(wstr.data(), sz));
 		return data;
 	}
 
@@ -664,10 +657,10 @@ private:
 
 		bytes names_buf;
 		for (auto &name : names) {
-			names_buf += u8_to_w(name);
-			names_buf += L'\0';
+			names_buf += as_bytes(u8_to_w(name));
+			names_buf += as_bytes(L'\0');
 		}
-		names_buf += L'\0';
+		names_buf += as_bytes(L'\0');
 
 		data.names = memory_alloc(names_buf);
 		if (!data.names) {
@@ -683,7 +676,7 @@ private:
 		ctx.RtlInitUnicodeString = RtlInitUnicodeString_ptr;
 		ctx.LdrLoadDll = LdrLoadDll_ptr;
 
-		data.ctx = memory_alloc(ctx);
+		data.ctx = memory_alloc(as_bytes(ctx));
 		if (!data.ctx) {
 			return data;
 		}
@@ -729,7 +722,8 @@ private:
 		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
 		auto stk =
 			memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
-		if (stk.write_at(sizeof(uintptr_t), data.ctx.data().uintptr()) <= 0) {
+		if (stk.write_at(
+				sizeof(uintptr_t), as_bytes(data.ctx.data().uintptr())) <= 0) {
 			return false;
 		}
 #endif

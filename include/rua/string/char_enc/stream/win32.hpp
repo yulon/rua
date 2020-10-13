@@ -40,7 +40,7 @@ public:
 				}
 			}
 		};
-		auto sz = static_cast<ptrdiff_t>(p.copy_from(_cache));
+		auto sz = static_cast<ptrdiff_t>(p.copy_from(as_bytes(_cache)));
 		_cache = _cache.substr(sz, _cache.size() - sz);
 		return sz;
 	}
@@ -61,7 +61,7 @@ public:
 	virtual ~u8_to_loc_writer() = default;
 
 	virtual ptrdiff_t write(bytes_view p) {
-		_lw->write_all(u8_to_loc(as_string(p)));
+		_lw->write_all(as_bytes(u8_to_loc(as_string(p))));
 		return static_cast<ptrdiff_t>(p.size());
 	}
 

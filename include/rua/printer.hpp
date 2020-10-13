@@ -33,7 +33,7 @@ public:
 			return;
 		}
 		str_join(_buf, {to_temp_string(args)...}, " ");
-		_w->write_all(_buf);
+		_w->write_all(as_bytes(_buf));
 		_buf.resize(0);
 	}
 

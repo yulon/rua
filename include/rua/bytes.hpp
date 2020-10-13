@@ -52,6 +52,10 @@ public:
 		return _this()->data();
 	}
 
+	constexpr explicit operator bool() const {
+		return _this()->size();
+	}
+
 	template <typename T>
 	T get() const {
 		return bit_get<T>(_this()->data());
@@ -250,70 +254,22 @@ class bytes_view : public const_bytes_base<bytes_view> {
 public:
 	constexpr bytes_view(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
 
-	template <
-		typename T,
-		typename DecayT = decay_t<T>,
-		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
-	constexpr bytes_view(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
-
 	constexpr bytes_view(const uchar *ptr, size_t size) :
 		_p(ptr), _n(ptr ? size : 0) {}
-
-	template <
-		typename T,
-		typename Ptr = remove_cvref_t<T>,
-		typename E = remove_pointer_t<Ptr>,
-		typename = enable_if_t<
-			std::is_pointer<Ptr>::value && !std::is_array<Ptr>::value &&
-			size_of<E>::value &&
-			!std::is_convertible<Ptr, string_view>::value &&
-			!std::is_convertible<Ptr, wstring_view>::value>>
-	bytes_view(T &&ptr) :
-		_p(reinterpret_cast<const uchar *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
-
-	template <typename T>
-	bytes_view(T *ptr, size_t size) :
-		_p(reinterpret_cast<const uchar *>(ptr)), _n(ptr ? size : 0) {}
-
-	template <typename T, typename R, typename... Args>
-	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
-		_p(bit_cast<const uchar *>(mem_fn_ptr)), _n(mem_fn_ptr ? size : 0) {}
-
-	template <
-		typename T,
-		typename = enable_if_t<
-			!std::is_convertible<T &&, generic_ptr>::value &&
-			!is_span<T &&>::value>>
-	bytes_view(T &&ref, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<const uchar *>(&ref)), _n(size) {}
 
 	RUA_CONSTEXPR_14 bytes_view(std::initializer_list<uchar> il) :
 		bytes_view(il.begin(), il.size()) {}
 
-	bytes_view(const char *c_str) :
-		_p(reinterpret_cast<const uchar *>(c_str)), _n(c_str_len(c_str)) {}
-
-	bytes_view(const wchar_t *c_wstr) :
-		_p(reinterpret_cast<const uchar *>(c_wstr)),
-		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
-
 	template <
-		typename T,
-		typename SpanTraits = span_traits<T &&>,
+		typename Span,
+		typename SpanTraits = span_traits<Span &&>,
 		typename = enable_if_t<
-			!std::is_base_of<bytes_view, decay_t<T>>::value &&
-			(!std::is_array<remove_reference_t<T>>::value ||
-			 (!std::is_same<typename SpanTraits::value_type, char>::value &&
-			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
-	bytes_view(T &&span) :
+			!std::is_base_of<bytes_view, decay_t<Span>>::value &&
+			std::is_same<typename SpanTraits::value_type, uchar>::value>>
+	constexpr bytes_view(Span &&span) :
 		bytes_view(
-			reinterpret_cast<const uchar *>(rua::data(std::forward<T>(span))),
-			rua::size(std::forward<T>(span)) *
-				sizeof(typename SpanTraits::element_type)) {}
-
-	constexpr operator bool() const {
-		return _n;
-	}
+			rua::data(std::forward<Span>(span)),
+			rua::size(std::forward<Span>(span))) {}
 
 	const uchar *data() const {
 		return _p;
@@ -323,7 +279,7 @@ public:
 		return _n;
 	}
 
-	void resize(size_t size = 0) {
+	void resize(size_t size) {
 		if (!size) {
 			reset();
 			return;
@@ -410,64 +366,20 @@ class bytes_ref : public bytes_base<bytes_ref> {
 public:
 	constexpr bytes_ref(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
 
-	template <
-		typename T,
-		typename DecayT = decay_t<T>,
-		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
-	constexpr bytes_ref(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
-
 	constexpr bytes_ref(uchar *ptr, size_t size) :
 		_p(ptr), _n(ptr ? size : 0) {}
 
-	bytes_ref(void *ptr, size_t size) :
-		_p(reinterpret_cast<uchar *>(ptr)), _n(ptr ? size : 0) {}
-
 	template <
-		typename T,
-		typename Ptr = remove_cvref_t<T>,
-		typename E = remove_pointer_t<Ptr>,
+		typename Span,
+		typename SpanTraits = span_traits<Span &&>,
 		typename = enable_if_t<
-			std::is_pointer<Ptr>::value && !std::is_array<Ptr>::value &&
-			size_of<E>::value && !std::is_const<E>::value &&
-			!std::is_convertible<Ptr, string_view>::value &&
-			!std::is_convertible<Ptr, wstring_view>::value>>
-	bytes_ref(T &&ptr) :
-		_p(reinterpret_cast<uchar *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
-
-	template <
-		typename T,
-		typename = enable_if_t<
-			!std::is_const<remove_reference_t<T>>::value &&
-			!std::is_convertible<T &&, generic_ptr>::value &&
-			!is_span<T &&>::value>>
-	bytes_ref(T &&ref, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<uchar *>(&ref)), _n(size) {}
-
-	bytes_ref(char *c_str) :
-		_p(reinterpret_cast<uchar *>(c_str)), _n(c_str_len(c_str)) {}
-
-	bytes_ref(wchar_t *c_wstr) :
-		_p(reinterpret_cast<uchar *>(c_wstr)),
-		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
-
-	template <
-		typename T,
-		typename SpanTraits = span_traits<T &&>,
-		typename = enable_if_t<
-			!std::is_base_of<bytes_ref, decay_t<T>>::value &&
-			!std::is_const<typename SpanTraits::element_type>::value &&
-			(!std::is_array<remove_reference_t<T>>::value ||
-			 (!std::is_same<typename SpanTraits::value_type, char>::value &&
-			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
-	bytes_ref(T &&span) :
+			!std::is_base_of<bytes_ref, decay_t<Span>>::value &&
+			std::is_same<typename SpanTraits::value_type, uchar>::value &&
+			!std::is_const<typename SpanTraits::element_type>::value>>
+	constexpr bytes_ref(Span &&span) :
 		bytes_ref(
-			reinterpret_cast<uchar *>(rua::data(std::forward<T>(span))),
-			rua::size(std::forward<T>(span)) *
-				sizeof(typename SpanTraits::element_type)) {}
-
-	constexpr operator bool() const {
-		return _n;
-	}
+			rua::data(std::forward<Span>(span)),
+			rua::size(std::forward<Span>(span))) {}
 
 	uchar *data() {
 		return _p;
@@ -481,7 +393,7 @@ public:
 		return _n;
 	}
 
-	void resize(size_t size = 0) {
+	void resize(size_t size) {
 		if (!size) {
 			reset();
 			return;
@@ -511,26 +423,6 @@ private:
 	uchar *_p;
 	size_t _n;
 };
-
-inline bytes_ref as_writable_bytes(bytes_view bv) {
-	return bytes_ref(const_cast<uchar *>(bv.data()), bv.size());
-}
-
-template <typename Bytes>
-inline string_view as_string(const const_bytes_base<Bytes> &b) {
-	return static_cast<const Bytes &>(b).size()
-			   ? string_view(
-					 b.data_generic(), static_cast<const Bytes &>(b).size())
-			   : "";
-}
-
-template <typename Bytes>
-inline std::string to_string(const const_bytes_base<Bytes> &b) {
-	return static_cast<const Bytes &>(b).size()
-			   ? std::string(
-					 b.data_generic(), static_cast<const Bytes &>(b).size())
-			   : "";
-}
 
 template <typename Span>
 inline bytes_view bytes_base<Span>::slice(
@@ -609,6 +501,99 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
 	return bytes_view(std::forward<SrcArgs>(src)...).copy_to(*_this());
 }
 
+template <typename E, bool IsConst = std::is_const<E>::value>
+inline enable_if_t<
+	size_of<E>::value,
+	conditional_t<std::is_const<E>::value, bytes_view, bytes_ref>>
+as_bytes(E *ptr) {
+	return {
+		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(ptr),
+		sizeof(E)};
+}
+
+template <typename T>
+inline bytes_view as_bytes(T *ptr, size_t size) {
+	return {reinterpret_cast<const uchar *>(ptr), size};
+}
+
+template <typename T, typename R, typename... Args>
+inline bytes_view as_bytes(R (T::*mem_fn_ptr)(Args...), size_t size) {
+	return {bit_cast<const uchar *>(mem_fn_ptr), size};
+}
+
+template <
+	typename T,
+	bool IsConst = std::is_const<remove_reference_t<T>>::value>
+inline enable_if_t<
+	!std::is_convertible<T &&, generic_ptr>::value && !is_span<T &&>::value,
+	conditional_t<IsConst, bytes_view, bytes_ref>>
+as_bytes(T &&ref, size_t size = sizeof(T)) {
+	return {
+		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(&ref),
+		size};
+}
+
+template <
+	typename T,
+	typename SpanTraits = span_traits<T &&>,
+	bool IsConst = std::is_const<typename SpanTraits::element_type>::value>
+inline enable_if_t<
+	!std::is_base_of<bytes_view, decay_t<T>>::value &&
+		(!std::is_array<remove_reference_t<T>>::value ||
+		 (!std::is_same<typename SpanTraits::value_type, char>::value &&
+		  !std::is_same<typename SpanTraits::value_type, wchar_t>::value)),
+	conditional_t<IsConst, bytes_view, bytes_ref>>
+as_bytes(T &&span) {
+	return {
+		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(
+			rua::data(std::forward<T>(span))),
+		rua::size(std::forward<T>(span)) *
+			sizeof(typename SpanTraits::element_type)};
+}
+
+inline bytes_view as_bytes(const char *c_str) {
+	return as_bytes(string_view(c_str));
+}
+
+inline bytes_ref as_bytes(char *c_str) {
+	return {reinterpret_cast<uchar *>(c_str), c_str_len(c_str)};
+}
+
+inline bytes_view as_bytes(const wchar_t *c_str) {
+	return as_bytes(wstring_view(c_str));
+}
+
+inline bytes_ref as_bytes(wchar_t *c_str) {
+	return {
+		reinterpret_cast<uchar *>(c_str), c_str_len(c_str) * sizeof(wchar_t)};
+}
+
+template <typename T>
+inline bytes_ref as_writable_bytes(T &&data) {
+	auto b = as_bytes(data);
+	return bytes_ref(const_cast<uchar *>(b.data()), b.size());
+}
+
+template <typename Bytes>
+inline string_view as_string(const const_bytes_base<Bytes> &b) {
+	return static_cast<const Bytes &>(b).size()
+			   ? string_view(
+					 reinterpret_cast<const char *>(
+						 static_cast<const Bytes &>(b).data()),
+					 static_cast<const Bytes &>(b).size())
+			   : "";
+}
+
+template <typename Bytes>
+inline std::string to_string(const const_bytes_base<Bytes> &b) {
+	return static_cast<const Bytes &>(b).size()
+			   ? std::string(
+					 reinterpret_cast<const char *>(
+						 static_cast<const Bytes &>(b).data()),
+					 static_cast<const Bytes &>(b).size())
+			   : "";
+}
+
 class bytes : public bytes_ref {
 public:
 	constexpr bytes(std::nullptr_t = nullptr) : bytes_ref() {}
@@ -628,12 +613,12 @@ public:
 			(!std::is_base_of<bytes, ArgsFront>::value &&
 			 !std::is_integral<ArgsFront>::value)>>
 	bytes(Args &&... copy_src) {
-		bytes_view v(std::forward<Args>(copy_src)...);
-		if (!v.size()) {
+		bytes_view bv(std::forward<Args>(copy_src)...);
+		if (!bv.size()) {
 			return;
 		}
-		_alloc(v.size());
-		copy_from(v);
+		_alloc(bv.size());
+		copy_from(bv);
 	}
 
 	bytes(std::initializer_list<uchar> il) : bytes(il.begin(), il.size()) {}
@@ -650,34 +635,21 @@ public:
 		}
 	}
 
-	bytes &operator=(const bytes &val) {
-		reset(val);
-		return *this;
-	}
-
-	bytes &operator=(bytes &&val) {
-		reset(std::move(val));
-		return *this;
-	}
-
-	template <typename T>
-	enable_if_t<
-		!std::is_base_of<bytes, decay_t<T>>::value &&
-			std::is_convertible<T &&, bytes_view>::value,
-		bytes &>
-	operator=(T &&val) {
-		reset(bytes_view(std::forward<T>(val)));
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT(bytes)
 
 	bytes &operator+=(bytes_view tail) {
 		auto old_sz = size();
-		resize(old_sz + tail.size());
+		auto new_sz = old_sz + tail.size();
+
+		resize(new_sz);
+		assert(size() == new_sz);
+
 		slice(old_sz).copy_from(tail);
+
 		return *this;
 	}
 
-	void resize(size_t size = 0) {
+	void resize(size_t size) {
 		if (!data()) {
 			reset(size);
 			return;
@@ -688,7 +660,7 @@ public:
 		}
 		bytes new_byts(size);
 		new_byts.copy_from(*this);
-		reset(std::move(new_byts));
+		*this = std::move(new_byts);
 	}
 
 	size_t capacity() const {
@@ -722,35 +694,10 @@ public:
 		_alloc(size);
 	}
 
-	template <
-		typename... Args,
-		typename ArgsFront = front_t<Args...>,
-		typename DecayArgsFront = decay_t<ArgsFront>,
-		typename = enable_if_t<
-			(sizeof...(Args) > 1) ||
-			(!(std::is_base_of<bytes, DecayArgsFront>::value &&
-			   std::is_rvalue_reference<ArgsFront>::value) &&
-			 !std::is_integral<DecayArgsFront>::value)>>
-	void reset(Args &&... copy_src) {
-		bytes_view v(std::forward<Args>(copy_src)...);
-		if (!v.size()) {
-			reset();
-			return;
-		}
-		reset(v.size());
-		copy_from(v);
-	}
-
-	void reset(bytes &&src) {
-		reset();
-		bytes_ref::reset(src.data(), src.size());
-		static_cast<bytes_ref &>(src).reset();
-	}
-
 private:
 	void _alloc(size_t size) {
 		bytes_ref::reset(
-			new char[sizeof(size_t) + size] + sizeof(size_t), size);
+			new uchar[sizeof(size_t) + size] + sizeof(size_t), size);
 		bit_set<size_t>(data() - sizeof(size_t), size);
 	}
 
@@ -759,52 +706,16 @@ private:
 	}
 };
 
-template <
-	typename A,
-	typename B,
-	typename DecayA = decay_t<A>,
-	typename DecayB = decay_t<B>>
-inline enable_if_t<
-	(std::is_base_of<bytes_view, DecayA>::value ||
-	 std::is_base_of<bytes_ref, DecayA>::value) &&
-		(std::is_base_of<bytes_view, DecayB>::value ||
-		 std::is_base_of<bytes_ref, DecayB>::value),
-	bytes>
-operator+(A &&a, B &&b) {
+inline bytes operator+(bytes_view a, bytes_view b) {
 	bytes r(a.size() + b.size());
 	r.copy_from(a);
 	r.slice(a.size()).copy_from(b);
 	return r;
 }
 
-template <
-	typename A,
-	typename B,
-	typename DecayA = decay_t<A>,
-	typename DecayB = decay_t<B>>
-inline enable_if_t<
-	(std::is_base_of<bytes_view, DecayA>::value ||
-	 std::is_base_of<bytes_ref, DecayA>::value) &&
-		(!std::is_base_of<bytes_view, DecayB>::value &&
-		 !std::is_base_of<bytes_ref, DecayB>::value),
-	bytes>
-operator+(A &&a, B &&b) {
-	return a + bytes_view(std::forward<B>(b));
-}
-
-template <
-	typename A,
-	typename B,
-	typename DecayA = decay_t<A>,
-	typename DecayB = decay_t<B>>
-inline enable_if_t<
-	(!std::is_base_of<bytes_view, DecayA>::value &&
-	 !std::is_base_of<bytes_ref, DecayA>::value) &&
-		(std::is_base_of<bytes_view, DecayB>::value ||
-		 std::is_base_of<bytes_ref, DecayB>::value),
-	bytes>
-operator+(A &&a, B &&b) {
-	return bytes_view(std::forward<A>(a)) + b;
+template <typename T>
+inline bytes to_bytes(T &&data) {
+	return as_bytes(data);
 }
 
 class bytes_pattern {
@@ -1060,7 +971,7 @@ public:
 	basic_bytes_finder() = default;
 
 	operator bool() const {
-		return _found;
+		return _found.size();
 	}
 
 	Bytes &operator*() {
