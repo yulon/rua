@@ -184,6 +184,9 @@ inline constexpr bool is_control(const rune_t c) {
 }
 
 inline RUA_CONSTEXPR_14 bool is_control(string_view sv) {
+	if (sv.empty()) {
+		return false;
+	}
 	for (auto &c : sv) {
 		if (!is_control(c)) {
 			return false;
