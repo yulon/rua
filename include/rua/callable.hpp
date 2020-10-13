@@ -8,56 +8,10 @@
 
 namespace rua {
 
-template <typename Callable, typename = void>
-struct func_decl {};
-
-template <typename Ret, typename... Args>
-struct func_decl<Ret (*)(Args...)> {
-	using type = Ret(Args...);
-};
-
-template <typename MemFuncPtr>
-struct _func_decl_from_mfptr {};
-
-template <typename T, typename Ret, typename... Args>
-struct _func_decl_from_mfptr<Ret (T::*)(Args...)> {
-	using type = Ret(Args...);
-};
-
-template <typename T, typename Ret, typename... Args>
-struct _func_decl_from_mfptr<Ret (T::*)(Args...) const> {
-	using type = Ret(Args...);
-};
-
-template <typename T, typename Ret, typename... Args>
-struct _func_decl_from_mfptr<Ret (T::*)(Args...) &> {
-	using type = Ret(Args...);
-};
-
-template <typename T, typename Ret, typename... Args>
-struct _func_decl_from_mfptr<Ret (T::*)(Args...) &&> {
-	using type = Ret(Args...);
-};
-
-template <typename T, typename Ret, typename... Args>
-struct _func_decl_from_mfptr<Ret (T::*)(Args...) const &> {
-	using type = Ret(Args...);
-};
-
 template <typename Callable>
-struct func_decl<Callable, void_t<decltype(&Callable::operator())>> {
-	using type =
-		typename _func_decl_from_mfptr<decltype(&Callable::operator())>::type;
-};
-
-template <typename Callable>
-using func_decl_t = typename func_decl<Callable>::type;
-
-template <
-	typename Callable,
-	typename Func = std::function<func_decl_t<decay_t<Callable>>>>
-inline Func to_func(Callable &&c) {
-	return Func(std::forward<Callable>(c));
+inline std::function<callable_prototype_t<decay_t<Callable>>>
+wrap_callable(Callable &&c) {
+	return std::forward<Callable>(c);
 }
 
 ////////////////////////////////////////////////////////////////////////////

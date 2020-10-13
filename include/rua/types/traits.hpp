@@ -357,6 +357,336 @@ template <typename T, typename... Types>
 inline constexpr auto index_of_v = index_of<T, Types...>::value;
 #endif
 
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct remove_member_pointer {
+	using type = T;
+};
+
+template <typename T, typename E>
+struct remove_member_pointer<E T::*> {
+	using type = E;
+};
+
+template <typename T, typename E>
+struct remove_member_pointer<E T::*const> {
+	using type = E;
+};
+
+template <typename T, typename E>
+struct remove_member_pointer<E T::*volatile> {
+	using type = E;
+};
+
+template <typename T, typename E>
+struct remove_member_pointer<E T::*const volatile> {
+	using type = E;
+};
+
+template <typename T>
+using remove_member_pointer_t = typename remove_member_pointer<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct remove_function_except {
+	using type = T;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) noexcept> {
+	using type = Ret(Args...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) noexcept> {
+	using type = Ret(Args..., ...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const noexcept> {
+	using type = Ret(Args...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) volatile noexcept> {
+	using type = Ret(Args...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const volatile noexcept> {
+	using type = Ret(Args...) const volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const noexcept> {
+	using type = Ret(Args...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) volatile noexcept> {
+	using type = Ret(Args...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const volatile noexcept> {
+	using type = Ret(Args...) const volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) &noexcept> {
+	using type = Ret(Args...) &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const &noexcept> {
+	using type = Ret(Args...) const &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) volatile &noexcept> {
+	using type = Ret(Args...) volatile &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const volatile &noexcept> {
+	using type = Ret(Args...) const volatile &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) &noexcept> {
+	using type = Ret(Args..., ...) &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const &noexcept> {
+	using type = Ret(Args..., ...) const &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) volatile &noexcept> {
+	using type = Ret(Args..., ...) volatile &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const volatile &noexcept> {
+	using type = Ret(Args..., ...) const volatile &;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) &&noexcept> {
+	using type = Ret(Args...) &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const &&noexcept> {
+	using type = Ret(Args...) const &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) volatile &&noexcept> {
+	using type = Ret(Args...) volatile &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args...) const volatile &&noexcept> {
+	using type = Ret(Args...) const volatile &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) &&noexcept> {
+	using type = Ret(Args..., ...) &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const &&noexcept> {
+	using type = Ret(Args..., ...) const &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) volatile &&noexcept> {
+	using type = Ret(Args..., ...) volatile &&;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_except<Ret(Args..., ...) const volatile &&noexcept> {
+	using type = Ret(Args..., ...) const volatile &&;
+};
+
+template <typename T>
+using remove_function_except_t = typename remove_function_except<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct remove_function_ref {
+	using type = T;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) &> {
+	using type = Ret(Args...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) const &> {
+	using type = Ret(Args...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) volatile &> {
+	using type = Ret(Args...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) const volatile &> {
+	using type = Ret(Args...) const volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) &> {
+	using type = Ret(Args..., ...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) const &> {
+	using type = Ret(Args..., ...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) volatile &> {
+	using type = Ret(Args..., ...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) const volatile &> {
+	using type = Ret(Args..., ...) const volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) &&> {
+	using type = Ret(Args...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) const &&> {
+	using type = Ret(Args...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) volatile &&> {
+	using type = Ret(Args...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args...) const volatile &&> {
+	using type = Ret(Args...) const volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) &&> {
+	using type = Ret(Args..., ...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) const &&> {
+	using type = Ret(Args..., ...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) volatile &&> {
+	using type = Ret(Args..., ...) volatile;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_ref<Ret(Args..., ...) const volatile &&> {
+	using type = Ret(Args..., ...) const volatile;
+};
+
+template <typename T>
+using remove_function_ref_t = typename remove_function_ref<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct remove_function_volatile {
+	using type = T;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_volatile<Ret(Args...) volatile> {
+	using type = Ret(Args...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_volatile<Ret(Args...) const volatile> {
+	using type = Ret(Args...) const;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_volatile<Ret(Args..., ...) volatile> {
+	using type = Ret(Args..., ...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_volatile<Ret(Args..., ...) const volatile> {
+	using type = Ret(Args..., ...) const;
+};
+
+template <typename T>
+using remove_function_volatile_t = typename remove_function_volatile<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct remove_function_const {
+	using type = T;
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_const<Ret(Args...) const> {
+	using type = Ret(Args...);
+};
+
+template <typename Ret, typename... Args>
+struct remove_function_const<Ret(Args..., ...) const> {
+	using type = Ret(Args..., ...);
+};
+
+template <typename T>
+using remove_function_const_t = typename remove_function_const<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct decay_function {
+	using type = remove_function_const_t<remove_function_volatile_t<
+		remove_function_ref_t<remove_function_except_t<T>>>>;
+};
+
+template <typename T>
+using decay_function_t = typename decay_function<T>::type;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename Callable, typename = void>
+struct callable_prototype {};
+
+template <typename Func>
+struct callable_prototype<Func *, enable_if_t<std::is_function<Func>::value>> {
+	using type = Func;
+};
+
+template <typename Callable>
+struct callable_prototype<Callable, void_t<decltype(&Callable::operator())>> {
+	using type = decay_function_t<
+		remove_member_pointer_t<decltype(&Callable::operator())>>;
+};
+
+template <typename Callable>
+using callable_prototype_t = typename callable_prototype<Callable>::type;
+
 } // namespace rua
 
 #endif
