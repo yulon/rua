@@ -136,17 +136,17 @@ public:
 		_type = type_id<void>();
 	}
 
-	byte *data() {
+	uchar *data() {
 		return &_sto[0];
 	}
 
-	const byte *data() const {
+	const uchar *data() const {
 		return &_sto[0];
 	}
 
 private:
 	alignas(
-		max_align_of<Types...>::value) byte _sto[max_size_of<Types...>::value];
+		max_align_of<Types...>::value) uchar _sto[max_size_of<Types...>::value];
 
 	template <typename T, typename... Args>
 	T &_emplace(Args &&... args) {

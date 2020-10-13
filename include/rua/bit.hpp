@@ -161,7 +161,7 @@ bit_cast(const From &src) {
 
 // bit_eq
 
-inline bool bit_eq(const byte *a, const byte *b, size_t size) {
+inline bool bit_eq(const uchar *a, const uchar *b, size_t size) {
 	size_t i = 0;
 	if (size >= sizeof(uintptr_t)) {
 		for (;;) {
@@ -183,11 +183,11 @@ inline bool bit_eq(const byte *a, const byte *b, size_t size) {
 }
 
 inline bool bit_eq(generic_ptr a, generic_ptr b, size_t size) {
-	return bit_eq(a.as<const byte *>(), b.as<const byte *>(), size);
+	return bit_eq(a.as<const uchar *>(), b.as<const uchar *>(), size);
 }
 
 inline bool
-bit_eq(const byte *a, const byte *b, const byte *mask, size_t size) {
+bit_eq(const uchar *a, const uchar *b, const uchar *mask, size_t size) {
 	size_t i = 0;
 	if (size >= sizeof(uintptr_t)) {
 		for (;;) {
@@ -213,16 +213,19 @@ bit_eq(const byte *a, const byte *b, const byte *mask, size_t size) {
 inline bool
 bit_eq(generic_ptr a, generic_ptr b, generic_ptr mask, size_t size) {
 	return bit_eq(
-		a.as<const byte *>(),
-		b.as<const byte *>(),
-		mask.as<const byte *>(),
+		a.as<const uchar *>(),
+		b.as<const uchar *>(),
+		mask.as<const uchar *>(),
 		size);
 }
 
 // bit_contains
 
 inline bool bit_contains(
-	const byte *masked_byts, const byte *mask, const byte *byts, size_t size) {
+	const uchar *masked_byts,
+	const uchar *mask,
+	const uchar *byts,
+	size_t size) {
 	size_t i = 0;
 	if (size >= sizeof(uintptr_t)) {
 		for (;;) {
@@ -247,9 +250,9 @@ inline bool bit_contains(
 inline bool bit_contains(
 	generic_ptr masked_byts, generic_ptr mask, generic_ptr byts, size_t size) {
 	return bit_eq(
-		byts.as<const byte *>(),
-		masked_byts.as<const byte *>(),
-		mask.as<const byte *>(),
+		byts.as<const uchar *>(),
+		masked_byts.as<const uchar *>(),
+		mask.as<const uchar *>(),
 		size);
 }
 

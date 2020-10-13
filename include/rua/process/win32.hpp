@@ -534,7 +534,7 @@ private:
 
 	static bytes_view _dll_loader_code() {
 		// clang-format off
-		static const byte code[] {
+		static const uchar code[] {
 #if RUA_X86 == 64
 			0x55,                                                  // push   %rbp
 			0x57,                                                  // push   %rdi

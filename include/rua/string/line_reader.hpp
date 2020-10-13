@@ -15,9 +15,9 @@ namespace rua {
 
 class line_reader {
 public:
-	line_reader() : _r(nullptr), _buf(), _data(), prev_b(0) {}
+	line_reader() : _r(nullptr), _buf(), _data(), prev_b{0} {}
 
-	line_reader(reader_i r) : _r(std::move(r)), prev_b(0) {}
+	line_reader(reader_i r) : _r(std::move(r)), prev_b{0} {}
 
 	optional<std::string> read_line(size_t buf_sz = 1024) {
 		if (_buf.size() != buf_sz) {
@@ -27,8 +27,8 @@ public:
 		for (;;) {
 			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(_data.size());
 				 ++i) {
-				if (_data[i] == byte{'\n'}) {
-					if (prev_b != byte{'\r'}) {
+				if (_data[i] == '\n') {
+					if (prev_b != '\r') {
 						ln += as_string(_data(0, i));
 						prev_b = _data[i];
 						_data = _data(i + 1);
@@ -37,7 +37,7 @@ public:
 					prev_b = _data[i];
 					_data = _data(i + 1);
 					i = -1;
-				} else if (_buf[i] == byte{'\r'}) {
+				} else if (_buf[i] == '\r') {
 					ln += as_string(_data(0, i));
 					prev_b = _data[i];
 					_data = _data(i + 1);
@@ -92,7 +92,7 @@ private:
 	reader_i _r;
 	bytes _buf;
 	bytes_ref _data;
-	byte prev_b;
+	uchar prev_b;
 };
 
 } // namespace rua

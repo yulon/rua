@@ -212,7 +212,7 @@ public:
 	}
 
 protected:
-	alignas(alignof(T)) byte _sto[sizeof(T)];
+	alignas(alignof(T)) uchar _sto[sizeof(T)];
 	bool _has_val;
 
 	template <

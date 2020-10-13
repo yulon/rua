@@ -118,7 +118,7 @@ public:
 	}
 
 private:
-	alignas(alignof(T)) byte _sto[sizeof(T)];
+	alignas(alignof(T)) uchar _sto[sizeof(T)];
 };
 
 } // namespace rua

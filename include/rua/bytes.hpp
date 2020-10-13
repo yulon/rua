@@ -1,6 +1,19 @@
 #ifndef _RUA_BYTES_HPP
 #define _RUA_BYTES_HPP
 
+/*
+	Q: Why don't I use std::byte?
+	A: Because I suspect std::byte is used to make Microsoft feel sick.
+
+	1. All operators are implemented by operator overloading,
+	   but MSVC does not inline code in debug mode,
+	   which causes programs in debug mode to run slowly.
+
+	2. List initialization declarations are very redundant,
+	   such as {std::byte{n}, ...} or {static_cast<std::byte>(n), ...},
+	   but G++ can use {{n}, ...}.
+*/
+
 #include "bit.hpp"
 #include "macros.hpp"
 #include "optional.hpp"
@@ -69,8 +82,8 @@ public:
 		return bit_aligned_as<const T>(_this()->data(), ix);
 	}
 
-	const byte &operator[](ptrdiff_t offset) const {
-		return as<const byte>(offset);
+	const uchar &operator[](ptrdiff_t offset) const {
+		return _this()->data()[offset];
 	}
 
 	inline bytes_view
@@ -162,14 +175,12 @@ public:
 		return bit_aligned_as<T>(_this()->data(), ix);
 	}
 
-	const byte &operator[](ptrdiff_t offset) const {
-		return as<const byte>(offset);
-		;
+	const uchar &operator[](ptrdiff_t offset) const {
+		return _this()->data()[offset];
 	}
 
-	byte &operator[](ptrdiff_t offset) {
-		return as<byte>(offset);
-		;
+	uchar &operator[](ptrdiff_t offset) {
+		return _this()->data()[offset];
 	}
 
 	inline bytes_view
@@ -203,7 +214,7 @@ public:
 		return rel_ptr;
 	}
 
-	template <typename T = byte>
+	template <typename T = uchar>
 	void reverse() {
 		auto n = _this()->size() / sizeof(T);
 		std::vector<T> r(n);
@@ -245,7 +256,7 @@ public:
 		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
 	constexpr bytes_view(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
 
-	constexpr bytes_view(const byte *ptr, size_t size) :
+	constexpr bytes_view(const uchar *ptr, size_t size) :
 		_p(ptr), _n(ptr ? size : 0) {}
 
 	template <
@@ -258,15 +269,15 @@ public:
 			!std::is_convertible<Ptr, string_view>::value &&
 			!std::is_convertible<Ptr, wstring_view>::value>>
 	bytes_view(T &&ptr) :
-		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
+		_p(reinterpret_cast<const uchar *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
 
 	template <typename T>
 	bytes_view(T *ptr, size_t size) :
-		_p(reinterpret_cast<const byte *>(ptr)), _n(ptr ? size : 0) {}
+		_p(reinterpret_cast<const uchar *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <typename T, typename R, typename... Args>
 	bytes_view(R (T::*mem_fn_ptr)(Args...), size_t size) :
-		_p(bit_cast<const byte *>(mem_fn_ptr)), _n(mem_fn_ptr ? size : 0) {}
+		_p(bit_cast<const uchar *>(mem_fn_ptr)), _n(mem_fn_ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -274,16 +285,16 @@ public:
 			!std::is_convertible<T &&, generic_ptr>::value &&
 			!is_span<T &&>::value>>
 	bytes_view(T &&ref, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<const byte *>(&ref)), _n(size) {}
+		_p(reinterpret_cast<const uchar *>(&ref)), _n(size) {}
 
-	bytes_view(std::initializer_list<byte> il) :
-		bytes_view(reinterpret_cast<const void *>(il.begin()), il.size()) {}
+	RUA_CONSTEXPR_14 bytes_view(std::initializer_list<uchar> il) :
+		bytes_view(il.begin(), il.size()) {}
 
 	bytes_view(const char *c_str) :
-		_p(reinterpret_cast<const byte *>(c_str)), _n(c_str_len(c_str)) {}
+		_p(reinterpret_cast<const uchar *>(c_str)), _n(c_str_len(c_str)) {}
 
 	bytes_view(const wchar_t *c_wstr) :
-		_p(reinterpret_cast<const byte *>(c_wstr)),
+		_p(reinterpret_cast<const uchar *>(c_wstr)),
 		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
@@ -296,7 +307,7 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_view(T &&span) :
 		bytes_view(
-			reinterpret_cast<const byte *>(rua::data(std::forward<T>(span))),
+			reinterpret_cast<const uchar *>(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
@@ -304,7 +315,7 @@ public:
 		return _n;
 	}
 
-	const byte *data() const {
+	const uchar *data() const {
 		return _p;
 	}
 
@@ -339,7 +350,7 @@ public:
 	}
 
 private:
-	const byte *_p;
+	const uchar *_p;
 	size_t _n;
 };
 
@@ -379,8 +390,8 @@ inline bool const_bytes_base<Span>::eq(bytes_view target) const {
 	if (sz != target.size()) {
 		return false;
 	}
-	const byte *a = _this()->data();
-	const byte *b = target.data();
+	auto a = _this()->data();
+	auto b = target.data();
 	if (a == b) {
 		return true;
 	}
@@ -405,10 +416,11 @@ public:
 		typename = enable_if_t<std::is_base_of<generic_ptr, DecayT>::value>>
 	constexpr bytes_ref(T &&ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
 
-	constexpr bytes_ref(byte *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+	constexpr bytes_ref(uchar *ptr, size_t size) :
+		_p(ptr), _n(ptr ? size : 0) {}
 
 	bytes_ref(void *ptr, size_t size) :
-		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? size : 0) {}
+		_p(reinterpret_cast<uchar *>(ptr)), _n(ptr ? size : 0) {}
 
 	template <
 		typename T,
@@ -420,7 +432,7 @@ public:
 			!std::is_convertible<Ptr, string_view>::value &&
 			!std::is_convertible<Ptr, wstring_view>::value>>
 	bytes_ref(T &&ptr) :
-		_p(reinterpret_cast<byte *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
+		_p(reinterpret_cast<uchar *>(ptr)), _n(ptr ? sizeof(E) : 0) {}
 
 	template <
 		typename T,
@@ -429,13 +441,13 @@ public:
 			!std::is_convertible<T &&, generic_ptr>::value &&
 			!is_span<T &&>::value>>
 	bytes_ref(T &&ref, size_t size = sizeof(T)) :
-		_p(reinterpret_cast<byte *>(&ref)), _n(size) {}
+		_p(reinterpret_cast<uchar *>(&ref)), _n(size) {}
 
 	bytes_ref(char *c_str) :
-		_p(reinterpret_cast<byte *>(c_str)), _n(c_str_len(c_str)) {}
+		_p(reinterpret_cast<uchar *>(c_str)), _n(c_str_len(c_str)) {}
 
 	bytes_ref(wchar_t *c_wstr) :
-		_p(reinterpret_cast<byte *>(c_wstr)),
+		_p(reinterpret_cast<uchar *>(c_wstr)),
 		_n(c_str_len(c_wstr) * sizeof(wchar_t)) {}
 
 	template <
@@ -449,7 +461,7 @@ public:
 			  !std::is_same<typename SpanTraits::value_type, wchar_t>::value))>>
 	bytes_ref(T &&span) :
 		bytes_ref(
-			reinterpret_cast<byte *>(rua::data(std::forward<T>(span))),
+			reinterpret_cast<uchar *>(rua::data(std::forward<T>(span))),
 			rua::size(std::forward<T>(span)) *
 				sizeof(typename SpanTraits::element_type)) {}
 
@@ -457,11 +469,11 @@ public:
 		return _n;
 	}
 
-	byte *data() {
+	uchar *data() {
 		return _p;
 	}
 
-	const byte *data() const {
+	const uchar *data() const {
 		return _p;
 	}
 
@@ -496,12 +508,12 @@ public:
 	}
 
 private:
-	byte *_p;
+	uchar *_p;
 	size_t _n;
 };
 
 inline bytes_ref as_writable_bytes(bytes_view bv) {
-	return bytes_ref(const_cast<byte *>(bv.data()), bv.size());
+	return bytes_ref(const_cast<uchar *>(bv.data()), bv.size());
 }
 
 template <typename Bytes>
@@ -624,8 +636,7 @@ public:
 		copy_from(v);
 	}
 
-	bytes(std::initializer_list<const byte> il) :
-		bytes(il.begin(), il.size()) {}
+	bytes(std::initializer_list<uchar> il) : bytes(il.begin(), il.size()) {}
 
 	~bytes() {
 		reset();
@@ -815,7 +826,7 @@ public:
 		typename IntListTraits = span_traits<IntList &&>,
 		typename Int = typename IntListTraits::value_type,
 		typename = enable_if_t<
-			std::is_integral<Int>::value && (sizeof(Int) > sizeof(byte))>>
+			std::is_integral<Int>::value && (sizeof(Int) > sizeof(uchar))>>
 	bytes_pattern(IntList &&li) {
 		_input(li);
 	}
@@ -870,7 +881,7 @@ private:
 					_vas.back().size = i - _vas.back().offset;
 				}
 				assert(i < _v.size());
-				_v[i] = static_cast<byte>(val);
+				_v[i] = static_cast<uchar>(val);
 			} else {
 				if (!in_va) {
 					in_va = true;
@@ -913,11 +924,11 @@ inline size_t const_bytes_base<Span>::index_of(
 		return nullpos;
 	}
 
-	auto begin = reinterpret_cast<const uchar *>(_this()->data()) + start_pos;
+	auto begin = _this()->data() + start_pos;
 	auto end = begin + _this()->size() - f_sz;
-	auto f_begin = reinterpret_cast<const uchar *>(find_data.view().data());
+	auto f_begin = find_data.view().data();
 
-	auto m_begin = reinterpret_cast<const uchar *>(find_data.mask().data());
+	auto m_begin = find_data.mask().data();
 	if (m_begin) {
 		assert(find_data.variable_areas().size());
 
@@ -976,13 +987,12 @@ inline size_t const_bytes_base<Span>::last_index_of(
 		start_pos = sz;
 	}
 
-	auto begin = reinterpret_cast<const uchar *>(_this()->data());
+	auto begin = _this()->data();
 	auto begin_before = begin - 1;
-	auto end =
-		reinterpret_cast<const uchar *>(_this()->data()) + start_pos - f_sz;
-	auto f_begin = reinterpret_cast<const uchar *>(find_data.view().data());
+	auto end = _this()->data() + start_pos - f_sz;
+	auto f_begin = find_data.view().data();
 
-	auto m_begin = reinterpret_cast<const uchar *>(find_data.mask().data());
+	auto m_begin = find_data.mask().data();
 	if (m_begin) {
 		assert(find_data.variable_areas().size());
 
@@ -1179,12 +1189,12 @@ template <
 class enable_bytes_accessor
 	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
-	byte *data() {
-		return reinterpret_cast<byte *>(static_cast<Derived *>(this));
+	uchar *data() {
+		return reinterpret_cast<uchar *>(static_cast<Derived *>(this));
 	}
 
-	const byte *data() const {
-		return reinterpret_cast<const byte *>(
+	const uchar *data() const {
+		return reinterpret_cast<const uchar *>(
 			static_cast<const Derived *>(this));
 	}
 
@@ -1197,23 +1207,23 @@ protected:
 };
 
 template <>
-inline byte *enable_bytes_accessor<void>::data() {
-	return reinterpret_cast<byte *>(this);
+inline uchar *enable_bytes_accessor<void>::data() {
+	return reinterpret_cast<uchar *>(this);
 }
 
 template <>
-inline const byte *enable_bytes_accessor<void>::data() const {
-	return reinterpret_cast<const byte *>(this);
+inline const uchar *enable_bytes_accessor<void>::data() const {
+	return reinterpret_cast<const uchar *>(this);
 }
 
 template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
 public:
-	byte *data() {
+	uchar *data() {
 		return &_raw[0];
 	}
 
-	const byte *data() const {
+	const uchar *data() const {
 		return &_raw[0];
 	}
 
@@ -1222,7 +1232,7 @@ public:
 	}
 
 private:
-	alignas(Align) byte _raw[Size];
+	alignas(Align) uchar _raw[Size];
 };
 
 } // namespace rua

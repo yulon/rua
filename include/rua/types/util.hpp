@@ -73,28 +73,6 @@ using uchar = unsigned char;
 
 ////////////////////////////////////////////////////////////////////////////
 
-/*
-	Q: Why don't I use std::byte?
-	A: Because I suspect std::byte is used to disgusting Microsoft.
-
-	1. All operators are implemented by operator overloading,
-	   but MSVC does not inline code in debug mode,
-	   which causes programs in debug mode to run slowly.
-
-	2. List initialization declarations are very redundant,
-	   such as {std::byte{n}, ...} or {static_cast<std::byte>(n), ...},
-	   but G++ can use {{n}, ...}.
-*/
-using byte = uchar;
-
-#if defined(__cpp_lib_byte)
-using std_byte = std::byte;
-#else
-using std_byte = uchar;
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
 inline constexpr T nmax() {
 	return (std::numeric_limits<T>::max)();
