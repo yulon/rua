@@ -18,36 +18,36 @@ inline constexpr enable_if_t<
 		!std::is_function<remove_cv_t<Element>>::value &&
 		!is_null_pointer<Pointer>::value,
 	DataT>
-data(T &&target) {
+span_data(T &&target) {
 	return std::forward<T>(target).data();
 }
 
 #if RUA_CPP < RUA_CPP_17
 
 template <typename CharT, typename Traits, typename Allocator>
-inline CharT *data(std::basic_string<CharT, Traits, Allocator> &target) {
+inline CharT *span_data(std::basic_string<CharT, Traits, Allocator> &target) {
 	return &target[0];
 }
 
 template <typename CharT, typename Traits, typename Allocator>
-inline CharT *data(std::basic_string<CharT, Traits, Allocator> &&target) {
-	return data(target);
+inline CharT *span_data(std::basic_string<CharT, Traits, Allocator> &&target) {
+	return span_data(target);
 }
 
 #endif
 
 template <typename E, size_t N>
-inline constexpr E *data(E (&c_ary_lv)[N]) {
+inline constexpr E *span_data(E (&c_ary_lv)[N]) {
 	return &c_ary_lv[0];
 }
 
 template <typename E, size_t N>
-inline constexpr E *data(E(&&c_ary_rv)[N]) {
+inline constexpr E *span_data(E(&&c_ary_rv)[N]) {
 	return &c_ary_rv[0];
 }
 
 template <typename E, size_t N>
-inline constexpr E *data(E (*c_ary_ptr)[N]) {
+inline constexpr E *span_data(E (*c_ary_ptr)[N]) {
 	return &(*c_ary_ptr)[0];
 }
 
@@ -68,17 +68,17 @@ inline constexpr enable_if_t<
 		!std::is_function<remove_cv_t<Element>>::value &&
 		!is_null_pointer<Pointer>::value,
 	Pointer>
-data(T &&target) {
+span_data(T &&target) {
 	return std::forward<T>(target).begin();
 }
 
 template <typename T>
-inline constexpr decltype(std::declval<T &&>().size()) size(T &&target) {
+inline constexpr decltype(std::declval<T &&>().size()) span_size(T &&target) {
 	return std::forward<T>(target).size();
 }
 
 template <typename E, size_t N>
-inline constexpr size_t size(E (&)[N]) {
+inline constexpr size_t span_size(E (&)[N]) {
 	return N;
 }
 
@@ -90,18 +90,19 @@ struct _has_size<T, void_t<decltype(std::declval<T>().size())>>
 	: std::true_type {};
 
 template <typename T>
-inline enable_if_t<
+inline constexpr enable_if_t<
 	!_has_size<T &&>::value,
 	decltype(std::declval<T &&>().end() - std::declval<T &&>().begin())>
-size(T &&target) {
+span_size(T &&target) {
 	return std::forward<T>(target).end() - std::forward<T>(target).begin();
 }
 
 template <
 	typename T,
-	typename Pointer = remove_reference_t<decltype(data(std::declval<T>()))>,
+	typename Pointer =
+		remove_reference_t<decltype(span_data(std::declval<T>()))>,
 	typename Element = remove_pointer_t<Pointer>,
-	typename Size = remove_reference_t<decltype(size(std::declval<T>()))>>
+	typename Size = remove_reference_t<decltype(span_size(std::declval<T>()))>>
 struct span_traits {
 	using pointer = Pointer;
 	using element_type = Element;

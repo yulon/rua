@@ -11,7 +11,7 @@ template <
 	typename T,
 	typename BeginT = decltype(std::declval<T &&>().begin()),
 	typename = decltype(*std::declval<BeginT>())>
-inline constexpr BeginT begin(T &&target) {
+inline constexpr BeginT range_begin(T &&target) {
 	return std::forward<T>(target).begin();
 }
 
@@ -19,7 +19,7 @@ template <
 	typename T,
 	typename EndT = decltype(std::declval<T &&>().end()),
 	typename = decltype(*std::declval<EndT>())>
-inline constexpr EndT end(T &&target) {
+inline constexpr EndT range_end(T &&target) {
 	return std::forward<T>(target).end();
 }
 
@@ -37,16 +37,17 @@ template <typename T>
 inline constexpr enable_if_t<
 	!_has_begin_end<T &&>::value,
 	typename span_traits<T &&>::pointer>
-begin(T &&target) {
-	return data(std::forward<T>(target));
+range_begin(T &&target) {
+	return span_data(std::forward<T>(target));
 }
 
 template <typename T>
 inline constexpr enable_if_t<
 	!_has_begin_end<T &&>::value,
 	typename span_traits<T &&>::pointer>
-end(T &&target) {
-	return data(std::forward<T>(target)) + size(std::forward<T>(target));
+range_end(T &&target) {
+	return span_data(std::forward<T>(target)) +
+		   span_size(std::forward<T>(target));
 }
 
 struct wandering_iterator {
@@ -103,19 +104,20 @@ namespace rua {
 
 template <typename T>
 inline constexpr decltype(_rua_range_adl::_begin(std::declval<T &&>()))
-begin(T &&target) {
+range_begin(T &&target) {
 	return _rua_range_adl::_begin(std::forward<T>(target));
 }
 
 template <typename T>
 inline constexpr decltype(_rua_range_adl::_end(std::declval<T &&>()))
-end(T &&target) {
+range_end(T &&target) {
 	return _rua_range_adl::_end(std::forward<T>(target));
 }
 
 template <
 	typename T,
-	typename Iterator = remove_reference_t<decltype(begin(std::declval<T>()))>,
+	typename Iterator =
+		remove_reference_t<decltype(range_begin(std::declval<T>()))>,
 	typename Element = remove_reference_t<decltype(*std::declval<Iterator>())>>
 struct range_traits {
 	using iterator = Iterator;

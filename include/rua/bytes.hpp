@@ -269,8 +269,8 @@ public:
 			std::is_same<typename SpanTraits::value_type, uchar>::value>>
 	constexpr bytes_view(Span &&span) :
 		bytes_view(
-			rua::data(std::forward<Span>(span)),
-			rua::size(std::forward<Span>(span))) {}
+			span_data(std::forward<Span>(span)),
+			span_size(std::forward<Span>(span))) {}
 
 	const uchar *data() const {
 		return _p;
@@ -379,8 +379,8 @@ public:
 			!std::is_const<typename SpanTraits::element_type>::value>>
 	constexpr bytes_ref(Span &&span) :
 		bytes_ref(
-			rua::data(std::forward<Span>(span)),
-			rua::size(std::forward<Span>(span))) {}
+			span_data(std::forward<Span>(span)),
+			span_size(std::forward<Span>(span))) {}
 
 	uchar *data() {
 		return _p;
@@ -535,20 +535,20 @@ as_bytes(T &&ref, size_t size = sizeof(T)) {
 }
 
 template <
-	typename T,
-	typename SpanTraits = span_traits<T &&>,
+	typename Span,
+	typename SpanTraits = span_traits<Span &&>,
 	bool IsConst = std::is_const<typename SpanTraits::element_type>::value>
 inline enable_if_t<
-	!std::is_base_of<bytes_view, decay_t<T>>::value &&
-		(!std::is_array<remove_reference_t<T>>::value ||
+	!std::is_base_of<bytes_view, decay_t<Span>>::value &&
+		(!std::is_array<remove_reference_t<Span>>::value ||
 		 (!std::is_same<typename SpanTraits::value_type, char>::value &&
 		  !std::is_same<typename SpanTraits::value_type, wchar_t>::value)),
 	conditional_t<IsConst, bytes_view, bytes_ref>>
-as_bytes(T &&span) {
+as_bytes(Span &&span) {
 	return {
 		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(
-			rua::data(std::forward<T>(span))),
-		rua::size(std::forward<T>(span)) *
+			span_data(std::forward<Span>(span))),
+		span_size(std::forward<Span>(span)) *
 			sizeof(typename SpanTraits::element_type)};
 }
 

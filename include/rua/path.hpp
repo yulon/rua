@@ -112,7 +112,7 @@ private:
 	template <typename PartList>
 	static std::vector<std::string> _fix_part_list(PartList &&part_list) {
 		std::vector<std::string> parts;
-		parts.reserve(size(std::forward<PartList>(part_list)));
+		parts.reserve(span_size(std::forward<PartList>(part_list)));
 		for (auto &part : std::forward<PartList>(part_list)) {
 			auto part_str = to_string(std::move(part));
 			_fix_seps(part_str);
