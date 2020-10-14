@@ -2,9 +2,12 @@
 #define _RUA_STRING_CONV_HPP
 
 #include "char_enc/base.hpp"
+#include "join.hpp"
 #include "view.hpp"
 
 #include "../macros.hpp"
+#include "../range.hpp"
+#include "../span.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -14,30 +17,107 @@
 
 namespace rua {
 
-template <typename T>
-inline enable_if_t<!std::is_same<decay_t<T>, bool>::value, std::string>
-to_string(T &&val) {
-	return std::to_string(std::forward<T>(val));
+template <typename Char>
+inline constexpr enable_if_t<
+	std::is_same<remove_cv_t<Char>, char>::value,
+	string_view>
+as_string(Char *c_str) {
+	return c_str;
 }
 
-inline std::string to_string(std::nullptr_t) {
+inline constexpr string_view as_string(const char *c_str, size_t size) {
+	return {c_str, size};
+}
+
+template <typename StringLike, typename SpanTraits = span_traits<StringLike &&>>
+inline constexpr enable_if_t<
+	std::is_same<typename SpanTraits::value_type, char>::value &&
+		!std::is_array<remove_reference_t<StringLike>>::value,
+	string_view>
+as_string(StringLike &&str) {
+	return {
+		span_data(std::forward<StringLike>(str)),
+		span_size(std::forward<StringLike>(str))};
+}
+
+template <typename NullPtr>
+inline constexpr enable_if_t<is_null_pointer<NullPtr>::value, string_view>
+as_string(NullPtr) {
 	return "null";
 }
 
-inline std::string to_string(const char *c_str) {
-	return std::string(c_str);
+template <typename Bool>
+inline constexpr enable_if_t<std::is_same<Bool, bool>::value, string_view>
+as_string(Bool val) {
+	return val ? "true" : "false";
 }
 
-inline std::string to_string(string_view sv) {
-	return std::string(sv.data(), sv.size());
-}
+template <typename T, typename = void>
+struct is_convertible_as_string {
+	static constexpr auto value = false;
+};
 
-inline std::string to_string(wstring_view wsv) {
-	return w_to_u8(wsv.data());
+template <typename T>
+struct is_convertible_as_string<
+	T,
+	void_t<decltype(as_string(std::declval<T>()))>> {
+	static constexpr auto value = true;
+};
+
+////////////////////////////////////////////////////////////////////////////
+
+struct disable_as_to_string {
+protected:
+	disable_as_to_string() = default;
+};
+
+template <typename T, typename DecayT = decay_t<T>>
+inline enable_if_t<
+	is_convertible_as_string<T &&>::value &&
+		!std::is_base_of<std::string, DecayT>::value &&
+		!std::is_base_of<disable_as_to_string, DecayT>::value,
+	std::string>
+to_string(T &&val) {
+	auto sv = as_string(std::forward<T>(val));
+	return {sv.data(), sv.size()};
 }
 
 inline std::string to_string(std::string s) {
 	return std::string(std::move(s));
+}
+
+template <typename WChar>
+inline enable_if_t<
+	std::is_same<remove_cv_t<WChar>, wchar_t>::value,
+	std::string>
+to_string(WChar *c_wstr) {
+	return w_to_u8(c_wstr);
+}
+
+inline std::string to_string(const wchar_t *c_wstr, size_t size) {
+	return w_to_u8({c_wstr, size});
+}
+
+template <
+	typename WStringLike,
+	typename SpanTraits = span_traits<WStringLike &&>>
+inline constexpr enable_if_t<
+	std::is_same<typename SpanTraits::value_type, wchar_t>::value &&
+		!std::is_array<remove_reference_t<WStringLike>>::value,
+	std::string>
+to_string(WStringLike &&wstr) {
+	return w_to_u8(
+		{span_data(std::forward<WStringLike>(wstr)),
+		 span_size(std::forward<WStringLike>(wstr))});
+}
+
+template <typename Num>
+inline enable_if_t<
+	std::is_integral<decay_t<Num>>::value ||
+		std::is_floating_point<decay_t<Num>>::value,
+	std::string>
+to_string(Num &&num) {
+	return std::to_string(num);
 }
 
 template <typename T>
@@ -55,70 +135,39 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 }
 
 template <typename T>
-inline enable_if_t<!std::is_same<decay_t<T>, char>::value, std::string>
+inline enable_if_t<
+	!std::is_same<remove_cv_t<T>, char>::value &&
+		!std::is_same<remove_cv_t<T>, wchar_t>::value,
+	std::string>
 to_string(T *ptr) {
 	return ptr ? to_hex(reinterpret_cast<uintptr_t>(ptr)) : to_string(nullptr);
 }
 
-template <typename Bool>
-inline enable_if_t<std::is_same<Bool, bool>::value, std::string>
-to_string(Bool val) {
-	return val ? "true" : "false";
-}
+template <typename Range, typename RangeTraits = range_traits<Range &&>>
+inline enable_if_t<
+	!std::is_same<typename RangeTraits::value_type, char>::value &&
+		!std::is_same<typename RangeTraits::value_type, wchar_t>::value,
+	std::string>
+to_string(Range &&);
 
 template <typename T, typename = void>
-struct is_constructible_to_string {
+struct is_convertible_to_string {
 	static constexpr auto value = false;
 };
 
 template <typename T>
-struct is_constructible_to_string<
+struct is_convertible_to_string<
 	T,
 	void_t<decltype(to_string(std::declval<T>()))>> {
 	static constexpr auto value = true;
 };
 
-template <typename Char>
-constexpr inline enable_if_t<std::is_same<Char, char>::value, string_view>
-as_string(const Char *c_str) {
-	return c_str;
-}
-
-template <typename StringView>
-inline constexpr enable_if_t<
-	std::is_base_of<string_view, StringView>::value,
-	string_view>
-as_string(StringView sv) {
-	return sv;
-}
-
-template <typename NullPtr>
-inline constexpr enable_if_t<is_null_pointer<NullPtr>::value, string_view>
-as_string(NullPtr) {
-	return "null";
-}
-
-template <typename Bool>
-inline constexpr enable_if_t<std::is_same<Bool, bool>::value, string_view>
-as_string(Bool val) {
-	return val ? "true" : "false";
-}
-
-template <typename T, typename = void>
-struct is_constructible_as_string {
-	static constexpr auto value = false;
-};
-
-template <typename T>
-struct is_constructible_as_string<
-	T,
-	void_t<decltype(as_string(std::declval<T>()))>> {
-	static constexpr auto value = true;
-};
+////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 constexpr inline enable_if_t<
-	is_constructible_as_string<T &&>::value,
+	is_convertible_as_string<T &&>::value &&
+		!std::is_base_of<disable_as_to_string, decay_t<T>>::value,
 	string_view>
 to_temp_string(T &&val) {
 	return as_string(std::forward<T>(val));
@@ -126,11 +175,35 @@ to_temp_string(T &&val) {
 
 template <typename T>
 inline enable_if_t<
-	is_constructible_to_string<T &&>::value &&
-		!is_constructible_as_string<T &&>::value,
+	is_convertible_to_string<T &&>::value &&
+		(!is_convertible_as_string<T &&>::value ||
+		 std::is_base_of<disable_as_to_string, decay_t<T>>::value),
 	std::string>
 to_temp_string(T &&val) {
 	return to_string(std::forward<T>(val));
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename Range, typename RangeTraits>
+inline enable_if_t<
+	!std::is_same<typename RangeTraits::value_type, char>::value &&
+		!std::is_same<typename RangeTraits::value_type, wchar_t>::value,
+	std::string>
+to_string(Range &&range) {
+	std::string buf;
+	buf += '{';
+	bool is_first = true;
+	for (auto it = range_begin(range); it != range_end(range); ++it) {
+		if (is_first) {
+			is_first = false;
+		} else {
+			buf += ", ";
+		}
+		buf += to_temp_string(*it);
+	}
+	buf += '}';
+	return buf;
 }
 
 } // namespace rua

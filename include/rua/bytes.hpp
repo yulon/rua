@@ -47,7 +47,7 @@ using const_bytes_rfinder = reverse_iterator<const_bytes_finder>;
 using bytes_rfinder = reverse_iterator<bytes_finder>;
 
 template <typename Span>
-class const_bytes_base {
+class const_bytes_base : private disable_as_to_string {
 public:
 	generic_ptr data_generic() const {
 		return _this()->data();
@@ -579,16 +579,6 @@ template <typename Bytes>
 inline string_view as_string(const const_bytes_base<Bytes> &b) {
 	return static_cast<const Bytes &>(b).size()
 			   ? string_view(
-					 reinterpret_cast<const char *>(
-						 static_cast<const Bytes &>(b).data()),
-					 static_cast<const Bytes &>(b).size())
-			   : "";
-}
-
-template <typename Bytes>
-inline std::string to_string(const const_bytes_base<Bytes> &b) {
-	return static_cast<const Bytes &>(b).size()
-			   ? std::string(
 					 reinterpret_cast<const char *>(
 						 static_cast<const Bytes &>(b).data()),
 					 static_cast<const Bytes &>(b).size())
