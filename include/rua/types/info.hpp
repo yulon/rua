@@ -17,6 +17,20 @@
 
 namespace rua {
 
+#define _RUA_TYPE_NAME_GET_1_FROM_2                                            \
+	static string_view get() {                                                 \
+		static const auto cache = get("");                                     \
+		return cache;                                                          \
+	}
+
+#define _RUA_TYPE_NAME_GET_2_FROM_1                                            \
+	static std::string get(string_view declarator) {                           \
+		return str_join(                                                       \
+			{get(), declarator},                                               \
+			" ",                                                               \
+			RUA_DI(str_join_options, $.is_ignore_space = true));               \
+	}
+
 template <typename T, typename = void>
 struct type_name {
 #ifdef RUA_RTTI
@@ -28,6 +42,8 @@ struct type_name {
 		return "unknown_type";
 	}
 #endif
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -35,6 +51,8 @@ struct type_name<void> {
 	static constexpr string_view get() {
 		return "void";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -42,6 +60,8 @@ struct type_name<std::nullptr_t> {
 	static constexpr string_view get() {
 		return "nullptr_t";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -49,6 +69,8 @@ struct type_name<int> {
 	static constexpr string_view get() {
 		return "int";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -56,6 +78,8 @@ struct type_name<size_t> {
 	static constexpr string_view get() {
 		return "size_t";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -65,6 +89,8 @@ struct type_name<
 	static constexpr string_view get() {
 		return "uint";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -72,6 +98,8 @@ struct type_name<char> {
 	static constexpr string_view get() {
 		return "char";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -81,6 +109,8 @@ struct type_name<
 	static constexpr string_view get() {
 		return "schar";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -90,6 +120,8 @@ struct type_name<
 	static constexpr string_view get() {
 		return "uchar";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -97,6 +129,8 @@ struct type_name<bool> {
 	static constexpr string_view get() {
 		return "bool";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -111,6 +145,8 @@ struct type_name<
 			str_join("int", std::to_string(sizeof(T) * 8), "_t");
 		return n;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -125,6 +161,8 @@ struct type_name<
 			str_join("uint", std::to_string(sizeof(T) * 8), "_t");
 		return n;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -132,6 +170,8 @@ struct type_name<float> {
 	static constexpr string_view get() {
 		return "float";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -139,6 +179,8 @@ struct type_name<double> {
 	static constexpr string_view get() {
 		return "double";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -149,6 +191,8 @@ struct type_name<
 	static constexpr string_view get() {
 		return "max_align_t";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 #ifdef __cpp_lib_byte
@@ -157,633 +201,131 @@ struct type_name<std::byte> {
 	static constexpr string_view get() {
 		return "std::byte";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 #endif
 
 template <typename T>
-struct type_name<const T, enable_if_t<!std::is_pointer<T>::value>> {
-	static string_view get() {
-		static const auto n = str_join("const ", type_name<T>::get());
-		return n;
+struct type_name<T const> {
+	_RUA_TYPE_NAME_GET_1_FROM_2
+
+	static std::string get(string_view declarator) {
+		return type_name<T>::get(str_join(
+			{"const", declarator},
+			" ",
+			RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
 template <typename T>
 struct type_name<T *> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " *");
-		return n;
-	}
-};
+	_RUA_TYPE_NAME_GET_1_FROM_2
 
-template <typename T>
-struct type_name<T *&> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " *&");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_name<T *&&> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " *&&");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_name<T *const> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " *const");
-		return n;
-	}
-};
-
-template <typename T>
-struct type_name<T *const &> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " *const &");
-		return n;
+	static std::string get(string_view declarator) {
+		return type_name<T>::get(str_join(
+			{"*", declarator},
+			" ",
+			RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
 template <typename T>
 struct type_name<T &> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " &");
-		return n;
+	_RUA_TYPE_NAME_GET_1_FROM_2
+
+	static std::string get(string_view declarator) {
+		return type_name<T>::get(str_join(
+			{"&", declarator},
+			" ",
+			RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
 template <typename T>
 struct type_name<T &&> {
-	static string_view get() {
-		static const auto n = str_join(type_name<T>::get(), " &&");
-		return n;
+	_RUA_TYPE_NAME_GET_1_FROM_2
+
+	static std::string get(string_view declarator) {
+		return type_name<T>::get(str_join(
+			{"&&", declarator},
+			" ",
+			RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
 template <typename T, size_t N>
 struct type_name<T[N]> {
 	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), "[", std::to_string(N), "]");
+		static const auto n = get("");
 		return n;
+	}
+
+	std::string get(string_view declarator) {
+		return str_join(
+			type_name<T>::get(),
+			" ",
+			declarator.length() ? str_join("(", declarator, ")") : "",
+			"[",
+			std::to_string(N),
+			"]");
 	}
 };
 
-template <typename T, size_t N>
-struct type_name<T (&)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (&)[", std::to_string(N), "]");
-		return n;
-	}
-};
+template <typename Func, bool HasVa>
+struct _func_name;
 
-template <typename T, size_t N>
-struct type_name<T(&&)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (&&)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T (*)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (*)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T (*&)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (*&)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T (*&&)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (*&&)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T (*const)[N]> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<T>::get(), " (*const)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T (*const &)[N]> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<T>::get(), " (*const &)[", std::to_string(N), "]");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
+template <typename Ret, typename... Args, bool HasVa>
+struct _func_name<Ret(Args...), HasVa> {
+	static std::string
+	make(string_view declarator = "", string_view suffix = "") {
+		return str_join(
+			type_name<Ret>::get(),
+			" ",
+			declarator.length() ? str_join("(", declarator, ")") : "",
 			"(",
-			str_join(type_name<Args>::get()..., ", "),
-			")");
-		return n;
+			str_join({type_name<Args>::get()...}, ", "),
+			HasVa ? (sizeof...(Args) ? ", ..." : "...") : "",
+			")",
+			suffix.length() ? " " : "",
+			suffix);
 	}
 };
 
-template <typename R, typename... Args>
-struct type_name<R (*)(Args...)> {
+template <typename Func>
+struct type_name<Func, enable_if_t<std::is_function<Func>::value>> {
 	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
+		static const auto n = get("");
 		return n;
 	}
-};
 
-template <typename R, typename... Args>
-struct type_name<R (*&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R (*&&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R (*const)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R (*const &)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R (&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename R, typename... Args>
-struct type_name<R(&&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
+	static std::string get(string_view declarator) {
+		return _func_name<
+			remove_function_va_t<decay_function_t<Func>>,
+			is_function_has_va<Func>::value>::
+			make(
+				declarator,
+				str_join(
+					{is_function_has_const<Func>::value ? "const" : "",
+					 is_function_has_volatile<Func>::value ? "volatile" : "",
+					 is_function_has_lref<Func>::value
+						 ? "&"
+						 : (is_function_has_rref<Func>::value ? "&&" : ""),
+					 is_function_has_noexcept<Func>::value ? "noexcept" : ""},
+					" ",
+					RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
 template <typename T, typename E>
 struct type_name<E T::*> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<E>::get(), " ", type_name<T>::get(), "::*");
-		return n;
-	}
-};
+	_RUA_TYPE_NAME_GET_1_FROM_2
 
-template <typename T, typename E>
-struct type_name<E T::*&> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<E>::get(), " ", type_name<T>::get(), "::*&");
-		return n;
-	}
-};
-
-template <typename T, typename E>
-struct type_name<E T::*&&> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<E>::get(), " ", type_name<T>::get(), "::*&&");
-		return n;
-	}
-};
-
-template <typename T, typename E>
-struct type_name<E T::*const> {
-	static string_view get() {
-		static const auto n =
-			str_join(type_name<E>::get(), " ", type_name<T>::get(), "::*const");
-		return n;
-	}
-};
-
-template <typename T, typename E>
-struct type_name<E T::*const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<E>::get(), " ", type_name<T>::get(), "::*const &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...)> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			")");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...) const> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...) const> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...) const> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...) const> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...) const> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...) &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...) &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...) &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...) &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...) &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...) &&> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &&");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...) &&> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &&");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...) &&> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &&");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...) &&> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &&");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...) &&> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") &&");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*)(Args...) const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&)(Args...) const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*&&)(Args...) const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*&&)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const)(Args...) const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
-		return n;
-	}
-};
-
-template <typename T, typename R, typename... Args>
-struct type_name<R (T::*const &)(Args...) const &> {
-	static string_view get() {
-		static const auto n = str_join(
-			type_name<R>::get(),
-			" (",
-			type_name<T>::get(),
-			"::*const &)(",
-			str_join({type_name<Args>::get()...}, ", "),
-			") const &");
-		return n;
+	static std::string get(string_view declarator) {
+		return type_name<E>::get(str_join(
+			{str_join(type_name<T>::get(), "::*"), declarator},
+			" ",
+			RUA_DI(str_join_options, $.is_ignore_space = true)));
 	}
 };
 
@@ -792,6 +334,8 @@ struct type_name<std::string> {
 	static string_view get() {
 		return "std::string";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -799,6 +343,8 @@ struct type_name<std::wstring> {
 	static string_view get() {
 		return "std::wstring";
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename CharT, typename Traits, typename Allocator>
@@ -814,6 +360,8 @@ struct type_name<std::basic_string<CharT, Traits, Allocator>> {
 			">");
 		return n;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -827,6 +375,8 @@ struct type_name<string_view> {
 #endif
 			;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <>
@@ -840,6 +390,8 @@ struct type_name<wstring_view> {
 #endif
 			;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename CharT, typename Traits>
@@ -858,6 +410,8 @@ struct type_name<basic_string_view<CharT, Traits>> {
 			">");
 		return n;
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 class type_info {
