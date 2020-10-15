@@ -17,11 +17,21 @@ class msgbox_writer : public writer {
 public:
 	virtual ~msgbox_writer() = default;
 
-	msgbox_writer(string_view title, UINT icon) :
-		_tit(u8_to_w(title)), _ico(icon) {}
+	msgbox_writer(string_view default_title, UINT icon) :
+		_tit(u8_to_w(default_title)), _ico(icon) {}
 
 	virtual ptrdiff_t write(bytes_view p) {
-		MessageBoxW(0, u8_to_w(as_string(p)).c_str(), _tit.c_str(), _ico);
+		auto eol_b = as_bytes(eol::sys_con);
+		auto fr = p.find(as_bytes(eol::sys_con));
+		if (fr) {
+			MessageBoxW(
+				0,
+				u8_to_w(as_string(p(fr.pos() + eol_b.size()))).c_str(),
+				u8_to_w(as_string(p(0, fr.pos()))).c_str(),
+				_ico);
+		} else {
+			MessageBoxW(0, u8_to_w(as_string(p)).c_str(), _tit.c_str(), _ico);
+		}
 		return static_cast<ptrdiff_t>(p.size());
 	}
 
@@ -77,21 +87,6 @@ inline void err_log(Args &&... args) {
 	auto lg = make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }
-
-#define RUA_CHECK(_exp)                                                        \
-	{                                                                          \
-		if (!(_exp)) {                                                         \
-			rua::err_log(                                                      \
-				"Check failed!",                                               \
-				rua::eol::sys_con,                                             \
-				"File:",                                                       \
-				std::string(__FILE__) + ":" + std::to_string(__LINE__),        \
-				rua::eol::sys_con,                                             \
-				"Expression:",                                                 \
-				#_exp);                                                        \
-			abort();                                                           \
-		}                                                                      \
-	}
 
 } // namespace rua
 
