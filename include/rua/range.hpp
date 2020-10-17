@@ -5,23 +5,9 @@
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
+#include <iterator>
+
 namespace rua {
-
-template <
-	typename T,
-	typename BeginT = decltype(std::declval<T &&>().begin()),
-	typename = decltype(*std::declval<BeginT>())>
-inline constexpr BeginT range_begin(T &&target) {
-	return std::forward<T>(target).begin();
-}
-
-template <
-	typename T,
-	typename EndT = decltype(std::declval<T &&>().end()),
-	typename = decltype(*std::declval<EndT>())>
-inline constexpr EndT range_end(T &&target) {
-	return std::forward<T>(target).end();
-}
 
 template <typename, typename = void>
 struct _has_begin_end : std::false_type {};
@@ -50,26 +36,6 @@ range_end(T &&target) {
 		   span_size(std::forward<T>(target));
 }
 
-struct wandering_iterator {
-protected:
-	wandering_iterator() = default;
-};
-
-template <typename T>
-inline constexpr rua::enable_if_t<
-	std::is_base_of<wandering_iterator, remove_cvref_t<T>>::value,
-	T &&>
-begin(T &&it) {
-	return std::forward<T>(it);
-}
-
-template <typename T, typename Iter = remove_cvref_t<T>>
-inline constexpr rua::
-	enable_if_t<std::is_base_of<wandering_iterator, Iter>::value, Iter>
-	end(T &&) {
-	return {};
-}
-
 } // namespace rua
 
 namespace _rua_range_adl {
@@ -77,9 +43,7 @@ namespace _rua_range_adl {
 template <
 	typename T,
 	typename = rua::enable_if_t<
-		!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value &&
-		!std::is_base_of<rua::wandering_iterator, rua::remove_cvref_t<T>>::
-			value>,
+		!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value>,
 	typename BeginT = decltype(begin(std::declval<T &&>())),
 	typename = decltype(*std::declval<BeginT>())>
 inline constexpr BeginT _begin(T &&target) {
@@ -89,9 +53,7 @@ inline constexpr BeginT _begin(T &&target) {
 template <
 	typename T,
 	typename = rua::enable_if_t<
-		!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value &&
-		!std::is_base_of<rua::wandering_iterator, rua::remove_cvref_t<T>>::
-			value>,
+		!rua::_has_begin_end<T &&>::value && !rua::is_span<T &&>::value>,
 	typename EndT = decltype(end(std::declval<T &&>())),
 	typename = decltype(*std::declval<EndT>())>
 inline constexpr EndT _end(T &&target) {
@@ -165,6 +127,72 @@ struct is_writeable_range<
 template <typename T>
 inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+inline constexpr decltype(span_size(std::declval<T &&>()))
+range_size(T &&target) {
+	return span_size(std::forward<T>(target));
+}
+
+template <typename, typename = void>
+struct _can_use_span_size : std::false_type {};
+
+template <typename T>
+struct _can_use_span_size<T, void_t<decltype(span_size(std::declval<T>()))>>
+	: std::true_type {};
+
+template <typename T>
+inline constexpr enable_if_t<
+	!_can_use_span_size<T &&>::value,
+	decltype(std::distance(
+		range_begin(std::declval<T &&>()), range_end(std::declval<T &&>())))>
+range_size(T &&target) {
+	return std::distance(
+		range_begin(std::forward<T>(target)),
+		range_end(std::forward<T>(target)));
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+struct wandering_iterator {
+protected:
+	wandering_iterator() = default;
+};
+
+template <typename T>
+inline constexpr rua::enable_if_t<
+	std::is_base_of<wandering_iterator, remove_cvref_t<T>>::value,
+	T &&>
+begin(T &&it) {
+	return std::forward<T>(it);
+}
+
+template <typename T, typename Iter = remove_cvref_t<T>>
+inline constexpr rua::
+	enable_if_t<std::is_base_of<wandering_iterator, Iter>::value, Iter>
+	end(T &&) {
+	return {};
+}
+
+template <
+	typename T,
+	typename BeginT = decltype(std::declval<T &&>().begin()),
+	typename = decltype(*std::declval<BeginT>())>
+inline constexpr BeginT range_begin(T &&target) {
+	return std::forward<T>(target).begin();
+}
+
+template <
+	typename T,
+	typename EndT = decltype(std::declval<T &&>().end()),
+	typename = decltype(*std::declval<EndT>())>
+inline constexpr EndT range_end(T &&target) {
+	return std::forward<T>(target).end();
+}
+
+////////////////////////////////////////////////////////////////////////////
 
 template <typename Iter>
 class reverse_iterator : public Iter {
