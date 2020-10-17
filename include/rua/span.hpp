@@ -4,7 +4,11 @@
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
+#if RUA_CPP < RUA_CPP_17
+
 #include <string>
+
+#endif
 
 namespace rua {
 
@@ -150,6 +154,132 @@ struct is_writeable_span<
 template <typename T>
 inline constexpr auto is_writeable_span_v = is_writeable_span<T>::value;
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+class span {
+public:
+	constexpr span(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
+
+	constexpr span(T *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+
+	constexpr span(T &val, size_t size = 1) : _p(&val), _n(size) {}
+
+	constexpr span(T &&val, size_t size = 1) : _p(&val), _n(size) {}
+
+	template <
+		typename Span,
+		typename SpanTraits = span_traits<Span &&>,
+		typename = enable_if_t<
+			!std::is_base_of<span, decay_t<Span>>::value &&
+			std::is_same<typename SpanTraits::value_type, remove_cv_t<T>>::
+				value &&
+			(!std::is_const<typename SpanTraits::element_type>::value ||
+			 std::is_const<T>::value)>>
+	constexpr span(Span &&src) :
+		span(
+			span_data(std::forward<Span>(src)),
+			span_size(std::forward<Span>(src))) {}
+
+	constexpr explicit operator bool() const {
+		return _n;
+	}
+
+	constexpr size_t size() const {
+		return _n;
+	}
+
+	constexpr T *begin() const {
+		return _p;
+	}
+
+	constexpr T *end() const {
+		return _p + _n;
+	}
+
+	constexpr T &operator[](ptrdiff_t offset) const {
+		return _p[offset];
+	}
+
+	constexpr span<T>
+	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
+		return begin_offset != end_offset_from_begin
+				   ? span<T>(
+						 _p + begin_offset,
+						 static_cast<size_t>(
+							 end_offset_from_begin - begin_offset))
+				   : nullptr;
+	}
+
+	constexpr span<T> slice(ptrdiff_t begin_offset) const {
+		return slice(begin_offset, size());
+	}
+
+	template <typename Span>
+	constexpr span<T>
+	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
+		return slice(begin_offset, end_offset_from_begin);
+	}
+
+	template <typename Span>
+	constexpr span<T> operator()(ptrdiff_t begin_offset) const {
+		return slice(begin_offset);
+	}
+
+	void resize(size_t size) {
+		if (!size) {
+			reset();
+			return;
+		}
+		if (!_p) {
+			return;
+		}
+		_n = size;
+	}
+
+	void reset() {
+		if (!_p) {
+			return;
+		}
+		_p = nullptr;
+		_n = 0;
+	}
+
+	template <typename... Args>
+	void reset(Args &&... args) {
+		RUA_SASSERT((std::is_constructible<span<T>, Args...>::value));
+
+		*this = span<T>(std::forward<Args>(args)...);
+	}
+
+private:
+	T *_p;
+	size_t _n;
+};
+
+template <typename E>
+inline constexpr span<E> make_span(E *ptr, size_t size) {
+	return span<E>(ptr, size);
+}
+
+template <typename E>
+inline constexpr span<E> make_span(E &val, size_t size) {
+	return span<E>(&val, size);
+}
+
+template <typename E>
+inline constexpr span<E> make_span(E &&val, size_t size) {
+	return span<E>(&val, size);
+}
+
+template <
+	typename Span,
+	typename SpanTraits = span_traits<Span &&>,
+	typename E = typename SpanTraits::element_type>
+inline constexpr span<E> make_span(Span &&src) {
+	return span<E>(src);
+}
 
 } // namespace rua
 
