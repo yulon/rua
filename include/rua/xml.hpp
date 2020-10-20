@@ -1,6 +1,7 @@
 #ifndef _RUA_XML_HPP
 #define _RUA_XML_HPP
 
+#include "range.hpp"
 #include "string.hpp"
 #include "types/util.hpp"
 
@@ -12,13 +13,13 @@ namespace rua {
 
 class xml_node;
 
-enum class xml_node_type : uchar {
+using xml_node_list = std::list<xml_node>;
+
+enum class xml_type : uchar {
 	element = 1,
 	text = 3,
 	document = 9,
 };
-
-using xml_node_list = std::list<xml_node>;
 
 inline xml_node make_xml_element(std::string name);
 inline xml_node make_xml_text(std::string content);
@@ -26,19 +27,9 @@ inline xml_node make_xml_document();
 
 inline xml_node parse_xml_document(string_view xml);
 inline xml_node parse_xml_node(string_view xml);
-inline xml_node_list parse_xml_node_list(string_view xml);
+inline xml_node_list parse_xml_nodes(string_view xml);
 
 ////////////////////////////////////////////////////////////////////////////
-
-class _xml_node;
-
-using _xml_shared_node = std::shared_ptr<_xml_node>;
-
-using _xml_weak_node = std::weak_ptr<_xml_node>;
-
-using _xml_weak_node_list = std::list<_xml_weak_node>;
-
-using _xml_attribute_map = std::map<std::string, std::string>;
 
 class _xml_node {
 public:
@@ -46,15 +37,15 @@ public:
 
 	virtual ~_xml_node() {}
 
-	virtual xml_node_type type() const = 0;
+	virtual xml_type type() const = 0;
 
 	virtual string_view name() const = 0;
 
-	virtual const _xml_attribute_map *attributes() const {
+	virtual const std::map<std::string, std::string> *attributes() const {
 		return nullptr;
 	}
 
-	virtual _xml_attribute_map *attributes() {
+	virtual std::map<std::string, std::string> *attributes() {
 		return nullptr;
 	}
 
@@ -66,11 +57,19 @@ public:
 		return nullptr;
 	}
 
-	virtual const _xml_weak_node_list *parent_nodes() const {
+	virtual const std::weak_ptr<_xml_node> *parent() const {
 		return nullptr;
 	}
 
-	virtual _xml_weak_node_list *parent_nodes() {
+	virtual std::weak_ptr<_xml_node> *parent() {
+		return nullptr;
+	}
+
+	virtual const xml_node_list::iterator *iterator() const {
+		return nullptr;
+	}
+
+	virtual xml_node_list::iterator *iterator() {
 		return nullptr;
 	}
 
@@ -78,13 +77,9 @@ public:
 		return "";
 	}
 
-	virtual void set_inner_text(std::string) {}
-
 	virtual std::string get_inner_xml(bool) const {
 		return "";
 	}
-
-	virtual void set_inner_xml(string_view) {}
 
 	virtual std::string get_outer_xml(bool) const {
 		return "";
@@ -93,35 +88,150 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////
 
-class xml_node {
+class xml_node_collection {
 public:
-	constexpr xml_node(std::nullptr_t = nullptr) : _n(nullptr) {}
+	using iterator = xml_node_list::iterator;
 
-	operator bool() const {
-		return _n.get();
+	xml_node_collection() = default;
+
+	iterator begin() const {
+		if (!_n_sp) {
+			return iterator();
+		}
+		auto cns_p = _n_sp->child_nodes();
+		if (!cns_p) {
+			return iterator();
+		}
+		return cns_p->begin();
 	}
 
-	xml_node_type type() const {
+	iterator end() const {
+		if (!_n_sp) {
+			return iterator();
+		}
+		auto cns_p = _n_sp->child_nodes();
+		if (!cns_p) {
+			return iterator();
+		}
+		return cns_p->end();
+	}
+
+	size_t size() const {
+		if (!_n_sp) {
+			return 0;
+		}
+		auto cns_p = _n_sp->child_nodes();
+		if (!cns_p) {
+			return 0;
+		}
+		return cns_p->size();
+	}
+
+private:
+	std::shared_ptr<_xml_node> _n_sp;
+
+	xml_node_collection(std::shared_ptr<_xml_node> n_sp) :
+		_n_sp(std::move(n_sp)) {}
+
+	friend xml_node;
+};
+
+class xml_element_collection {
+public:
+	class iterator : public xml_node_list::iterator {
+	public:
+		iterator() = default;
+
+		inline iterator &operator++();
+
+		iterator operator++(int) {
+			iterator tmp = *this;
+			++(*this);
+			return tmp;
+		}
+
+		iterator &operator--();
+
+		iterator operator--(int) {
+			iterator tmp = *this;
+			--(*this);
+			return tmp;
+		}
+
+	private:
+		xml_node_list::iterator _end;
+
+		iterator(xml_node_list::iterator it, xml_node_list::iterator end);
+
+		friend xml_element_collection;
+	};
+
+	xml_element_collection() = default;
+
+	iterator begin() const {
+		if (!_n_sp) {
+			return iterator();
+		}
+		auto cns_p = _n_sp->child_nodes();
+		if (!cns_p) {
+			return iterator();
+		}
+		return iterator(cns_p->begin(), cns_p->end());
+	}
+
+	iterator end() const {
+		if (!_n_sp) {
+			return iterator();
+		}
+		auto cns_p = _n_sp->child_nodes();
+		if (!cns_p) {
+			return iterator();
+		}
+		return iterator(cns_p->end(), cns_p->end());
+	}
+
+	size_t size() const {
+		return std::distance(begin(), end());
+	}
+
+private:
+	std::shared_ptr<_xml_node> _n_sp;
+
+	xml_element_collection(std::shared_ptr<_xml_node> n_sp) :
+		_n_sp(std::move(n_sp)) {}
+
+	friend xml_node;
+};
+
+class xml_node {
+public:
+	constexpr xml_node(std::nullptr_t = nullptr) : _sp(nullptr) {}
+
+	operator bool() const {
+		return _sp.get();
+	}
+
+	xml_type type() const {
 		assert(*this);
 
-		return _n->type();
+		return _sp->type();
 	}
 
 	string_view name() const {
 		assert(*this);
 
-		return _n->name();
+		return _sp->name();
 	}
 
 	string_view get_attribute(const std::string &name) const {
 		assert(*this);
 
-		auto attrs = _n->attributes();
-		if (!attrs) {
+		auto attrs_p = _sp->attributes();
+		if (!attrs_p) {
 			return "";
 		}
-		auto it = attrs->find(name);
-		if (it == attrs->end()) {
+		auto it = attrs_p->find(name);
+		if (it == attrs_p->end()) {
 			return "";
 		}
 		return it->second;
@@ -130,194 +240,173 @@ public:
 	void set_attribute(const std::string &name, std::string val) {
 		assert(*this);
 
-		auto attrs = _n->attributes();
-		if (!attrs) {
+		auto attrs_p = _sp->attributes();
+		if (!attrs_p) {
 			return;
 		}
-		(*attrs)[name] = std::move(val);
+		(*attrs_p)[name] = std::move(val);
 	}
 
-	bool each(
-		const std::function<bool(xml_node)> &cb,
-		bool recursion = false,
-		bool skip_text = true) const {
+	xml_node_collection get_child_nodes() const {
 		assert(*this);
 
-		auto cns = _n->child_nodes();
-		if (!cns) {
-			return true;
+		return _sp;
+	}
+
+	template <
+		typename NodeList,
+		typename = enable_if_t<std::is_same<
+			typename range_traits<NodeList &&>::value_type,
+			xml_node>::value>>
+	size_t set_child_nodes(NodeList &&nodes, bool check_circular_ref = true) {
+		auto cns_p = _sp->child_nodes();
+		if (!cns_p) {
+			return false;
 		}
-		for (auto it = cns->begin(); it != cns->end();) {
-			if (skip_text && it->type() == xml_node_type::text) {
-				++it;
-				continue;
-			}
-			auto cn = *it;
-			++it;
-			if (!cb(cn)) {
-				return false;
-			}
-			if (recursion && !xml_node(cn).each(cb, recursion, skip_text)) {
-				return false;
-			}
-		}
-		return true;
+		cns_p->resize(0);
+		return _append(
+			cns_p, std::forward<NodeList>(nodes), check_circular_ref);
+	}
+
+	xml_element_collection get_children() const {
+		assert(*this);
+
+		return _sp;
 	}
 
 	xml_node_list
-	query_all(string_view selector, size_t max_count = nmax<size_t>()) const {
+	querys(string_view selector, size_t max_count = nmax<size_t>()) const {
 		assert(*this);
 
-		xml_node_list li;
+		xml_node_list matcheds;
 
-		each(
-			[selector, &li, max_count](xml_node n) -> bool {
-				if (n.name() != selector) {
-					return true;
-				}
-				li.push_back(std::move(n));
-				if (li.size() == max_count) {
-					return false;
-				}
-				return true;
-			},
-			true);
+		if (!max_count) {
+			return matcheds;
+		}
 
-		return li;
+		auto cns = get_children();
+		if (!cns.size()) {
+			return matcheds;
+		}
+
+		for (auto it = cns.begin(); it != cns.end(); ++it) {
+			if (it->name() == selector) {
+				matcheds.emplace_back(*it);
+			}
+
+			auto child_matcheds = it->querys(
+				selector,
+				max_count == nmax<size_t>() ? max_count
+											: max_count - matcheds.size());
+			if (child_matcheds.size()) {
+				matcheds.splice(matcheds.end(), std::move(child_matcheds));
+			}
+
+			if (matcheds.size() == max_count) {
+				return matcheds;
+			}
+		}
+
+		return matcheds;
 	}
 
 	xml_node query(string_view selector) const {
 		assert(*this);
 
-		auto li = query_all(selector, 1);
+		auto li = querys(selector, 1);
 		if (li.empty()) {
-			return xml_node();
+			return nullptr;
 		}
 		return li.front();
 	}
 
-	bool append(xml_node node, bool dedupe = true) {
+	bool remove(xml_node child) {
 		assert(*this);
 
-		auto cns = _n->child_nodes();
-		if (!cns) {
+		auto cn_pn_wp_p = child._sp->parent();
+		if (!cn_pn_wp_p) {
 			return false;
 		}
-		if (!node._add_parent_node(*this, dedupe)) {
+		auto cn_pn_sp = cn_pn_wp_p->lock();
+		if (cn_pn_sp != _sp) {
 			return false;
 		}
-		cns->emplace_back(std::move(node));
+		if (!child._detach_from(_sp)) {
+			return false;
+		};
+		cn_pn_wp_p->reset();
 		return true;
 	}
 
-	bool append(xml_node_list nodes, bool dedupe = true) {
+	bool append(xml_node node, bool check_circular_ref = true) {
 		assert(*this);
 
-		auto cns = _n->child_nodes();
-		if (!cns) {
+		auto cns_p = _sp->child_nodes();
+		if (!cns_p) {
 			return false;
 		}
-		if (!dedupe) {
-			for (auto &node : nodes) {
-				node._add_parent_node(*this, false);
-			}
-			cns->merge(std::move(nodes));
-			return true;
-		}
-		for (auto it = nodes.begin(); it != nodes.end();) {
-			if (!it->_add_parent_node(*this)) {
-				++it;
-				continue;
-			}
-			cns->emplace_back(std::move(*it));
-			it = nodes.erase(it);
-		}
-		return nodes.empty();
-	}
-
-	bool set_child_nodes(xml_node_list nodes, bool dedupe = true) {
-		assert(*this);
-
-		auto cns = _n->child_nodes();
-		if (!cns) {
+		if (!node || !_append(cns_p, std::move(node), check_circular_ref)) {
 			return false;
 		}
-		if (!dedupe) {
-			for (auto &node : nodes) {
-				node._add_parent_node(*this, false);
-			}
-			*cns = std::move(nodes);
-			return true;
-		}
-		cns->resize(0);
-		for (auto it = nodes.begin(); it != nodes.end();) {
-			if (!it->_add_parent_node(*this)) {
-				++it;
-				continue;
-			}
-			cns->emplace_back(std::move(*it));
-			it = nodes.erase(it);
-		}
-		return nodes.empty();
+		return true;
 	}
 
-	xml_node_list get_child_nodes() const {
+	template <
+		typename NodeList,
+		typename = enable_if_t<std::is_same<
+			typename range_traits<NodeList &&>::value_type,
+			xml_node>::value>>
+	size_t append(NodeList &&nodes, bool check_circular_ref = true) {
 		assert(*this);
 
-		auto cns = _n->child_nodes();
-		if (!cns) {
-			return xml_node_list();
+		auto cns_p = _sp->child_nodes();
+		if (!cns_p) {
+			return false;
 		}
-		return *cns;
+		return _append(
+			cns_p, std::forward<NodeList>(nodes), check_circular_ref);
 	}
 
-	xml_node_list get_children() const {
+	xml_node parent() const {
 		assert(*this);
 
-		xml_node_list li;
-		auto cns = _n->child_nodes();
-		if (!cns) {
-			return li;
+		auto pn_wp_p = _sp->parent();
+		if (!pn_wp_p) {
+			return nullptr;
 		}
-		for (auto &cn : *cns) {
-			if (cn.type() != xml_node_type::element) {
-				continue;
-			}
-			li.emplace_back(cn);
-		}
-		return li;
+		return pn_wp_p->lock();
 	}
 
-	xml_node_list get_parent_nodes() const {
+	bool detach() {
 		assert(*this);
 
-		xml_node_list li;
-		auto pns = _n->parent_nodes();
-		if (!pns) {
-			return li;
+		auto pn_wp_p = _sp->parent();
+		if (!pn_wp_p) {
+			return false;
 		}
-		for (auto &pn : *pns) {
-			li.emplace_back(xml_node(pn.lock()));
+		auto pn_sp = pn_wp_p->lock();
+		if (!pn_sp) {
+			return false;
 		}
-		return li;
+		if (!_detach_from(pn_sp)) {
+			return false;
+		};
+		pn_wp_p->reset();
+		return true;
 	}
 
 	std::string get_inner_text() const {
 		assert(*this);
 
-		return _n->get_inner_text();
+		return _sp->get_inner_text();
 	}
 
-	void set_inner_text(std::string text) {
-		assert(*this);
-
-		_n->set_inner_text(text);
-	}
+	void set_inner_text(std::string) {}
 
 	std::string get_outer_text() const {
 		assert(*this);
 
-		return _n->get_inner_text();
+		return _sp->get_inner_text();
 	}
 
 	void set_outer_text(std::string text) {
@@ -327,77 +416,149 @@ public:
 	std::string get_inner_xml(bool xml_style = true) const {
 		assert(*this);
 
-		return _n->get_inner_xml(xml_style);
+		return _sp->get_inner_xml(xml_style);
 	}
 
 	void set_inner_xml(string_view xml) {
-		assert(*this);
-
-		_n->set_inner_xml(xml);
+		set_child_nodes(parse_xml_nodes(xml), false);
 	}
 
 	std::string get_outer_xml(bool xml_style = true) const {
 		assert(*this);
 
-		return _n->get_outer_xml(xml_style);
+		return _sp->get_outer_xml(xml_style);
 	}
 
 	void set_outer_xml(string_view xml) {
-		auto nodes = parse_xml_node_list(xml);
+		auto nodes = parse_xml_nodes(xml);
 		if (nodes.empty()) {
 			return;
 		}
 		*this = std::move(nodes.front());
 	}
 
+	bool operator==(const xml_node &n) const {
+		return _sp == n._sp;
+	}
+
+	bool operator!=(const xml_node &n) const {
+		return _sp != n._sp;
+	}
+
 private:
-	_xml_shared_node _n;
+	std::shared_ptr<_xml_node> _sp;
 
-	xml_node(_xml_shared_node n) : _n(std::move(n)){};
+	xml_node(std::shared_ptr<_xml_node> n) : _sp(std::move(n)){};
 
-	bool _check_parent_node(const _xml_shared_node &n) const {
-		if (!n || n == _n) {
-			return false;
+	xml_node_list::iterator _iterator(xml_node_list *pncns_p) const {
+		xml_node_list::iterator it;
+		auto it_p = _sp->iterator();
+		if (it_p) {
+			it = *it_p;
+			assert(it != pncns_p->end());
+			assert(it->_sp == _sp);
+			return it;
 		}
-		auto pns = n->parent_nodes();
-		if (pns) {
-			for (auto &pn : *pns) {
-				if (!_check_parent_node(pn.lock())) {
-					return false;
-				}
+		for (it = pncns_p->begin(); it != pncns_p->end(); ++it) {
+			if (it->_sp == _sp) {
+				break;
 			}
 		}
-		auto cns = _n->child_nodes();
-		if (!cns) {
+		return it;
+	}
+
+	bool _detach_from(const std::shared_ptr<_xml_node> &pn_sp) {
+		auto pncns_p = pn_sp->child_nodes();
+		assert(pncns_p);
+
+		auto it = _iterator(pncns_p);
+		if (it == pncns_p->end()) {
+			return false;
+		}
+
+		pncns_p->erase(it);
+		return true;
+	}
+
+	bool
+	_check_parent_candidate(const std::shared_ptr<_xml_node> &pcn_sp) const {
+		assert(pcn_sp);
+
+		if (pcn_sp == _sp) {
+			return false;
+		}
+		auto pn_wp_p = pcn_sp->parent();
+		if (pn_wp_p) {
+			if (!_check_parent_candidate(pn_wp_p->lock())) {
+				return false;
+			}
+		}
+		auto cns_p = _sp->child_nodes();
+		if (!cns_p) {
 			return true;
 		}
-		for (auto &cn : *cns) {
-			if (!cn._check_parent_node(n)) {
+		for (auto &cn : *cns_p) {
+			if (!cn._check_parent_candidate(pcn_sp)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	bool _add_parent_node(xml_node node, bool dedupe = true) {
-		auto pns = _n->parent_nodes();
-		if (!pns) {
+	bool
+	_append(xml_node_list *cns_p, xml_node cn, bool check_circular_ref = true) {
+
+		assert(cns_p);
+		assert(cn);
+
+		auto cn_pn_wp_p = cn._sp->parent();
+		if (!cn_pn_wp_p) {
 			return false;
 		}
-		if (!dedupe) {
-			pns->emplace_back(std::move(node._n));
+		auto cn_pn_sp = cn_pn_wp_p->lock();
+		if (cn_pn_sp == _sp) {
 			return true;
 		}
-		for (auto &pn : *pns) {
-			if (pn.lock() == node._n) {
-				return true;
-			}
-		}
-		if (!_check_parent_node(node._n)) {
+
+		if (check_circular_ref && !cn._check_parent_candidate(_sp)) {
 			return false;
 		}
-		pns->emplace_back(std::move(node._n));
+
+		if (cn_pn_sp && !cn._detach_from(cn_pn_sp)) {
+			return false;
+		}
+		*cn_pn_wp_p = _sp;
+
+		cns_p->emplace_back(std::move(cn));
+		auto it_p = _sp->iterator();
+		if (it_p) {
+			*it_p = --cns_p->end();
+		}
 		return true;
+	}
+
+	template <
+		typename NodeList,
+		typename = enable_if_t<std::is_same<
+			typename range_traits<NodeList &&>::value_type,
+			xml_node>::value>>
+	size_t _append(
+		xml_node_list *cns_p, NodeList &&cns, bool check_circular_ref = true) {
+		assert(*this);
+
+		auto cns_sz = cns.size();
+		if (!cns_sz) {
+			return false;
+		}
+
+		size_t appended_c = 0;
+		for (auto &cn : std::forward<NodeList>(cns)) {
+			if (!cn || !_append(cns_p, cn, check_circular_ref)) {
+				continue;
+			}
+			++appended_c;
+		}
+		return appended_c;
 	}
 
 	friend inline xml_node make_xml_element(std::string name);
@@ -405,14 +566,41 @@ private:
 	friend inline xml_node make_xml_document();
 };
 
+inline xml_element_collection::iterator::iterator(
+	xml_node_list::iterator it, xml_node_list::iterator end) :
+	xml_node_list::iterator(std::move(it)), _end(std::move(end)) {
+	while (*this != _end && (*this)->type() != xml_type::element) {
+		xml_node_list::iterator::operator++();
+	}
+}
+
+inline xml_element_collection::iterator &
+xml_element_collection::iterator::operator++() {
+	do {
+		xml_node_list::iterator::operator++();
+	} while (*this != _end && (*this)->type() != xml_type::element);
+	return *this;
+}
+
+inline xml_element_collection::iterator &
+xml_element_collection::iterator::operator--() {
+	do {
+		xml_node_list::iterator::operator--();
+		if (*this == _end) {
+			break;
+		}
+	} while (*this != _end && (*this)->type() != xml_type::element);
+	return *this;
+}
+
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename XmlBaseNode>
-class _xml_container : public XmlBaseNode {
+class _xml_parent : public XmlBaseNode {
 public:
-	_xml_container() = default;
+	_xml_parent() = default;
 
-	virtual ~_xml_container() {}
+	virtual ~_xml_parent() {}
 
 	virtual xml_node_list *child_nodes() {
 		return &_cns;
@@ -430,8 +618,6 @@ public:
 		return text;
 	}
 
-	virtual void set_inner_text(std::string) {}
-
 	virtual std::string get_inner_xml(bool xml_style) const {
 		std::string xml;
 		for (auto &cn : _cns) {
@@ -440,22 +626,18 @@ public:
 		return xml;
 	}
 
-	virtual void set_inner_xml(string_view xml) {
-		_cns = parse_xml_node_list(xml);
-	}
-
 private:
 	xml_node_list _cns;
 };
 
-class _xml_document : public _xml_container<_xml_node> {
+class _xml_document : public _xml_parent<_xml_node> {
 public:
 	_xml_document() = default;
 
 	virtual ~_xml_document() {}
 
-	virtual xml_node_type type() const {
-		return xml_node_type::document;
+	virtual xml_type type() const {
+		return xml_type::document;
 	}
 
 	virtual string_view name() const {
@@ -473,37 +655,46 @@ public:
 
 	virtual ~_xml_child() {}
 
-	virtual const _xml_weak_node_list *parent_nodes() const {
-		return &_pns;
+	virtual const std::weak_ptr<_xml_node> *parent() const {
+		return &_pnw;
 	}
 
-	virtual _xml_weak_node_list *parent_nodes() {
-		return &_pns;
+	virtual std::weak_ptr<_xml_node> *parent() {
+		return &_pnw;
+	}
+
+	virtual const xml_node_list::iterator *iterator() const {
+		return &_it;
+	}
+
+	virtual xml_node_list::iterator *iterator() {
+		return &_it;
 	}
 
 private:
-	_xml_weak_node_list _pns;
+	std::weak_ptr<_xml_node> _pnw;
+	xml_node_list::iterator _it;
 };
 
-class _xml_element : public _xml_container<_xml_child> {
+class _xml_element : public _xml_parent<_xml_child> {
 public:
 	_xml_element(std::string name) : _name(std::move(name)) {}
 
 	virtual ~_xml_element() {}
 
-	virtual xml_node_type type() const {
-		return xml_node_type::element;
+	virtual xml_type type() const {
+		return xml_type::element;
 	}
 
 	virtual string_view name() const {
 		return _name;
 	}
 
-	virtual _xml_attribute_map *attributes() {
+	virtual std::map<std::string, std::string> *attributes() {
 		return &_attrs;
 	}
 
-	virtual const _xml_attribute_map *attributes() const {
+	virtual const std::map<std::string, std::string> *attributes() const {
 		return &_attrs;
 	}
 
@@ -540,8 +731,8 @@ public:
 
 	virtual ~_xml_text() {}
 
-	virtual xml_node_type type() const {
-		return xml_node_type::text;
+	virtual xml_type type() const {
+		return xml_type::text;
 	}
 
 	virtual string_view name() const {
@@ -597,7 +788,7 @@ inline xml_node parse_xml_node(string_view xml) {
 	return n;
 }
 
-inline xml_node_list parse_xml_node_list(string_view xml) {
+inline xml_node_list parse_xml_nodes(string_view xml) {
 	xml_node_list nodes;
 	std::list<xml_node_list::iterator> uncloseds;
 
@@ -746,12 +937,12 @@ inline xml_node_list parse_xml_node_list(string_view xml) {
 				 ++itit) {
 				auto &it = *itit;
 				auto &n = *it;
-				if (n.type() != xml_node_type::element || n.name() != name) {
+				if (n.type() != xml_type::element || n.name() != name) {
 					continue;
 				}
 				xml_node_list cns;
 				cns.splice(cns.end(), nodes, ++it, nodes.end());
-				n.set_child_nodes(std::move(cns), false);
+				n.append(cns, false);
 				uncloseds.erase(uncloseds.begin(), ++itit);
 				break;
 			}
