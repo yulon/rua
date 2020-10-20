@@ -368,7 +368,10 @@ public:
 		return true;
 	}
 
-	bool replace_child(xml_node new_child, xml_node old_child) {
+	bool replace_child(
+		xml_node new_child,
+		xml_node old_child,
+		bool check_circular_ref = true) {
 		assert(*this);
 
 		auto old_cn_pn_wp_p = old_child._sp->parent();
@@ -387,7 +390,7 @@ public:
 			return false;
 		}
 
-		if (!new_child._detach_and_set_parent(_sp)) {
+		if (!new_child._detach_and_set_parent(_sp, check_circular_ref)) {
 			old_child._set_parent(_sp);
 			return false;
 		}
@@ -451,12 +454,18 @@ public:
 		return _sp->get_outer_xml(xml_style);
 	}
 
-	void set_outer_xml(string_view xml) {
+	bool set_outer_xml(string_view xml) {
+		assert(*this);
+
+		auto pn = parent();
+		if (!pn) {
+			return false;
+		}
 		auto nodes = parse_xml_nodes(xml);
 		if (nodes.empty()) {
-			return;
+			return detach();
 		}
-		*this = std::move(nodes.front());
+		return pn.replace_child(std::move(nodes.front()), *this, false);
 	}
 
 	bool operator==(const xml_node &n) const {
@@ -614,7 +623,7 @@ private:
 			xml_node>::value>>
 	size_t _append_child(
 		xml_node_list *cns_p, NodeList &&cns, bool check_circular_ref = true) {
-		assert(*this);
+		assert(cns_p);
 
 		auto cns_sz = cns.size();
 		if (!cns_sz) {
@@ -853,9 +862,8 @@ inline xml_node parse_xml_document(string_view xml) {
 }
 
 inline xml_node parse_xml_node(string_view xml) {
-	xml_node n;
-	n.set_outer_xml(xml);
-	return n;
+	auto nodes = parse_xml_nodes(xml);
+	return nodes.size() ? std::move(nodes.front()) : nullptr;
 }
 
 inline xml_node_list parse_xml_nodes(string_view xml) {
