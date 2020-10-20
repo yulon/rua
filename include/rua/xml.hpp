@@ -264,7 +264,7 @@ public:
 			return false;
 		}
 		cns_p->resize(0);
-		return _append(
+		return _append_child(
 			cns_p, std::forward<NodeList>(nodes), check_circular_ref);
 	}
 
@@ -320,32 +320,15 @@ public:
 		return li.front();
 	}
 
-	bool remove(xml_node child) {
-		assert(*this);
-
-		auto cn_pn_wp_p = child._sp->parent();
-		if (!cn_pn_wp_p) {
-			return false;
-		}
-		auto cn_pn_sp = cn_pn_wp_p->lock();
-		if (cn_pn_sp != _sp) {
-			return false;
-		}
-		if (!child._detach_from(_sp)) {
-			return false;
-		};
-		cn_pn_wp_p->reset();
-		return true;
-	}
-
-	bool append(xml_node node, bool check_circular_ref = true) {
+	bool append_child(xml_node node, bool check_circular_ref = true) {
 		assert(*this);
 
 		auto cns_p = _sp->child_nodes();
 		if (!cns_p) {
 			return false;
 		}
-		if (!node || !_append(cns_p, std::move(node), check_circular_ref)) {
+		if (!node ||
+			!_append_child(cns_p, std::move(node), check_circular_ref)) {
 			return false;
 		}
 		return true;
@@ -356,22 +339,73 @@ public:
 		typename = enable_if_t<std::is_same<
 			typename range_traits<NodeList &&>::value_type,
 			xml_node>::value>>
-	size_t append(NodeList &&nodes, bool check_circular_ref = true) {
+	size_t append_child(NodeList &&nodes, bool check_circular_ref = true) {
 		assert(*this);
 
 		auto cns_p = _sp->child_nodes();
 		if (!cns_p) {
 			return false;
 		}
-		return _append(
+		return _append_child(
 			cns_p, std::forward<NodeList>(nodes), check_circular_ref);
+	}
+
+	bool remove_child(xml_node child) {
+		assert(*this);
+
+		auto cn_pn_wp_p = child._sp->parent();
+		if (!cn_pn_wp_p) {
+			return false;
+		}
+		if (!cn_pn_wp_p->use_count() || cn_pn_wp_p->lock() != _sp) {
+			return false;
+		}
+
+		if (!child._detach_parent(_sp)) {
+			return false;
+		}
+		cn_pn_wp_p->reset();
+		return true;
+	}
+
+	bool replace_child(xml_node new_child, xml_node old_child) {
+		assert(*this);
+
+		auto old_cn_pn_wp_p = old_child._sp->parent();
+		if (!old_cn_pn_wp_p) {
+			return false;
+		}
+		if (!old_cn_pn_wp_p->use_count() || old_cn_pn_wp_p->lock() != _sp) {
+			return false;
+		}
+
+		auto cns_p = _sp->child_nodes();
+		assert(cns_p);
+		auto it = old_child._iterator(cns_p);
+
+		if (!old_child._set_parent(nullptr)) {
+			return false;
+		}
+
+		if (!new_child._detach_and_set_parent(_sp)) {
+			old_child._set_parent(_sp);
+			return false;
+		}
+
+		*it = std::move(new_child);
+
+		auto it_p = new_child._sp->iterator();
+		if (it_p) {
+			*it_p = it;
+		}
+		return true;
 	}
 
 	xml_node parent() const {
 		assert(*this);
 
 		auto pn_wp_p = _sp->parent();
-		if (!pn_wp_p) {
+		if (!pn_wp_p || !pn_wp_p->use_count()) {
 			return nullptr;
 		}
 		return pn_wp_p->lock();
@@ -380,19 +414,7 @@ public:
 	bool detach() {
 		assert(*this);
 
-		auto pn_wp_p = _sp->parent();
-		if (!pn_wp_p) {
-			return false;
-		}
-		auto pn_sp = pn_wp_p->lock();
-		if (!pn_sp) {
-			return false;
-		}
-		if (!_detach_from(pn_sp)) {
-			return false;
-		};
-		pn_wp_p->reset();
-		return true;
+		return _detach_and_set_parent(nullptr);
 	}
 
 	std::string get_inner_text() const {
@@ -450,16 +472,16 @@ private:
 
 	xml_node(std::shared_ptr<_xml_node> n) : _sp(std::move(n)){};
 
-	xml_node_list::iterator _iterator(xml_node_list *pncns_p) const {
+	xml_node_list::iterator _iterator(xml_node_list *pn_cns_p) const {
 		xml_node_list::iterator it;
 		auto it_p = _sp->iterator();
 		if (it_p) {
 			it = *it_p;
-			assert(it != pncns_p->end());
+			assert(it != pn_cns_p->end());
 			assert(it->_sp == _sp);
 			return it;
 		}
-		for (it = pncns_p->begin(); it != pncns_p->end(); ++it) {
+		for (it = pn_cns_p->begin(); it != pn_cns_p->end(); ++it) {
 			if (it->_sp == _sp) {
 				break;
 			}
@@ -467,7 +489,7 @@ private:
 		return it;
 	}
 
-	bool _detach_from(const std::shared_ptr<_xml_node> &pn_sp) {
+	bool _detach_parent(const std::shared_ptr<_xml_node> &pn_sp) {
 		auto pncns_p = pn_sp->child_nodes();
 		assert(pncns_p);
 
@@ -481,15 +503,15 @@ private:
 	}
 
 	bool
-	_check_parent_candidate(const std::shared_ptr<_xml_node> &pcn_sp) const {
-		assert(pcn_sp);
+	_check_parent_candidate(const std::shared_ptr<_xml_node> &new_pn_sp) const {
+		assert(new_pn_sp);
 
-		if (pcn_sp == _sp) {
+		if (new_pn_sp == _sp) {
 			return false;
 		}
-		auto pn_wp_p = pcn_sp->parent();
-		if (pn_wp_p) {
-			if (!_check_parent_candidate(pn_wp_p->lock())) {
+		auto new_pn_pn_wp_p = new_pn_sp->parent();
+		if (new_pn_pn_wp_p && new_pn_pn_wp_p->use_count()) {
+			if (!_check_parent_candidate(new_pn_pn_wp_p->lock())) {
 				return false;
 			}
 		}
@@ -498,38 +520,86 @@ private:
 			return true;
 		}
 		for (auto &cn : *cns_p) {
-			if (!cn._check_parent_candidate(pcn_sp)) {
+			if (!cn._check_parent_candidate(new_pn_sp)) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	bool
-	_append(xml_node_list *cns_p, xml_node cn, bool check_circular_ref = true) {
+	bool _set_parent(
+		const std::shared_ptr<_xml_node> &new_pn_sp,
+		bool check_circular_ref = true) {
 
-		assert(cns_p);
-		assert(cn);
-
-		auto cn_pn_wp_p = cn._sp->parent();
-		if (!cn_pn_wp_p) {
+		auto pn_wp_p = _sp->parent();
+		if (!pn_wp_p) {
 			return false;
 		}
-		auto cn_pn_sp = cn_pn_wp_p->lock();
-		if (cn_pn_sp == _sp) {
+		if (!new_pn_sp) {
+			pn_wp_p->reset();
+			return true;
+		}
+		if (check_circular_ref && !_check_parent_candidate(new_pn_sp)) {
+			return false;
+		}
+		*pn_wp_p = new_pn_sp;
+		return true;
+	}
+
+	bool _detach_and_set_parent(
+		const std::shared_ptr<_xml_node> &new_pn_sp,
+		bool check_circular_ref = true) {
+
+		auto pn_wp_p = _sp->parent();
+		if (!pn_wp_p) {
+			return false;
+		}
+
+		if (!pn_wp_p->use_count()) {
+			if (!new_pn_sp) {
+				pn_wp_p->reset();
+				return true;
+			}
+			if (check_circular_ref && !_check_parent_candidate(new_pn_sp)) {
+				return false;
+			}
+			*pn_wp_p = new_pn_sp;
 			return true;
 		}
 
-		if (check_circular_ref && !cn._check_parent_candidate(_sp)) {
-			return false;
+		auto old_pn_sp = pn_wp_p->lock();
+		if (old_pn_sp == new_pn_sp) {
+			return true;
 		}
 
-		if (cn_pn_sp && !cn._detach_from(cn_pn_sp)) {
+		if (!new_pn_sp) {
+			if (old_pn_sp && !_detach_parent(old_pn_sp)) {
+				return false;
+			}
+			pn_wp_p->reset();
+			return true;
+		}
+
+		if (check_circular_ref && !_check_parent_candidate(new_pn_sp)) {
 			return false;
 		}
-		*cn_pn_wp_p = _sp;
+		if (old_pn_sp && !_detach_parent(old_pn_sp)) {
+			return false;
+		}
+		*pn_wp_p = new_pn_sp;
+		return true;
+	}
+
+	bool _append_child(
+		xml_node_list *cns_p, xml_node cn, bool check_circular_ref = true) {
+		assert(cns_p);
+
+		if (!cn._detach_and_set_parent(_sp, check_circular_ref)) {
+			return false;
+		}
 
 		cns_p->emplace_back(std::move(cn));
+
 		auto it_p = _sp->iterator();
 		if (it_p) {
 			*it_p = --cns_p->end();
@@ -542,7 +612,7 @@ private:
 		typename = enable_if_t<std::is_same<
 			typename range_traits<NodeList &&>::value_type,
 			xml_node>::value>>
-	size_t _append(
+	size_t _append_child(
 		xml_node_list *cns_p, NodeList &&cns, bool check_circular_ref = true) {
 		assert(*this);
 
@@ -553,7 +623,7 @@ private:
 
 		size_t appended_c = 0;
 		for (auto &cn : std::forward<NodeList>(cns)) {
-			if (!cn || !_append(cns_p, cn, check_circular_ref)) {
+			if (!cn || !_append_child(cns_p, cn, check_circular_ref)) {
 				continue;
 			}
 			++appended_c;
@@ -942,7 +1012,7 @@ inline xml_node_list parse_xml_nodes(string_view xml) {
 				}
 				xml_node_list cns;
 				cns.splice(cns.end(), nodes, ++it, nodes.end());
-				n.append(cns, false);
+				n.set_child_nodes(cns, false);
 				uncloseds.erase(uncloseds.begin(), ++itit);
 				break;
 			}
