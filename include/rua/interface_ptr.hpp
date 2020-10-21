@@ -16,81 +16,64 @@ public:
 		_raw(nullptr), _shared(), _type() {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	interface_ptr(SameBase *raw_ptr) {
+	interface_ptr(SameBase *raw_ptr, type_info typ = nullptr) {
 		if (!raw_ptr) {
 			_raw = nullptr;
 			return;
 		}
-		_type = type_id<SameBase>();
+		_type = typ ? typ : type_id<SameBase>();
 		_raw = static_cast<T *>(raw_ptr);
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	interface_ptr(SameBase &lv) : interface_ptr(&lv) {}
+	interface_ptr(SameBase &lv, type_info typ = nullptr) :
+		interface_ptr(&lv, typ) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	interface_ptr(SameBase &&rv) {
-		_type = type_id<SameBase>();
+	interface_ptr(SameBase &&rv, type_info typ = nullptr) {
+		_type = typ ? typ : type_id<SameBase>();
 		new (&_shared) std::shared_ptr<T>(std::static_pointer_cast<T>(
 			std::make_shared<SameBase>(std::move(rv))));
 		_raw = _shared.get();
 	}
 
-	interface_ptr(const std::shared_ptr<T> &base_shared_ptr_lv) {
-		if (!base_shared_ptr_lv) {
+	interface_ptr(std::shared_ptr<T> base_shared_ptr, type_info typ = nullptr) {
+		if (!base_shared_ptr) {
 			_raw = nullptr;
 			return;
 		}
-		_type = type_id<T>();
-		new (&_shared) std::shared_ptr<T>(base_shared_ptr_lv);
-		_raw = _shared.get();
-	}
-
-	interface_ptr(std::shared_ptr<T> &&base_shared_ptr_rv) {
-		if (!base_shared_ptr_rv) {
-			_raw = nullptr;
-			return;
-		}
-		_type = type_id<T>();
-		new (&_shared) std::shared_ptr<T>(std::move(base_shared_ptr_rv));
+		_type = typ ? typ : type_id<T>();
+		new (&_shared) std::shared_ptr<T>(std::move(base_shared_ptr));
 		_raw = _shared.get();
 	}
 
 	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(const std::shared_ptr<Derived> &derived_shared_ptr_lv) {
-		if (!derived_shared_ptr_lv) {
+	interface_ptr(
+		std::shared_ptr<Derived> derived_shared_ptr, type_info typ = nullptr) {
+		if (!derived_shared_ptr) {
 			_raw = nullptr;
 			return;
 		}
-		_type = type_id<Derived>();
+		_type = typ ? typ : type_id<Derived>();
 		new (&_shared) std::shared_ptr<T>(
-			std::static_pointer_cast<T>(derived_shared_ptr_lv));
-		_raw = _shared.get();
-	}
-
-	template <RUA_DERIVED_CONCEPT(T, Derived)>
-	interface_ptr(std::shared_ptr<Derived> &&derived_shared_ptr_rv) {
-		if (!derived_shared_ptr_rv) {
-			_raw = nullptr;
-			return;
-		}
-		_type = type_id<Derived>();
-		new (&_shared) std::shared_ptr<T>(
-			std::static_pointer_cast<T>(std::move(derived_shared_ptr_rv)));
+			std::static_pointer_cast<T>(std::move(derived_shared_ptr)));
 		_raw = _shared.get();
 	}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	interface_ptr(const std::unique_ptr<SameBase> &unique_ptr_lv) :
-		interface_ptr(unique_ptr_lv.get()) {}
+	interface_ptr(
+		const std::unique_ptr<SameBase> &unique_ptr_lv,
+		type_info typ = nullptr) :
+		interface_ptr(unique_ptr_lv.get(), typ) {}
 
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
-	interface_ptr(std::unique_ptr<SameBase> &&unique_ptr_rv) {
+	interface_ptr(
+		std::unique_ptr<SameBase> &&unique_ptr_rv, type_info typ = nullptr) {
 		if (!unique_ptr_rv) {
 			_raw = nullptr;
 			return;
 		}
-		_type = type_id<SameBase>();
+		_type = typ ? typ : type_id<SameBase>();
 		new (&_shared)
 			std::shared_ptr<T>(static_cast<T *>(unique_ptr_rv.release()));
 		_raw = _shared.get();
@@ -191,11 +174,11 @@ public:
 		return raw;
 	}
 
-	std::shared_ptr<T> shared() const {
+	const std::shared_ptr<T> &get_shared() const {
 		return _shared;
 	}
 
-	size_t shared_count() const {
+	size_t use_count() const {
 		return _shared.use_count();
 	}
 
@@ -242,6 +225,43 @@ public:
 private:
 	T *_raw;
 	std::shared_ptr<T> _shared;
+	type_info _type;
+};
+
+template <typename T>
+class weak_interface {
+public:
+	constexpr weak_interface(std::nullptr_t = nullptr) :
+		_raw(nullptr), _weak(), _type() {}
+
+	weak_interface(const interface_ptr<T> &r) :
+		_raw(r.get()), _weak(r.get_shared()), _type(r.type()) {}
+
+	~weak_interface() {
+		reset();
+	}
+
+	operator bool() const {
+		return _raw || _weak.use_count();
+	}
+
+	interface_ptr<T> lock() const {
+		if (_weak.use_count()) {
+			return interface_ptr<T>(_weak.lock(), _type);
+		}
+		return interface_ptr<T>(_raw, _type);
+	}
+
+	void reset() {
+		if (_weak) {
+			_weak.reset();
+		}
+		_raw = nullptr;
+	}
+
+private:
+	T *_raw;
+	std::weak_ptr<T> _weak;
 	type_info _type;
 };
 

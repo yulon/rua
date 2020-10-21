@@ -424,7 +424,7 @@ struct type_name<basic_string_view<CharT, Traits>> {
 
 class type_info {
 public:
-	constexpr type_info() : _tab(nullptr) {}
+	constexpr type_info(std::nullptr_t = nullptr) : _tab(nullptr) {}
 
 	operator bool() const {
 		return _tab;
