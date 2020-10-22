@@ -259,7 +259,7 @@ public:
 		return false;
 	}
 
-	bool reset_child_nodes() {
+	bool remove_child_all() {
 		auto cns = child_nodes();
 		for (auto it = cns.begin(); it != cns.end();) {
 			remove_child(*(it++));
@@ -268,13 +268,14 @@ public:
 		return true;
 	}
 
-	template <
-		typename NodeList,
-		typename = enable_if_t<std::is_same<
+	template <typename NodeList>
+	enable_if_t<
+		std::is_same<
 			typename range_traits<NodeList &&>::value_type,
-			xml_node_ptr>::value>>
-	size_t reset_child_nodes(NodeList &&nodes, bool check_circular_ref = true) {
-		reset_child_nodes();
+			xml_node_ptr>::value,
+		size_t>
+	replace_child_all(NodeList &&nodes, bool check_circular_ref = true) {
+		remove_child_all();
 		return append_child(std::forward<NodeList>(nodes), check_circular_ref);
 	}
 
@@ -292,16 +293,28 @@ public:
 		return attrs()[name];
 	}
 
-	virtual std::string get_inner_text() const {
+	virtual std::string get_node_value() const {
 		return "";
 	}
 
-	virtual bool set_inner_text(std::string) {
+	virtual bool set_node_value(std::string) {
 		return false;
 	}
 
+	virtual std::string text_content() const {
+		return get_node_value();
+	}
+
+	virtual std::string get_inner_text() const {
+		return text_content();
+	}
+
+	virtual bool set_inner_text(std::string content) {
+		return set_node_value(std::move(content));
+	}
+
 	virtual std::string get_outer_text() const {
-		return "";
+		return get_inner_text();
 	}
 
 	bool set_outer_text(std::string content) {
@@ -468,16 +481,16 @@ public:
 		return true;
 	}
 
-	virtual std::string get_inner_text() const {
+	virtual std::string text_content() const {
 		std::string text;
 		for (auto &cn : _child_nodes) {
-			text += cn->get_inner_text();
+			text += cn->text_content();
 		}
 		return text;
 	}
 
 	virtual bool set_inner_text(std::string content) {
-		if (content.empty() || !reset_child_nodes()) {
+		if (content.empty() || !remove_child_all()) {
 			return false;
 		}
 		return append_child(make_xml_text(std::move(content)));
@@ -494,10 +507,10 @@ public:
 	virtual bool set_inner_xml(string_view xml) {
 		auto nodes = parse_xml_nodes(xml);
 		if (nodes.empty()) {
-			return reset_child_nodes();
+			return remove_child_all();
 		}
 		auto parse_sz = nodes.size();
-		return reset_child_nodes(std::move(nodes), false) == parse_sz;
+		return replace_child_all(std::move(nodes), false) == parse_sz;
 	}
 
 private:
@@ -602,11 +615,11 @@ public:
 		return "#text";
 	}
 
-	virtual std::string get_inner_text() const {
+	virtual std::string get_node_value() const {
 		return _cont;
 	}
 
-	virtual bool set_inner_text(std::string content) {
+	virtual bool set_node_value(std::string content) {
 		_cont = std::move(content);
 		return true;
 	}
@@ -648,7 +661,7 @@ inline xml_node_ptr parse_xml_document(string_view xml) {
 		return nullptr;
 	}
 	auto doc = make_xml_document();
-	doc->reset_child_nodes(std::move(nodes));
+	doc->replace_child_all(std::move(nodes));
 	return doc;
 }
 
