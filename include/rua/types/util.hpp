@@ -62,6 +62,12 @@
 		return $;                                                              \
 	}())
 
+#if RUA_CPP >= RUA_CPP_17
+#define RUA_WEAK_FROM_THIS weak_from_this()
+#else
+#define RUA_WEAK_FROM_THIS shared_from_this()
+#endif
+
 namespace rua {
 
 using uint = unsigned int;
