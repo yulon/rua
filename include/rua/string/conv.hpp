@@ -134,12 +134,15 @@ to_hex(unsigned char val, size_t width = sizeof(unsigned char) * 2) {
 	return to_hex(static_cast<uintptr_t>(val), width);
 }
 
-template <typename T>
+template <
+	typename T,
+	typename Ptr = remove_cvref_t<T>,
+	typename Value = remove_cv_t<remove_pointer_t<Ptr>>>
 inline enable_if_t<
-	!std::is_same<remove_cv_t<T>, char>::value &&
-		!std::is_same<remove_cv_t<T>, wchar_t>::value,
+	std::is_pointer<Ptr>::value && !std::is_same<Value, char>::value &&
+		!std::is_same<Value, wchar_t>::value,
 	std::string>
-to_string(T *ptr) {
+to_string(T &&ptr) {
 	return ptr ? to_hex(reinterpret_cast<uintptr_t>(ptr)) : to_string(nullptr);
 }
 

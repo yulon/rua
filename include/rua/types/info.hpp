@@ -207,7 +207,7 @@ struct type_name<std::byte> {
 #endif
 
 template <typename T>
-struct type_name<T const> {
+struct type_name<T const, enable_if_t<!std::is_array<T>::value>> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
@@ -260,19 +260,6 @@ struct type_name<T[N]> {
 
 	static std::string get(string_view declarator) {
 		return type_name<T>::get(str_join(
-			declarator.length() ? str_join("(", declarator, ")") : "",
-			"[",
-			std::to_string(N),
-			"]"));
-	}
-};
-
-template <typename T, size_t N>
-struct type_name<T const[N]> {
-	_RUA_TYPE_NAME_GET_1_FROM_2
-
-	static std::string get(string_view declarator) {
-		return type_name<T const>::get(str_join(
 			declarator.length() ? str_join("(", declarator, ")") : "",
 			"[",
 			std::to_string(N),
