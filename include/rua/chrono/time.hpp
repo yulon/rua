@@ -96,11 +96,10 @@ public:
 	time(duration elapsed, int8_t zone, date_t &&epoch) = delete;
 
 	time(const date_t &d8, const date_t &epoch = unix_epoch) :
-		_zon(d8.zone), _epo(&epoch) {
+		_ela(), _zon(d8.zone), _epo(&epoch) {
 		if (d8 == epoch) {
 			return;
 		}
-		duration secs;
 		if (d8.year != _epo->year) {
 			int16_t y_begin, y_end;
 			if (d8.year > _epo->year) {
@@ -110,25 +109,32 @@ public:
 				y_begin = d8.year;
 				y_end = _epo->year;
 			}
-			int16_t fst_ly = 0, lst_ly = 0;
+			int16_t fst_qy = 0, lst_qy = 0;
 			for (int16_t i = y_begin; i < y_end; ++i) {
-				if (is_leap_year(i)) {
-					fst_ly = i;
+				if (!(i % 4)) {
+					fst_qy = i;
 					break;
 				}
 			}
 			for (int16_t i = y_end - 1; i >= y_begin; --i) {
-				if (is_leap_year(i)) {
-					lst_ly = i;
+				if (!(i % 4)) {
+					lst_qy = i;
 					break;
 				}
 			}
-			auto lys = (lst_ly - fst_ly) / 4 + 1;
-			secs += years(y_end - y_begin - lys) + leep_years(lys);
+			auto qy_diff = lst_qy - fst_qy;
+			auto yrs = years(y_end - y_begin) +
+					   days(
+						   qy_diff / 4 + 1 - (qy_diff / 100 + 1) +
+						   (qy_diff / 400 + 1));
+			if (d8.year > _epo->year) {
+				_ela += yrs;
+			} else {
+				_ela -= yrs;
+			}
 		}
-		secs += _date2dur_exc_yr(d8) - _date2dur_exc_yr(*_epo);
-		secs -= hours(d8.zone - _epo->zone);
-		_ela = secs;
+		_ela += _date2dur_exc_yr(d8) - _date2dur_exc_yr(*_epo);
+		_ela -= hours(d8.zone - _epo->zone);
 	}
 
 	time(const date_t &d8, date_t &&epoch) = delete;
@@ -177,32 +183,32 @@ public:
 		// year
 		nd.year = _epo->year;
 
-		constexpr auto days_per_400_yrs = 400 * 1_y + 97_d;
+		constexpr auto days_per_400_yrs = 400_y + 97_d;
 		auto ela_400_yrs = ela / days_per_400_yrs;
 		if (ela_400_yrs) {
 			ela %= days_per_400_yrs;
-			nd.year += static_cast<int16_t>(400 * ela_400_yrs);
+			nd.year += static_cast<int16_t>(ela_400_yrs * 400);
 		}
 
-		constexpr auto days_per_100_yrs = 100 * 1_y + 24_d;
+		constexpr auto days_per_100_yrs = 100_y + 24_d;
 		auto ela_100_yrs = ela / days_per_100_yrs;
 		if (ela_100_yrs) {
 			ela_100_yrs -= ela_100_yrs >> 2;
 			ela -= days_per_100_yrs * ela_100_yrs;
-			nd.year += static_cast<int16_t>(100 * ela_100_yrs);
+			nd.year += static_cast<int16_t>(ela_100_yrs * 100);
 		}
 
-		constexpr auto days_per_4_yrs = 4 * 1_y + 1_d;
+		constexpr auto days_per_4_yrs = 4_y + 1_d;
 		auto ela_4_yrs = ela / days_per_4_yrs;
 		if (ela_4_yrs) {
 			ela %= days_per_4_yrs;
-			nd.year += static_cast<int16_t>(4 * ela_4_yrs);
+			nd.year += static_cast<int16_t>(ela_4_yrs * 4);
 		}
 
-		auto ela_yrs = ela / 1_y;
+		auto ela_yrs = ela / year;
 		if (ela_yrs) {
 			ela_yrs -= ela_yrs >> 2;
-			ela -= ela_yrs * 1_y;
+			ela -= years(ela_yrs);
 			nd.year += static_cast<int16_t>(ela_yrs);
 		}
 

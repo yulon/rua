@@ -398,7 +398,7 @@ public:
 	}
 
 	int64_t operator/(duration target) const {
-		return *this > target ? _div_ns_count(target.nanoseconds()) : 0;
+		return *this >= target ? _div_ns_count(target.nanoseconds()) : 0;
 	}
 
 	constexpr duration operator/(int64_t target) const {
