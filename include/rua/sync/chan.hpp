@@ -28,7 +28,7 @@ public:
 		if (!waiter_opt) {
 			return false;
 		}
-		waiter_opt.value()->wake();
+		waiter_opt.value()->resume();
 		return true;
 	}
 
@@ -63,7 +63,7 @@ public:
 
 protected:
 	lockfree_list<T> _buf;
-	lockfree_list<waker_i> _waiters;
+	lockfree_list<resumer_i> _waiters;
 
 	optional<T> _wait_and_pop(scheduler_i sch, duration timeout) {
 		assert(sch);
@@ -71,26 +71,25 @@ protected:
 
 		optional<T> val_opt;
 
-		auto wkr = sch->get_waker();
+		auto rsmr = sch->get_resumer();
 
 		if (!_waiters.emplace_front_if(
 				[&]() -> bool {
 					val_opt = _buf.pop_back();
 					return !val_opt;
 				},
-				wkr)) {
+				rsmr)) {
 			return val_opt;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->sleep(timeout, true) && !_waiters.emplace_front_if(
-													 [&]() -> bool {
-														 val_opt =
-															 _buf.pop_back();
-														 return !val_opt;
-													 },
-													 wkr)) {
+				if (sch->suspend(timeout) && !_waiters.emplace_front_if(
+												 [&]() -> bool {
+													 val_opt = _buf.pop_back();
+													 return !val_opt;
+												 },
+												 rsmr)) {
 					return val_opt;
 				}
 			}
@@ -98,7 +97,7 @@ protected:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->sleep(timeout, true);
+			auto r = sch->suspend(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
 				return _buf.pop_back();
@@ -108,7 +107,7 @@ protected:
 							 val_opt = _buf.pop_back();
 							 return !val_opt;
 						 },
-						 wkr)) {
+						 rsmr)) {
 				return val_opt;
 			}
 		}

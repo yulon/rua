@@ -74,7 +74,7 @@ TEST_CASE("fiber long-lasting task") {
 	REQUIRE(c == 5);
 }
 
-TEST_CASE("fiber wake sequence") {
+TEST_CASE("fiber resume sequence") {
 	static rua::fiber_executor dvr;
 	static auto &sch = dvr.get_scheduler();
 	static std::string r;

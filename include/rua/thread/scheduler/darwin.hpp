@@ -13,13 +13,13 @@
 
 namespace rua { namespace darwin {
 
-class thread_waker : public waker {
+class thread_resumer : public resumer {
 public:
 	using native_handle_t = dispatch_semaphore_t;
 
-	thread_waker() : _sem(dispatch_semaphore_create(0)) {}
+	thread_resumer() : _sem(dispatch_semaphore_create(0)) {}
 
-	virtual ~thread_waker() {
+	virtual ~thread_resumer() {
 		if (!_sem) {
 			return;
 		}
@@ -31,7 +31,7 @@ public:
 		return _sem;
 	}
 
-	virtual void wake() {
+	virtual void resume() {
 		dispatch_semaphore_signal(_sem);
 	}
 
@@ -47,7 +47,7 @@ private:
 class thread_scheduler : public scheduler {
 public:
 	constexpr thread_scheduler(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _wkr() {}
+		_yield_dur(yield_dur), _rsmr() {}
 
 	virtual ~thread_scheduler() = default;
 
@@ -64,30 +64,31 @@ public:
 		::usleep(1);
 	}
 
-	virtual bool sleep(duration timeout, bool wakeable = false) {
-		if (!wakeable) {
-			auto ts = timeout.c_timespec();
-			::nanosleep(&ts, nullptr);
-			return false;
-		}
-		assert(_wkr);
+	virtual void sleep(duration timeout) {
+		auto ts = timeout.c_timespec();
+		::nanosleep(&ts, nullptr);
+	}
+
+	virtual bool suspend(duration timeout) {
+		assert(_rsmr);
+
 		return !dispatch_semaphore_wait(
-			_wkr->native_handle(),
+			_rsmr->native_handle(),
 			timeout.nanoseconds<dispatch_time_t, DISPATCH_TIME_FOREVER>());
 	}
 
-	virtual waker_i get_waker() {
-		if (_wkr) {
-			_wkr->reset();
+	virtual resumer_i get_resumer() {
+		if (_rsmr) {
+			_rsmr->reset();
 		} else {
-			_wkr = std::make_shared<thread_waker>();
+			_rsmr = std::make_shared<thread_resumer>();
 		}
-		return _wkr;
+		return _rsmr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<thread_resumer> _rsmr;
 };
 
 }} // namespace rua::darwin

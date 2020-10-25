@@ -9,38 +9,38 @@
 
 namespace rua {
 
-class waker {
+class resumer {
 public:
-	waker() = default;
-	virtual ~waker() = default;
+	resumer() = default;
+	virtual ~resumer() = default;
 
-	waker(const waker &) = delete;
-	waker(waker &&) = delete;
-	waker &operator=(const waker &) = delete;
-	waker &operator=(waker &&) = delete;
+	resumer(const resumer &) = delete;
+	resumer(resumer &&) = delete;
+	resumer &operator=(const resumer &) = delete;
+	resumer &operator=(resumer &&) = delete;
 
-	virtual void wake() {}
+	virtual void resume() {}
 };
 
-using waker_i = interface_ptr<waker>;
+using resumer_i = interface_ptr<resumer>;
 
-class secondary_waker : public waker {
+class secondary_resumer : public resumer {
 public:
-	constexpr secondary_waker() : _pri(nullptr), _state(false) {}
+	constexpr secondary_resumer() : _pri(nullptr), _state(false) {}
 
-	explicit secondary_waker(waker_i primary_waker) :
-		_pri(primary_waker), _state(false) {}
+	explicit secondary_resumer(resumer_i primary_resumer) :
+		_pri(primary_resumer), _state(false) {}
 
-	virtual ~secondary_waker() = default;
+	virtual ~secondary_resumer() = default;
 
 	bool state() const {
 		return _state.load();
 	}
 
-	virtual void wake() {
+	virtual void resume() {
 		_state.store(true);
 		if (_pri) {
-			_pri->wake();
+			_pri->resume();
 		}
 	}
 
@@ -48,12 +48,12 @@ public:
 		_state.store(false);
 	}
 
-	waker_i primary() const {
+	resumer_i primary() const {
 		return _pri;
 	}
 
 private:
-	waker_i _pri;
+	resumer_i _pri;
 	std::atomic<bool> _state;
 };
 
@@ -70,8 +70,20 @@ public:
 		sleep(0);
 	}
 
-	virtual bool sleep(duration timeout, bool wakeable = false) {
-		if (wakeable) {
+	virtual void sleep(duration timeout) {
+		auto start = tick();
+		while (suspend(timeout)) {
+			auto now = tick();
+			auto suspended = now - start;
+			if (suspended >= timeout) {
+				return;
+			}
+			timeout -= suspended;
+		}
+	}
+
+	virtual bool suspend(duration timeout) {
+		if (!timeout) {
 			yield();
 			return true;
 		}
@@ -79,12 +91,12 @@ public:
 		do {
 			yield();
 		} while (tick() - t < timeout);
-		return false;
+		return true;
 	}
 
-	virtual waker_i get_waker() {
-		static waker wkr;
-		return wkr;
+	virtual resumer_i get_resumer() {
+		static resumer rsmr;
+		return rsmr;
 	}
 
 	virtual bool is_own_stack() const {

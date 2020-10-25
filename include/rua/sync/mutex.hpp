@@ -63,30 +63,30 @@ public:
 		if (!waiter_opt) {
 			return;
 		}
-		waiter_opt.value()->wake();
+		waiter_opt.value()->resume();
 	}
 
 private:
 	std::atomic<bool> _locked;
-	lockfree_list<waker_i> _waiters;
+	lockfree_list<resumer_i> _waiters;
 
 	bool _wait_and_lock(scheduler_i sch, duration timeout) {
 		assert(sch);
 		assert(timeout);
 
-		auto wkr = sch->get_waker();
+		auto rsmr = sch->get_resumer();
 
 		if (!_waiters.emplace_front_if_non_empty_or(
-				[this]() -> bool { return _locked.exchange(true); }, wkr)) {
+				[this]() -> bool { return _locked.exchange(true); }, rsmr)) {
 			return true;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->sleep(timeout, true) &&
+				if (sch->suspend(timeout) &&
 					!_waiters.emplace_front_if_non_empty_or(
 						[this]() -> bool { return _locked.exchange(true); },
-						wkr)) {
+						rsmr)) {
 					return true;
 				}
 			}
@@ -94,14 +94,14 @@ private:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->sleep(timeout, true);
+			auto r = sch->suspend(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
 				return r && !_locked.exchange(true);
 			}
-			if (r &&
-				!_waiters.emplace_front_if_non_empty_or(
-					[this]() -> bool { return _locked.exchange(true); }, wkr)) {
+			if (r && !_waiters.emplace_front_if_non_empty_or(
+						 [this]() -> bool { return _locked.exchange(true); },
+						 rsmr)) {
 				return true;
 			}
 		}

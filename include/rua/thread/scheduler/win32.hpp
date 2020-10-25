@@ -12,13 +12,13 @@
 
 namespace rua { namespace win32 {
 
-class thread_waker : public waker {
+class thread_resumer : public resumer {
 public:
 	using native_handle_t = HANDLE;
 
-	thread_waker() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
+	thread_resumer() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
 
-	virtual ~thread_waker() {
+	virtual ~thread_resumer() {
 		if (!_h) {
 			return;
 		}
@@ -34,7 +34,7 @@ public:
 		return _h;
 	}
 
-	virtual void wake() {
+	virtual void resume() {
 		SetEvent(_h);
 	}
 
@@ -49,7 +49,7 @@ private:
 class thread_scheduler : public scheduler {
 public:
 	constexpr thread_scheduler(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _wkr() {}
+		_yield_dur(yield_dur), _rsmr() {}
 
 	virtual ~thread_scheduler() = default;
 
@@ -66,29 +66,30 @@ public:
 		Sleep(1);
 	}
 
-	virtual bool sleep(duration timeout, bool wakeable = false) {
-		if (!wakeable) {
-			Sleep(timeout.milliseconds<DWORD, INFINITE>());
-			return false;
-		}
-		assert(_wkr);
+	virtual void sleep(duration timeout) {
+		Sleep(timeout.milliseconds<DWORD, INFINITE>());
+	}
+
+	virtual bool suspend(duration timeout) {
+		assert(_rsmr);
+
 		return WaitForSingleObject(
-				   _wkr->native_handle(),
+				   _rsmr->native_handle(),
 				   timeout.milliseconds<DWORD, INFINITE>()) != WAIT_TIMEOUT;
 	}
 
-	virtual waker_i get_waker() {
-		if (_wkr) {
-			_wkr->reset();
+	virtual resumer_i get_resumer() {
+		if (_rsmr) {
+			_rsmr->reset();
 		} else {
-			_wkr = std::make_shared<thread_waker>();
+			_rsmr = std::make_shared<thread_resumer>();
 		}
-		return _wkr;
+		return _rsmr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<thread_resumer> _rsmr;
 };
 
 }} // namespace rua::win32

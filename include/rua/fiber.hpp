@@ -63,7 +63,7 @@ private:
 		bytes stk_bak;
 
 		bool has_yielded;
-		std::shared_ptr<secondary_waker> wkr;
+		std::shared_ptr<secondary_resumer> rsmr;
 	};
 
 	std::shared_ptr<_ctx_t> _ctx;
@@ -92,7 +92,7 @@ public:
 	}
 
 	operator bool() const {
-		return _exs.size() || _slps.size() || _cws.size();
+		return _exs.size() || _spds.size() || _cws.size();
 	}
 
 	// Does not block the current context.
@@ -101,8 +101,8 @@ public:
 	void step() {
 		auto now = tick();
 
-		if (_slps.size()) {
-			_check_slps(now);
+		if (_spds.size()) {
+			_check_spds(now);
 		}
 		if (_cws.size()) {
 			_check_cws(now);
@@ -118,18 +118,18 @@ public:
 	// May block the current context.
 	// The current scheduler will be used.
 	void run() {
-		if (_exs.empty() && _slps.empty() && _cws.empty()) {
+		if (_exs.empty() && _spds.empty() && _cws.empty()) {
 			return;
 		}
 
 		scheduler_guard sg(_sch);
 		auto orig_sch = sg.previous();
-		_orig_wkr = orig_sch->get_waker();
+		_orig_rsmr = orig_sch->get_resumer();
 
 		auto now = tick();
 
-		if (_slps.size()) {
-			_check_slps(now);
+		if (_spds.size()) {
+			_check_spds(now);
 		}
 		if (_cws.size()) {
 			_check_cws(now);
@@ -140,43 +140,43 @@ public:
 
 			now = tick();
 
-			if (_slps.size()) {
+			if (_spds.size()) {
 
 				if (_cws.size()) {
-					time wake_ti;
-					if (_cws.begin()->wake_ti < _slps.begin()->wake_ti) {
-						wake_ti = _cws.begin()->wake_ti;
+					time resume_ti;
+					if (_cws.begin()->resume_ti < _spds.begin()->resume_ti) {
+						resume_ti = _cws.begin()->resume_ti;
 					} else {
-						wake_ti = _slps.begin()->wake_ti;
+						resume_ti = _spds.begin()->resume_ti;
 					}
-					if (wake_ti > now) {
-						orig_sch->sleep(wake_ti - now, true);
+					if (resume_ti > now) {
+						orig_sch->suspend(resume_ti - now);
 					} else {
 						orig_sch->yield();
 					}
 					now = tick();
-					if (now >= wake_ti) {
-						_check_slps(now);
+					if (now >= resume_ti) {
+						_check_spds(now);
 					}
 					_check_cws(now);
 					continue;
 				}
 
-				auto wake_ti = _slps.begin()->wake_ti;
-				if (wake_ti > now) {
-					orig_sch->sleep(wake_ti - now);
+				auto resume_ti = _spds.begin()->resume_ti;
+				if (resume_ti > now) {
+					orig_sch->sleep(resume_ti - now);
 				} else {
 					orig_sch->yield();
 				}
 				now = tick();
-				_check_slps(now);
+				_check_spds(now);
 				continue;
 
 			} else if (_cws.size()) {
 
-				auto wake_ti = _cws.begin()->wake_ti;
-				if (wake_ti > now) {
-					orig_sch->sleep(wake_ti - now, true);
+				auto resume_ti = _cws.begin()->resume_ti;
+				if (resume_ti > now) {
+					orig_sch->suspend(resume_ti - now);
 				} else {
 					orig_sch->yield();
 				}
@@ -198,19 +198,19 @@ public:
 		virtual ~scheduler() = default;
 
 		template <typename SleepingList>
-		void _sleep(SleepingList &sl, duration timeout) {
-			time wake_ti;
+		void _suspend(SleepingList &sl, duration timeout) {
+			time resume_ti;
 			if (!timeout) {
-				wake_ti.reset();
+				resume_ti.reset();
 			} else if (timeout >= time_max() - tick()) {
-				wake_ti = time_max();
+				resume_ti = time_max();
 			} else {
-				wake_ti = tick() + timeout;
+				resume_ti = tick() + timeout;
 			}
 
 			_fe->_cur._ctx->has_yielded = true;
 			_fe->_cur._ctx->stk_ix = _fe->_stk_ix;
-			sl.emplace(wake_ti, _fe->_cur);
+			sl.emplace(resume_ti, _fe->_cur);
 
 			_fe->_prev = std::move(_fe->_cur);
 			if (_fe->_exs.size()) {
@@ -223,29 +223,28 @@ public:
 			_fe->_clear_prev();
 		}
 
-		virtual bool sleep(duration timeout, bool wakeable = false) {
-			if (!wakeable) {
-				_sleep(_fe->_slps, timeout);
-				return false;
-			}
-
-			auto &wkr = _fe->_cur._ctx->wkr;
-			if (!wkr->state()) {
-				_sleep(_fe->_cws, timeout);
-			}
-			return wkr->state();
+		virtual void sleep(duration timeout) {
+			_suspend(_fe->_spds, timeout);
 		}
 
-		virtual waker_i get_waker() {
+		virtual bool suspend(duration timeout) {
+			auto &rsmr = _fe->_cur._ctx->rsmr;
+			if (!rsmr->state()) {
+				_suspend(_fe->_cws, timeout);
+			}
+			return rsmr->state();
+		}
+
+		virtual resumer_i get_resumer() {
 			assert(_fe->_cur._ctx);
 
-			auto &wkr = _fe->_cur._ctx->wkr;
-			if (wkr) {
-				wkr.reset();
+			auto &rsmr = _fe->_cur._ctx->rsmr;
+			if (rsmr) {
+				rsmr.reset();
 			} else {
-				wkr = std::make_shared<secondary_waker>(_fe->_orig_wkr);
+				rsmr = std::make_shared<secondary_resumer>(_fe->_orig_rsmr);
 			}
-			return wkr;
+			return rsmr;
 		}
 
 		virtual bool is_own_stack() const {
@@ -268,20 +267,20 @@ private:
 	std::queue<fiber> _exs;
 	fiber _cur, _prev;
 
-	struct _sleeping_t {
-		time wake_ti;
+	struct _suspending_t {
+		time resume_ti;
 		fiber fbr;
 
-		bool operator<(const _sleeping_t &s) const {
-			return wake_ti < s.wake_ti;
+		bool operator<(const _suspending_t &s) const {
+			return resume_ti < s.resume_ti;
 		}
 	};
-	sorted_list<_sleeping_t> _slps;
-	sorted_list<_sleeping_t> _cws;
+	sorted_list<_suspending_t> _spds;
+	sorted_list<_suspending_t> _cws;
 
-	void _check_slps(time now) {
-		for (auto it = _slps.begin(); it != _slps.end(); it = _slps.erase(it)) {
-			if (now < it->wake_ti) {
+	void _check_spds(time now) {
+		for (auto it = _spds.begin(); it != _spds.end(); it = _spds.erase(it)) {
+			if (now < it->resume_ti) {
 				break;
 			}
 			_exs.emplace(std::move(it->fbr));
@@ -290,7 +289,7 @@ private:
 
 	void _check_cws(time now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->fbr._ctx->wkr->state() || now >= it->wake_ti) {
+			if (it->fbr._ctx->rsmr->state() || now >= it->resume_ti) {
 				_exs.emplace(std::move(it->fbr));
 				it = _cws.erase(it);
 				continue;
@@ -390,7 +389,7 @@ private:
 				}
 
 				if (!_cur._ctx->has_yielded) {
-					_slps.emplace(time_zero(), std::move(_cur));
+					_spds.emplace(time_zero(), std::move(_cur));
 					break;
 				}
 				_cur._ctx->has_yielded = false;
@@ -429,7 +428,7 @@ private:
 	friend scheduler;
 	scheduler _sch;
 
-	waker_i _orig_wkr;
+	resumer_i _orig_rsmr;
 };
 
 inline fiber_executor *this_fiber_executor() {

@@ -14,15 +14,15 @@
 
 namespace rua { namespace posix {
 
-class thread_waker : public waker {
+class thread_resumer : public resumer {
 public:
 	using native_handle_t = sem_t *;
 
-	thread_waker() {
+	thread_resumer() {
 		_need_close = !sem_init(&_sem, 0, 0);
 	}
 
-	virtual ~thread_waker() {
+	virtual ~thread_resumer() {
 		if (!_need_close) {
 			return;
 		}
@@ -34,7 +34,7 @@ public:
 		return &_sem;
 	}
 
-	virtual void wake() {
+	virtual void resume() {
 		sem_post(&_sem);
 	}
 
@@ -51,7 +51,7 @@ private:
 class thread_scheduler : public scheduler {
 public:
 	constexpr thread_scheduler(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _wkr() {}
+		_yield_dur(yield_dur), _rsmr() {}
 
 	virtual ~thread_scheduler() = default;
 
@@ -70,32 +70,33 @@ public:
 		::usleep(1);
 	}
 
-	virtual bool sleep(duration timeout, bool wakeable = false) {
-		if (!wakeable) {
-			auto ts = timeout.c_timespec();
-			::nanosleep(&ts, nullptr);
-			return false;
-		}
-		assert(_wkr);
-		if (timeout == duration_max()) {
-			return !sem_wait(_wkr->native_handle());
-		}
+	virtual void sleep(duration timeout) {
 		auto ts = timeout.c_timespec();
-		return !sem_timedwait(_wkr->native_handle(), &ts);
+		::nanosleep(&ts, nullptr);
 	}
 
-	virtual waker_i get_waker() {
-		if (_wkr) {
-			_wkr->reset();
-		} else {
-			_wkr = std::make_shared<thread_waker>();
+	virtual bool suspend(duration timeout) {
+		assert(_rsmr);
+
+		if (timeout == duration_max()) {
+			return !sem_wait(_rsmr->native_handle());
 		}
-		return _wkr;
+		auto ts = timeout.c_timespec();
+		return !sem_timedwait(_rsmr->native_handle(), &ts);
+	}
+
+	virtual resumer_i get_resumer() {
+		if (_rsmr) {
+			_rsmr->reset();
+		} else {
+			_rsmr = std::make_shared<thread_resumer>();
+		}
+		return _rsmr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<thread_resumer> _rsmr;
 };
 
 }} // namespace rua::posix
