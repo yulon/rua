@@ -62,16 +62,18 @@ inline Result &bit_aligned_as(From *ptr, ptrdiff_t ix) {
 // bit_get from generic_ptr
 
 template <typename To>
-inline enable_if_t<(alignof(To) > 1), To> bit_get(generic_ptr ptr) {
-	alignas(alignof(To)) char sto[sizeof(To)];
-	memcpy(&sto[0], ptr, sizeof(To));
-	return *reinterpret_cast<To *>(&sto[0]);
+inline enable_if_t<std::is_trivial<To>::value, To> bit_get(generic_ptr ptr) {
+	To val;
+	memcpy(&val, ptr, sizeof(To));
+	return val;
 }
 
 template <typename To>
-inline enable_if_t<(alignof(To) == 1), const remove_cv_t<To> &>
+inline enable_if_t<!std::is_trivially_constructible<To>::value, To>
 bit_get(generic_ptr ptr) {
-	return *ptr.as<const remove_cv_t<To> *>();
+	alignas(alignof(To)) uchar sto[sizeof(To)];
+	memcpy(&sto[0], ptr, sizeof(To));
+	return *reinterpret_cast<To *>(&sto[0]);
 }
 
 template <typename To>
@@ -89,15 +91,18 @@ bit_aligned_get(generic_ptr ptr, ptrdiff_t ix) {
 // bit_get from From *
 
 template <typename To, typename From>
-inline enable_if_t<(alignof(To) > 1), To> bit_get(From *ptr) {
-	alignas(alignof(To)) char sto[sizeof(To)];
-	memcpy(&sto[0], reinterpret_cast<const void *>(ptr), sizeof(To));
-	return *reinterpret_cast<To *>(&sto[0]);
+inline enable_if_t<std::is_trivial<To>::value, To> bit_get(From *ptr) {
+	To val;
+	memcpy(&val, ptr, sizeof(To));
+	return val;
 }
 
-template <typename To, typename From, typename ConstTo = add_const_t<To>>
-inline enable_if_t<(alignof(To) == 1), ConstTo &> bit_get(From *ptr) {
-	return *reinterpret_cast<ConstTo *>(ptr);
+template <typename To, typename From>
+inline enable_if_t<!std::is_trivially_constructible<To>::value, To>
+bit_get(From *ptr) {
+	alignas(alignof(To)) uchar sto[sizeof(To)];
+	memcpy(&sto[0], ptr, sizeof(To));
+	return *reinterpret_cast<To *>(&sto[0]);
 }
 
 template <typename To, typename From>
@@ -107,11 +112,7 @@ bit_get(From *ptr, ptrdiff_t offset) {
 		reinterpret_cast<From *>(reinterpret_cast<uintptr_t>(ptr) + offset));
 }
 
-template <
-	typename To,
-	typename From,
-	typename Result =
-		conditional_t<std::is_const<From>::value, add_const_t<To>, To>>
+template <typename To, typename From>
 inline decltype(bit_get<To>(std::declval<From *>()))
 bit_aligned_get(From *ptr, ptrdiff_t ix) {
 	return bit_get<To>(ptr, ix * sizeof(To));
@@ -138,7 +139,7 @@ inline void bit_aligned_set(generic_ptr ptr, ptrdiff_t ix, const From &val) {
 
 template <typename From, typename To>
 inline void bit_set(To *ptr, const From &val) {
-	memcpy(reinterpret_cast<void *>(ptr), &val, sizeof(From));
+	memcpy(ptr, &val, sizeof(From));
 }
 
 template <typename From, typename To>
@@ -155,7 +156,10 @@ inline void bit_aligned_set(To *ptr, ptrdiff_t ix, const From &val) {
 // bit_cast
 
 template <typename To, typename From>
-inline decltype(bit_get<To>(std::declval<const From *>()))
+inline enable_if_t<
+	sizeof(To) == sizeof(From) && std::is_trivially_copyable<From>::value &&
+		std::is_trivially_copyable<To>::value,
+	decltype(bit_get<To>(std::declval<const From *>()))>
 bit_cast(const From &src) {
 	return bit_get<To>(&src);
 }
