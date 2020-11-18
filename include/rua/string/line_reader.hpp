@@ -37,7 +37,7 @@ public:
 					prev_b = _data[i];
 					_data = _data(i + 1);
 					i = -1;
-				} else if (_buf[i] == '\r') {
+				} else if (_data[i] == '\r') {
 					ln += as_string(_data(0, i));
 					prev_b = _data[i];
 					_data = _data(i + 1);
