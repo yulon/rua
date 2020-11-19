@@ -75,13 +75,23 @@ public:
 	}
 
 	std::string back() const {
-		auto pos = _s.find_last_of(Sep);
+		auto pos = _s.rfind(Sep);
 		return pos != std::string::npos ? _s.substr(pos + 1) : _s;
 	}
 
 	Path rm_back() const {
-		auto pos = _s.find_last_of(Sep);
+		auto pos = _s.rfind(Sep);
 		return pos != std::string::npos ? _s.substr(0, pos) : "";
+	}
+
+	std::string front() const {
+		auto pos = _s.find(Sep);
+		return pos != std::string::npos ? _s.substr(0, pos) : _s;
+	}
+
+	Path rm_front() const {
+		auto pos = _s.find(Sep);
+		return pos != std::string::npos ? _s.substr(pos + 1) : "";
 	}
 
 private:
