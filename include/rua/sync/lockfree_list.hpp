@@ -62,23 +62,23 @@ public:
 
 	template <typename Cond, typename... Args>
 	bool emplace_front_if(Cond &&cond, Args &&... args) {
-		auto li = _lock();
+		auto li = lock();
 		auto r = cond();
 		if (r) {
 			li.emplace_front(std::forward<Args>(args)...);
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
 	template <typename Cond, typename... Args>
 	bool emplace_front_if_non_empty_or(Cond &&cond, Args &&... args) {
-		auto li = _lock();
+		auto li = lock();
 		auto r = !li || cond();
 		if (r) {
 			li.emplace_front(std::forward<Args>(args)...);
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
@@ -104,28 +104,28 @@ public:
 		}
 		forward_list<T> li(old_front);
 		li.push_back_node(new_back);
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 	}
 
 	template <typename Cond, typename... Args>
 	bool emplace_back_if(Cond &&cond, Args &&... args) {
-		auto li = _lock();
+		auto li = lock();
 		auto r = cond();
 		if (r) {
 			li.emplace_back(std::forward<Args>(args)...);
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
 	template <typename Cond, typename... Args>
 	bool emplace_back_if_non_empty_or(Cond &&cond, Args &&... args) {
-		auto li = _lock();
+		auto li = lock();
 		auto r = !li || cond();
 		if (r) {
 			li.emplace_back(std::forward<Args>(args)...);
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
@@ -152,51 +152,51 @@ public:
 
 	optional<T> pop_front() {
 		optional<T> r;
-		auto li = _lock_if_non_empty();
+		auto li = lock_if_non_empty();
 		if (!li) {
 			return r;
 		}
 		r.emplace(li.pop_front());
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
 	template <typename Cond>
 	optional<T> pop_front_if(Cond &&cond) {
 		optional<T> r;
-		auto li = _lock_if_non_empty();
+		auto li = lock_if_non_empty();
 		if (!li) {
 			return r;
 		}
 		if (cond()) {
 			r.emplace(li.pop_front());
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
 	optional<T> pop_back() {
 		optional<T> r;
-		auto li = _lock_if_non_empty();
+		auto li = lock_if_non_empty();
 		if (!li) {
 			return r;
 		}
 		r.emplace(li.pop_back());
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
 	template <typename Cond>
 	optional<T> pop_back_if(Cond &&cond) {
 		optional<T> r;
-		auto li = _lock_if_non_empty();
+		auto li = lock_if_non_empty();
 		if (!li) {
 			return r;
 		}
 		if (cond()) {
 			r.emplace(li.pop_back());
 		}
-		_unlock_and_prepend(std::move(li));
+		unlock_and_prepend(std::move(li));
 		return r;
 	}
 
@@ -224,12 +224,7 @@ public:
 #endif
 	}
 
-private:
-	std::atomic<node_t *> _front;
-
-	static constexpr auto _locked = nmax<uintptr_t>();
-
-	forward_list<T> _lock() {
+	forward_list<T> lock() {
 		auto front = _front.load();
 		do {
 			while (front == reinterpret_cast<node_t *>(_locked)) {
@@ -240,7 +235,7 @@ private:
 		return forward_list<T>(front);
 	}
 
-	forward_list<T> _lock_if_non_empty() {
+	forward_list<T> lock_if_non_empty() {
 		auto front = _front.load();
 		do {
 			while (front == reinterpret_cast<node_t *>(_locked)) {
@@ -254,7 +249,7 @@ private:
 		return forward_list<T>(front);
 	}
 
-	void _unlock() {
+	void unlock() {
 #ifdef NDEBUG
 		_front.store(nullptr);
 #else
@@ -262,9 +257,9 @@ private:
 #endif
 	}
 
-	void _unlock_and_prepend(forward_list<T> pp) {
+	void unlock_and_prepend(forward_list<T> pp) {
 		if (!pp) {
-			_unlock();
+			unlock();
 			return;
 		}
 #ifdef NDEBUG
@@ -277,7 +272,7 @@ private:
 	}
 
 	template <typename... Args>
-	void _unlock_and_emplace(Args &&... args) {
+	void unlock_and_emplace(Args &&... args) {
 #ifdef NDEBUG
 		_front.store(new node_t(std::forward<Args>(args)...));
 #else
@@ -286,6 +281,11 @@ private:
 			reinterpret_cast<node_t *>(_locked));
 #endif
 	}
+
+private:
+	std::atomic<node_t *> _front;
+
+	static constexpr auto _locked = nmax<uintptr_t>();
 
 	void _reset(node_t *new_front = nullptr) {
 		auto node = _front.exchange(new_front);

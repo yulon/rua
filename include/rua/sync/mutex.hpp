@@ -14,18 +14,24 @@ namespace rua {
 
 class mutex {
 public:
-	constexpr mutex() : _locked(false), _waiters() {}
+	constexpr mutex() : _locked(0), _waiters() {}
 
 	mutex(const mutex &) = delete;
 
 	mutex &operator=(const mutex &) = delete;
 
-	bool try_pop() {
-		return !_waiters && !_locked.exchange(true);
+	bool try_lock() {
+		auto old_locked = _locked.load();
+		while (!old_locked) {
+			if (_locked.compare_exchange_weak(old_locked, nmax<uintptr_t>())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	bool try_lock(duration timeout) {
-		if (!_waiters && !_locked.exchange(true)) {
+		if (try_lock()) {
 			return true;
 		}
 		if (!timeout) {
@@ -35,7 +41,7 @@ public:
 	}
 
 	bool try_lock(scheduler_i sch, duration timeout) {
-		if (!_waiters && !_locked.exchange(true)) {
+		if (try_lock()) {
 			return true;
 		}
 		if (!timeout) {
@@ -53,21 +59,28 @@ public:
 	}
 
 	void unlock() {
+		auto waiters = _waiters.lock();
+		if (waiters.empty()) {
 #ifdef NDEBUG
-		_locked.store(false);
+			_locked.store(0);
 #else
-		assert(_locked.exchange(false));
+			assert(_locked.exchange(0));
 #endif
-		auto waiter_opt =
-			_waiters.pop_back_if([this]() -> bool { return !_locked.load(); });
-		if (!waiter_opt) {
+			_waiters.unlock();
 			return;
 		}
-		waiter_opt.value()->resume();
+		auto waiter = waiters.pop_back();
+		_waiters.unlock_and_prepend(std::move(waiters));
+#ifdef NDEBUG
+		_locked.store(reinterpret_cast<uintptr_t>(waiter.get()));
+#else
+		assert(_locked.exchange(reinterpret_cast<uintptr_t>(waiter.get())));
+#endif
+		waiter->resume();
 	}
 
 private:
-	std::atomic<bool> _locked;
+	std::atomic<uintptr_t> _locked;
 	lockfree_list<resumer_i> _waiters;
 
 	bool _wait_and_lock(scheduler_i sch, duration timeout) {
@@ -75,18 +88,23 @@ private:
 		assert(timeout);
 
 		auto rsmr = sch->get_resumer();
+		auto rsmr_id = reinterpret_cast<uintptr_t>(rsmr.get());
 
-		if (!_waiters.emplace_front_if_non_empty_or(
-				[this]() -> bool { return _locked.exchange(true); }, rsmr)) {
+		if (!_waiters.emplace_front_if(
+				[this, rsmr_id]() -> bool { return _locked.load() != rsmr_id; },
+				rsmr)) {
 			return true;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->suspend(timeout) &&
-					!_waiters.emplace_front_if_non_empty_or(
-						[this]() -> bool { return _locked.exchange(true); },
-						rsmr)) {
+				if (sch->suspend(timeout) && (_locked.load() == rsmr_id ||
+											  !_waiters.emplace_front_if(
+												  [this, rsmr_id]() -> bool {
+													  return _locked.load() !=
+															 rsmr_id;
+												  },
+												  rsmr))) {
 					return true;
 				}
 			}
@@ -97,11 +115,14 @@ private:
 			auto r = sch->suspend(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
-				return r && !_locked.exchange(true);
+				return _locked.load() == rsmr_id;
 			}
-			if (r && !_waiters.emplace_front_if_non_empty_or(
-						 [this]() -> bool { return _locked.exchange(true); },
-						 rsmr)) {
+			if (r && (_locked.load() == rsmr_id ||
+					  !_waiters.emplace_front_if(
+						  [this, rsmr_id]() -> bool {
+							  return _locked.load() != rsmr_id;
+						  },
+						  rsmr))) {
 				return true;
 			}
 		}
