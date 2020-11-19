@@ -2,10 +2,12 @@
 #define _RUA_LOG_HPP
 
 #include "macros.hpp"
+#include "move_only.hpp"
 #include "printer.hpp"
 #include "stdio.hpp"
 #include "string.hpp"
 #include "sync.hpp"
+#include "thread.hpp"
 
 namespace rua {
 
@@ -44,24 +46,9 @@ private:
 
 #endif
 
-inline mutex &log_mutex() {
-	static mutex mtx;
-	return mtx;
-}
-
 inline printer &log_printer() {
 	static printer p(sout(), eol::sys_con);
 	return p;
-}
-
-template <typename... Args>
-inline void log(Args &&... args) {
-	auto &p = log_printer();
-	if (!p) {
-		return;
-	}
-	auto lg = make_lock_guard(log_mutex());
-	p.println(std::forward<Args>(args)...);
 }
 
 inline printer &err_log_printer() {
@@ -78,6 +65,21 @@ inline printer &err_log_printer() {
 	return p;
 }
 
+inline mutex &log_mutex() {
+	static mutex mtx;
+	return mtx;
+}
+
+template <typename... Args>
+inline void log(Args &&... args) {
+	auto &p = log_printer();
+	if (!p) {
+		return;
+	}
+	auto lg = make_lock_guard(log_mutex());
+	p.println(std::forward<Args>(args)...);
+}
+
 template <typename... Args>
 inline void err_log(Args &&... args) {
 	auto &p = err_log_printer();
@@ -86,6 +88,42 @@ inline void err_log(Args &&... args) {
 	}
 	auto lg = make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
+}
+
+inline chan<std::function<void()>> &log_chan() {
+	static chan<std::function<void()>> ch;
+	static thread log_td([]() {
+		for (;;) {
+			ch.pop()();
+		}
+	});
+	return ch;
+}
+
+template <typename... Args>
+inline void post_log(Args &&... args) {
+	auto &p = log_printer();
+	if (!p) {
+		return;
+	}
+	move_only<std::string> s(str_join({to_temp_string(args)...}, " "));
+	log_chan() << [&p, s]() mutable {
+		auto lg = make_lock_guard(log_mutex());
+		p.println(std::move(s.value()));
+	};
+}
+
+template <typename... Args>
+inline void post_err_log(Args &&... args) {
+	auto &p = err_log_printer();
+	if (!p) {
+		return;
+	}
+	move_only<std::string> s(str_join({to_temp_string(args)...}, " "));
+	log_chan() << [&p, s]() mutable {
+		auto lg = make_lock_guard(log_mutex());
+		p.println(std::move(s.value()));
+	};
 }
 
 } // namespace rua
