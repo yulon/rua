@@ -9,6 +9,22 @@
 
 namespace rua {
 
+template <
+	typename T,
+	typename BeginT = decltype(std::declval<T &&>().begin()),
+	typename = decltype(*std::declval<BeginT>())>
+inline constexpr BeginT range_begin(T &&target) {
+	return std::forward<T>(target).begin();
+}
+
+template <
+	typename T,
+	typename EndT = decltype(std::declval<T &&>().end()),
+	typename = decltype(*std::declval<EndT>())>
+inline constexpr EndT range_end(T &&target) {
+	return std::forward<T>(target).end();
+}
+
 template <typename, typename = void>
 struct _has_begin_end : std::false_type {};
 
@@ -174,22 +190,6 @@ inline constexpr rua::
 	enable_if_t<std::is_base_of<wandering_iterator, Iter>::value, Iter>
 	end(T &&) {
 	return {};
-}
-
-template <
-	typename T,
-	typename BeginT = decltype(std::declval<T &&>().begin()),
-	typename = decltype(*std::declval<BeginT>())>
-inline constexpr BeginT range_begin(T &&target) {
-	return std::forward<T>(target).begin();
-}
-
-template <
-	typename T,
-	typename EndT = decltype(std::declval<T &&>().end()),
-	typename = decltype(*std::declval<EndT>())>
-inline constexpr EndT range_end(T &&target) {
-	return std::forward<T>(target).end();
 }
 
 ////////////////////////////////////////////////////////////////////////////

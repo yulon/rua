@@ -197,7 +197,9 @@ to_string(Range &&range) {
 	std::string buf;
 	buf += '{';
 	bool is_first = true;
-	for (auto it = range_begin(range); it != range_end(range); ++it) {
+	for (auto it = range_begin(std::forward<Range>(range));
+		 it != range_end(std::forward<Range>(range));
+		 ++it) {
 		if (is_first) {
 			is_first = false;
 		} else {
