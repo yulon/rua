@@ -282,7 +282,7 @@ public:
 
 namespace _make_file {
 
-inline bool make_dir(const file_path &path) {
+inline bool touch_dir(const file_path &path) {
 	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 	if (path_w.empty()) {
 		return false;
@@ -292,14 +292,14 @@ inline bool make_dir(const file_path &path) {
 	if (fa != INVALID_FILE_ATTRIBUTES && fa & FILE_ATTRIBUTE_DIRECTORY) {
 		return true;
 	}
-	if (!make_dir(path.rm_back())) {
+	if (!touch_dir(path.rm_back())) {
 		return false;
 	}
 	return CreateDirectoryW(path_w.c_str(), nullptr);
 }
 
 inline file make_file(const file_path &path) {
-	if (!make_dir(path.rm_back())) {
+	if (!touch_dir(path.rm_back())) {
 		return nullptr;
 	}
 
@@ -315,8 +315,8 @@ inline file make_file(const file_path &path) {
 		nullptr);
 }
 
-inline file modify_or_make_file(const file_path &path) {
-	if (!make_dir(path.rm_back())) {
+inline file touch_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
 		return nullptr;
 	}
 

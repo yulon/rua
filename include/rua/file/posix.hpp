@@ -191,28 +191,28 @@ public:
 
 namespace _make_file {
 
-inline bool make_dir(const file_path &path, mode_t mode = 0777) {
+inline bool touch_dir(const file_path &path, mode_t mode = 0777) {
 	if (!path) {
 		return false;
 	}
 	if (path.is_dir()) {
 		return true;
 	}
-	if (!make_dir(path.rm_back(), mode)) {
+	if (!touch_dir(path.rm_back(), mode)) {
 		return false;
 	}
 	return mkdir(path.str().c_str(), mode) == 0;
 }
 
 inline file make_file(const file_path &path) {
-	if (!make_dir(path.rm_back())) {
+	if (!touch_dir(path.rm_back())) {
 		return nullptr;
 	}
 	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
 }
 
-inline file modify_or_make_file(const file_path &path) {
-	if (!make_dir(path.rm_back())) {
+inline file touch_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
 		return nullptr;
 	}
 	return open(path.str().c_str(), O_CREAT | O_RDWR);
