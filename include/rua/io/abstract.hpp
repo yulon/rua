@@ -18,8 +18,8 @@ public:
 		ptrdiff_t tsz = 0;
 		while (tsz < psz) {
 			auto sz = read(p(tsz));
-			if (!sz) {
-				return tsz;
+			if (sz <= 0) {
+				return tsz ? tsz : sz;
 			}
 			tsz += sz;
 		}
