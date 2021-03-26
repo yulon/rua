@@ -280,89 +280,6 @@ public:
 	}
 };
 
-namespace _make_file {
-
-inline bool touch_dir(const file_path &path) {
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
-	if (path_w.empty()) {
-		return false;
-	}
-
-	auto fa = GetFileAttributesW(path_w.c_str());
-	if (fa != INVALID_FILE_ATTRIBUTES && fa & FILE_ATTRIBUTE_DIRECTORY) {
-		return true;
-	}
-	if (!touch_dir(path.rm_back())) {
-		return false;
-	}
-	return CreateDirectoryW(path_w.c_str(), nullptr);
-}
-
-inline file make_file(const file_path &path) {
-	if (!touch_dir(path.rm_back())) {
-		return nullptr;
-	}
-
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
-
-	return CreateFileW(
-		path_w.c_str(),
-		GENERIC_WRITE | GENERIC_READ,
-		FILE_SHARE_READ,
-		nullptr,
-		CREATE_ALWAYS,
-		FILE_FLAG_BACKUP_SEMANTICS,
-		nullptr);
-}
-
-inline file touch_file(const file_path &path) {
-	if (!touch_dir(path.rm_back())) {
-		return nullptr;
-	}
-
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
-
-	return CreateFileW(
-		path_w.c_str(),
-		GENERIC_WRITE | GENERIC_READ,
-		FILE_SHARE_READ,
-		nullptr,
-		OPEN_ALWAYS,
-		FILE_FLAG_BACKUP_SEMANTICS,
-		nullptr);
-}
-
-inline file modify_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
-
-	return CreateFileW(
-		path_w.c_str(),
-		stat_only ? FILE_WRITE_ATTRIBUTES | FILE_READ_ATTRIBUTES
-				  : GENERIC_WRITE | GENERIC_READ,
-		FILE_SHARE_READ,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS,
-		nullptr);
-}
-
-inline file view_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
-
-	return CreateFileW(
-		path_w.c_str(),
-		stat_only ? FILE_READ_ATTRIBUTES : GENERIC_READ,
-		FILE_SHARE_WRITE | FILE_SHARE_DELETE | FILE_SHARE_READ,
-		nullptr,
-		OPEN_EXISTING,
-		FILE_FLAG_BACKUP_SEMANTICS,
-		nullptr);
-}
-
-} // namespace _make_file
-
-using namespace _make_file;
-
 using dir_entry_info = basic_file_info<WIN32_FIND_DATAW>;
 
 class dir_entry : public dir_entry_info {
@@ -522,6 +439,98 @@ private:
 		return false;
 	}
 };
+
+namespace _make_file {
+
+inline bool touch_dir(const file_path &path) {
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+
+	auto fa = GetFileAttributesW(path_w.c_str());
+	if (fa != INVALID_FILE_ATTRIBUTES && fa & FILE_ATTRIBUTE_DIRECTORY) {
+		return true;
+	}
+	if (!touch_dir(path.rm_back())) {
+		return false;
+	}
+	return CreateDirectoryW(path_w.c_str(), nullptr);
+}
+
+inline file make_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
+		return nullptr;
+	}
+
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+
+	return CreateFileW(
+		path_w.c_str(),
+		GENERIC_WRITE | GENERIC_READ,
+		FILE_SHARE_READ,
+		nullptr,
+		CREATE_ALWAYS,
+		FILE_FLAG_BACKUP_SEMANTICS,
+		nullptr);
+}
+
+inline file touch_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
+		return nullptr;
+	}
+
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+
+	return CreateFileW(
+		path_w.c_str(),
+		GENERIC_WRITE | GENERIC_READ,
+		FILE_SHARE_READ,
+		nullptr,
+		OPEN_ALWAYS,
+		FILE_FLAG_BACKUP_SEMANTICS,
+		nullptr);
+}
+
+inline file modify_file(const file_path &path, bool stat_only = false) {
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+
+	return CreateFileW(
+		path_w.c_str(),
+		stat_only ? FILE_WRITE_ATTRIBUTES | FILE_READ_ATTRIBUTES
+				  : GENERIC_WRITE | GENERIC_READ,
+		FILE_SHARE_READ,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS,
+		nullptr);
+}
+
+inline file view_file(const file_path &path, bool stat_only = false) {
+	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+
+	return CreateFileW(
+		path_w.c_str(),
+		stat_only ? FILE_READ_ATTRIBUTES : GENERIC_READ,
+		FILE_SHARE_WRITE | FILE_SHARE_DELETE | FILE_SHARE_READ,
+		nullptr,
+		OPEN_EXISTING,
+		FILE_FLAG_BACKUP_SEMANTICS,
+		nullptr);
+}
+
+inline bool remove_file(const file_path &path) {
+	if (!path.is_dir()) {
+		return DeleteFileW(u8_to_w("\\\\?\\" + path.abs().str()).c_str());
+	}
+	for (auto &ety : view_dir(path)) {
+		if (!remove_file(ety.path())) {
+			return false;
+		}
+	}
+	return RemoveDirectoryW(u8_to_w("\\\\?\\" + path.abs().str()).c_str());
+}
+
+} // namespace _make_file
+
+using namespace _make_file;
 
 }} // namespace rua::win32
 
