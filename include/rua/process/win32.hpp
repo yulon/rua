@@ -144,8 +144,8 @@ public:
 		_ext->main_td = thread(pi.hThread);
 	}
 
-	explicit process(pid_t id) :
-		_h(id ? OpenProcess(_all_access(), false, id) : nullptr),
+	explicit process(pid_t id, bool inherit = true) :
+		_h(id ? OpenProcess(_all_access(), inherit, id) : nullptr),
 		_ext(nullptr) {}
 
 	constexpr process(std::nullptr_t = nullptr) : _h(nullptr), _ext(nullptr) {}
@@ -837,8 +837,8 @@ process::wait_for_found(string_view name, duration interval) {
 
 namespace _this_process {
 
-inline process this_process() {
-	return process(this_pid());
+inline process this_process(bool inherit = true) {
+	return process(this_pid(), inherit);
 }
 
 } // namespace _this_process

@@ -23,10 +23,11 @@ struct pipe_accessors {
 };
 
 #if defined(_WIN32)
-inline bool make_pipe(sys_stream &r, sys_stream &w) {
+inline bool make_pipe(sys_stream &r, sys_stream &w, bool inherit = true) {
 	SECURITY_ATTRIBUTES sa;
 	memset(&sa, 0, sizeof(SECURITY_ATTRIBUTES));
 	sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+	sa.bInheritHandle = inherit;
 
 	HANDLE rh, wh;
 	if (!CreatePipe(&rh, &wh, &sa, 0)) {
@@ -37,9 +38,9 @@ inline bool make_pipe(sys_stream &r, sys_stream &w) {
 	return true;
 }
 
-inline pipe_accessors make_pipe() {
+inline pipe_accessors make_pipe(bool inherit = true) {
 	pipe_accessors pa;
-	make_pipe(pa.r, pa.w);
+	make_pipe(pa.r, pa.w, inherit);
 	return pa;
 }
 
