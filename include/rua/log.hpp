@@ -47,20 +47,22 @@ private:
 #endif
 
 inline printer &log_printer() {
-	static printer p(sout(), eol::sys_con);
+	static printer p(out() ? writer_i(sout()) : nullptr, eol::sys_con);
 	return p;
 }
 
 inline printer &err_log_printer() {
 	static printer p(
+		err() ?
 #ifdef _WIN32
-		write_group(
-			{serr(),
-			 std::make_shared<win32::msgbox_writer>("ERROR", MB_ICONERROR)})
+			  writer_i(write_group(
+				  {serr(),
+				   std::make_shared<win32::msgbox_writer>(
+					   "ERROR", MB_ICONERROR)}))
 #else
-		serr()
+			  writer_i(serr())
 #endif
-			,
+			  : nullptr,
 		eol::sys_con);
 	return p;
 }
@@ -71,7 +73,7 @@ inline mutex &log_mutex() {
 }
 
 template <typename... Args>
-inline void log(Args &&... args) {
+inline void log(Args &&...args) {
 	auto &p = log_printer();
 	if (!p) {
 		return;
@@ -81,7 +83,7 @@ inline void log(Args &&... args) {
 }
 
 template <typename... Args>
-inline void err_log(Args &&... args) {
+inline void err_log(Args &&...args) {
 	auto &p = err_log_printer();
 	if (!p) {
 		return;
@@ -101,7 +103,7 @@ inline chan<std::function<void()>> &log_chan() {
 }
 
 template <typename... Args>
-inline void post_log(Args &&... args) {
+inline void post_log(Args &&...args) {
 	auto &p = log_printer();
 	if (!p) {
 		return;
@@ -114,7 +116,7 @@ inline void post_log(Args &&... args) {
 }
 
 template <typename... Args>
-inline void post_err_log(Args &&... args) {
+inline void post_err_log(Args &&...args) {
 	auto &p = err_log_printer();
 	if (!p) {
 		return;

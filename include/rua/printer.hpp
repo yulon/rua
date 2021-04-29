@@ -28,17 +28,14 @@ public:
 	}
 
 	template <typename... Args>
-	void print(Args &&... args) {
-		if (!_w) {
-			return;
-		}
+	void print(Args &&...args) {
 		str_join(_buf, {to_temp_string(args)...}, " ");
 		_w->write_all(as_bytes(_buf));
 		_buf.resize(0);
 	}
 
 	template <typename... Args>
-	void println(Args &&... args) {
+	void println(Args &&...args) {
 		print(std::forward<Args>(args)..., _eol);
 	}
 

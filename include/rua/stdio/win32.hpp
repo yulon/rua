@@ -33,6 +33,10 @@ public:
 		return sys_stream(GetStdHandle(Id), false).write(p);
 	}
 
+	operator bool() const {
+		return GetStdHandle(Id);
+	}
+
 	operator sys_stream() const {
 		return sys_stream(GetStdHandle(Id), false);
 	}
