@@ -24,6 +24,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <list>
 #include <memory>
@@ -122,7 +123,7 @@ public:
 				const_cast<wchar_t *>(cmd.str().c_str()),
 				nullptr,
 				nullptr,
-				true,
+				false,
 				lazy_start ? CREATE_SUSPENDED : 0,
 				nullptr,
 				pwd ? u8_to_w(pwd.str()).c_str() : nullptr,
@@ -144,8 +145,8 @@ public:
 		_ext->main_td = thread(pi.hThread);
 	}
 
-	explicit process(pid_t id, bool inherit = true) :
-		_h(id ? OpenProcess(_all_access(), inherit, id) : nullptr),
+	explicit process(pid_t id) :
+		_h(id ? OpenProcess(_all_access(), false, id) : nullptr),
 		_ext(nullptr) {}
 
 	constexpr process(std::nullptr_t = nullptr) : _h(nullptr), _ext(nullptr) {}
@@ -837,8 +838,87 @@ process::wait_for_found(string_view name, duration interval) {
 
 namespace _this_process {
 
-inline process this_process(bool inherit = true) {
-	return process(this_pid(), inherit);
+inline process this_process() {
+	return process(GetCurrentProcess());
+}
+
+inline bool is_elevated_privilege() {
+	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
+	PSID admin_group = nullptr;
+	auto r = AllocateAndInitializeSid(
+		&sna,
+		2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		&admin_group);
+	if (r) {
+		BOOL is_member = FALSE;
+		r = CheckTokenMembership(nullptr, admin_group, &is_member);
+		if (r) {
+			r = is_member;
+		}
+	}
+	if (admin_group) {
+		FreeSid(admin_group);
+		admin_group = nullptr;
+	}
+	return r;
+}
+
+inline void elevate_privilege(int argc, const char *argv[]) {
+	if (!is_elevated_privilege()) {
+		SHELLEXECUTEINFOW sei;
+		memset(&sei, 0, sizeof(sei));
+		sei.cbSize = sizeof(sei);
+		sei.lpVerb = L"runas";
+		sei.nShow = SW_NORMAL;
+
+		auto path_w = loc_to_w(argv[0]);
+		sei.lpFile = path_w.c_str();
+
+		std::wstringstream params;
+		if (argc > 1) {
+			for (int i = 1; i < argc; ++i) {
+				if (i > 1) {
+					params << L" ";
+				}
+				if (string_view(argv[i]).find(" ") == string_view::npos) {
+					params << loc_to_w(argv[i]);
+				} else {
+					params << L"\"" << loc_to_w(argv[i]) << L"\"";
+				}
+			}
+			sei.lpParameters = params.str().c_str();
+		}
+
+		auto dir_w = u8_to_w(working_dir().str());
+		sei.lpDirectory = dir_w.c_str();
+
+		if (ShellExecuteExW(&sei)) {
+			exit(0);
+			return;
+		}
+		exit(GetLastError());
+		return;
+	}
+
+	HANDLE token;
+	if (OpenProcessToken(
+			GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
+		TOKEN_PRIVILEGES tp;
+		tp.PrivilegeCount = 1;
+		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+		if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid)) {
+			AdjustTokenPrivileges(token, FALSE, &tp, sizeof(tp), NULL, NULL);
+		}
+		CloseHandle(token);
+	}
 }
 
 } // namespace _this_process
