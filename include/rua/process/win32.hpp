@@ -213,17 +213,175 @@ public:
 		return static_cast<int>(exit_code);
 	}
 
-	void kill() {
+	bool kill() {
 		if (!_h) {
-			return;
+			return true;
 		}
-		TerminateProcess(_h, 1);
+		if (!TerminateProcess(_h, 0)) {
+			return false;
+		}
 		_reset();
+		return true;
+	}
+
+	bool is_suspended() const {
+		using _kpriority = LONG;
+
+		// for UWP
+
+		/*assert(_ntdll().nt_query_information_process);
+
+		struct _process_basic_information {
+			NTSTATUS ExitStatus;
+			struct _PEB *PebBaseAddress;
+			ULONG_PTR AffinityMask;
+			_kpriority BasePriority;
+			ULONG_PTR UniqueProcessId;
+			ULONG_PTR InheritedFromUniqueProcessId;
+		};
+
+		struct _process_extended_basic_information {
+			SIZE_T
+			Size;
+			_process_basic_information BasicInfo;
+			union {
+				ULONG Flags;
+				struct {
+					ULONG IsProtectedProcess : 1;
+					ULONG IsWow64Process : 1;
+					ULONG IsProcessDeleting : 1;
+					ULONG IsCrossSessionCreate : 1;
+					ULONG IsFrozen : 1;
+					ULONG IsBackground : 1;
+					ULONG IsStronglyNamed : 1;
+					ULONG IsSecureProcess : 1;
+					ULONG IsSubsystemProcess : 1;
+					ULONG SpareBits : 23;
+				};
+			};
+		};
+
+		_process_extended_basic_information pebi;
+		if (_ntdll().nt_query_information_process(
+				_h, 0, &pebi, sizeof(pebi), 0) >= 0 &&
+			pebi.Size >= sizeof(pebi) && pebi.IsFrozen) {
+			return true;
+		}*/
+
+		// for Win32
+
+		struct _client_id {
+			HANDLE UniqueProcess;
+			HANDLE UniqueThread;
+		};
+
+		struct _system_thread_information {
+			LARGE_INTEGER Reserved1[3];
+			ULONG Reserved2;
+			PVOID StartAddress;
+			_client_id ClientId;
+			_kpriority Priority;
+			LONG BasePriority;
+			ULONG Reserved3;
+			ULONG ThreadState;
+			ULONG WaitReason;
+		};
+
+		struct _unicode_string {
+			USHORT Length;
+			USHORT MaximumLength;
+			PWSTR Buffer;
+		};
+
+		struct _system_process_information {
+			ULONG NextEntryOffset;
+			ULONG NumberOfThreads;
+			BYTE Reserved1[48];
+			_unicode_string ImageName;
+			_kpriority BasePriority;
+			HANDLE UniqueProcessId;
+			PVOID Reserved2;
+			ULONG HandleCount;
+			ULONG SessionId;
+			PVOID Reserved3;
+			SIZE_T PeakVirtualSize;
+			SIZE_T VirtualSize;
+			ULONG Reserved4;
+			SIZE_T PeakWorkingSetSize;
+			SIZE_T WorkingSetSize;
+			PVOID Reserved5;
+			SIZE_T QuotaPagedPoolUsage;
+			PVOID Reserved6;
+			SIZE_T QuotaNonPagedPoolUsage;
+			SIZE_T PagefileUsage;
+			SIZE_T PeakPagefileUsage;
+			SIZE_T PrivatePageCount;
+			LARGE_INTEGER Reserved7[6];
+		};
+
+		assert(_ntdll().nt_query_system_information);
+
+		DWORD si_buf_sz = 0;
+
+		_ntdll().nt_query_system_information(5, 0, 0, &si_buf_sz);
+		if (!si_buf_sz) {
+			return false;
+		}
+
+		bytes si_buf(si_buf_sz + 0x10000);
+
+		if (_ntdll().nt_query_system_information(
+				5, si_buf.data(), si_buf.size(), &si_buf_sz) < 0) {
+			return false;
+		}
+
+		auto si_data = si_buf(0, si_buf_sz);
+
+		auto pid = id();
+		for (;;) {
+			auto &spi = si_data.as<_system_process_information>();
+			if (static_cast<pid_t>(
+					reinterpret_cast<uintptr_t>(spi.UniqueProcessId)) != pid) {
+				if (!spi.NextEntryOffset) {
+					return false;
+				}
+				si_data = si_data(spi.NextEntryOffset);
+				continue;
+			}
+			si_data = si_data(sizeof(_system_process_information));
+			for (size_t i = 0; i < spi.NumberOfThreads; ++i) {
+				auto &sti = si_data.aligned_as<_system_thread_information>(i);
+				if (sti.ThreadState != 5 || sti.WaitReason != 5) {
+					return false;
+				}
+			}
+			return true;
+		}
+
+		return false;
+	}
+
+	bool suspend() {
+		if (is_suspended()) {
+			return true;
+		}
+
+		assert(_ntdll().nt_suspend_process);
+
+		return _ntdll().nt_suspend_process(_h) >= 0;
+	}
+
+	bool resume() {
+		assert(_ntdll().nt_resume_process);
+
+		return _ntdll().nt_resume_process(_h) >= 0;
 	}
 
 	using native_module_handle_t = HMODULE;
 
 	file_path path(native_module_handle_t mdu = nullptr) const {
+		assert(_psapi().get_module_file_name_ex_w);
+
 		auto fp = _psapi().get_module_file_name_ex_w;
 		if (!fp) {
 			return "";
@@ -237,6 +395,8 @@ public:
 	}
 
 	size_t memory_usage() const {
+		assert(_psapi().get_process_memoryinfo);
+
 		auto fp = _psapi().get_process_memoryinfo;
 		if (!fp) {
 			return 0;
@@ -316,6 +476,8 @@ public:
 	}
 
 	memory_block memory_image(native_module_handle_t mdu = nullptr) const {
+		assert(_psapi().get_module_information);
+
 		auto fp = _psapi().get_module_information;
 		if (!fp) {
 			return {};
@@ -449,11 +611,31 @@ private:
 		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
 	}
 
-	struct _psapi_t {
-		decltype(&GetModuleFileNameExW) get_module_file_name_ex_w;
-		decltype(&GetModuleInformation) get_module_information;
-		decltype(&GetProcessMemoryInfo) get_process_memoryinfo;
+	struct _ntdll_t {
+		NTSTATUS(WINAPI *nt_suspend_process)(HANDLE);
+		NTSTATUS(WINAPI *nt_resume_process)(HANDLE);
+		NTSTATUS(WINAPI *nt_query_system_information)
+		(int SystemInformationClass,
+		 PVOID SystemInformation,
+		 ULONG SystemInformationLength,
+		 PULONG ReturnLength);
+		/*NTSTATUS(WINAPI *nt_query_information_process)
+		(HANDLE ProcessHandle,
+		 int ProcessInformationClass,
+		 PVOID ProcessInformation,
+		 ULONG ProcessInformationLength,
+		 PULONG ReturnLength);*/
 	};
+
+	static const _ntdll_t &_ntdll() {
+		static auto ntdll = dylib::from_loaded("ntdll.dll");
+		static const _ntdll_t inst{
+			ntdll["NtSuspendProcess"],
+			ntdll["NtResumeProcess"],
+			ntdll["NtQuerySystemInformation"]/*,
+			ntdll["NtQueryInformationProcess"]*/};
+		return inst;
+	}
 
 	static generic_ptr _load_psapi(string_view name) {
 		static auto kernel32 = dylib::from_loaded("kernel32.dll");
@@ -464,6 +646,12 @@ private:
 		static dylib psapi("psapi.dll");
 		return psapi[name];
 	}
+
+	struct _psapi_t {
+		decltype(&GetModuleFileNameExW) get_module_file_name_ex_w;
+		decltype(&GetModuleInformation) get_module_information;
+		decltype(&GetProcessMemoryInfo) get_process_memoryinfo;
+	};
 
 	static const _psapi_t &_psapi() {
 		static const _psapi_t inst{

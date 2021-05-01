@@ -141,12 +141,23 @@ public:
 		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
 	}
 
-	void kill() {
+	bool kill() {
 		if (_id <= 0) {
-			return;
+			return true;
 		}
-		::kill(_id, 0);
-		reset();
+		if (::kill(_id, 0) != 0) {
+			return false;
+		}
+		_id = -1;
+		return true;
+	}
+
+	bool suspend() {
+		return ::kill(_id, SIGSTOP) == 0;
+	}
+
+	bool resume() {
+		return ::kill(_id, SIGCONT) == 0;
 	}
 
 	file_path path() const {
