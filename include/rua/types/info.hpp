@@ -491,6 +491,16 @@ public:
 		return _tab->move_new(src);
 	}
 
+	bool is_convertable_to_bool() const {
+		return _tab && _tab->to_bool;
+	}
+
+	bool to_bool(void *ptr) const {
+		assert(_tab);
+		assert(_tab->to_bool);
+		return _tab->to_bool(ptr);
+	}
+
 #ifdef RUA_RTTI
 	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);
@@ -518,6 +528,8 @@ private:
 		void (*const move_ctor)(void *ptr, void *src);
 
 		void *(*const move_new)(void *src);
+
+		bool (*const to_bool)(void *);
 
 #ifdef RUA_RTTI
 		const std::type_info &(*const std_id)();
@@ -626,6 +638,18 @@ private:
 		}
 	};
 
+	template <typename T, typename = void>
+	struct _to_bool {
+		static constexpr std::nullptr_t value = nullptr;
+	};
+
+	template <typename T>
+	struct _to_bool<T, enable_if_t<std::is_convertible<T, bool>::value>> {
+		static bool value(void *ptr) {
+			return static_cast<bool>(*reinterpret_cast<T *>(ptr));
+		}
+	};
+
 #ifdef RUA_RTTI
 	template <typename T>
 	static const std::type_info &_std_id() {
@@ -647,7 +671,8 @@ private:
 			_copy_ctor<T>::value,
 			_copy_new<T>::value,
 			_move_ctor<T>::value,
-			_move_new<T>::value
+			_move_new<T>::value,
+			_to_bool<T>::value
 #ifdef RUA_RTTI
 			,
 			&_std_id<T>
