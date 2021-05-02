@@ -56,8 +56,17 @@ inline bool operator<=(const date_t &a, const date_t &b) {
 RUA_MULTIDEF_VAR const date_t nullepo{0, 0, 0, 0, 0, 0, 0, 0};
 RUA_MULTIDEF_VAR const date_t unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
 
-inline bool is_leap_year(int16_t yr) {
-	return !(yr % 4) && (yr % 100 || !(yr % 400));
+inline uchar is_leap_year(int16_t yr) {
+	if (yr % 4) {
+		return 0;
+	}
+	if (yr % 100) {
+		if (yr % 400) {
+			return 2;
+		}
+		return 0;
+	}
+	return 1;
 }
 
 inline int16_t _yr_days_at_mon(bool is_ly, size_t m) {
@@ -75,7 +84,7 @@ inline int16_t _yr_days_at_mon(bool is_ly, size_t m) {
 		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
 		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
 		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30 + 31};
-	return m && is_ly ? tab[m] + 1 : tab[m];
+	return m > 1 && is_ly ? tab[m] + 1 : tab[m];
 }
 
 class time {
@@ -133,8 +142,9 @@ public:
 				_ela -= yrs;
 			}
 		}
-		_ela += _date2dur_exc_yr(d8) - _date2dur_exc_yr(*_epo);
-		_ela -= hours(d8.zone - _epo->zone);
+		_ela += _date2dur_exc_yr(d8);
+		_ela -= _date2dur_exc_yr(*_epo);
+		_ela -= hours(d8.zone);
 	}
 
 	time(const date_t &d8, date_t &&epoch) = delete;
@@ -175,69 +185,46 @@ public:
 		// zone
 		nd.zone = _zon;
 
-		duration ela(_ela + _date2dur_exc_yr(*_epo) - hours(_epo->zone - _zon));
+		auto ela = _ela + _date2dur_exc_yr(*_epo) + hours(_zon);
 
 		// nanosecond
-		nd.nanoseconds = ela.remaining_nanoseconds();
+		nd.nanoseconds = _ela.remaining_nanoseconds();
 
 		// year
 		nd.year = _epo->year;
-
-		constexpr auto days_per_400_yrs = 400_y + 97_d;
-		auto ela_400_yrs = ela / days_per_400_yrs;
-		if (ela_400_yrs) {
-			ela %= days_per_400_yrs;
-			nd.year += static_cast<int16_t>(ela_400_yrs * 400);
-		}
-
-		constexpr auto days_per_100_yrs = 100_y + 24_d;
-		auto ela_100_yrs = ela / days_per_100_yrs;
-		if (ela_100_yrs) {
-			ela_100_yrs -= ela_100_yrs >> 2;
-			ela -= days_per_100_yrs * ela_100_yrs;
-			nd.year += static_cast<int16_t>(ela_100_yrs * 100);
-		}
-
-		constexpr auto days_per_4_yrs = 4_y + 1_d;
-		auto ela_4_yrs = ela / days_per_4_yrs;
-		if (ela_4_yrs) {
-			ela %= days_per_4_yrs;
-			nd.year += static_cast<int16_t>(ela_4_yrs * 4);
-		}
-
-		auto ela_yrs = ela / year;
-		if (ela_yrs) {
-			ela_yrs -= ela_yrs >> 2;
-			ela -= years(ela_yrs);
-			nd.year += static_cast<int16_t>(ela_yrs);
+		for (;;) {
+			auto yr_dur = is_leap_year(nd.year) ? leep_year : year;
+			if (ela < yr_dur) {
+				break;
+			}
+			ela -= yr_dur;
+			++nd.year;
 		}
 
 		// month
 		auto is_leap = is_leap_year(nd.year);
-		for (size_t i = 1; i < 13; ++i) {
-			auto ydam = _yr_days_at_mon(is_leap, i);
-			if (ydam > ela.days()) {
-				nd.month = static_cast<int8_t>(i);
-				if (i > 0) {
-					ela -= days(_yr_days_at_mon(is_leap, i - 1));
-				}
+		for (size_t i = 12; i > 0; --i) {
+			nd.month = static_cast<int8_t>(i);
+			auto ydam = _yr_days_at_mon(is_leap, i - 1);
+			if (ydam < ela.days()) {
+				ela -= days(ydam);
 				break;
 			}
 		}
 
 		// day
 		nd.day = 1 + static_cast<int8_t>(ela.days());
-		ela %= 1_d;
+		ela %= day;
 
 		// hour
-		nd.hour = static_cast<int8_t>(ela / 1_h);
-		ela %= 1_h;
+		nd.hour = static_cast<int8_t>(ela / hour);
+		ela %= hour;
 
 		// minute
-		nd.minute = static_cast<int8_t>(ela / 1_m);
+		nd.minute = static_cast<int8_t>(ela / minute);
 
 		// second
-		nd.second = static_cast<int8_t>((ela % 1_m).seconds());
+		nd.second = static_cast<int8_t>((ela % minute).seconds());
 
 		return nd;
 	}
