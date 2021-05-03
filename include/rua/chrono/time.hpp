@@ -56,17 +56,8 @@ inline bool operator<=(const date_t &a, const date_t &b) {
 RUA_MULTIDEF_VAR const date_t nullepo{0, 0, 0, 0, 0, 0, 0, 0};
 RUA_MULTIDEF_VAR const date_t unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
 
-inline uchar is_leap_year(int16_t yr) {
-	if (yr % 4) {
-		return 0;
-	}
-	if (yr % 100) {
-		if (yr % 400) {
-			return 2;
-		}
-		return 0;
-	}
-	return 1;
+inline constexpr bool is_leap_year(int16_t yr) {
+	return !(yr % 4) && ((yr % 100) || !(yr % 400));
 }
 
 RUA_INLINE_CONST int16_t _yr_days_at_mon_tab[]{
@@ -110,42 +101,8 @@ public:
 		if (d8 == epoch) {
 			return;
 		}
-		if (d8.year != _epo->year) {
-			int16_t y_begin, y_end;
-			if (d8.year > _epo->year) {
-				y_begin = _epo->year;
-				y_end = d8.year;
-			} else {
-				y_begin = d8.year;
-				y_end = _epo->year;
-			}
-			int16_t fst_qy = 0, lst_qy = 0;
-			for (int16_t i = y_begin; i < y_end; ++i) {
-				if (!(i % 4)) {
-					fst_qy = i;
-					break;
-				}
-			}
-			for (int16_t i = y_end - 1; i >= y_begin; --i) {
-				if (!(i % 4)) {
-					lst_qy = i;
-					break;
-				}
-			}
-			auto qy_diff = lst_qy - fst_qy;
-			auto yrs = years(y_end - y_begin) +
-					   days(
-						   qy_diff / 4 + 1 - (qy_diff / 100 + 1) +
-						   (qy_diff / 400 + 1));
-			if (d8.year > _epo->year) {
-				_ela += yrs;
-			} else {
-				_ela -= yrs;
-			}
-		}
-		_ela += _date2dur_exc_yr(d8);
-		_ela -= _date2dur_exc_yr(*_epo);
-		_ela -= hours(d8.zone);
+		_ela = days(_days_b4_yr(d8.year) - _days_b4_yr(_epo->year)) +
+			   _d8_wo_yr_to_dur(d8) - _d8_wo_yr_to_dur(*_epo) - hours(d8.zone);
 	}
 
 	time(const date_t &d8, date_t &&epoch) = delete;
@@ -186,7 +143,7 @@ public:
 		// zone
 		nd.zone = _zon;
 
-		auto ela = _ela + _date2dur_exc_yr(*_epo) + hours(_zon);
+		auto ela = _ela + _d8_wo_yr_to_dur(*_epo) + hours(_zon);
 
 		// nanosecond
 		nd.nanoseconds = _ela.remaining_nanoseconds();
@@ -196,9 +153,7 @@ public:
 		// year
 		nd.year = 1;
 
-		auto epo_before_yr = static_cast<int64_t>(_epo->year - 1);
-		ela_days += epo_before_yr * 365 + epo_before_yr / 4 -
-					epo_before_yr / 100 + epo_before_yr / 400;
+		ela_days += _days_b4_yr(_epo->year);
 
 		constexpr int64_t days_per_400_years = 365 * 400 + 97;
 		auto n = ela_days / days_per_400_years;
@@ -343,7 +298,12 @@ private:
 	int8_t _zon;
 	const date_t *_epo;
 
-	static duration _date2dur_exc_yr(const date_t &d8) {
+	static RUA_CONSTEXPR_14 int64_t _days_b4_yr(uint16_t yr) {
+		--yr;
+		return yr * 365 + yr / 4 - yr / 100 + yr / 400;
+	}
+
+	static duration _d8_wo_yr_to_dur(const date_t &d8) {
 		duration r;
 		if (d8.month > 1) {
 			r += days(_yr_days_at_mon(is_leap_year(d8.year), d8.month - 1));
