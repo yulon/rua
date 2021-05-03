@@ -99,7 +99,7 @@ RUA_INLINE_CONST auto nullpos = nmax<size_t>();
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename A, typename B>
-inline decltype(std::declval<A &&>() = std::declval<B &&>())
+inline constexpr decltype(std::declval<A &&>() = std::declval<B &&>())
 assign(A &&a, B &&b) {
 	return std::forward<A>(a) = std::forward<B>(b);
 }
