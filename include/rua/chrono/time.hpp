@@ -69,22 +69,23 @@ inline uchar is_leap_year(int16_t yr) {
 	return 1;
 }
 
-inline int16_t _yr_days_at_mon(bool is_ly, size_t m) {
-	static const int16_t tab[]{
-		0,
-		31,
-		31 + 28,
-		31 + 28 + 31,
-		31 + 28 + 31 + 30,
-		31 + 28 + 31 + 30 + 31,
-		31 + 28 + 31 + 30 + 31 + 30,
-		31 + 28 + 31 + 30 + 31 + 30 + 31,
-		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
-		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
-		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
-		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
-		31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30 + 31};
-	return m > 1 && is_ly ? tab[m] + 1 : tab[m];
+RUA_INLINE_CONST int16_t _yr_days_at_mon_tab[]{
+	0,
+	31,
+	31 + 28,
+	31 + 28 + 31,
+	31 + 28 + 31 + 30,
+	31 + 28 + 31 + 30 + 31,
+	31 + 28 + 31 + 30 + 31 + 30,
+	31 + 28 + 31 + 30 + 31 + 30 + 31,
+	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31,
+	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30,
+	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31,
+	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30,
+	31 + 28 + 31 + 30 + 31 + 30 + 31 + 31 + 30 + 31 + 30 + 31};
+
+inline constexpr int16_t _yr_days_at_mon(bool is_ly, size_t m) {
+	return m > 1 && is_ly ? _yr_days_at_mon_tab[m] + 1 : _yr_days_at_mon_tab[m];
 }
 
 class time {
@@ -190,37 +191,57 @@ public:
 		// nanosecond
 		nd.nanoseconds = _ela.remaining_nanoseconds();
 
+		auto ela_days = ela.days();
+
 		// year
-		nd.year = _epo->year;
-		for (;;) {
-			auto yr_dur = is_leap_year(nd.year) ? leep_year : year;
-			if (ela < yr_dur) {
-				break;
-			}
-			ela -= yr_dur;
-			++nd.year;
-		}
+		nd.year = 1;
+
+		auto epo_before_yr = static_cast<int64_t>(_epo->year - 1);
+		ela_days += epo_before_yr * 365 + epo_before_yr / 4 -
+					epo_before_yr / 100 + epo_before_yr / 400;
+
+		constexpr int64_t days_per_400_years = 365 * 400 + 97;
+		auto n = ela_days / days_per_400_years;
+		nd.year += static_cast<uint16_t>(400 * n);
+		ela_days -= days_per_400_years * n;
+
+		constexpr int64_t days_per_100_years = 365 * 100 + 24;
+		n = ela_days / days_per_100_years;
+		n -= n >> 2;
+		nd.year += static_cast<uint16_t>(100 * n);
+		ela_days -= days_per_100_years * n;
+
+		constexpr int64_t days_per_4_years = 365 * 4 + 1;
+		n = ela_days / days_per_4_years;
+		nd.year += static_cast<uint16_t>(4 * n);
+		ela_days -= days_per_4_years * n;
+
+		n = ela_days / 365;
+		n -= n >> 2;
+		nd.year += static_cast<uint16_t>(n);
+		ela_days -= 365 * n;
 
 		// month
-		auto is_leap = is_leap_year(nd.year);
+		auto is_ly = is_leap_year(nd.year);
 		for (size_t i = 12; i > 0; --i) {
 			nd.month = static_cast<int8_t>(i);
-			auto ydam = _yr_days_at_mon(is_leap, i - 1);
-			if (ydam < ela.days()) {
-				ela -= days(ydam);
+			auto ydam = _yr_days_at_mon(is_ly, i - 1);
+			if (ydam < ela_days) {
+				ela_days -= ydam;
 				break;
 			}
 		}
 
 		// day
-		nd.day = 1 + static_cast<int8_t>(ela.days());
-		ela %= day;
+		++ela_days;
+		nd.day = static_cast<int8_t>(ela_days);
 
 		// hour
+		ela %= day;
 		nd.hour = static_cast<int8_t>(ela / hour);
-		ela %= hour;
 
 		// minute
+		ela %= hour;
 		nd.minute = static_cast<int8_t>(ela / minute);
 
 		// second
