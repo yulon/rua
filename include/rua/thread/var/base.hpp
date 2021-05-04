@@ -74,7 +74,7 @@ public:
 
 	void set(any_word value) {
 		auto &ctx = _ctx();
-		std::lock_guard<std::mutex>(ctx.mtx);
+		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
@@ -104,7 +104,7 @@ public:
 
 	any_word get() const {
 		auto &ctx = _ctx();
-		std::lock_guard<std::mutex>(ctx.mtx);
+		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
@@ -119,7 +119,7 @@ public:
 
 	void reset() {
 		auto &ctx = _ctx();
-		std::lock_guard<std::mutex>(ctx.mtx);
+		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
 		if (it == ctx.map.end()) {
@@ -195,7 +195,7 @@ public:
 	}
 
 	template <typename... Args>
-	T &emplace(Args &&... args) {
+	T &emplace(Args &&...args) {
 		RUA_SPASSERT((std::is_constructible<T, Args...>::value));
 
 		auto &li = _li();
