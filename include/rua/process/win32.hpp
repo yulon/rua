@@ -12,6 +12,7 @@
 #include "../sched/wait/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/char_enc/base/win32.hpp"
+#include "../string/char_set.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
 #include "../sys/info/win32.hpp"
@@ -1030,6 +1031,12 @@ inline process this_process() {
 	return process(GetCurrentProcess());
 }
 
+} // namespace _this_process
+
+using namespace _this_process;
+
+namespace _this_process {
+
 inline bool is_elevated_privilege() {
 	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
 	PSID admin_group = nullptr;
@@ -1059,7 +1066,9 @@ inline bool is_elevated_privilege() {
 	return r;
 }
 
-inline void elevate_privilege(int argc, const char *argv[]) {
+} // namespace _this_process
+
+inline void _elevate_privilege(LPCWSTR file, LPCWSTR params) {
 	if (!is_elevated_privilege()) {
 		SHELLEXECUTEINFOW sei;
 		memset(&sei, 0, sizeof(sei));
@@ -1067,22 +1076,49 @@ inline void elevate_privilege(int argc, const char *argv[]) {
 		sei.lpVerb = L"runas";
 		sei.nShow = SW_NORMAL;
 
-		auto path_w = loc_to_w(argv[0]);
-		sei.lpFile = path_w.c_str();
+		std::wstring path_w;
+		if (file) {
+			assert(file[0]);
+			sei.lpFile = file;
+		} else {
+			path_w = u8_to_w(this_process().path().str());
+			sei.lpFile = path_w.c_str();
+		}
 
-		std::wstringstream params;
-		if (argc > 1) {
-			for (int i = 1; i < argc; ++i) {
-				if (i > 1) {
-					params << L" ";
+		if (params) {
+			if (params[0]) {
+				sei.lpParameters = params;
+			}
+		} else {
+			auto cmd = GetCommandLineW();
+			ptrdiff_t params_pos = -1;
+			bool found_file = false;
+			bool found_quote = false;
+			bool found_gap = false;
+			for (ptrdiff_t i = 0; cmd[i]; ++i) {
+				if (!found_file) {
+					if (!is_space(cmd[i])) {
+						found_file = true;
+						if (cmd[i] == L'"') {
+							found_quote = true;
+						}
+					}
+					continue;
 				}
-				if (string_view(argv[i]).find(" ") == string_view::npos) {
-					params << loc_to_w(argv[i]);
-				} else {
-					params << L"\"" << loc_to_w(argv[i]) << L"\"";
+				if (!found_gap) {
+					if (found_quote ? cmd[i] == L'"' : is_space(cmd[i])) {
+						found_gap = true;
+					}
+					continue;
+				}
+				if (!is_space(cmd[i])) {
+					params_pos = i;
+					break;
 				}
 			}
-			sei.lpParameters = params.str().c_str();
+			if (params_pos > -1) {
+				sei.lpParameters = &cmd[params_pos];
+			}
 		}
 
 		auto dir_w = u8_to_w(working_dir().str());
@@ -1109,9 +1145,36 @@ inline void elevate_privilege(int argc, const char *argv[]) {
 	}
 }
 
-} // namespace _this_process
+namespace _this_process {
 
-using namespace _this_process;
+inline void elevate_privilege() {
+	_elevate_privilege(nullptr, nullptr);
+}
+
+inline void elevate_privilege(int argc, const char *argv[]) {
+	if (argc <= 0) {
+		elevate_privilege();
+		return;
+	}
+	if (argc == 1) {
+		_elevate_privilege(loc_to_w(argv[0]).c_str(), L"");
+		return;
+	}
+	std::wstringstream params;
+	for (int i = 1; i < argc; ++i) {
+		if (i > 1) {
+			params << L" ";
+		}
+		if (string_view(argv[i]).find(" ") == string_view::npos) {
+			params << loc_to_w(argv[i]);
+		} else {
+			params << L"\"" << loc_to_w(argv[i]) << L"\"";
+		}
+	}
+	_elevate_privilege(loc_to_w(argv[0]).c_str(), params.str().c_str());
+}
+
+} // namespace _this_process
 
 }} // namespace rua::win32
 
