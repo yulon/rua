@@ -5,6 +5,7 @@
 #include "view.hpp"
 
 #include "../macros.hpp"
+#include "../range.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -17,11 +18,13 @@ struct str_join_options {
 	size_t pre_reserved_size = 0;
 };
 
-template <
-	typename StrList = std::initializer_list<string_view>,
-	typename = enable_if_t<std::is_convertible<
-		decltype(*std::declval<const StrList &>().begin()),
-		string_view>::value>>
+#define RUA_STRING_RANGE(StringRange)                                          \
+	typename StringRange = std::initializer_list<string_view>,                 \
+			 typename = enable_if_t<std::is_convertible<                       \
+				 typename range_traits<StringRange>::element_type,             \
+				 string_view>::value>
+
+template <RUA_STRING_RANGE(StrList)>
 inline void str_join(
 	std::string &buf,
 	const StrList &strs,
@@ -45,7 +48,7 @@ inline void str_join(
 
 	size_t len = 0;
 	bool no_add_sep = true;
-	for (auto &str : strs) {
+	RUA_RANGE_FOR(auto &str, strs, {
 		if (opt.is_ignore_space && is_space(str)) {
 			continue;
 		}
@@ -60,7 +63,7 @@ inline void str_join(
 			len += sep.size();
 		}
 		len += str.size();
-	}
+	})
 
 	if (!len) {
 		return;
@@ -68,7 +71,7 @@ inline void str_join(
 	buf.reserve(buf.size() + len + opt.pre_reserved_size);
 
 	no_add_sep = true;
-	for (auto &str : strs) {
+	RUA_RANGE_FOR(auto &str, strs, {
 		if (!str.size() && opt.is_ignore_space) {
 			continue;
 		}
@@ -83,15 +86,11 @@ inline void str_join(
 			buf += sep;
 		}
 		buf += str;
-	}
+	})
 	return;
 }
 
-template <
-	typename StrList = std::initializer_list<string_view>,
-	typename = enable_if_t<std::is_convertible<
-		decltype(*std::declval<const StrList &>().begin()),
-		string_view>::value>>
+template <RUA_STRING_RANGE(StrList)>
 inline void str_join(
 	std::string &buf,
 	const StrList &strs,
@@ -100,11 +99,7 @@ inline void str_join(
 	str_join(buf, strs, string_view(&sep, 1), opt);
 }
 
-template <
-	typename StrList = std::initializer_list<string_view>,
-	typename = enable_if_t<std::is_convertible<
-		decltype(*std::declval<const StrList &>().begin()),
-		string_view>::value>>
+template <RUA_STRING_RANGE(StrList)>
 inline std::string str_join(
 	const StrList &strs,
 	string_view sep = "",
@@ -114,11 +109,7 @@ inline std::string str_join(
 	return r;
 }
 
-template <
-	typename StrList = std::initializer_list<string_view>,
-	typename = enable_if_t<std::is_convertible<
-		decltype(*std::declval<const StrList &>().begin()),
-		string_view>::value>>
+template <RUA_STRING_RANGE(StrList)>
 inline std::string str_join(
 	const StrList &strs, const char sep, const str_join_options &opt = {}) {
 	std::string r;
@@ -130,7 +121,7 @@ template <
 	typename... Strs,
 	typename = decltype(std::initializer_list<string_view>{
 		std::declval<Strs &&>()...})>
-inline std::string str_join(Strs &&... strs) {
+inline std::string str_join(Strs &&...strs) {
 	return str_join({strs...});
 }
 
