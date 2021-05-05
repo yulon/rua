@@ -146,6 +146,19 @@ inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 
 ////////////////////////////////////////////////////////////////////////////
 
+#define RUA_RANGE_FOR(range_declaration, range_expression, loop_statement)     \
+	{                                                                          \
+		auto &&_rua_range = range_expression;                                  \
+		auto _rua_begin = rua::range_begin(_rua_range);                        \
+		auto _rua_end = rua::range_end(_rua_range);                            \
+		for (; _rua_begin != _rua_end; ++_rua_begin) {                         \
+			range_declaration = *_rua_begin;                                   \
+			loop_statement                                                     \
+		}                                                                      \
+	}
+
+////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 inline constexpr decltype(span_size(std::declval<T &&>()))
 range_size(T &&target) {
