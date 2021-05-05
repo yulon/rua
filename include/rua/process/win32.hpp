@@ -62,10 +62,11 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
+	template <RUA_STRING_RANGE(StrList)>
 	explicit process(
 		const file_path &file,
-		const std::vector<string_view> &args = {},
-		const file_path &pwd = "",
+		const StrList &args = {},
+		const file_path &wd = "",
 		bool lazy_start = false,
 		sys_stream stdout_w = out(),
 		sys_stream stderr_w = err(),
@@ -77,13 +78,13 @@ public:
 		} else {
 			cmd << L"\"" << u8_to_w(file.str()) << L"\"";
 		}
-		for (auto &arg : args) {
+		RUA_RANGE_FOR(auto &arg, args, {
 			if (arg.find(' ') == string_view::npos) {
 				cmd << L" " << u8_to_w(arg);
 			} else {
 				cmd << L" \"" << u8_to_w(arg) << L"\"";
 			}
-		}
+		})
 
 		STARTUPINFOW si;
 		memset(&si, 0, sizeof(si));
@@ -129,7 +130,7 @@ public:
 				false,
 				lazy_start ? CREATE_SUSPENDED : 0,
 				nullptr,
-				pwd ? u8_to_w(pwd.str()).c_str() : nullptr,
+				wd ? u8_to_w(wd.str()).c_str() : nullptr,
 				&si,
 				&pi)) {
 			CloseHandle(pi.hProcess);
@@ -315,12 +316,12 @@ public:
 		WCHAR n[MAX_PATH];
 		auto n_sz = get_module_base_name_w(_h, mdu, n, MAX_PATH);
 		if (!n_sz) {
-			return "";
+			return path().back();
 		}
 		return w_to_u8({n, n_sz});
 	}
 
-	std::vector<std::string> parameters() const {
+	std::vector<std::string> args() const {
 		std::vector<std::string> params;
 
 		int argc;
@@ -1053,9 +1054,9 @@ inline process this_process() {
 
 using namespace _this_process;
 
-namespace _this_process {
+namespace _process_privileges {
 
-inline bool is_elevated_privilege() {
+inline bool this_process_is_privileged() {
 	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
 	PSID admin_group = nullptr;
 	auto r = AllocateAndInitializeSid(
@@ -1084,72 +1085,49 @@ inline bool is_elevated_privilege() {
 	return r;
 }
 
-} // namespace _this_process
+template <RUA_STRING_RANGE(StrList)>
+inline int execute_with_highest_privileges(
+	const file_path &file, const StrList &args = {}, const file_path &wd = "") {
 
-inline void _elevate_privilege(LPCWSTR file, LPCWSTR params) {
-	if (!is_elevated_privilege()) {
-		SHELLEXECUTEINFOW sei;
-		memset(&sei, 0, sizeof(sei));
-		sei.cbSize = sizeof(sei);
-		sei.lpVerb = L"runas";
-		sei.nShow = SW_NORMAL;
+	SHELLEXECUTEINFOW sei;
+	memset(&sei, 0, sizeof(sei));
+	sei.cbSize = sizeof(sei);
+	sei.lpVerb = L"runas";
+	sei.nShow = SW_NORMAL;
 
-		std::wstring path_w;
-		if (file) {
-			assert(file[0]);
-			sei.lpFile = file;
+	std::wstring path_w;
+	path_w = u8_to_w(file.str());
+	sei.lpFile = path_w.c_str();
+
+	std::wstringstream args_ss_w;
+	RUA_RANGE_FOR(auto &arg, args, {
+		if (arg.find(' ') == string_view::npos) {
+			args_ss_w << L" " << u8_to_w(arg);
 		} else {
-			path_w = u8_to_w(this_process().path().str());
-			sei.lpFile = path_w.c_str();
+			args_ss_w << L" \"" << u8_to_w(arg) << L"\"";
 		}
-
-		if (params) {
-			if (params[0]) {
-				sei.lpParameters = params;
-			}
-		} else {
-			auto cmd = GetCommandLineW();
-			ptrdiff_t params_pos = -1;
-			bool found_file = false;
-			bool found_quote = false;
-			bool found_gap = false;
-			for (ptrdiff_t i = 0; cmd[i]; ++i) {
-				if (!found_file) {
-					if (!is_space(cmd[i])) {
-						found_file = true;
-						if (cmd[i] == L'"') {
-							found_quote = true;
-						}
-					}
-					continue;
-				}
-				if (!found_gap) {
-					if (found_quote ? cmd[i] == L'"' : is_space(cmd[i])) {
-						found_gap = true;
-					}
-					continue;
-				}
-				if (!is_space(cmd[i])) {
-					params_pos = i;
-					break;
-				}
-			}
-			if (params_pos > -1) {
-				sei.lpParameters = &cmd[params_pos];
-			}
-		}
-
-		auto dir_w = u8_to_w(working_dir().str());
-		sei.lpDirectory = dir_w.c_str();
-
-		if (ShellExecuteExW(&sei)) {
-			exit(0);
-			return;
-		}
-		exit(GetLastError());
-		return;
+	})
+	auto args_w = args_ss_w.str();
+	if (args_w.length()) {
+		sei.lpParameters = args_w.c_str();
 	}
 
+	auto wd_w = u8_to_w(wd.str());
+	sei.lpDirectory = wd_w.c_str();
+
+	if (ShellExecuteExW(&sei)) {
+		return 0;
+	}
+	return static_cast<int>(GetLastError());
+}
+
+inline void restart_as_elevate_privileges() {
+	if (!this_process_is_privileged()) {
+		auto p = this_process();
+		exit(
+			execute_with_highest_privileges(p.path(), p.args(), working_dir()));
+		return;
+	}
 	HANDLE token;
 	if (OpenProcessToken(
 			GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
@@ -1163,36 +1141,9 @@ inline void _elevate_privilege(LPCWSTR file, LPCWSTR params) {
 	}
 }
 
-namespace _this_process {
+} // namespace _process_privileges
 
-inline void elevate_privilege() {
-	_elevate_privilege(nullptr, nullptr);
-}
-
-inline void elevate_privilege(int argc, const char *argv[]) {
-	if (argc <= 0) {
-		elevate_privilege();
-		return;
-	}
-	if (argc == 1) {
-		_elevate_privilege(loc_to_w(argv[0]).c_str(), L"");
-		return;
-	}
-	std::wstringstream params;
-	for (int i = 1; i < argc; ++i) {
-		if (i > 1) {
-			params << L" ";
-		}
-		if (string_view(argv[i]).find(" ") == string_view::npos) {
-			params << loc_to_w(argv[i]);
-		} else {
-			params << L"\"" << loc_to_w(argv[i]) << L"\"";
-		}
-	}
-	_elevate_privilege(loc_to_w(argv[0]).c_str(), params.str().c_str());
-}
-
-} // namespace _this_process
+using namespace _process_privileges;
 
 }} // namespace rua::win32
 
