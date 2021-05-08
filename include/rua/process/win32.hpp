@@ -78,7 +78,7 @@ public:
 		} else {
 			cmd << L"\"" << u8_to_w(file.str()) << L"\"";
 		}
-		RUA_RANGE_FOR(auto &arg, args, {
+		RUA_RANGE_FOR(string_view arg, args, {
 			if (arg.find(' ') == string_view::npos) {
 				cmd << L" " << u8_to_w(arg);
 			} else {
@@ -127,7 +127,7 @@ public:
 				const_cast<wchar_t *>(cmd.str().c_str()),
 				nullptr,
 				nullptr,
-				false,
+				true,
 				lazy_start ? CREATE_SUSPENDED : 0,
 				nullptr,
 				wd ? u8_to_w(wd.str()).c_str() : nullptr,
@@ -1100,7 +1100,7 @@ inline int execute_with_highest_privileges(
 	sei.lpFile = path_w.c_str();
 
 	std::wstringstream args_ss_w;
-	RUA_RANGE_FOR(auto &arg, args, {
+	RUA_RANGE_FOR(string_view arg, args, {
 		if (arg.find(' ') == string_view::npos) {
 			args_ss_w << L" " << u8_to_w(arg);
 		} else {
