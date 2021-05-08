@@ -22,7 +22,7 @@ public:
 			(sizeof...(Args) > 1 ||
 			 (!std::is_base_of<T, ArgsFront>::value &&
 			  !std::is_base_of<move_only, ArgsFront>::value))>>
-	move_only(Args &&... args) {
+	move_only(Args &&...args) {
 		new (&value()) T(std::forward<Args>(args)...);
 	}
 
@@ -33,7 +33,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
-	move_only(std::initializer_list<U> il, Args &&... args) {
+	move_only(std::initializer_list<U> il, Args &&...args) {
 		new (&value()) T(il, std::forward<Args>(args)...);
 	}
 
@@ -104,23 +104,28 @@ public:
 	}
 
 	template <class... Args>
-	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
+	invoke_result_t<T &, Args &&...> operator()(Args &&...args) & {
 		return value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<const T &, Args &&...> operator()(Args &&... args) const & {
+	invoke_result_t<const T &, Args &&...> operator()(Args &&...args) const & {
 		return value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<T &&, Args &&...> operator()(Args &&... args) && {
+	invoke_result_t<T &&, Args &&...> operator()(Args &&...args) && {
 		return std::move(value())(std::forward<Args>(args)...);
 	}
 
 private:
 	alignas(alignof(T)) uchar _sto[sizeof(T)];
 };
+
+template <typename T>
+move_only<decay_t<T>> make_move_only(T &&val) {
+	return move_only<decay_t<T>>(std::forward<T>(val));
+}
 
 } // namespace rua
 
