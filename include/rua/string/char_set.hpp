@@ -240,6 +240,9 @@ inline constexpr bool is_eol(const rune_t c) {
 }
 
 inline RUA_CONSTEXPR_14 bool is_eol(string_view sv) {
+	if (sv.empty()) {
+		return false;
+	}
 	for (auto &c : sv) {
 		if (!is_eol(c)) {
 			return false;
