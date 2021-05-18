@@ -1,8 +1,8 @@
-#ifndef _RUA_IO_SYS_STREAM_POSIX_HPP
-#define _RUA_IO_SYS_STREAM_POSIX_HPP
+#ifndef _RUA_SYS_STREAM_POSIX_HPP
+#define _RUA_SYS_STREAM_POSIX_HPP
 
-#include "../abstract.hpp"
-#include "../util.hpp"
+#include "../../io/abstract.hpp"
+#include "../../io/util.hpp"
 
 #include "../../macros.hpp"
 #include "../../sched/suspender.hpp"

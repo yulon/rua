@@ -1,8 +1,8 @@
 #ifndef _RUA_PIPE_HPP
 #define _RUA_PIPE_HPP
 
-#include "io/sys_stream.hpp"
 #include "string.hpp"
+#include "sys/stream.hpp"
 #include "types/util.hpp"
 
 #ifdef _WIN32

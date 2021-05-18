@@ -1,8 +1,8 @@
-#ifndef _RUA_IO_SYS_STREAM_WIN32_HPP
-#define _RUA_IO_SYS_STREAM_WIN32_HPP
+#ifndef _RUA_SYS_STREAM_WIN32_HPP
+#define _RUA_SYS_STREAM_WIN32_HPP
 
-#include "../abstract.hpp"
-#include "../util.hpp"
+#include "../../io/abstract.hpp"
+#include "../../io/util.hpp"
 
 #include "../../macros.hpp"
 #include "../../sched/suspender.hpp"

@@ -1,8 +1,8 @@
 #ifndef _RUA_STDIO_POSIX_HPP
 #define _RUA_STDIO_POSIX_HPP
 
-#include "../io/sys_stream/posix.hpp"
 #include "../macros.hpp"
+#include "../sys/stream/posix.hpp"
 
 #include <unistd.h>
 

@@ -1,9 +1,9 @@
 #ifndef _RUA_STDIO_WIN32_HPP
 #define _RUA_STDIO_WIN32_HPP
 
-#include "../io/sys_stream/win32.hpp"
 #include "../macros.hpp"
 #include "../string/char_enc/stream/win32.hpp"
+#include "../sys/stream/win32.hpp"
 #include "../types/util.hpp"
 
 #include "windows.h"

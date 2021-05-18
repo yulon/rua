@@ -16,6 +16,7 @@
 #include "../string/len.hpp"
 #include "../string/view.hpp"
 #include "../sys/info/win32.hpp"
+#include "../sys/stream/win32.hpp"
 #include "../thread/wait/win32.hpp"
 #include "../types/util.hpp"
 
