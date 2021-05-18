@@ -6,54 +6,54 @@
 #include <string>
 
 TEST_CASE("fiber_executor run") {
-	static rua::fiber_executor dvr;
-	static auto &sch = dvr.get_scheduler();
+	static rua::fiber_executor exr;
+	static auto &spdr = exr.get_suspender();
 	static std::string r;
 
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "1";
-		sch.sleep(300);
+		spdr.sleep(300);
 		r += "1";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "2";
-		sch.sleep(200);
+		spdr.sleep(200);
 		r += "2";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "3";
-		sch.sleep(100);
+		spdr.sleep(100);
 		r += "3";
 	});
 
-	dvr.run();
+	exr.run();
 
 	REQUIRE(r == "123321");
 }
 
 TEST_CASE("fiber_executor step") {
-	static rua::fiber_executor dvr;
-	static auto &sch = dvr.get_scheduler();
+	static rua::fiber_executor exr;
+	static auto &spdr = exr.get_suspender();
 	static std::string r;
 
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "1";
-		sch.sleep(300);
+		spdr.sleep(300);
 		r += "1";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "2";
-		sch.sleep(200);
+		spdr.sleep(200);
 		r += "2";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "3";
-		sch.sleep(100);
+		spdr.sleep(100);
 		r += "3";
 	});
 
-	while (dvr) {
-		dvr.step();
+	while (exr) {
+		exr.step();
 		rua::sleep(50);
 	}
 
@@ -61,53 +61,53 @@ TEST_CASE("fiber_executor step") {
 }
 
 TEST_CASE("fiber long-lasting task") {
-	static rua::fiber_executor dvr;
-	static auto &sch = dvr.get_scheduler();
+	static rua::fiber_executor exr;
+	static auto &spdr = exr.get_suspender();
 	static size_t c = 0;
 
-	dvr.execute([]() { ++c; }, rua::duration_max());
+	exr.execute([]() { ++c; }, rua::duration_max());
 
 	for (size_t i = 0; i < 5; ++i) {
-		dvr.step();
+		exr.step();
 	}
 
 	REQUIRE(c == 5);
 }
 
 TEST_CASE("fiber resume sequence") {
-	static rua::fiber_executor dvr;
-	static auto &sch = dvr.get_scheduler();
+	static rua::fiber_executor exr;
+	static auto &spdr = exr.get_suspender();
 	static std::string r;
 
-	dvr.execute([]() { r += "1"; });
-	dvr.execute([]() { r += "2"; });
-	dvr.execute([]() { r += "3"; });
+	exr.execute([]() { r += "1"; });
+	exr.execute([]() { r += "2"; });
+	exr.execute([]() { r += "3"; });
 
-	dvr.step();
+	exr.step();
 
 	REQUIRE(r == "123");
 
 	r.resize(0);
 
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "1";
-		sch.sleep(100);
+		spdr.sleep(100);
 		r += "1";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "2";
-		sch.sleep(100);
+		spdr.sleep(100);
 		r += "2";
 	});
-	dvr.execute([]() {
+	exr.execute([]() {
 		r += "3";
-		sch.sleep(100);
+		spdr.sleep(100);
 		r += "3";
 	});
 
-	dvr.step();
+	exr.step();
 	rua::sleep(200);
-	dvr.step();
+	exr.step();
 
 	REQUIRE(r == "123123");
 }

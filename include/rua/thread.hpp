@@ -3,7 +3,7 @@
 
 #include "thread/basic.hpp"
 #include "thread/pa.hpp"
-#include "thread/scheduler.hpp"
+#include "thread/suspender.hpp"
 #include "thread/var.hpp"
 #include "thread/wait.hpp"
 

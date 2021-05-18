@@ -1,5 +1,5 @@
-#ifndef _RUA_SCHED_SCHEDULER_ABSTRACT_HPP
-#define _RUA_SCHED_SCHEDULER_ABSTRACT_HPP
+#ifndef _RUA_SCHED_SUSPENDER_ABSTRACT_HPP
+#define _RUA_SCHED_SUSPENDER_ABSTRACT_HPP
 
 #include "../../chrono.hpp"
 #include "../../interface_ptr.hpp"
@@ -57,14 +57,14 @@ private:
 	std::atomic<bool> _state;
 };
 
-class scheduler {
+class suspender {
 public:
-	virtual ~scheduler() = default;
+	virtual ~suspender() = default;
 
-	scheduler(const scheduler &) = delete;
-	scheduler(scheduler &&) = delete;
-	scheduler &operator=(const scheduler &) = delete;
-	scheduler &operator=(scheduler &&) = delete;
+	suspender(const suspender &) = delete;
+	suspender(suspender &&) = delete;
+	suspender &operator=(const suspender &) = delete;
+	suspender &operator=(suspender &&) = delete;
 
 	virtual void yield() {
 		sleep(0);
@@ -104,10 +104,10 @@ public:
 	}
 
 protected:
-	constexpr scheduler() = default;
+	constexpr suspender() = default;
 };
 
-using scheduler_i = interface_ptr<scheduler>;
+using suspender_i = interface_ptr<suspender>;
 
 } // namespace rua
 

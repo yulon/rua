@@ -5,7 +5,7 @@
 
 #include "../chrono/tick.hpp"
 #include "../optional.hpp"
-#include "../sched/scheduler.hpp"
+#include "../sched/suspender.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
@@ -22,7 +22,7 @@ public:
 	chan &operator=(const chan &) = delete;
 
 	template <typename... Args>
-	bool emplace(Args &&... args) {
+	bool emplace(Args &&...args) {
 		_buf.emplace_front(std::forward<Args>(args)...);
 		auto waiter_opt = _waiters.pop_back_if([&]() -> bool { return _buf; });
 		if (!waiter_opt) {
@@ -41,15 +41,15 @@ public:
 		if (val_opt || !timeout) {
 			return val_opt;
 		}
-		return _wait_and_pop(this_scheduler(), timeout);
+		return _wait_and_pop(this_suspender(), timeout);
 	}
 
-	optional<T> try_pop(scheduler_i sch, duration timeout) {
+	optional<T> try_pop(suspender_i spdr, duration timeout) {
 		auto val_opt = _buf.pop_back();
-		if (val_opt || !timeout || !sch) {
+		if (val_opt || !timeout || !spdr) {
 			return val_opt;
 		}
-		val_opt = _wait_and_pop(std::move(sch), timeout);
+		val_opt = _wait_and_pop(std::move(spdr), timeout);
 		return val_opt;
 	}
 
@@ -57,21 +57,21 @@ public:
 		return try_pop(duration_max()).value();
 	}
 
-	T pop(scheduler_i sch) {
-		return try_pop(std::move(sch), duration_max()).value();
+	T pop(suspender_i spdr) {
+		return try_pop(std::move(spdr), duration_max()).value();
 	}
 
 protected:
 	lockfree_list<T> _buf;
 	lockfree_list<resumer_i> _waiters;
 
-	optional<T> _wait_and_pop(scheduler_i sch, duration timeout) {
-		assert(sch);
+	optional<T> _wait_and_pop(suspender_i spdr, duration timeout) {
+		assert(spdr);
 		assert(timeout);
 
 		optional<T> val_opt;
 
-		auto rsmr = sch->get_resumer();
+		auto rsmr = spdr->get_resumer();
 
 		if (!_waiters.emplace_front_if(
 				[&]() -> bool {
@@ -84,12 +84,12 @@ protected:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->suspend(timeout) && !_waiters.emplace_front_if(
-												 [&]() -> bool {
-													 val_opt = _buf.pop_back();
-													 return !val_opt;
-												 },
-												 rsmr)) {
+				if (spdr->suspend(timeout) && !_waiters.emplace_front_if(
+												  [&]() -> bool {
+													  val_opt = _buf.pop_back();
+													  return !val_opt;
+												  },
+												  rsmr)) {
 					return val_opt;
 				}
 			}
@@ -97,7 +97,7 @@ protected:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->suspend(timeout);
+			auto r = spdr->suspend(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
 				return _buf.pop_back();

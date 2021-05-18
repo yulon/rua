@@ -76,7 +76,7 @@ private:
 class fiber_executor {
 public:
 	fiber_executor(size_t stack_size = 0x100000) :
-		_stk_sz(stack_size), _stk_ix(0), _sch(*this) {}
+		_stk_sz(stack_size), _stk_ix(0), _spdr(*this) {}
 
 	fiber execute(std::function<void()> task, duration lifetime = 0) {
 		fiber fbr(std::make_shared<fiber::_ctx_t>());
@@ -96,8 +96,8 @@ public:
 	}
 
 	// Does not block the current context.
-	// The current scheduler will not be used.
-	// Mostly used for scheduling of frame tasks.
+	// The current suspender will not be used.
+	// Mostly used for frame tasks.
 	void step() {
 		auto now = tick();
 
@@ -111,20 +111,20 @@ public:
 			return;
 		}
 
-		scheduler_guard sg(_sch);
+		suspender_guard sg(_spdr);
 		_switch_to_runner_uc();
 	}
 
 	// May block the current context.
-	// The current scheduler will be used.
+	// The current suspender will be used.
 	void run() {
 		if (_exs.empty() && _spds.empty() && _cws.empty()) {
 			return;
 		}
 
-		scheduler_guard sg(_sch);
-		auto orig_sch = sg.previous();
-		_orig_rsmr = orig_sch->get_resumer();
+		suspender_guard sg(_spdr);
+		auto orig_spdr = sg.previous();
+		_orig_rsmr = orig_spdr->get_resumer();
 
 		auto now = tick();
 
@@ -150,9 +150,9 @@ public:
 						resume_ti = _spds.begin()->resume_ti;
 					}
 					if (resume_ti > now) {
-						orig_sch->suspend(resume_ti - now);
+						orig_spdr->suspend(resume_ti - now);
 					} else {
-						orig_sch->yield();
+						orig_spdr->yield();
 					}
 					now = tick();
 					if (now >= resume_ti) {
@@ -164,9 +164,9 @@ public:
 
 				auto resume_ti = _spds.begin()->resume_ti;
 				if (resume_ti > now) {
-					orig_sch->sleep(resume_ti - now);
+					orig_spdr->sleep(resume_ti - now);
 				} else {
-					orig_sch->yield();
+					orig_spdr->yield();
 				}
 				now = tick();
 				_check_spds(now);
@@ -176,9 +176,9 @@ public:
 
 				auto resume_ti = _cws.begin()->resume_ti;
 				if (resume_ti > now) {
-					orig_sch->suspend(resume_ti - now);
+					orig_spdr->suspend(resume_ti - now);
 				} else {
-					orig_sch->yield();
+					orig_spdr->yield();
 				}
 				now = tick();
 				_check_cws(now);
@@ -189,13 +189,13 @@ public:
 		}
 	}
 
-	class scheduler : public rua::scheduler {
+	class suspender : public rua::suspender {
 	public:
-		scheduler() = default;
+		suspender() = default;
 
-		scheduler(fiber_executor &fe) : _fe(&fe) {}
+		suspender(fiber_executor &fe) : _fe(&fe) {}
 
-		virtual ~scheduler() = default;
+		virtual ~suspender() = default;
 
 		template <typename SleepingList>
 		void _suspend(SleepingList &sl, duration timeout) {
@@ -259,8 +259,8 @@ public:
 		fiber_executor *_fe;
 	};
 
-	scheduler &get_scheduler() {
-		return _sch;
+	suspender &get_suspender() {
+		return _spdr;
 	}
 
 private:
@@ -425,18 +425,18 @@ private:
 		}
 	}
 
-	friend scheduler;
-	scheduler _sch;
+	friend suspender;
+	suspender _spdr;
 
 	resumer_i _orig_rsmr;
 };
 
 inline fiber_executor *this_fiber_executor() {
-	auto sch = this_scheduler();
-	if (!sch) {
+	auto spdr = this_suspender();
+	if (!spdr) {
 		return nullptr;
 	}
-	auto fs = sch.as<fiber_executor::scheduler>();
+	auto fs = spdr.as<fiber_executor::suspender>();
 	if (!fs) {
 		return nullptr;
 	}

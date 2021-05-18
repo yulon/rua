@@ -4,7 +4,7 @@
 #include "lockfree_list.hpp"
 
 #include "../chrono/tick.hpp"
-#include "../sched/scheduler.hpp"
+#include "../sched/suspender.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
@@ -37,25 +37,25 @@ public:
 		if (!timeout) {
 			return false;
 		}
-		return _wait_and_lock(this_scheduler(), timeout);
+		return _wait_and_lock(this_suspender(), timeout);
 	}
 
-	bool try_lock(scheduler_i sch, duration timeout) {
+	bool try_lock(suspender_i spdr, duration timeout) {
 		if (try_lock()) {
 			return true;
 		}
 		if (!timeout) {
 			return false;
 		}
-		return _wait_and_lock(std::move(sch), timeout);
+		return _wait_and_lock(std::move(spdr), timeout);
 	}
 
 	void lock() {
 		try_lock(duration_max());
 	}
 
-	void lock(scheduler_i sch) {
-		try_lock(std::move(sch), duration_max());
+	void lock(suspender_i spdr) {
+		try_lock(std::move(spdr), duration_max());
 	}
 
 	void unlock() {
@@ -83,11 +83,11 @@ private:
 	std::atomic<uintptr_t> _locked;
 	lockfree_list<resumer_i> _waiters;
 
-	bool _wait_and_lock(scheduler_i sch, duration timeout) {
-		assert(sch);
+	bool _wait_and_lock(suspender_i spdr, duration timeout) {
+		assert(spdr);
 		assert(timeout);
 
-		auto rsmr = sch->get_resumer();
+		auto rsmr = spdr->get_resumer();
 		auto rsmr_id = reinterpret_cast<uintptr_t>(rsmr.get());
 
 		if (!_waiters.emplace_front_if(
@@ -98,7 +98,7 @@ private:
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (sch->suspend(timeout) && (_locked.load() == rsmr_id ||
+				if (spdr->suspend(timeout) && (_locked.load() == rsmr_id ||
 											  !_waiters.emplace_front_if(
 												  [this, rsmr_id]() -> bool {
 													  return _locked.load() !=
@@ -112,7 +112,7 @@ private:
 
 		for (;;) {
 			auto t = tick();
-			auto r = sch->suspend(timeout);
+			auto r = spdr->suspend(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
 				return _locked.load() == rsmr_id;

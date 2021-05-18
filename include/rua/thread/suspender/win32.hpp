@@ -1,8 +1,8 @@
-#ifndef _RUA_THREAD_SCHEDULER_WIN32_HPP
-#define _RUA_THREAD_SCHEDULER_WIN32_HPP
+#ifndef _RUA_THREAD_SUSPENDER_WIN32_HPP
+#define _RUA_THREAD_SUSPENDER_WIN32_HPP
 
 #include "../../macros.hpp"
-#include "../../sched/scheduler/abstract.hpp"
+#include "../../sched/suspender/abstract.hpp"
 #include "../../types/util.hpp"
 
 #include <windows.h>
@@ -46,12 +46,12 @@ private:
 	HANDLE _h;
 };
 
-class thread_scheduler : public scheduler {
+class thread_suspender : public suspender {
 public:
-	constexpr thread_scheduler(duration yield_dur = 0) :
+	constexpr thread_suspender(duration yield_dur = 0) :
 		_yield_dur(yield_dur), _rsmr() {}
 
-	virtual ~thread_scheduler() = default;
+	virtual ~thread_suspender() = default;
 
 	virtual void yield() {
 		if (_yield_dur > 1) {
