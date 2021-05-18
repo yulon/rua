@@ -2,7 +2,7 @@
 #define _RUA_PROCESS_POSIX_HPP
 
 #include "../file/posix.hpp"
-#include "../sched/wait/uni.hpp"
+#include "../sched/await/uni.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
 #include "../types/traits.hpp"
@@ -137,7 +137,7 @@ public:
 		}
 		start();
 		int status;
-		wait(waitpid, _id, &status, 0);
+		await(waitpid, _id, &status, 0);
 		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
 	}
 

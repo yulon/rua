@@ -5,8 +5,8 @@
 #include "../../io/util.hpp"
 
 #include "../../macros.hpp"
+#include "../../sched/await/uni.hpp"
 #include "../../sched/suspender.hpp"
-#include "../../sched/wait/uni.hpp"
 #include "../../types/traits.hpp"
 
 #include <unistd.h>
@@ -71,15 +71,14 @@ public:
 		if (!spdr->is_own_stack()) {
 			auto buf = try_make_heap_buffer(p);
 			if (buf) {
-				auto sz =
-					rua::wait(std::move(spdr), _read, _fd, bytes_ref(buf));
+				auto sz = await(std::move(spdr), _read, _fd, bytes_ref(buf));
 				if (sz > 0) {
 					p.copy_from(buf);
 				}
 				return sz;
 			}
 		}
-		return rua::wait(std::move(spdr), _read, _fd, p);
+		return await(std::move(spdr), _read, _fd, p);
 	}
 
 	virtual ptrdiff_t write(bytes_view p) {
@@ -89,11 +88,10 @@ public:
 		if (!spdr->is_own_stack()) {
 			auto data = try_make_heap_data(p);
 			if (data) {
-				return rua::wait(
-					std::move(spdr), _write, _fd, bytes_view(data));
+				return await(std::move(spdr), _write, _fd, bytes_view(data));
 			}
 		}
-		return rua::wait(std::move(spdr), _write, _fd, p);
+		return await(std::move(spdr), _write, _fd, p);
 	}
 
 	bool is_need_close() const {

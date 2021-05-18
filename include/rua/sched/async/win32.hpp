@@ -1,5 +1,5 @@
-#ifndef _RUA_SCHED_REG_WAIT_WIN32_HPP
-#define _RUA_SCHED_REG_WAIT_WIN32_HPP
+#ifndef _RUA_SCHED_ASYNC_WIN32_HPP
+#define _RUA_SCHED_ASYNC_WIN32_HPP
 
 #include "../../chrono.hpp"
 #include "../../macros.hpp"
@@ -8,45 +8,45 @@
 #include <cassert>
 #include <functional>
 
-#ifndef RUA_USE_BUILTIN_REG_WAIT
+#ifndef RUA_USE_BUILTIN_ASYNC
 
 #include <winbase.h>
 
 namespace rua { namespace win32 {
 
-struct _reg_wait_sys_h_ctx_t {
+struct _async_wait_sys_h_ctx_t {
 	HANDLE wait_h;
 	std::function<void(bool)> cb;
 };
 
-inline VOID CALLBACK _reg_wait_sys_h_cb(PVOID _ctx, BOOLEAN timeouted) {
-	auto ctx = reinterpret_cast<_reg_wait_sys_h_ctx_t *>(_ctx);
+inline VOID CALLBACK _async_wait_sys_h_cb(PVOID _ctx, BOOLEAN timeouted) {
+	auto ctx = reinterpret_cast<_async_wait_sys_h_ctx_t *>(_ctx);
 	ctx->cb(!timeouted);
 	UnregisterWaitEx(ctx->wait_h, nullptr);
 	delete ctx;
 }
 
-namespace _reg_wait {
+namespace _async {
 
-inline void reg_wait(
+inline void async(
 	HANDLE handle,
 	std::function<void(bool)> callback,
 	duration timeout = duration_max()) {
 
 	assert(handle);
 
-	auto ctx = new _reg_wait_sys_h_ctx_t{nullptr, std::move(callback)};
+	auto ctx = new _async_wait_sys_h_ctx_t{nullptr, std::move(callback)};
 
 	RegisterWaitForSingleObject(
 		&ctx->wait_h,
 		handle,
-		_reg_wait_sys_h_cb,
+		_async_wait_sys_h_cb,
 		ctx,
 		timeout.milliseconds<DWORD, INFINITE>(),
 		WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
 }
 
-} // namespace _reg_wait
+} // namespace _async
 
 }} // namespace rua::win32
 
@@ -83,7 +83,7 @@ public:
 		return waiter_max;
 	}
 
-	void reg_wait(
+	void async(
 		HANDLE handle,
 		std::function<void(bool)> callback,
 		duration timeout = duration_max()) {
@@ -92,10 +92,10 @@ public:
 
 		++_wait_c;
 
-		_pre_waits.emplace_front(
-			_wait_t{handle,
-					timeout == duration_max() ? time_max() : tick() + timeout,
-					std::move(callback)});
+		_pre_waits.emplace_front(_wait_t{
+			handle,
+			timeout == duration_max() ? time_max() : tick() + timeout,
+			std::move(callback)});
 
 		for (;;) {
 			auto td_c = _td_c.load();
@@ -214,16 +214,16 @@ private:
 	HANDLE _on_wait;
 };
 
-namespace _reg_wait {
+namespace _async {
 
-inline void reg_wait(
+inline void async(
 	HANDLE handle,
 	std::function<void(bool)> callback,
 	duration timeout = duration_max()) {
-	_sys_h_waiter::instance().reg_wait(handle, std::move(callback), timeout);
+	_sys_h_waiter::instance().async(handle, std::move(callback), timeout);
 }
 
-} // namespace _reg_wait
+} // namespace _async
 
 }} // namespace rua::win32
 
@@ -231,7 +231,7 @@ inline void reg_wait(
 
 namespace rua { namespace win32 {
 
-using namespace _reg_wait;
+using namespace _async;
 
 }} // namespace rua::win32
 

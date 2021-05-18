@@ -5,7 +5,7 @@
 
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
-#include "../../sched/reg_wait/win32.hpp"
+#include "../../sched/async/win32.hpp"
 #include "../../types/util.hpp"
 
 #include <windows.h>
@@ -78,7 +78,7 @@ private:
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
 			auto dtor = _dtor;
-			reg_wait(h, [=](bool) {
+			async(h, [=](bool) {
 				dtor(*p);
 				delete p;
 				CloseHandle(h);

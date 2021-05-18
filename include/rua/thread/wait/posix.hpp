@@ -3,7 +3,7 @@
 
 #include "../basic/posix.hpp"
 
-#include "../../sched/wait/uni.hpp"
+#include "../../sched/await/uni.hpp"
 
 #include <pthread.h>
 
@@ -14,7 +14,7 @@ inline any_word thread::wait_for_exit() {
 		return nullptr;
 	}
 	void *retval;
-	if (wait(pthread_join, _id, &retval)) {
+	if (await(pthread_join, _id, &retval)) {
 		return nullptr;
 	}
 	reset();

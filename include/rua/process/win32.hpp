@@ -9,7 +9,7 @@
 #include "../io.hpp"
 #include "../macros.hpp"
 #include "../memory.hpp"
-#include "../sched/wait/win32.hpp"
+#include "../sched/await/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/char_enc/base/win32.hpp"
 #include "../string/char_set.hpp"
@@ -211,7 +211,7 @@ public:
 			return -1;
 		}
 		start();
-		wait(_h);
+		await(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
 		_reset();
