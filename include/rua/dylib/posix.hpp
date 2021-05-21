@@ -23,6 +23,10 @@ public:
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
 		_h(h), _need_unload(need_unload) {}
 
+	static dylib from_loaded(string_view name) {
+		return dylib(dlopen(name.data(), RTLD_NOLOAD | RTLD_GLOBAL), false);
+	}
+
 	~dylib() {
 		unload();
 	}
