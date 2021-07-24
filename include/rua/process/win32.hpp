@@ -521,22 +521,10 @@ public:
 
 	thread make_thread(generic_ptr func, generic_ptr param = nullptr) {
 		if (sys_version() >= 6) {
-			static auto ntdll = dylib::from_loaded("ntdll.dll");
-			static HRESULT(WINAPI * NtCreateThreadEx_ptr)(
-				PHANDLE ThreadHandle,
-				ACCESS_MASK DesiredAccess,
-				std::nullptr_t ObjectAttributes,
-				HANDLE ProcessHandle,
-				PVOID StartRoutine,
-				PVOID StartContext,
-				ULONG Flags,
-				ULONG_PTR StackZeroBits,
-				SIZE_T StackCommit,
-				SIZE_T StackReserve,
-				PVOID AttributeList) = ntdll["NtCreateThreadEx"];
-			if (NtCreateThreadEx_ptr) {
+			auto nt_create_thread_ex = _ntdll().nt_create_thread_ex;
+			if (nt_create_thread_ex) {
 				HANDLE td;
-				if (SUCCEEDED(NtCreateThreadEx_ptr(
+				if (SUCCEEDED(nt_create_thread_ex(
 						&td,
 						0x1FFFFF,
 						nullptr,
@@ -644,6 +632,18 @@ private:
 		 PVOID ProcessInformation,
 		 ULONG ProcessInformationLength,
 		 PULONG ReturnLength);
+		HRESULT(WINAPI *nt_create_thread_ex)
+		(PHANDLE ThreadHandle,
+		 ACCESS_MASK DesiredAccess,
+		 std::nullptr_t ObjectAttributes,
+		 HANDLE ProcessHandle,
+		 PVOID StartRoutine,
+		 PVOID StartContext,
+		 ULONG Flags,
+		 ULONG_PTR StackZeroBits,
+		 SIZE_T StackCommit,
+		 SIZE_T StackReserve,
+		 PVOID AttributeList);
 	};
 
 	static const _ntdll_t &_ntdll() {
@@ -652,7 +652,8 @@ private:
 			ntdll["NtSuspendProcess"],
 			ntdll["NtResumeProcess"],
 			ntdll["NtQuerySystemInformation"],
-			ntdll["NtQueryInformationProcess"]};
+			ntdll["NtQueryInformationProcess"],
+			ntdll["NtCreateThreadEx"]};
 		return inst;
 	}
 
