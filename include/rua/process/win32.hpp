@@ -242,10 +242,11 @@ public:
 			return false;
 		}
 
-		bytes si_buf(si_buf_sz + 0x10000);
+		si_buf_sz += 0x10000;
+		bytes si_buf(si_buf_sz);
 
 		if (nt_query_system_information(
-				5, si_buf.data(), si_buf.size(), &si_buf_sz) < 0) {
+				5, si_buf.data(), si_buf_sz, &si_buf_sz) < 0) {
 			return false;
 		}
 
@@ -376,6 +377,53 @@ public:
 		LocalFree(argv);
 
 		return params;
+	}
+
+	float cpu_usage(time &prev_get_time, time &prev_used_cpu_time) const {
+		static size_t cpu_core_num = ([]() -> DWORD {
+			SYSTEM_INFO si;
+			memset(&si, 0, sizeof(si));
+			GetSystemInfo(&si);
+			return si.dwNumberOfProcessors;
+		})();
+
+		FILETIME CreateTime, ExitTime, KernelTime, UserTime;
+		if (!GetProcessTimes(
+				_h, &CreateTime, &ExitTime, &KernelTime, &UserTime)) {
+			return 0.f;
+		}
+
+		rua::time used_cpu_time(
+			((static_cast<int64_t>(KernelTime.dwHighDateTime) << 32 |
+			  static_cast<int64_t>(KernelTime.dwLowDateTime)) +
+			 (static_cast<int64_t>(UserTime.dwHighDateTime) << 32 |
+			  static_cast<int64_t>(UserTime.dwLowDateTime))) /
+			10000);
+
+		auto now = rua::tick();
+
+		auto r =
+			prev_get_time && prev_used_cpu_time
+				? static_cast<float>(
+					  static_cast<double>(
+						  (used_cpu_time - prev_used_cpu_time).milliseconds()) /
+					  static_cast<double>(
+						  (now - prev_get_time).milliseconds()) /
+					  static_cast<double>(cpu_core_num))
+				: 0.f;
+
+		prev_used_cpu_time = used_cpu_time;
+		prev_get_time = now;
+
+		return r;
+	}
+
+	float cpu_usage() {
+		if (!_ext) {
+			_ext.reset(new _ext_t);
+		}
+		return cpu_usage(
+			_ext->prev_get_cpu_usage_time, _ext->prev_used_cpu_time);
 	}
 
 	size_t memory_usage() const {
@@ -579,6 +627,7 @@ private:
 		thread main_td;
 		memory_block dll_loader;
 		std::list<std::string> lazy_load_dlls;
+		rua::time prev_get_cpu_usage_time, prev_used_cpu_time;
 	};
 
 	std::unique_ptr<_ext_t> _ext;
