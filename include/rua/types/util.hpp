@@ -83,13 +83,28 @@ inline constexpr T nmax() {
 }
 
 template <typename T>
+inline constexpr bool is_max(T n) {
+	return n == nmax<T>();
+}
+
+template <typename T>
 inline constexpr T nmin() {
 	return (std::numeric_limits<T>::min)();
 }
 
 template <typename T>
+inline constexpr bool is_min(T n) {
+	return n == nmin<T>();
+}
+
+template <typename T>
 inline constexpr T nlowest() {
 	return (std::numeric_limits<T>::lowest)();
+}
+
+template <typename T>
+inline constexpr bool is_lowest(T n) {
+	return n == nlowest<T>();
 }
 
 ////////////////////////////////////////////////////////////////////////////
