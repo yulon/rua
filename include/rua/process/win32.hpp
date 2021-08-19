@@ -195,15 +195,25 @@ public:
 		return _h;
 	}
 
-	void start() {
+	bool start() {
 		if (!_ext || !_ext->main_td) {
-			return;
+			return true;
 		}
-		if (_ext->lazy_load_dlls.size()) {
-			_start_with_load_dlls();
+		if (is_max(ResumeThread(_ext->main_td.native_handle()))) {
+			return false;
 		}
-		ResumeThread(_ext->main_td.native_handle());
 		_ext->main_td.reset();
+		return true;
+	}
+
+	template <RUA_STRING_RANGE(StrList)>
+	bool start_with_load_dylibs(const StrList &dylib_names = {}) {
+		if (!_ext || !_ext->main_td || !_start_with_load_dlls(dylib_names) ||
+			is_max(ResumeThread(_ext->main_td.native_handle()))) {
+			return false;
+		}
+		_ext->main_td.reset();
+		return true;
 	}
 
 	int wait_for_exit() {
@@ -593,16 +603,10 @@ public:
 	}
 
 	native_module_handle_t load_dylib(std::string name) {
-		if (_ext && _ext->main_td) {
-			_ext->lazy_load_dlls.emplace_back(std::move(name));
-			return reinterpret_cast<native_module_handle_t>(
-				INVALID_HANDLE_VALUE);
-		}
-
 		_load_dll_ctx ctx;
-		ctx.RtlUserThreadStart = nullptr;
+		ctx.rtl_user_thread_start = nullptr;
 
-		auto data = _make_load_dll_data(
+		auto data = _alloc_load_dll_data(
 			std::array<std::string, 1>{std::move(name)}, ctx);
 		if (!data) {
 			return nullptr;
@@ -626,7 +630,6 @@ private:
 	struct _ext_t {
 		thread main_td;
 		memory_block dll_loader;
-		std::list<std::string> lazy_load_dlls;
 		rua::time prev_get_cpu_usage_time, prev_used_cpu_time;
 	};
 
@@ -706,16 +709,6 @@ private:
 		return inst;
 	}
 
-	static generic_ptr _load_psapi(string_view name) {
-		static auto kernel32 = dylib::from_loaded("kernel32.dll");
-		auto fp = kernel32[str_join("K32", name)];
-		if (fp) {
-			return fp;
-		}
-		static dylib psapi("psapi.dll");
-		return psapi[name];
-	}
-
 	struct _psapi_t {
 		decltype(&GetModuleFileNameExW) get_module_file_name_ex_w;
 		decltype(&GetModuleBaseNameW) get_module_base_name_w;
@@ -723,24 +716,38 @@ private:
 		decltype(&GetProcessMemoryInfo) get_process_memoryinfo;
 	};
 
+	static generic_ptr
+	_load_psapi(dylib &kernel32, dylib &psapi, string_view name) {
+		auto fp = kernel32[str_join("K32", name)];
+		if (fp) {
+			return fp;
+		}
+		if (!psapi) {
+			psapi = dylib("psapi.dll");
+		}
+		return psapi[name];
+	}
+
 	static const _psapi_t &_psapi() {
+		static dylib kernel32 = dylib::from_loaded("kernel32.dll"), psapi;
 		static const _psapi_t inst{
-			_load_psapi("GetModuleFileNameExW"),
-			_load_psapi("GetModuleBaseNameW"),
-			_load_psapi("GetModuleInformation"),
-			_load_psapi("GetProcessMemoryInfo")};
+			_load_psapi(kernel32, psapi, "GetModuleFileNameExW"),
+			_load_psapi(kernel32, psapi, "GetModuleBaseNameW"),
+			_load_psapi(kernel32, psapi, "GetModuleInformation"),
+			_load_psapi(kernel32, psapi, "GetProcessMemoryInfo")};
 		return inst;
 	}
 
 	struct _UNICODE_STRING;
 
 	struct _load_dll_ctx {
-		HRESULT(WINAPI *RtlInitUnicodeString)(_UNICODE_STRING *, PCWSTR);
-		HRESULT(WINAPI *LdrLoadDll)
+		HRESULT(WINAPI *rtl_init_unicode_string)(_UNICODE_STRING *, PCWSTR);
+		HRESULT(WINAPI *ldr_load_dll)
 		(PWCHAR, ULONG, _UNICODE_STRING *, HMODULE *);
 		const wchar_t *names;
 
-		void(RUA_REGPARM(3) * RtlUserThreadStart)(PTHREAD_START_ROUTINE, PVOID);
+		void(RUA_REGPARM(3) * rtl_user_thread_start)(
+			PTHREAD_START_ROUTINE, PVOID);
 		PTHREAD_START_ROUTINE td_start;
 		PVOID td_param;
 	};
@@ -750,7 +757,6 @@ private:
 		HMODULE h = nullptr;
 
 		auto names = ctx->names;
-
 		for (auto it = names;;) {
 			if (*it != 0) {
 				++it;
@@ -761,23 +767,23 @@ private:
 				break;
 			}
 			_UNICODE_STRING us;
-			ctx->RtlInitUnicodeString(&us, names);
-			ctx->LdrLoadDll(nullptr, 0, &us, &h);
+			ctx->rtl_init_unicode_string(&us, names);
+			ctx->ldr_load_dll(nullptr, 0, &us, &h);
 			names = ++it;
 		}
 
-		if (ctx->RtlUserThreadStart) {
+		if (ctx->rtl_user_thread_start) {
 #if defined(_MSC_VER) && RUA_X86 == 32
-			auto RtlUserThreadStart = ctx->RtlUserThreadStart;
+			auto rtl_user_thread_start = ctx->rtl_user_thread_start;
 			auto td_start = ctx->td_start;
 			auto td_param = ctx->td_param;
 			__asm {
 				mov eax, td_start
 				mov edx, td_param
-				call RtlUserThreadStart
+				call rtl_user_thread_start
 			}
 #else
-			ctx->RtlUserThreadStart(ctx->td_start, ctx->td_param);
+			ctx->rtl_user_thread_start(ctx->td_start, ctx->td_param);
 #endif
 		}
 
@@ -888,7 +894,7 @@ private:
 		return bytes_view(code);
 	}
 
-	bool _make_dll_loader() {
+	bool _alloc_dll_loader() {
 		if (!_ext) {
 			_ext.reset(new _ext_t);
 		}
@@ -907,11 +913,12 @@ private:
 		}
 	};
 
-	template <typename NameList>
-	_load_dll_data _make_load_dll_data(NameList &&names, _load_dll_ctx &ctx) {
+	template <RUA_STRING_RANGE(StrList)>
+	_load_dll_data
+	_alloc_load_dll_data(const StrList &names, _load_dll_ctx &ctx) {
 		_load_dll_data data;
 
-		if (!_make_dll_loader()) {
+		if (!_alloc_dll_loader()) {
 			return data;
 		}
 
@@ -930,11 +937,11 @@ private:
 		ctx.names = data.names.data();
 
 		static auto ntdll = dylib::from_loaded("ntdll.dll");
-		static auto RtlInitUnicodeString_ptr = ntdll["RtlInitUnicodeString"];
-		static auto LdrLoadDll_ptr = ntdll["LdrLoadDll"];
+		static auto rtl_init_unicode_string = ntdll["RtlInitUnicodeString"];
+		static auto ldr_load_dll = ntdll["LdrLoadDll"];
 
-		ctx.RtlInitUnicodeString = RtlInitUnicodeString_ptr;
-		ctx.LdrLoadDll = LdrLoadDll_ptr;
+		ctx.rtl_init_unicode_string = rtl_init_unicode_string;
+		ctx.ldr_load_dll = ldr_load_dll;
 
 		data.ctx = memory_alloc(as_bytes(ctx));
 		if (!data.ctx) {
@@ -944,10 +951,11 @@ private:
 		return data;
 	}
 
-	bool _start_with_load_dlls() {
+	template <RUA_STRING_RANGE(StrList)>
+	bool _start_with_load_dlls(const StrList &dll_names) {
 		assert(_ext);
 
-		if (_ext->lazy_load_dlls.empty()) {
+		if (range_begin(dll_names) == range_end(dll_names)) {
 			return true;
 		}
 
@@ -960,16 +968,16 @@ private:
 		_load_dll_ctx ctx;
 
 #if RUA_X86 == 64
-		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Rip);
+		ctx.rtl_user_thread_start = generic_ptr(main_td_ctx.Rip);
 		ctx.td_start = generic_ptr(main_td_ctx.Rcx);
 		ctx.td_param = generic_ptr(main_td_ctx.Rdx);
 #elif RUA_X86 == 32
-		ctx.RtlUserThreadStart = generic_ptr(main_td_ctx.Eip);
+		ctx.rtl_user_thread_start = generic_ptr(main_td_ctx.Eip);
 		ctx.td_start = generic_ptr(main_td_ctx.Eax);
 		ctx.td_param = generic_ptr(main_td_ctx.Edx);
 #endif
 
-		auto data = _make_load_dll_data(_ext->lazy_load_dlls, ctx);
+		auto data = _alloc_load_dll_data(dll_names, ctx);
 		if (!data) {
 			return false;
 		}
