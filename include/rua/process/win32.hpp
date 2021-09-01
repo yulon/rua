@@ -9,12 +9,12 @@
 #include "../io.hpp"
 #include "../macros.hpp"
 #include "../memory.hpp"
-#include "../sched/await/win32.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/char_enc/base/win32.hpp"
 #include "../string/char_set.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
+#include "../sys/handle/wait_for_finish/win32.hpp"
 #include "../sys/info/win32.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../thread/wait/win32.hpp"
@@ -221,7 +221,7 @@ public:
 			return -1;
 		}
 		start();
-		await(_h);
+		wait_for_sys_handle_finish(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
 		_reset();
