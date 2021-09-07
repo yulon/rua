@@ -217,17 +217,44 @@ struct conjunction<B1, Bn...>
 template <typename F, typename... Args>
 using invoke_result = std::invoke_result<F, Args...>;
 
+template <typename F, typename... Args>
+using invoke_result_t = std::invoke_result_t<F, Args...>;
+
 #else
 
 template <typename F, typename... Args>
+using invoke_result_t = decltype(std::declval<F>()(std::declval<Args>()...));
+
+template <typename F, typename... Args>
 struct invoke_result {
-	using type = decltype(std::declval<F>()(std::declval<Args>()...));
+	using type = invoke_result_t<F, Args...>;
 };
 
 #endif
 
+#ifdef __cpp_lib_is_invocable
+
 template <typename F, typename... Args>
-using invoke_result_t = typename invoke_result<F, Args...>::type;
+using is_invocable = std::is_invocable<F, Args...>;
+
+#else
+
+template <typename...>
+struct _is_invocable : std::false_type {};
+
+template <typename F, typename... Args>
+struct _is_invocable<void_t<invoke_result_t<F, Args...>>, F, Args...>
+	: std::true_type {};
+
+template <typename F, typename... Args>
+struct is_invocable : _is_invocable<void, F, Args...> {};
+
+#endif
+
+#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+template <typename F, typename... Args>
+inline constexpr auto is_invocable_v = is_invocable<F, Args...>::value;
+#endif
 
 ////////////////////////////// Non-standard ////////////////////////////////
 
