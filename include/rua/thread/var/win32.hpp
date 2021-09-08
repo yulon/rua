@@ -5,7 +5,7 @@
 
 #include "../../any_word.hpp"
 #include "../../macros.hpp"
-#include "../../sys/handle/on_finish/win32.hpp"
+#include "../../sys/listen/win32.hpp"
 #include "../../types/util.hpp"
 
 #include <windows.h>
@@ -78,7 +78,7 @@ private:
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
 			auto dtor = _dtor;
-			on_sys_handle_finish(h, [=](bool) {
+			sys_listen(h, [=](bool) {
 				dtor(*p);
 				delete p;
 				CloseHandle(h);

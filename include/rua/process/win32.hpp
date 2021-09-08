@@ -14,9 +14,9 @@
 #include "../string/char_set.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
-#include "../sys/handle/wait_for_finish/win32.hpp"
 #include "../sys/info/win32.hpp"
 #include "../sys/stream/win32.hpp"
+#include "../sys/wait/win32.hpp"
 #include "../thread/wait/win32.hpp"
 #include "../types/util.hpp"
 
@@ -221,7 +221,7 @@ public:
 			return -1;
 		}
 		start();
-		wait_for_sys_handle_finish(_h);
+		sys_wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
 		_reset();

@@ -3,7 +3,7 @@
 
 #include "../basic/win32.hpp"
 
-#include "../../sys/handle/wait_for_finish/win32.hpp"
+#include "../../sys/wait/win32.hpp"
 
 #include <windows.h>
 
@@ -13,7 +13,7 @@ inline any_word thread::wait_for_exit() {
 	if (!_h) {
 		return 0;
 	}
-	wait_for_sys_handle_finish(_h);
+	sys_wait(_h);
 	DWORD exit_code;
 	GetExitCodeThread(_h, &exit_code);
 	reset();
