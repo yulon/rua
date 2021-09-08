@@ -2,6 +2,7 @@
 #define _RUA_THREAD_HPP
 
 #include "thread/basic.hpp"
+#include "thread/reuse.hpp"
 #include "thread/suspender.hpp"
 #include "thread/var.hpp"
 #include "thread/wait.hpp"

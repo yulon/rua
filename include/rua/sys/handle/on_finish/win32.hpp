@@ -26,15 +26,10 @@ inline VOID CALLBACK _async_wait_sys_h_cb(PVOID _ctx, BOOLEAN timeouted) {
 
 namespace _on_sys_handle_finish {
 
-template <
-	typename Callback,
-	typename Ret = decltype(std::declval<Callback &&>()(true))>
-inline enable_if_t<
-	!std::is_function<remove_reference_t<Callback>>::value &&
-		std::is_same<Ret, void>::value,
-	Ret>
-on_sys_handle_finish(
-	HANDLE handle, Callback &&callback, duration timeout = duration_max()) {
+inline void on_sys_handle_finish(
+	HANDLE handle,
+	std::function<void(bool)> callback,
+	duration timeout = duration_max()) {
 	assert(handle);
 
 	auto ctx = new _async_wait_sys_h_ctx_t{nullptr, std::move(callback)};
@@ -46,12 +41,6 @@ on_sys_handle_finish(
 		ctx,
 		timeout.milliseconds<DWORD, INFINITE>(),
 		WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
-}
-
-template <typename Ret, typename... Args>
-inline Ret on_sys_handle_finish(
-	HANDLE handle, Ret (&callee)(Args...), duration timeout = duration_max()) {
-	return on_sys_handle_finish(handle, &callee, timeout);
 }
 
 } // namespace _on_sys_handle_finish

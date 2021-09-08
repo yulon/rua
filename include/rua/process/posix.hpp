@@ -2,7 +2,7 @@
 #define _RUA_PROCESS_POSIX_HPP
 
 #include "../file/posix.hpp"
-#include "../sched/await/uni.hpp"
+#include "../sched/await.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
 #include "../types/traits.hpp"

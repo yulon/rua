@@ -3,10 +3,8 @@
 
 #include "../../io/abstract.hpp"
 #include "../../io/util.hpp"
-
 #include "../../macros.hpp"
-#include "../../sched/await/uni.hpp"
-#include "../../sched/suspender.hpp"
+#include "../../sched.hpp"
 #include "../../types/traits.hpp"
 
 #include <unistd.h>

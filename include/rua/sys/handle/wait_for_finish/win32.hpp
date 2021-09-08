@@ -17,6 +17,11 @@ inline bool wait_for_sys_handle_finish(
 	assert(spdr);
 	assert(handle);
 
+	if (spdr.type_is<rua::thread_suspender>()) {
+		return WaitForSingleObject(
+				   handle, timeout.milliseconds<DWORD, INFINITE>()) !=
+			   WAIT_TIMEOUT;
+	}
 	auto ch_ptr = new chan<bool>;
 	std::unique_ptr<chan<bool>> ch_uptr(ch_ptr);
 	on_sys_handle_finish(
@@ -28,13 +33,7 @@ inline bool
 wait_for_sys_handle_finish(HANDLE handle, duration timeout = duration_max()) {
 	assert(handle);
 
-	auto spdr = this_suspender();
-	if (spdr.type_is<rua::thread_suspender>()) {
-		return WaitForSingleObject(
-				   handle, timeout.milliseconds<DWORD, INFINITE>()) !=
-			   WAIT_TIMEOUT;
-	}
-	return wait_for_sys_handle_finish(std::move(spdr), handle, timeout);
+	return wait_for_sys_handle_finish(this_suspender(), handle, timeout);
 }
 
 } // namespace _wait_for_sys_handle_finish

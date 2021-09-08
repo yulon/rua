@@ -3,7 +3,7 @@
 
 #include "../basic/posix.hpp"
 
-#include "../../sched/await/uni.hpp"
+#include "../../sched/await.hpp"
 
 #include <pthread.h>
 
