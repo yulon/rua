@@ -176,8 +176,8 @@ function(DepPull A_NAME)
 				find_package(Git REQUIRED QUIET)
 			endif()
 
-			if(NOT EXISTS "${DEPPULL_CACHE}")
-				file(MAKE_DIRECTORY "${DEPPULL_CACHE}")
+			if(EXISTS "${SOURCE_ROOT}")
+				file(REMOVE_RECURSE "${SOURCE_ROOT}")
 			endif()
 
 			execute_process(
@@ -260,9 +260,10 @@ function(DepPull A_NAME)
 		"${CMAKE_C_FLAGS_MINSIZEREL}"
 	)
 	string(SHA1 BUILD_HASH "${BUILD_FEATURE}")
+
 	set(PREBUILD_DIR "${DEPPULL_CACHE}/${STORAGE_NAME}/build/${BUILD_HASH}")
 
-	set(BUILD_DIR "${CMAKE_BINARY_DIR}/DepPull/${STORAGE_NAME}")
+	set(BUILD_DIR "${CMAKE_BINARY_DIR}/DepPull/${STORAGE_NAME}/build")
 	if(EXISTS "${BUILD_DIR}" AND "${SOURCE_ROOT}.ready" IS_NEWER_THAN "${BUILD_DIR}")
 		file(REMOVE_RECURSE "${BUILD_DIR}")
 	endif()
