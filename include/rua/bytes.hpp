@@ -17,7 +17,6 @@
 #include "bit.hpp"
 #include "macros.hpp"
 #include "optional.hpp"
-#include "range.hpp"
 #include "span.hpp"
 #include "string/conv.hpp"
 #include "string/len.hpp"
@@ -55,6 +54,14 @@ public:
 
 	constexpr explicit operator bool() const {
 		return _this()->size();
+	}
+
+	const byte *begin() const {
+		return _this()->data();
+	}
+
+	const byte *end() const {
+		return _this()->data() + _this()->size();
 	}
 
 	template <typename T>
@@ -102,7 +109,7 @@ public:
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
 	template <typename... DestArgs>
-	inline size_t copy_to(DestArgs &&... dest) const;
+	inline size_t copy_to(DestArgs &&...dest) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	generic_ptr derel(ptrdiff_t pos = 0) const {
@@ -135,6 +142,22 @@ private:
 template <typename Span>
 class bytes_base : public const_bytes_base<Span> {
 public:
+	byte *begin() {
+		return _this()->data();
+	}
+
+	const byte *begin() const {
+		return _this()->data();
+	}
+
+	byte *end() {
+		return _this()->data() + _this()->size();
+	}
+
+	const byte *end() const {
+		return _this()->data() + _this()->size();
+	}
+
 	template <typename T>
 	void set(const T &val) {
 		return bit_set<T>(_this()->data(), val);
@@ -209,7 +232,7 @@ public:
 	inline bytes_ref operator()(ptrdiff_t begin_offset);
 
 	template <typename... SrcArgs>
-	inline size_t copy_from(SrcArgs &&... src) const;
+	inline size_t copy_from(SrcArgs &&...src) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	RelPtr enrel(generic_ptr abs_ptr, ptrdiff_t pos = 0) {
@@ -300,7 +323,7 @@ public:
 	}
 
 	template <typename... Args>
-	void reset(Args &&... args) {
+	void reset(Args &&...args) {
 		RUA_SASSERT((std::is_constructible<bytes_view, Args...>::value));
 
 		*this = bytes_view(std::forward<Args>(args)...);
@@ -414,7 +437,7 @@ public:
 	}
 
 	template <typename... Args>
-	void reset(Args &&... args) {
+	void reset(Args &&...args) {
 		RUA_SASSERT((std::is_constructible<bytes_ref, Args...>::value));
 
 		*this = bytes_ref(std::forward<Args>(args)...);
@@ -485,7 +508,7 @@ inline bytes_ref bytes_base<Span>::operator()(ptrdiff_t begin_offset) {
 
 template <typename Span>
 template <typename... DestArgs>
-inline size_t const_bytes_base<Span>::copy_to(DestArgs &&... dest) const {
+inline size_t const_bytes_base<Span>::copy_to(DestArgs &&...dest) const {
 	bytes_ref dest_ref(std::forward<DestArgs>(dest)...);
 	auto cp_sz =
 		_this()->size() < dest_ref.size() ? _this()->size() : dest_ref.size();
@@ -498,7 +521,7 @@ inline size_t const_bytes_base<Span>::copy_to(DestArgs &&... dest) const {
 
 template <typename Span>
 template <typename... SrcArgs>
-inline size_t bytes_base<Span>::copy_from(SrcArgs &&... src) const {
+inline size_t bytes_base<Span>::copy_from(SrcArgs &&...src) const {
 	return bytes_view(std::forward<SrcArgs>(src)...).copy_to(*_this());
 }
 
@@ -603,7 +626,7 @@ public:
 			(sizeof...(Args) > 1) ||
 			(!std::is_base_of<bytes, ArgsFront>::value &&
 			 !std::is_integral<ArgsFront>::value)>>
-	bytes(Args &&... copy_src) {
+	bytes(Args &&...copy_src) {
 		bytes_view bv(std::forward<Args>(copy_src)...);
 		if (!bv.size()) {
 			return;
@@ -720,7 +743,7 @@ public:
 			(sizeof...(Args) > 1) ||
 			(!std::is_base_of<bytes_pattern, ArgsFront>::value &&
 			 std::is_constructible<bytes, Args &&...>::value)>>
-	bytes_pattern(Args &&... bytes_args) :
+	bytes_pattern(Args &&...bytes_args) :
 		_v(std::forward<Args>(bytes_args)...) {}
 
 	template <
@@ -1084,10 +1107,7 @@ bytes_base<Span>::rfind(bytes_pattern find_data, size_t start_pos) const {
 		const_bytes_finder::rfind(*_this(), std::move(find_data), start_pos));
 }
 
-template <
-	typename Derived,
-	size_t Size = !std::is_same<Derived, void>::value ? size_of<Derived>::value
-													  : nmax<size_t>()>
+template <typename Derived, size_t Size = size_of<Derived>::value>
 class enable_bytes_accessor
 	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
 public:
@@ -1107,16 +1127,6 @@ public:
 protected:
 	constexpr enable_bytes_accessor() = default;
 };
-
-template <>
-inline uchar *enable_bytes_accessor<void>::data() {
-	return reinterpret_cast<uchar *>(this);
-}
-
-template <>
-inline const uchar *enable_bytes_accessor<void>::data() const {
-	return reinterpret_cast<const uchar *>(this);
-}
 
 template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
