@@ -56,11 +56,11 @@ public:
 		return _this()->size();
 	}
 
-	const byte *begin() const {
+	const uchar *begin() const {
 		return _this()->data();
 	}
 
-	const byte *end() const {
+	const uchar *end() const {
 		return _this()->data() + _this()->size();
 	}
 
@@ -142,19 +142,19 @@ private:
 template <typename Span>
 class bytes_base : public const_bytes_base<Span> {
 public:
-	byte *begin() {
+	uchar *begin() {
 		return _this()->data();
 	}
 
-	const byte *begin() const {
+	const uchar *begin() const {
 		return _this()->data();
 	}
 
-	byte *end() {
+	uchar *end() {
 		return _this()->data() + _this()->size();
 	}
 
-	const byte *end() const {
+	const uchar *end() const {
 		return _this()->data() + _this()->size();
 	}
 
