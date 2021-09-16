@@ -21,13 +21,13 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	explicit variant(in_place_type_t<T>, Args &&... args) {
+	explicit variant(in_place_type_t<T>, Args &&...args) {
 		_emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
 	explicit variant(
-		in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) {
+		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) {
 		_emplace<T>(il, std::forward<Args>(args)...);
 	}
 
@@ -106,25 +106,57 @@ public:
 		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
 
+	constexpr bool visit() const {
+		return false;
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) & {
+		if (_as_all_and_visit<FirstVisitor, Types...>(
+				std::forward<FirstVisitor>(first_vis))) {
+			return true;
+		}
+		return visit(std::forward<OtherVisitors>(other_vis)...);
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) && {
+		if (std::move(*this).template _as_all_and_visit<FirstVisitor, Types...>(
+				std::forward<FirstVisitor>(first_vis))) {
+			return true;
+		}
+		return std::move(*this).template visit(
+			std::forward<OtherVisitors>(other_vis)...);
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) const & {
+		if (_as_all_and_visit<FirstVisitor, Types...>(
+				std::forward<FirstVisitor>(first_vis))) {
+			return true;
+		}
+		return visit(std::forward<OtherVisitors>(other_vis)...);
+	}
+
 	template <typename T, typename... Args>
-	T &emplace(Args &&... args) & {
+	T &emplace(Args &&...args) & {
 		reset();
 		return _emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
-	T &&emplace(Args &&... args) && {
+	T &&emplace(Args &&...args) && {
 		return std::move(emplace<T>(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename U, typename... Args>
-	T &emplace(std::initializer_list<U> il, Args &&... args) & {
+	T &emplace(std::initializer_list<U> il, Args &&...args) & {
 		reset();
 		return _emplace<T>(il, std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
-	T &&emplace(std::initializer_list<U> il, Args &&... args) && {
+	T &&emplace(std::initializer_list<U> il, Args &&...args) && {
 		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
@@ -149,21 +181,92 @@ private:
 		max_align_of<Types...>::value) uchar _sto[max_size_of<Types...>::value];
 
 	template <typename T, typename... Args>
-	T &_emplace(Args &&... args) {
+	T &_emplace(Args &&...args) {
 		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullpos));
 
 		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		!is_invocable<Visitor, T &>::value,
+		bool> constexpr _as_and_visit(Visitor &&) const {
+		return false;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<is_invocable<Visitor, T &>::value, bool>
+	_as_and_visit(Visitor &&vis) & {
+		if (!type_is<T>()) {
+			return false;
+		};
+		std::forward<Visitor>(vis)(as<T>());
+		return true;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<is_invocable<Visitor, T &>::value, bool>
+	_as_and_visit(Visitor &&vis) && {
+		if (!type_is<T>()) {
+			return false;
+		};
+		std::forward<Visitor>(vis)(std::move(as<T>()));
+		return true;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<is_invocable<Visitor, T &>::value, bool>
+	_as_and_visit(Visitor &&vis) const & {
+		if (!type_is<T>()) {
+			return false;
+		};
+		std::forward<Visitor>(vis)(as<T>());
+		return true;
+	}
+
+	template <typename Visitor>
+	constexpr bool _as_all_and_visit(Visitor &&) const {
+		return false;
+	}
+
+	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	bool _as_all_and_visit(Visitor &&vis) & {
+		if (_as_and_visit<FirstType>(std::forward<Visitor>(vis))) {
+			return true;
+		}
+		return _as_all_and_visit<Visitor, OtherTypes...>(
+			std::forward<Visitor>(vis));
+	}
+
+	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	bool _as_all_and_visit(Visitor &&vis) && {
+		if (std::move(*this).template _as_and_visit<FirstType>(
+				std::forward<Visitor>(vis))) {
+			return true;
+		}
+		return std::move(*this)
+			.template _as_all_and_visit<Visitor, OtherTypes...>(
+				std::forward<Visitor>(vis));
+	}
+
+	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	bool _as_all_and_visit(Visitor &&vis) const & {
+		if (_as_and_visit<FirstType>(std::forward<Visitor>(vis))) {
+			return true;
+		}
+		return _as_all_and_visit<Visitor, OtherTypes...>(
+			std::forward<Visitor>(vis));
+	}
 };
 
 template <typename T, typename... Args>
-variant<T> make_variant(Args &&... args) {
+variant<T> make_variant(Args &&...args) {
 	return variant<T>(in_place_type_t<T>{}, std::forward<Args>(args)...);
 }
 
 template <typename T, typename U, typename... Args>
-variant<T> make_variant(std::initializer_list<U> il, Args &&... args) {
+variant<T> make_variant(std::initializer_list<U> il, Args &&...args) {
 	return variant<T>(in_place_type_t<T>{}, il, std::forward<Args>(args)...);
 }
 
