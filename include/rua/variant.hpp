@@ -106,36 +106,22 @@ public:
 		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
 
-	constexpr bool visit() const {
-		return false;
+	template <typename... Visitors>
+	bool visit(Visitors &&...viss) & {
+		return has_value() &&
+			   _visitors_visit_types(std::forward<Visitors>(viss)...);
 	}
 
-	template <typename FirstVisitor, typename... OtherVisitors>
-	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) & {
-		if (_as_all_and_visit<FirstVisitor, Types...>(
-				std::forward<FirstVisitor>(first_vis))) {
-			return true;
-		}
-		return visit(std::forward<OtherVisitors>(other_vis)...);
+	template <typename... Visitors>
+	bool visit(Visitors &&...viss) && {
+		return has_value() && std::move(*this).template _visitors_visit_types(
+								  std::forward<Visitors>(viss)...);
 	}
 
-	template <typename FirstVisitor, typename... OtherVisitors>
-	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) && {
-		if (std::move(*this).template _as_all_and_visit<FirstVisitor, Types...>(
-				std::forward<FirstVisitor>(first_vis))) {
-			return true;
-		}
-		return std::move(*this).template visit(
-			std::forward<OtherVisitors>(other_vis)...);
-	}
-
-	template <typename FirstVisitor, typename... OtherVisitors>
-	bool visit(FirstVisitor &&first_vis, OtherVisitors &&...other_vis) const & {
-		if (_as_all_and_visit<FirstVisitor, Types...>(
-				std::forward<FirstVisitor>(first_vis))) {
-			return true;
-		}
-		return visit(std::forward<OtherVisitors>(other_vis)...);
+	template <typename... Visitors>
+	bool visit(Visitors &&...viss) const & {
+		return has_value() &&
+			   _visitors_visit_types(std::forward<Visitors>(viss)...);
 	}
 
 	template <typename T, typename... Args>
@@ -190,14 +176,14 @@ private:
 
 	template <typename T, typename Visitor>
 	enable_if_t<
-		!is_invocable<Visitor, T &>::value,
-		bool> constexpr _as_and_visit(Visitor &&) const {
+		!is_invocable<Visitor &&, T &>::value,
+		bool> constexpr _visit_as(Visitor &&) const & {
 		return false;
 	}
 
 	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor, T &>::value, bool>
-	_as_and_visit(Visitor &&vis) & {
+	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
+	_visit_as(Visitor &&vis) & {
 		if (!type_is<T>()) {
 			return false;
 		};
@@ -206,8 +192,8 @@ private:
 	}
 
 	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor, T &>::value, bool>
-	_as_and_visit(Visitor &&vis) && {
+	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
+	_visit_as(Visitor &&vis) && {
 		if (!type_is<T>()) {
 			return false;
 		};
@@ -216,8 +202,8 @@ private:
 	}
 
 	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor, T &>::value, bool>
-	_as_and_visit(Visitor &&vis) const & {
+	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
+	_visit_as(Visitor &&vis) const & {
 		if (!type_is<T>()) {
 			return false;
 		};
@@ -226,37 +212,59 @@ private:
 	}
 
 	template <typename Visitor>
-	constexpr bool _as_all_and_visit(Visitor &&) const {
+	constexpr bool _visit_types(Visitor &&) const {
 		return false;
 	}
 
 	template <typename Visitor, typename FirstType, typename... OtherTypes>
-	bool _as_all_and_visit(Visitor &&vis) & {
-		if (_as_and_visit<FirstType>(std::forward<Visitor>(vis))) {
-			return true;
-		}
-		return _as_all_and_visit<Visitor, OtherTypes...>(
-			std::forward<Visitor>(vis));
+	bool _visit_types(Visitor &&vis) & {
+		return _visit_as<FirstType>(std::forward<Visitor>(vis)) ||
+			   _visit_types<Visitor, OtherTypes...>(std::forward<Visitor>(vis));
 	}
 
 	template <typename Visitor, typename FirstType, typename... OtherTypes>
-	bool _as_all_and_visit(Visitor &&vis) && {
-		if (std::move(*this).template _as_and_visit<FirstType>(
-				std::forward<Visitor>(vis))) {
-			return true;
-		}
-		return std::move(*this)
-			.template _as_all_and_visit<Visitor, OtherTypes...>(
-				std::forward<Visitor>(vis));
+	bool _visit_types(Visitor &&vis) && {
+		return std::move(*this).template _visit_as<FirstType>(
+				   std::forward<Visitor>(vis)) ||
+			   std::move(*this).template _visit_types<Visitor, OtherTypes...>(
+				   std::forward<Visitor>(vis));
 	}
 
 	template <typename Visitor, typename FirstType, typename... OtherTypes>
-	bool _as_all_and_visit(Visitor &&vis) const & {
-		if (_as_and_visit<FirstType>(std::forward<Visitor>(vis))) {
-			return true;
-		}
-		return _as_all_and_visit<Visitor, OtherTypes...>(
-			std::forward<Visitor>(vis));
+	bool _visit_types(Visitor &&vis) const & {
+		return _visit_as<FirstType>(std::forward<Visitor>(vis)) ||
+			   _visit_types<Visitor, OtherTypes...>(std::forward<Visitor>(vis));
+	}
+
+	constexpr bool _visitors_visit_types() const {
+		return false;
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool _visitors_visit_types(
+		FirstVisitor &&first_viss, OtherVisitors &&...other_viss) & {
+		return _visit_types<FirstVisitor, Types...>(
+				   std::forward<FirstVisitor>(first_viss)) ||
+			   _visitors_visit_types(
+				   std::forward<OtherVisitors>(other_viss)...);
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool _visitors_visit_types(
+		FirstVisitor &&first_viss, OtherVisitors &&...other_viss) && {
+		return std::move(*this).template _visit_types<FirstVisitor, Types...>(
+				   std::forward<FirstVisitor>(first_viss)) ||
+			   std::move(*this).template _visitors_visit_types(
+				   std::forward<OtherVisitors>(other_viss)...);
+	}
+
+	template <typename FirstVisitor, typename... OtherVisitors>
+	bool _visitors_visit_types(
+		FirstVisitor &&first_viss, OtherVisitors &&...other_viss) const & {
+		return _visit_types<FirstVisitor, Types...>(
+				   std::forward<FirstVisitor>(first_viss)) ||
+			   _visitors_visit_types(
+				   std::forward<OtherVisitors>(other_viss)...);
 	}
 };
 
