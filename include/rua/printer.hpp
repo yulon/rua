@@ -25,14 +25,11 @@ public:
 	}
 
 	operator bool() const {
-		return _w && is_valid(*_w);
+		return is_valid(_w);
 	}
 
 	template <typename... Args>
 	void print(Args &&...args) {
-		if (!*this) {
-			return;
-		}
 		str_join(_buf, {to_temp_string(args)...}, " ");
 		_w->write_all(as_bytes(_buf));
 		_buf.resize(0);
@@ -41,6 +38,10 @@ public:
 	template <typename... Args>
 	void println(Args &&...args) {
 		print(std::forward<Args>(args)..., _eol);
+	}
+
+	Writer &get() {
+		return *_w;
 	}
 
 	void reset(Writer &w = nullptr) {

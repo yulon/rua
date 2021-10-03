@@ -1,7 +1,8 @@
 #ifndef _RUA_TYPES_TRAITS_HPP
 #define _RUA_TYPES_TRAITS_HPP
 
-#include <cstddef>
+#include "def.hpp"
+
 #include <type_traits>
 
 namespace rua {

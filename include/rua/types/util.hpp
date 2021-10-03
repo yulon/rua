@@ -1,15 +1,10 @@
 #ifndef _RUA_TYPES_UTIL_HPP
 #define _RUA_TYPES_UTIL_HPP
 
+#include "def.hpp"
 #include "traits.hpp"
 
 #include "../macros.hpp"
-
-#include <cstddef>
-#include <cstdint>
-#include <limits>
-#include <new>
-#include <utility>
 
 #define RUA_CONTAINER_OF(member_ptr, type, member)                             \
 	reinterpret_cast<type *>(                                                  \
@@ -72,13 +67,6 @@
 
 namespace rua {
 
-using uint = unsigned int;
-using ushort = unsigned short;
-using schar = signed char;
-using uchar = unsigned char;
-
-////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
 inline constexpr T nmax() {
 	return (std::numeric_limits<T>::max)();
@@ -108,10 +96,6 @@ template <typename T>
 inline constexpr bool is_lowest(T n) {
 	return n == nlowest<T>();
 }
-
-////////////////////////////////////////////////////////////////////////////
-
-RUA_INLINE_CONST auto nullpos = nmax<size_t>();
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -176,26 +160,6 @@ using enable_copy_move_like = enable_copy_move<
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
-
-template <typename T>
-using in_place_type_t = std::in_place_type_t<T>;
-
-template <size_t I>
-using in_place_index_t = std::in_place_index_t<I>;
-
-#else
-
-template <typename T>
-struct in_place_type_t {};
-
-template <size_t I>
-struct in_place_index_t {};
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
 inline constexpr enable_if_t<std::is_convertible<T &&, bool>::value, bool>
 is_valid(T &&val) {
@@ -206,6 +170,18 @@ template <typename T>
 inline constexpr enable_if_t<!std::is_convertible<T &&, bool>::value, bool>
 is_valid(T &&) {
 	return true;
+}
+
+template <typename T>
+inline constexpr enable_if_t<std::is_convertible<T &&, bool>::value, bool>
+is_valid(T *val) {
+	return val && static_cast<bool>(std::forward<T>(*val));
+}
+
+template <typename T>
+inline constexpr enable_if_t<!std::is_convertible<T &&, bool>::value, bool>
+is_valid(T *val) {
+	return val;
 }
 
 } // namespace rua

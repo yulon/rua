@@ -77,7 +77,7 @@ public:
 	}
 
 	operator bool() const {
-		return _r && is_valid(_r);
+		return is_valid(_r);
 	}
 
 	void reset() {

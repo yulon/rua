@@ -81,7 +81,7 @@ inline mutex &log_mutex() {
 template <typename... Args>
 inline void log(Args &&...args) {
 	auto &p = log_printer();
-	if (!p) {
+	if (!p.get()) {
 		return;
 	}
 	auto lg = make_lock_guard(log_mutex());
@@ -91,9 +91,6 @@ inline void log(Args &&...args) {
 template <typename... Args>
 inline void err_log(Args &&...args) {
 	auto &p = err_log_printer();
-	if (!p) {
-		return;
-	}
 	auto lg = make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }

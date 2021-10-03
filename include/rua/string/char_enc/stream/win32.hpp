@@ -25,7 +25,7 @@ public:
 	}
 
 	explicit operator bool() const {
-		return _lr && is_valid(*_lr);
+		return is_valid(_lr);
 	}
 
 	virtual ptrdiff_t read(bytes_ref p) {
@@ -83,7 +83,7 @@ public:
 	}
 
 	explicit operator bool() const {
-		return _lw && is_valid(*_lw);
+		return is_valid(_lw);
 	}
 
 	ptrdiff_t write(bytes_view p) {
