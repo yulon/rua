@@ -66,7 +66,7 @@ inline printer<write_group> &err_log_printer() {
 
 #else
 
-inline decltype(make_printer(serr())) &log_printer() {
+inline decltype(make_printer(serr())) &err_log_printer() {
 	static auto p = make_printer(serr(), eol::sys_con);
 	return p;
 }
