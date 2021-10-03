@@ -1,7 +1,6 @@
 #ifndef _RUA_SYS_STREAM_POSIX_HPP
 #define _RUA_SYS_STREAM_POSIX_HPP
 
-#include "../../io/abstract.hpp"
 #include "../../io/util.hpp"
 #include "../../macros.hpp"
 #include "../../sched.hpp"
@@ -13,7 +12,7 @@
 
 namespace rua { namespace posix {
 
-class sys_stream : public read_write_closer {
+class sys_stream : public read_write_util<sys_stream> {
 public:
 	using native_handle_t = int;
 
@@ -46,7 +45,7 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
-	virtual ~sys_stream() {
+	~sys_stream() {
 		close();
 	}
 
@@ -62,7 +61,7 @@ public:
 		return _fd >= 0;
 	}
 
-	virtual ptrdiff_t read(bytes_ref p) {
+	ptrdiff_t read(bytes_ref p) {
 		assert(*this);
 
 		auto spdr = this_suspender();
@@ -79,7 +78,7 @@ public:
 		return await(std::move(spdr), _read, _fd, p);
 	}
 
-	virtual ptrdiff_t write(bytes_view p) {
+	ptrdiff_t write(bytes_view p) {
 		assert(*this);
 
 		auto spdr = this_suspender();
@@ -96,7 +95,7 @@ public:
 		return _fd >= 0 && _nc;
 	}
 
-	virtual void close() {
+	void close() {
 		if (_fd < 0) {
 			return;
 		}

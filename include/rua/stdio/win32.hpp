@@ -23,13 +23,13 @@ using stderr_stream = _basic_stdio_stream<STD_ERROR_HANDLE>;
 using stdin_stream = _basic_stdio_stream<STD_INPUT_HANDLE>;
 
 template <DWORD Id>
-class _basic_stdio_stream : public read_write_closer {
+class _basic_stdio_stream : public read_write_util<_basic_stdio_stream<Id>> {
 public:
-	virtual ptrdiff_t read(bytes_ref p) {
+	ptrdiff_t read(bytes_ref p) {
 		return sys_stream(GetStdHandle(Id), false).read(p);
 	}
 
-	virtual ptrdiff_t write(bytes_view p) {
+	ptrdiff_t write(bytes_view p) {
 		return sys_stream(GetStdHandle(Id), false).write(p);
 	}
 
@@ -62,7 +62,7 @@ public:
 		return *this;
 	}
 
-	virtual void close() {
+	void close() {
 		operator=(nullptr);
 	}
 
@@ -91,18 +91,18 @@ inline stdin_stream &in() {
 	return s;
 }
 
-inline u8_to_loc_writer &sout() {
-	static u8_to_loc_writer s(out());
+inline decltype(make_u8_to_loc_writer(out())) &sout() {
+	static auto s = make_u8_to_loc_writer(out());
 	return s;
 }
 
-inline u8_to_loc_writer &serr() {
-	static u8_to_loc_writer s(err());
+inline decltype(make_u8_to_loc_writer(err())) &serr() {
+	static auto s = make_u8_to_loc_writer(err());
 	return s;
 }
 
-inline loc_to_u8_reader &sin() {
-	static loc_to_u8_reader s(in());
+inline decltype(make_loc_to_u8_reader(in())) &sin() {
+	static auto s = make_loc_to_u8_reader(in());
 	return s;
 }
 

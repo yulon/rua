@@ -15,14 +15,14 @@ namespace rua {
 
 namespace win32 {
 
-class msgbox_writer : public writer {
+class msgbox_writer : public write_util<msgbox_writer> {
 public:
-	virtual ~msgbox_writer() = default;
+	~msgbox_writer() = default;
 
 	msgbox_writer(string_view default_title, UINT icon) :
 		_tit(u8_to_w(default_title)), _ico(icon) {}
 
-	virtual ptrdiff_t write(bytes_view p) {
+	ptrdiff_t write(bytes_view p) {
 		auto eol_b = as_bytes(eol::sys_con);
 		auto fr = p.find(as_bytes(eol::sys_con));
 		if (fr) {
@@ -46,26 +46,32 @@ private:
 
 #endif
 
-inline printer &log_printer() {
-	static printer p(out() ? writer_i(sout()) : nullptr, eol::sys_con);
+inline decltype(make_printer(sout())) &log_printer() {
+	static auto p = make_printer(sout(), eol::sys_con);
 	return p;
 }
 
-inline printer &err_log_printer() {
-	static printer p(
-		err() ?
 #ifdef _WIN32
-			  writer_i(write_group(
-				  {serr(),
-				   std::make_shared<win32::msgbox_writer>(
-					   "ERROR", MB_ICONERROR)}))
-#else
-			  writer_i(serr())
-#endif
-			  : nullptr,
-		eol::sys_con);
+
+inline printer<write_group> &err_log_printer() {
+	static win32::msgbox_writer mbw("ERROR", MB_ICONERROR);
+
+	static write_group wg;
+	wg.add(serr());
+	wg.add(mbw);
+
+	static printer<write_group> p(wg);
 	return p;
 }
+
+#else
+
+inline decltype(make_printer(serr())) &log_printer() {
+	static auto p = make_printer(serr(), eol::sys_con);
+	return p;
+}
+
+#endif
 
 inline mutex &log_mutex() {
 	static mutex mtx;

@@ -13,11 +13,12 @@
 
 namespace rua {
 
+template <typename Reader>
 class line_reader {
 public:
 	line_reader() : _r(nullptr), _buf(), _data(), prev_b{0} {}
 
-	line_reader(reader_i r) : _r(std::move(r)), prev_b{0} {}
+	line_reader(Reader &r) : _r(&r), prev_b{0} {}
 
 	optional<std::string> read_line(size_t buf_sz = 1024) {
 		if (_buf.size() != buf_sz) {
@@ -76,7 +77,7 @@ public:
 	}
 
 	operator bool() const {
-		return _r;
+		return _r && is_valid(_r);
 	}
 
 	void reset() {
@@ -89,7 +90,7 @@ public:
 	}
 
 private:
-	reader_i _r;
+	Reader *_r;
 	bytes _buf;
 	bytes_ref _data;
 	uchar prev_b;

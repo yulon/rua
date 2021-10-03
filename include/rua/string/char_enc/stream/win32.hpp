@@ -8,14 +8,25 @@
 
 namespace rua { namespace win32 {
 
-class loc_to_u8_reader : public reader {
+namespace _string_char_enc_stream {
+
+template <typename Reader>
+class loc_to_u8_reader : public read_util<loc_to_u8_reader<Reader>> {
 public:
 	loc_to_u8_reader() : _lr(nullptr), _data_sz(0) {}
 
-	loc_to_u8_reader(reader_i loc_reader) :
-		_lr(std::move(loc_reader)), _data_sz(0) {}
+	loc_to_u8_reader(Reader &loc_reader) : _lr(&loc_reader), _data_sz(0) {}
 
-	virtual ~loc_to_u8_reader() = default;
+	~loc_to_u8_reader() {
+		if (!_lr) {
+			return;
+		}
+		_lr = nullptr;
+	}
+
+	explicit operator bool() const {
+		return _lr && is_valid(*_lr);
+	}
 
 	virtual ptrdiff_t read(bytes_ref p) {
 		while (_cache.empty()) {
@@ -46,28 +57,52 @@ public:
 	}
 
 private:
-	reader_i _lr;
+	Reader *_lr;
 	std::string _cache;
 	bytes _buf;
 	ptrdiff_t _data_sz;
 };
 
-class u8_to_loc_writer : public writer {
+template <typename Reader>
+loc_to_u8_reader<Reader> make_loc_to_u8_reader(Reader &loc_reader) {
+	return loc_reader;
+}
+
+template <typename Writer>
+class u8_to_loc_writer : public write_util<u8_to_loc_writer<Writer>> {
 public:
 	constexpr u8_to_loc_writer() : _lw(nullptr) {}
 
-	u8_to_loc_writer(writer_i loc_writer) : _lw(std::move(loc_writer)) {}
+	u8_to_loc_writer(Writer &loc_writer) : _lw(&loc_writer) {}
 
-	virtual ~u8_to_loc_writer() = default;
+	~u8_to_loc_writer() {
+		if (!_lw) {
+			return;
+		}
+		_lw = nullptr;
+	}
 
-	virtual ptrdiff_t write(bytes_view p) {
+	explicit operator bool() const {
+		return _lw && is_valid(*_lw);
+	}
+
+	ptrdiff_t write(bytes_view p) {
 		_lw->write_all(as_bytes(u8_to_loc(as_string(p))));
 		return static_cast<ptrdiff_t>(p.size());
 	}
 
 private:
-	writer_i _lw;
+	Writer *_lw;
 };
+
+template <typename Writer>
+u8_to_loc_writer<Writer> make_u8_to_loc_writer(Writer &loc_writer) {
+	return loc_writer;
+}
+
+} // namespace _string_char_enc_stream
+
+using namespace _string_char_enc_stream;
 
 }} // namespace rua::win32
 

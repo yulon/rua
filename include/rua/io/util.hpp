@@ -1,28 +1,158 @@
 #ifndef _RUA_IO_UTIL_HPP
 #define _RUA_IO_UTIL_HPP
 
-#include "abstract.hpp"
-
 #include "../macros.hpp"
 #include "../sync/chan.hpp"
 #include "../thread.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
+#include <functional>
 #include <vector>
 
 namespace rua {
 
-class read_group : public reader {
+template <typename Reader>
+class read_util {
+public:
+	// ptrdiff_t read(bytes_ref);
+
+	ptrdiff_t read_full(bytes_ref p) {
+		auto psz = static_cast<ptrdiff_t>(p.size());
+		ptrdiff_t tsz = 0;
+		while (tsz < psz) {
+			auto sz = _this()->read(p(tsz));
+			if (sz <= 0) {
+				return tsz ? tsz : sz;
+			}
+			tsz += sz;
+		}
+		return tsz;
+	}
+
+	bytes read_all(size_t buf_grain_sz = 1024) {
+		bytes buf(buf_grain_sz);
+		size_t tsz = 0;
+		for (;;) {
+			auto sz = _this()->read(buf(tsz));
+			if (!sz) {
+				break;
+			}
+			tsz += static_cast<size_t>(sz);
+			if (buf.size() - tsz < buf_grain_sz / 2) {
+				buf.resize(buf.size() + buf_grain_sz);
+			}
+		}
+		buf.resize(tsz);
+		return buf;
+	}
+
+protected:
+	read_util() = default;
+
+private:
+	Reader *_this() {
+		return static_cast<Reader *>(this);
+	}
+};
+
+template <typename Writer>
+class write_util {
+public:
+	// ptrdiff_t write(bytes_view);
+
+	bool write_all(bytes_view p) {
+		size_t tsz = 0;
+		while (tsz < p.size()) {
+			auto sz = _this()->write(p(tsz));
+			if (!sz) {
+				return false;
+			}
+			tsz += static_cast<size_t>(sz);
+		}
+		return true;
+	}
+
+	template <typename Reader>
+	bool copy(Reader &&r, bytes_ref buf = nullptr) {
+		bytes inner_buf;
+		if (!buf) {
+			inner_buf.reset(1024);
+			buf = inner_buf;
+		}
+		for (;;) {
+			auto sz = std::forward<Reader>(r).read(buf);
+			if (sz <= 0) {
+				return true;
+			}
+			if (!_this()->write_all(buf(0, sz))) {
+				return false;
+			}
+		}
+		return false;
+	}
+
+protected:
+	write_util() = default;
+
+private:
+	Writer *_this() {
+		return static_cast<Writer *>(this);
+	}
+};
+
+template <typename ReadWriter>
+class read_write_util : public read_util<ReadWriter>,
+						public write_util<ReadWriter> {
+protected:
+	read_write_util() = default;
+};
+
+template <typename Seeker>
+class seek_util {
+public:
+	// size_t seek(size_t offset, uchar whence);
+
+	int64_t seek_to_begin(uint64_t offset = 0) {
+		return _this()->seek(offset, 0);
+	}
+
+	int64_t seek_to_current(int64_t offset) {
+		return _this()->seek(offset, 1);
+	}
+
+	int64_t seek_to_end(int64_t offset = 0) {
+		return _this()->seek(offset, 2);
+	}
+
+protected:
+	seek_util() = default;
+
+private:
+	Seeker *_this() {
+		return static_cast<Seeker *>(this);
+	}
+};
+
+template <typename ReadWriteSeeker>
+class read_write_seek_util : public read_util<ReadWriteSeeker>,
+							 public write_util<ReadWriteSeeker>,
+							 public seek_util<ReadWriteSeeker> {
+protected:
+	read_write_seek_util() = default;
+};
+
+class read_group : public read_util<read_group> {
 public:
 	constexpr read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
 
-	void add(reader_i r) {
+	template <typename Reader>
+	void add(Reader &r) {
 		++_c;
-		thread([this, r]() {
+		thread([this, &r]() {
 			bytes buf(_buf_sz.load());
 			for (;;) {
-				auto sz = r->read(buf);
+				auto sz = r.read(buf);
 				if (sz <= 0) {
 					_ch << nullptr;
 					return;
@@ -32,7 +162,7 @@ public:
 		});
 	}
 
-	virtual ptrdiff_t read(bytes_ref p) {
+	ptrdiff_t read(bytes_ref p) {
 		while (!_buf) {
 			_buf << _ch;
 			if (!_buf) {
@@ -53,25 +183,26 @@ private:
 	bytes _buf;
 };
 
-class write_group : public writer {
+class write_group : public write_util<write_group> {
 public:
 	write_group() = default;
 
-	write_group(std::initializer_list<writer_i> li) : _li(li) {}
-
-	void add(writer_i w) {
-		_li.emplace_back(std::move(w));
+	template <typename Writer>
+	void add(Writer &w) {
+		_wa_li.emplace_back([&w](bytes_view p) -> bool {
+			return is_valid(w) && w.write_all(p);
+		});
 	}
 
-	virtual ptrdiff_t write(bytes_view p) {
-		for (auto &w : _li) {
-			w->write_all(p);
+	ptrdiff_t write(bytes_view p) {
+		for (auto &wa : _wa_li) {
+			wa(p);
 		}
 		return static_cast<ptrdiff_t>(p.size());
 	}
 
 private:
-	std::vector<writer_i> _li;
+	std::vector<std::function<bool(bytes_view)>> _wa_li;
 };
 
 inline bool _is_stack_data(bytes_view data) {

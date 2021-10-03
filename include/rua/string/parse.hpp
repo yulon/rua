@@ -4,7 +4,6 @@
 #include "char_set.hpp"
 #include "view.hpp"
 
-#include "../io/abstract.hpp"
 #include "../span.hpp"
 #include "../types/util.hpp"
 

@@ -7,28 +7,32 @@
 
 namespace rua {
 
+template <typename Writer>
 class printer {
 public:
 	printer() {}
 
 	printer(std::nullptr_t) : printer() {}
 
-	explicit printer(writer_i w, const char *eol = eol::lf) :
-		_w(std::move(w)), _eol(eol) {}
+	explicit printer(Writer &w, const char *eol = eol::lf) :
+		_w(&w), _eol(eol) {}
 
 	~printer() {
 		if (!_w) {
 			return;
 		}
-		_w.reset();
+		_w = nullptr;
 	}
 
 	operator bool() const {
-		return _w;
+		return _w && is_valid(*_w);
 	}
 
 	template <typename... Args>
 	void print(Args &&...args) {
+		if (!*this) {
+			return;
+		}
 		str_join(_buf, {to_temp_string(args)...}, " ");
 		_w->write_all(as_bytes(_buf));
 		_buf.resize(0);
@@ -39,20 +43,25 @@ public:
 		print(std::forward<Args>(args)..., _eol);
 	}
 
-	void reset(writer_i w = nullptr) {
-		_w = w;
+	void reset(Writer &w = nullptr) {
+		_w = &w;
 	}
 
-	void reset(writer_i w, const char *eol) {
-		_w = w;
+	void reset(Writer &w, const char *eol) {
+		_w = &w;
 		_eol = eol;
 	}
 
 private:
-	writer_i _w;
+	Writer *_w;
 	const char *_eol;
 	std::string _buf;
 };
+
+template <typename Writer>
+printer<Writer> make_printer(Writer &w, const char *eol = eol::lf) {
+	return printer<Writer>(w, eol);
+}
 
 } // namespace rua
 

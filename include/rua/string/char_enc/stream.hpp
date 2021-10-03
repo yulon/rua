@@ -7,13 +7,12 @@
 
 namespace rua {
 
-using loc_to_u8_reader = win32::loc_to_u8_reader;
-using u8_to_loc_writer = win32::u8_to_loc_writer;
+using namespace win32::_string_char_enc_stream;
 
 } // namespace rua
 
-#define RUA_LOC_TO_U8_READER(reader) (::rua::loc_to_u8_reader(reader))
-#define RUA_U8_TO_LOC_WRITER(writer) (::rua::u8_to_loc_writer(writer))
+#define RUA_LOC_TO_U8_READER(reader) (::rua::make_loc_to_u8_reader(reader))
+#define RUA_U8_TO_LOC_WRITER(writer) (::rua::make_u8_to_loc_writer(writer))
 
 #else
 
@@ -21,8 +20,7 @@ using u8_to_loc_writer = win32::u8_to_loc_writer;
 
 namespace rua {
 
-using loc_to_u8_reader = uni::loc_to_u8_reader;
-using u8_to_loc_writer = uni::u8_to_loc_writer;
+using namespace uni::_string_char_enc_stream;
 
 } // namespace rua
 

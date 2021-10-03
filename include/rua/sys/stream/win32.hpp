@@ -1,7 +1,6 @@
 #ifndef _RUA_SYS_STREAM_WIN32_HPP
 #define _RUA_SYS_STREAM_WIN32_HPP
 
-#include "../../io/abstract.hpp"
 #include "../../io/util.hpp"
 #include "../../macros.hpp"
 #include "../../sched.hpp"
@@ -13,7 +12,7 @@
 
 namespace rua { namespace win32 {
 
-class sys_stream : public read_write_closer {
+class sys_stream : public read_write_util<sys_stream> {
 public:
 	using native_handle_t = HANDLE;
 
@@ -50,7 +49,7 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
-	virtual ~sys_stream() {
+	~sys_stream() {
 		close();
 	}
 
@@ -66,7 +65,7 @@ public:
 		return _h != INVALID_HANDLE_VALUE;
 	}
 
-	virtual ptrdiff_t read(bytes_ref p) {
+	ptrdiff_t read(bytes_ref p) {
 		assert(*this);
 
 		auto spdr = this_suspender();
@@ -83,7 +82,7 @@ public:
 		return await(std::move(spdr), _read, _h, p);
 	}
 
-	virtual ptrdiff_t write(bytes_view p) {
+	ptrdiff_t write(bytes_view p) {
 		assert(*this);
 
 		auto spdr = this_suspender();
@@ -100,7 +99,7 @@ public:
 		return _h && _nc;
 	}
 
-	virtual void close() {
+	void close() {
 		if (!*this) {
 			return;
 		}

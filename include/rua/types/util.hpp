@@ -1,6 +1,8 @@
 #ifndef _RUA_TYPES_UTIL_HPP
 #define _RUA_TYPES_UTIL_HPP
 
+#include "traits.hpp"
+
 #include "../macros.hpp"
 
 #include <cstddef>
@@ -191,6 +193,20 @@ template <size_t I>
 struct in_place_index_t {};
 
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+inline constexpr enable_if_t<std::is_convertible<T &&, bool>::value, bool>
+is_valid(T &&val) {
+	return static_cast<bool>(std::forward<T>(val));
+}
+
+template <typename T>
+inline constexpr enable_if_t<!std::is_convertible<T &&, bool>::value, bool>
+is_valid(T &&) {
+	return true;
+}
 
 } // namespace rua
 
