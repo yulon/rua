@@ -161,25 +161,25 @@ using enable_copy_move_like = enable_copy_move<
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-inline constexpr enable_if_t<std::is_convertible<T &&, bool>::value, bool>
+inline constexpr enable_if_t<std::is_constructible<bool, T &&>::value, bool>
 is_valid(T &&val) {
 	return static_cast<bool>(std::forward<T>(val));
 }
 
 template <typename T>
-inline constexpr enable_if_t<!std::is_convertible<T &&, bool>::value, bool>
+inline constexpr enable_if_t<!std::is_constructible<bool, T &&>::value, bool>
 is_valid(T &&) {
 	return true;
 }
 
 template <typename T>
-inline constexpr enable_if_t<std::is_convertible<T &&, bool>::value, bool>
+inline constexpr enable_if_t<std::is_constructible<bool, T &>::value, bool>
 is_valid(T *val) {
-	return val && static_cast<bool>(std::forward<T>(*val));
+	return val && static_cast<bool>(*val);
 }
 
 template <typename T>
-inline constexpr enable_if_t<!std::is_convertible<T &&, bool>::value, bool>
+inline constexpr enable_if_t<!std::is_constructible<bool, T &>::value, bool>
 is_valid(T *val) {
 	return val;
 }
