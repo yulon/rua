@@ -11,7 +11,7 @@ namespace rua { namespace uni {
 namespace _string_char_enc_stream {
 
 template <typename Reader>
-class loc_to_u8_reader : public read_util<loc_to_u8_reader> {
+class loc_to_u8_reader : public read_util<loc_to_u8_reader<Reader>> {
 public:
 	constexpr loc_to_u8_reader() : _lr(nullptr) {}
 
@@ -42,7 +42,7 @@ loc_to_u8_reader<Reader> make_loc_to_u8_reader(Reader &loc_reader) {
 }
 
 template <typename Writer>
-class u8_to_loc_writer : public write_util<u8_to_loc_writer> {
+class u8_to_loc_writer : public write_util<u8_to_loc_writer<Writer>> {
 public:
 	constexpr u8_to_loc_writer() : _lw(nullptr) {}
 
