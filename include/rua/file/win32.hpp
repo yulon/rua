@@ -174,7 +174,7 @@ private:
 
 using file_info = basic_file_info<BY_HANDLE_FILE_INFORMATION>;
 
-class file : public sys_stream {
+class file : public sys_stream, public seek_util<file> {
 public:
 	file() : sys_stream() {}
 
@@ -202,6 +202,16 @@ public:
 			return 0;
 		}
 		return static_cast<uint64_t>(sz.QuadPart);
+	}
+
+	int64_t seek(int64_t offset, uchar whence = 0) {
+		LARGE_INTEGER off_li, seeked_li;
+		off_li.QuadPart =
+			static_cast<decltype(LARGE_INTEGER::QuadPart)>(offset);
+		if (!SetFilePointerEx(native_handle(), off_li, &seeked_li, whence)) {
+			return -1;
+		}
+		return static_cast<int64_t>(seeked_li.QuadPart);
 	}
 
 	bytes read_all() {
