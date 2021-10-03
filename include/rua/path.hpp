@@ -24,7 +24,7 @@ public:
 		typename = enable_if_t<
 			(sizeof...(Parts) > 1) ||
 			!std::is_base_of<path_base, decay_t<front_t<Parts...>>>::value>>
-	path_base(Parts &&... parts) :
+	path_base(Parts &&...parts) :
 		_s(str_join(
 			_fix_parts({to_string(std::forward<Parts>(parts))...}),
 			Sep,
@@ -191,7 +191,25 @@ inline const std::string &to_tmp_string(const path_base<Path, Sep> &p) {
 		typename... Parts,                                                     \
 		typename = enable_if_t<                                                \
 			!std::is_base_of<Path, decay_t<front_t<Parts...>>>::value>>        \
-	Path(Parts &&... parts) : path_base(std::forward<Parts>(parts)...) {}
+	Path(Parts &&...parts) : path_base(std::forward<Parts>(parts)...) {}
+
+#define RUA_PATH_CTORS_2(Path, Sep)                                            \
+	Path() = default;                                                          \
+                                                                               \
+	template <                                                                 \
+		typename... Parts,                                                     \
+		typename = enable_if_t<                                                \
+			!std::is_base_of<Path, decay_t<front_t<Parts...>>>::value>>        \
+	Path(Parts &&...parts) :                                                   \
+		path_base<Path, Sep>(std::forward<Parts>(parts)...) {}
+
+template <char Sep = '/'>
+class basic_path : public path_base<basic_path<Sep>, Sep> {
+public:
+	RUA_PATH_CTORS_2(basic_path, Sep)
+};
+
+using path = basic_path<>;
 
 } // namespace rua
 
