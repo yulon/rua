@@ -176,6 +176,11 @@ public:
 		auto id = ::fork();
 		if (id) {
 			_file = "";
+
+			if (id < 0) {
+				return nullptr;
+			}
+
 			if (_stdout_w) {
 				_stdout_w->detach();
 				_stdout_w.reset();
@@ -188,9 +193,9 @@ public:
 				_stdin_r->detach();
 				_stdin_r.reset();
 			}
+
 			return process(id);
 		}
-		id = -1;
 
 		std::vector<char *> argv;
 		argv.emplace_back(&_file.str()[0]);
