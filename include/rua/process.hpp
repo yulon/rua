@@ -13,6 +13,8 @@ using pid_t = win32::pid_t;
 using namespace win32::_this_pid;
 using process = win32::process;
 using namespace win32::_this_process;
+using namespace win32::_make_process;
+using namespace win32::_find_process;
 using namespace win32::_process_privileges;
 
 } // namespace rua
@@ -27,6 +29,8 @@ using pid_t = posix::pid_t;
 using namespace posix::_this_pid;
 using process = posix::process;
 using namespace posix::_this_process;
+using namespace posix::_make_process;
+// using namespace posix::_find_process;
 
 } // namespace rua
 

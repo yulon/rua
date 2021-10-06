@@ -1,6 +1,8 @@
 #ifndef _RUA_PROCESS_POSIX_HPP
 #define _RUA_PROCESS_POSIX_HPP
 
+#include "base.hpp"
+
 #include "../file/posix.hpp"
 #include "../sched/await.hpp"
 #include "../stdio/posix.hpp"
@@ -37,58 +39,7 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	static process find(string_view name) {
-		return nullptr;
-	}
-
-	static process wait_for_found(string_view name, duration interval = 100) {
-		process p;
-		for (;;) {
-			p = find(name);
-			if (p) {
-				break;
-			}
-			rua::sleep(interval);
-		}
-		return p;
-	}
-
-	////////////////////////////////////////////////////////////////
-
 	constexpr process() : _id(-1) {}
-
-	explicit process(
-		file_path file,
-		std::vector<std::string> args = {},
-		file_path pwd = "",
-		bool lazy_start = false,
-		sys_stream stdout_w = out(),
-		sys_stream stderr_w = err(),
-		sys_stream stdin_r = in()) {
-
-		_id = ::fork();
-		if (_id) {
-			return;
-		}
-		_id = -1;
-
-		std::vector<char *> argv(2 + args.size());
-		argv[0] = &file.str()[0];
-		size_t i;
-		for (i = 0; i < args.size(); ++i) {
-			argv[i + 1] = &args[i][0];
-		}
-		argv[i + 1] = nullptr;
-
-		out() = std::move(stdout_w);
-		err() = std::move(stderr_w);
-		in() = std::move(stdin_r);
-
-		if (pwd.str().size()) {
-			::setenv("PWD", &pwd.str()[0], 1);
-		}
-		::exit(::execvp(file.str().data(), argv.data()));
-	}
 
 	constexpr explicit process(pid_t id) : _id(id) {}
 
@@ -195,6 +146,99 @@ inline process this_process() {
 } // namespace _this_process
 
 using namespace _this_process;
+
+using _process_make_info =
+	_baisc_process_make_info<process, file_path, sys_stream>;
+
+namespace _make_process {
+
+class process_maker
+	: public process_maker_base<process_maker, _process_make_info> {
+public:
+	process_maker() = default;
+
+	~process_maker() {
+		if (!_file) {
+			return;
+		}
+		start();
+	}
+
+	process start() {
+		if (!_file) {
+			return nullptr;
+		}
+
+		if (!_stderr_w && _stdout_w) {
+			_stderr_w = _stdout_w;
+		}
+
+		auto id = ::fork();
+		if (id) {
+			_file = "";
+			if (_stdout_w) {
+				_stdout_w->detach();
+				_stdout_w.reset();
+			}
+			if (_stderr_w) {
+				_stderr_w->detach();
+				_stderr_w.reset();
+			}
+			if (_stdin_r) {
+				_stdin_r->detach();
+				_stdin_r.reset();
+			}
+			return process(id);
+		}
+		id = -1;
+
+		std::vector<char *> argv;
+		argv.emplace_back(&_file.str()[0]);
+		for (auto &arg : _args) {
+			argv.emplace_back(&arg[0]);
+		}
+		argv.emplace_back(nullptr);
+
+		if (_stdout_w) {
+			out() = std::move(*_stdout_w);
+		}
+		if (_stderr_w) {
+			err() = std::move(*_stderr_w);
+		}
+		if (_stdin_r) {
+			in() = std::move(*_stdin_r);
+		}
+
+		if (_work_dir.str().size()) {
+			::setenv("PWD", &_work_dir.str()[0], 1);
+		}
+
+		process proc;
+		if (_on_start) {
+			proc = this_process();
+			_on_start(proc);
+		}
+
+		::exit(::execvp(_file.str().data(), argv.data()));
+		return nullptr;
+	}
+
+private:
+	std::list<std::string> _dlls;
+
+	process_maker(_process_make_info info) :
+		process_maker_base(std::move(info)) {}
+
+	friend process_maker make_process(file_path);
+};
+
+inline process_maker make_process(file_path file) {
+	return process_maker(_process_make_info(std::move(file)));
+}
+
+} // namespace _make_process
+
+using namespace _make_process;
 
 }} // namespace rua::posix
 

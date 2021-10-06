@@ -25,6 +25,8 @@ using stdin_stream = _basic_stdio_stream<STD_INPUT_HANDLE>;
 template <DWORD Id>
 class _basic_stdio_stream : public read_write_util<_basic_stdio_stream<Id>> {
 public:
+	using native_handle_t = HANDLE;
+
 	ptrdiff_t read(bytes_ref p) {
 		return sys_stream(GetStdHandle(Id), false).read(p);
 	}
@@ -33,12 +35,16 @@ public:
 		return sys_stream(GetStdHandle(Id), false).write(p);
 	}
 
-	operator bool() const {
+	native_handle_t native_handle() const {
 		return GetStdHandle(Id);
 	}
 
 	operator sys_stream() const {
 		return sys_stream(GetStdHandle(Id), false);
+	}
+
+	operator bool() const {
+		return GetStdHandle(Id);
 	}
 
 	_basic_stdio_stream &operator=(sys_stream s) {

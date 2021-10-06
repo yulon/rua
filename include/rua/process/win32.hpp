@@ -1,6 +1,8 @@
 #ifndef _RUA_PROCESS_WIN32_HPP
 #define _RUA_PROCESS_WIN32_HPP
 
+#include "base.hpp"
+
 #include "../any_word.hpp"
 #include "../bytes.hpp"
 #include "../dylib/win32.hpp"
@@ -12,6 +14,7 @@
 #include "../stdio/win32.hpp"
 #include "../string/char_enc/base/win32.hpp"
 #include "../string/char_set.hpp"
+#include "../string/join.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
 #include "../sys/info/win32.hpp"
@@ -50,124 +53,30 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
-class process_finder;
-
 class process {
 public:
 	using native_handle_t = HANDLE;
 
-	static inline process_finder find(string_view name);
-
-	static inline process_finder
-	wait_for_found(string_view name, duration interval = 50);
-
-	////////////////////////////////////////////////////////////////
-
-	template <RUA_STRING_RANGE(StrList)>
-	explicit process(
-		const file_path &file,
-		const StrList &args = {},
-		const file_path &wd = "",
-		bool lazy_start = false,
-		sys_stream stdout_w = out(),
-		sys_stream stderr_w = err(),
-		sys_stream stdin_r = in()) {
-
-		std::wstringstream cmd;
-		if (file.str().find(' ') == std::string::npos) {
-			cmd << u8_to_w(file.str());
-		} else {
-			cmd << L"\"" << u8_to_w(file.str()) << L"\"";
-		}
-		RUA_RANGE_FOR(string_view arg, args, {
-			if (arg.find(' ') == string_view::npos) {
-				cmd << L" " << u8_to_w(arg);
-			} else {
-				cmd << L" \"" << u8_to_w(arg) << L"\"";
-			}
-		})
-
-		STARTUPINFOW si;
-		memset(&si, 0, sizeof(si));
-		si.cb = sizeof(si);
-		si.wShowWindow = SW_HIDE;
-		si.dwFlags = STARTF_USESTDHANDLES;
-
-		if (stdout_w && !SetHandleInformation(
-							stdout_w.native_handle(),
-							HANDLE_FLAG_INHERIT,
-							HANDLE_FLAG_INHERIT)) {
-			_h = nullptr;
-			return;
-		}
-		si.hStdOutput = stdout_w.native_handle();
-
-		if (stderr_w && !SetHandleInformation(
-							stderr_w.native_handle(),
-							HANDLE_FLAG_INHERIT,
-							HANDLE_FLAG_INHERIT)) {
-			_h = nullptr;
-			return;
-		}
-		si.hStdError = stderr_w.native_handle();
-
-		if (stdin_r && !SetHandleInformation(
-						   stdin_r.native_handle(),
-						   HANDLE_FLAG_INHERIT,
-						   HANDLE_FLAG_INHERIT)) {
-			_h = nullptr;
-			return;
-		}
-		si.hStdInput = stdin_r.native_handle();
-
-		PROCESS_INFORMATION pi;
-		memset(&pi, 0, sizeof(pi));
-
-		if (!CreateProcessW(
-				nullptr,
-				const_cast<wchar_t *>(cmd.str().c_str()),
-				nullptr,
-				nullptr,
-				true,
-				lazy_start ? CREATE_SUSPENDED : 0,
-				nullptr,
-				wd ? u8_to_w(wd.str()).c_str() : nullptr,
-				&si,
-				&pi)) {
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			_h = nullptr;
-			return;
-		}
-
-		_h = pi.hProcess;
-
-		if (!lazy_start) {
-			CloseHandle(pi.hThread);
-			return;
-		}
-		_ext.reset(new _ext_t);
-		_ext->main_td = thread(pi.hThread);
-	}
-
 	explicit process(pid_t id) :
-		_h(id ? OpenProcess(_all_access(), false, id) : nullptr),
-		_ext(nullptr) {}
+		_h(id ? OpenProcess(_all_access(), false, id) : nullptr) {}
 
-	constexpr process(std::nullptr_t = nullptr) : _h(nullptr), _ext(nullptr) {}
+	constexpr process(std::nullptr_t = nullptr) : _h(nullptr) {}
 
 	template <
 		typename NativeHandle,
 		typename = enable_if_t<
 			std::is_same<NativeHandle, native_handle_t>::value &&
 			!is_null_pointer<NativeHandle>::value>>
-	explicit process(NativeHandle h) : _h(h), _ext(nullptr) {}
+	explicit process(NativeHandle h) : _h(h) {}
 
 	~process() {
 		reset();
 	}
 
-	process(process &&src) : _h(src._h), _ext(std::move(src._ext)) {
+	process(process &&src) :
+		_h(src._h),
+		_prev_get_cpu_usage_time(src._prev_get_cpu_usage_time),
+		_prev_used_cpu_time(src._prev_used_cpu_time) {
 		if (src) {
 			src._h = nullptr;
 		}
@@ -195,32 +104,10 @@ public:
 		return _h;
 	}
 
-	bool start() {
-		if (!_ext || !_ext->main_td) {
-			return true;
-		}
-		if (is_max(ResumeThread(_ext->main_td.native_handle()))) {
-			return false;
-		}
-		_ext->main_td.reset();
-		return true;
-	}
-
-	template <RUA_STRING_RANGE(StrList)>
-	bool start_with_load_dylibs(const StrList &dylib_names = {}) {
-		if (!_ext || !_ext->main_td || !_start_with_load_dlls(dylib_names) ||
-			is_max(ResumeThread(_ext->main_td.native_handle()))) {
-			return false;
-		}
-		_ext->main_td.reset();
-		return true;
-	}
-
 	int wait_for_exit() {
 		if (!_h) {
 			return -1;
 		}
-		start();
 		sys_wait(_h);
 		DWORD exit_code;
 		GetExitCodeProcess(_h, &exit_code);
@@ -264,7 +151,37 @@ public:
 
 		auto pid = id();
 		for (;;) {
-			auto &spi = si_data.as<SYSTEM_PROCESS_INFORMATION>();
+			struct system_process_information {
+				struct unicode_string {
+					USHORT Length;
+					USHORT MaximumLength;
+					PWSTR Buffer;
+				};
+				ULONG NextEntryOffset;
+				ULONG NumberOfThreads;
+				BYTE Reserved1[48];
+				unicode_string ImageName;
+				LONG BasePriority;
+				HANDLE UniqueProcessId;
+				PVOID Reserved2;
+				ULONG HandleCount;
+				ULONG SessionId;
+				PVOID Reserved3;
+				SIZE_T PeakVirtualSize;
+				SIZE_T VirtualSize;
+				ULONG Reserved4;
+				SIZE_T PeakWorkingSetSize;
+				SIZE_T WorkingSetSize;
+				PVOID Reserved5;
+				SIZE_T QuotaPagedPoolUsage;
+				PVOID Reserved6;
+				SIZE_T QuotaNonPagedPoolUsage;
+				SIZE_T PagefileUsage;
+				SIZE_T PeakPagefileUsage;
+				SIZE_T PrivatePageCount;
+				LARGE_INTEGER Reserved7[6];
+			};
+			auto &spi = si_data.as<system_process_information>();
 			if (static_cast<pid_t>(
 					reinterpret_cast<uintptr_t>(spi.UniqueProcessId)) != pid) {
 				if (!spi.NextEntryOffset) {
@@ -273,9 +190,24 @@ public:
 				si_data = si_data(spi.NextEntryOffset);
 				continue;
 			}
-			si_data = si_data(sizeof(SYSTEM_PROCESS_INFORMATION));
+			si_data = si_data(sizeof(system_process_information));
 			for (size_t i = 0; i < spi.NumberOfThreads; ++i) {
-				auto &sti = si_data.aligned_as<SYSTEM_THREAD_INFORMATION>(i);
+				struct system_thread_information {
+					struct client_id {
+						HANDLE UniqueProcess;
+						HANDLE UniqueThread;
+					};
+					LARGE_INTEGER Reserved1[3];
+					ULONG Reserved2;
+					PVOID StartAddress;
+					client_id ClientId;
+					LONG Priority;
+					LONG BasePriority;
+					ULONG Reserved3;
+					ULONG ThreadState;
+					ULONG WaitReason;
+				};
+				auto &sti = si_data.aligned_as<system_thread_information>(i);
 				if (sti.ThreadState != 5 || sti.WaitReason != 5) {
 					return false;
 				}
@@ -429,11 +361,7 @@ public:
 	}
 
 	float cpu_usage() {
-		if (!_ext) {
-			_ext.reset(new _ext_t);
-		}
-		return cpu_usage(
-			_ext->prev_get_cpu_usage_time, _ext->prev_used_cpu_time);
+		return cpu_usage(_prev_get_cpu_usage_time, _prev_used_cpu_time);
 	}
 
 	size_t memory_usage() const {
@@ -602,43 +530,22 @@ public:
 			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
-	native_module_handle_t load_dylib(std::string name) {
-		_load_dll_ctx ctx;
-		ctx.rtl_user_thread_start = nullptr;
-
-		auto data = _alloc_load_dll_data(
-			std::array<std::string, 1>{std::move(name)}, ctx);
-		if (!data) {
-			return nullptr;
-		}
-
-		return make_thread(_ext->dll_loader.data(), data.ctx.data())
-			.wait_for_exit();
-	}
+	native_module_handle_t load_dylib(std::string name);
 
 	void reset() {
 		if (!_h) {
 			return;
 		}
-		start();
 		_reset();
 	}
 
 private:
 	HANDLE _h;
-
-	struct _ext_t {
-		thread main_td;
-		memory_block dll_loader;
-		rua::time prev_get_cpu_usage_time, prev_used_cpu_time;
-	};
-
-	std::unique_ptr<_ext_t> _ext;
+	rua::time _prev_get_cpu_usage_time, _prev_used_cpu_time;
 
 	void _reset() {
 		assert(_h);
 
-		_ext.reset();
 		CloseHandle(_h);
 		_h = nullptr;
 	}
@@ -737,235 +644,389 @@ private:
 			_load_psapi(kernel32, psapi, "GetProcessMemoryInfo")};
 		return inst;
 	}
-
-	struct _UNICODE_STRING;
-
-	struct _load_dll_ctx {
-		HRESULT(WINAPI *rtl_init_unicode_string)(_UNICODE_STRING *, PCWSTR);
-		HRESULT(WINAPI *ldr_load_dll)
-		(PWCHAR, ULONG, _UNICODE_STRING *, HMODULE *);
-		const wchar_t *names;
-
-		void(RUA_REGPARM(3) * rtl_user_thread_start)(
-			PTHREAD_START_ROUTINE, PVOID);
-		PTHREAD_START_ROUTINE td_start;
-		PVOID td_param;
-	};
+};
 
 #ifdef RUA_PROTOTYPE
-	static HMODULE WINAPI _dll_loader(_load_dll_ctx *ctx) {
-		HMODULE h = nullptr;
+static HMODULE WINAPI _dll_loader(_load_dll_ctx *ctx) {
+	HMODULE h = nullptr;
 
-		auto names = ctx->names;
-		for (auto it = names;;) {
-			if (*it != 0) {
-				++it;
-				continue;
-			}
-			auto sz = it - names;
-			if (!sz) {
-				break;
-			}
-			_UNICODE_STRING us;
-			ctx->rtl_init_unicode_string(&us, names);
-			ctx->ldr_load_dll(nullptr, 0, &us, &h);
-			names = ++it;
+	auto names = ctx->names;
+	for (auto it = names;;) {
+		if (*it != 0) {
+			++it;
+			continue;
 		}
+		auto sz = it - names;
+		if (!sz) {
+			break;
+		}
+		_UNICODE_STRING us;
+		ctx->rtl_init_unicode_string(&us, names);
+		ctx->ldr_load_dll(nullptr, 0, &us, &h);
+		names = ++it;
+	}
 
-		if (ctx->rtl_user_thread_start) {
+	if (ctx->rtl_user_thread_start) {
 #if defined(_MSC_VER) && RUA_X86 == 32
-			auto rtl_user_thread_start = ctx->rtl_user_thread_start;
-			auto td_start = ctx->td_start;
-			auto td_param = ctx->td_param;
-			__asm {
+		auto rtl_user_thread_start = ctx->rtl_user_thread_start;
+		auto td_start = ctx->td_start;
+		auto td_param = ctx->td_param;
+		__asm {
 				mov eax, td_start
 				mov edx, td_param
 				call rtl_user_thread_start
-			}
+		}
 #else
-			ctx->rtl_user_thread_start(ctx->td_start, ctx->td_param);
+		ctx->rtl_user_thread_start(ctx->td_start, ctx->td_param);
 #endif
-		}
-
-		return h;
 	}
+
+	return h;
+}
 #endif
 
-	static bytes_view _dll_loader_code() {
-		// clang-format off
-		static const uchar code[] {
+// clang-format off
+RUA_MULTIDEF_VAR const uchar _proc_dll_loader_code[] {
 #if RUA_X86 == 64
-			0x55,                                                  // push   %rbp
-			0x57,                                                  // push   %rdi
-			0x56,                                                  // push   %rsi
-			0x53,                                                  // push   %rbx
-			0x48, 0x83, 0xec, 0x48,                                // sub    $0x48,%rsp
-			0x48, 0x8b, 0x51, 0x10,                                // mov    0x10(%rcx),%rdx
-			0x48, 0x8d, 0x5a, 0x02,                                // lea    0x2(%rdx),%rbx
-			0x48, 0x89, 0xce,                                      // mov    %rcx,%rsi
-			0x48, 0x8d, 0x7c, 0x24, 0x30,                          // lea    0x30(%rsp),%rdi
-			0x48, 0x8d, 0x6c, 0x24, 0x28,                          // lea    0x28(%rsp),%rbp
-			0x48, 0xc7, 0x44, 0x24, 0x28, 0x00, 0x00, 0x00, 0x00,  // movq   $0x0,0x28(%rsp)
-			0xeb, 0x21,                                            // jmp    49 <_dll_loader+0x49>
-			0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,        // nopl   0x0(%rax,%rax,1)
-			// 30:
-			0x48, 0x89, 0xf9,                                      // mov    %rdi,%rcx
-			0xff, 0x16,                                            // callq  *(%rsi)
-			0x31, 0xd2,                                            // xor    %edx,%edx
-			0x49, 0x89, 0xe9,                                      // mov    %rbp,%r9
-			0x49, 0x89, 0xf8,                                      // mov    %rdi,%r8
-			0x31, 0xc9,                                            // xor    %ecx,%ecx
-			0xff, 0x56, 0x08,                                      // callq  *0x8(%rsi)
-			0x48, 0x89, 0xda,                                      // mov    %rbx,%rdx
-			// 45:
-			0x48, 0x83, 0xc3, 0x02,                                // add    $0x2,%rbx
-			// 49:
-			0x66, 0x83, 0x7b, 0xfe, 0x00,                          // cmpw   $0x0,-0x2(%rbx)
-			0x75, 0xf5,                                            // jne    45 <_dll_loader+0x45>
-			0x48, 0x8d, 0x43, 0xfe,                                // lea    -0x2(%rbx),%rax
-			0x48, 0x39, 0xc2,                                      // cmp    %rax,%rdx
-			0x75, 0xd7,                                            // jne    30 <_dll_loader+0x30>
-			0x48, 0x8b, 0x46, 0x18,                                // mov    0x18(%rsi),%rax
-			0x48, 0x85, 0xc0,                                      // test   %rax,%rax
-			0x74, 0x0a,                                            // je     6c <_dll_loader+0x6c>
-			0x48, 0x8b, 0x56, 0x28,                                // mov    0x28(%rsi),%rdx
-			0x48, 0x8b, 0x4e, 0x20,                                // mov    0x20(%rsi),%rcx
-			0xff, 0xd0,                                            // callq  *%rax
-			// 6c:
-			0x48, 0x8b, 0x44, 0x24, 0x28,                          // mov    0x28(%rsp),%rax
-			0x48, 0x83, 0xc4, 0x48,                                // add    $0x48,%rsp
-			0x5b,                                                  // pop    %rbx
-			0x5e,                                                  // pop    %rsi
-			0x5f,                                                  // pop    %rdi
-			0x5d,                                                  // pop    %rbp
-			0xc3                                                   // retq
+	0x55,                                                  // push   %rbp
+	0x57,                                                  // push   %rdi
+	0x56,                                                  // push   %rsi
+	0x53,                                                  // push   %rbx
+	0x48, 0x83, 0xec, 0x48,                                // sub    $0x48,%rsp
+	0x48, 0x8b, 0x51, 0x10,                                // mov    0x10(%rcx),%rdx
+	0x48, 0x8d, 0x5a, 0x02,                                // lea    0x2(%rdx),%rbx
+	0x48, 0x89, 0xce,                                      // mov    %rcx,%rsi
+	0x48, 0x8d, 0x7c, 0x24, 0x30,                          // lea    0x30(%rsp),%rdi
+	0x48, 0x8d, 0x6c, 0x24, 0x28,                          // lea    0x28(%rsp),%rbp
+	0x48, 0xc7, 0x44, 0x24, 0x28, 0x00, 0x00, 0x00, 0x00,  // movq   $0x0,0x28(%rsp)
+	0xeb, 0x21,                                            // jmp    49 <_dll_loader+0x49>
+	0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,        // nopl   0x0(%rax,%rax,1)
+	// 30:
+	0x48, 0x89, 0xf9,                                      // mov    %rdi,%rcx
+	0xff, 0x16,                                            // callq  *(%rsi)
+	0x31, 0xd2,                                            // xor    %edx,%edx
+	0x49, 0x89, 0xe9,                                      // mov    %rbp,%r9
+	0x49, 0x89, 0xf8,                                      // mov    %rdi,%r8
+	0x31, 0xc9,                                            // xor    %ecx,%ecx
+	0xff, 0x56, 0x08,                                      // callq  *0x8(%rsi)
+	0x48, 0x89, 0xda,                                      // mov    %rbx,%rdx
+	// 45:
+	0x48, 0x83, 0xc3, 0x02,                                // add    $0x2,%rbx
+	// 49:
+	0x66, 0x83, 0x7b, 0xfe, 0x00,                          // cmpw   $0x0,-0x2(%rbx)
+	0x75, 0xf5,                                            // jne    45 <_dll_loader+0x45>
+	0x48, 0x8d, 0x43, 0xfe,                                // lea    -0x2(%rbx),%rax
+	0x48, 0x39, 0xc2,                                      // cmp    %rax,%rdx
+	0x75, 0xd7,                                            // jne    30 <_dll_loader+0x30>
+	0x48, 0x8b, 0x46, 0x18,                                // mov    0x18(%rsi),%rax
+	0x48, 0x85, 0xc0,                                      // test   %rax,%rax
+	0x74, 0x0a,                                            // je     6c <_dll_loader+0x6c>
+	0x48, 0x8b, 0x56, 0x28,                                // mov    0x28(%rsi),%rdx
+	0x48, 0x8b, 0x4e, 0x20,                                // mov    0x20(%rsi),%rcx
+	0xff, 0xd0,                                            // callq  *%rax
+	// 6c:
+	0x48, 0x8b, 0x44, 0x24, 0x28,                          // mov    0x28(%rsp),%rax
+	0x48, 0x83, 0xc4, 0x48,                                // add    $0x48,%rsp
+	0x5b,                                                  // pop    %rbx
+	0x5e,                                                  // pop    %rsi
+	0x5f,                                                  // pop    %rdi
+	0x5d,                                                  // pop    %rbp
+	0xc3                                                   // retq
 #elif RUA_X86 == 32
-			0x55,                                                        // push   %ebp
-			0x53,                                                        // push   %ebx
-			0x57,                                                        // push   %edi
-			0x56,                                                        // push   %esi
-			0x83, 0xec, 0x0c,                                            // sub    $0xc,%esp
-			0x8b, 0x74, 0x24, 0x20,                                      // mov    0x20(%esp),%esi
-			0xc7, 0x04, 0x24, 0x00, 0x00, 0x00, 0x00,                    // movl   $0x0,(%esp)
-			0x8d, 0x7c, 0x24, 0x04,                                      // lea    0x4(%esp),%edi
-			0x89, 0xe3,                                                  // mov    %esp,%ebx
-			0x8b, 0x46, 0x08,                                            // mov    0x8(%esi),%eax
-			0x89, 0xc5,                                                  // mov    %eax,%ebp
-			0x0f, 0x1f, 0x00,                                            // nopl   (%eax)
-			// 20:
-			0xb9, 0x02, 0x00, 0x00, 0x00,                                // mov    $0x2,%ecx
-			0x66, 0x2e, 0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,  // nopw   %cs:0x0(%eax,%eax,1)
-			0x90,                                                        // nop
-			// 30:
-			0x83, 0xc1, 0xfe,                                            // add    $0xfffffffe,%ecx
-			0x66, 0x83, 0x7d, 0x00, 0x00,                                // cmpw   $0x0,0x0(%ebp)
-			0x8d, 0x6d, 0x02,                                            // lea    0x2(%ebp),%ebp
-			0x75, 0xf3,                                                  // jne    30 <_dll_loader@4+0x30>
-			0x85, 0xc9,                                                  // test   %ecx,%ecx
-			0x74, 0x11,                                                  // je     52 <_dll_loader@4+0x52>
-			0x50,                                                        // push   %eax
-			0x57,                                                        // push   %edi
-			0xff, 0x16,                                                  // call   *(%esi)
-			0x53,                                                        // push   %ebx
-			0x57,                                                        // push   %edi
-			0x6a, 0x00,                                                  // push   $0x0
-			0x6a, 0x00,                                                  // push   $0x0
-			0xff, 0x56, 0x04,                                            // call   *0x4(%esi)
-			0x89, 0xe8,                                                  // mov    %ebp,%eax
-			0xeb, 0xce,                                                  // jmp    20 <_dll_loader@4+0x20>
-			// 52:
-			0x8b, 0x4e, 0x0c,                                            // mov    0xc(%esi),%ecx
-			0x85, 0xc9,                                                  // test   %ecx,%ecx
-			0x74, 0x08,                                                  // je     61 <_dll_loader@4+0x61>
-			0x8b, 0x46, 0x10,                                            // mov    0x10(%esi),%eax
-			0x8b, 0x56, 0x14,                                            // mov    0x14(%esi),%edx
-			0xff, 0xd1,                                                  // call   *%ecx
-			// 61:
-			0x8b, 0x04, 0x24,                                            // mov    (%esp),%eax
-			0x83, 0xc4, 0x0c,                                            // add    $0xc,%esp
-			0x5e,                                                        // pop    %esi
-			0x5f,                                                        // pop    %edi
-			0x5b,                                                        // pop    %ebx
-			0x5d,                                                        // pop    %ebp
-			0xc2, 0x04, 0x00                                             // ret    $0x4
+	0x55,                                                        // push   %ebp
+	0x53,                                                        // push   %ebx
+	0x57,                                                        // push   %edi
+	0x56,                                                        // push   %esi
+	0x83, 0xec, 0x0c,                                            // sub    $0xc,%esp
+	0x8b, 0x74, 0x24, 0x20,                                      // mov    0x20(%esp),%esi
+	0xc7, 0x04, 0x24, 0x00, 0x00, 0x00, 0x00,                    // movl   $0x0,(%esp)
+	0x8d, 0x7c, 0x24, 0x04,                                      // lea    0x4(%esp),%edi
+	0x89, 0xe3,                                                  // mov    %esp,%ebx
+	0x8b, 0x46, 0x08,                                            // mov    0x8(%esi),%eax
+	0x89, 0xc5,                                                  // mov    %eax,%ebp
+	0x0f, 0x1f, 0x00,                                            // nopl   (%eax)
+	// 20:
+	0xb9, 0x02, 0x00, 0x00, 0x00,                                // mov    $0x2,%ecx
+	0x66, 0x2e, 0x0f, 0x1f, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,  // nopw   %cs:0x0(%eax,%eax,1)
+	0x90,                                                        // nop
+	// 30:
+	0x83, 0xc1, 0xfe,                                            // add    $0xfffffffe,%ecx
+	0x66, 0x83, 0x7d, 0x00, 0x00,                                // cmpw   $0x0,0x0(%ebp)
+	0x8d, 0x6d, 0x02,                                            // lea    0x2(%ebp),%ebp
+	0x75, 0xf3,                                                  // jne    30 <_dll_loader@4+0x30>
+	0x85, 0xc9,                                                  // test   %ecx,%ecx
+	0x74, 0x11,                                                  // je     52 <_dll_loader@4+0x52>
+	0x50,                                                        // push   %eax
+	0x57,                                                        // push   %edi
+	0xff, 0x16,                                                  // call   *(%esi)
+	0x53,                                                        // push   %ebx
+	0x57,                                                        // push   %edi
+	0x6a, 0x00,                                                  // push   $0x0
+	0x6a, 0x00,                                                  // push   $0x0
+	0xff, 0x56, 0x04,                                            // call   *0x4(%esi)
+	0x89, 0xe8,                                                  // mov    %ebp,%eax
+	0xeb, 0xce,                                                  // jmp    20 <_dll_loader@4+0x20>
+	// 52:
+	0x8b, 0x4e, 0x0c,                                            // mov    0xc(%esi),%ecx
+	0x85, 0xc9,                                                  // test   %ecx,%ecx
+	0x74, 0x08,                                                  // je     61 <_dll_loader@4+0x61>
+	0x8b, 0x46, 0x10,                                            // mov    0x10(%esi),%eax
+	0x8b, 0x56, 0x14,                                            // mov    0x14(%esi),%edx
+	0xff, 0xd1,                                                  // call   *%ecx
+	// 61:
+	0x8b, 0x04, 0x24,                                            // mov    (%esp),%eax
+	0x83, 0xc4, 0x0c,                                            // add    $0xc,%esp
+	0x5e,                                                        // pop    %esi
+	0x5f,                                                        // pop    %edi
+	0x5b,                                                        // pop    %ebx
+	0x5d,                                                        // pop    %ebp
+	0xc2, 0x04, 0x00                                             // ret    $0x4
 #endif
-		};
-		// clang-format on
-		return bytes_view(code);
+};
+// clang-format on
+
+struct _proc_load_dll_ctx {
+	struct unicode_string;
+
+	HRESULT(WINAPI *rtl_init_unicode_string)(unicode_string *, PCWSTR);
+	HRESULT(WINAPI *ldr_load_dll)
+	(PWCHAR, ULONG, unicode_string *, HMODULE *);
+	const wchar_t *names;
+
+	void(RUA_REGPARM(3) * rtl_user_thread_start)(PTHREAD_START_ROUTINE, PVOID);
+	PTHREAD_START_ROUTINE td_start;
+	PVOID td_param;
+};
+
+struct _proc_load_dll_data {
+	process::memory_block loader, names, ctx;
+
+	operator bool() const {
+		return loader && names && ctx;
 	}
+};
 
-	bool _alloc_dll_loader() {
-		if (!_ext) {
-			_ext.reset(new _ext_t);
-		}
-		if (_ext->dll_loader) {
-			return true;
-		}
-		_ext->dll_loader = memory_alloc(_dll_loader_code(), true);
-		return _ext->dll_loader;
-	}
+template <RUA_STRING_RANGE(StrList)>
+_proc_load_dll_data _make_proc_load_dll_data(
+	process &proc, const StrList &names, _proc_load_dll_ctx &ctx) {
+	_proc_load_dll_data data;
 
-	struct _load_dll_data {
-		memory_block names, ctx;
-
-		operator bool() const {
-			return names && ctx;
-		}
-	};
-
-	template <RUA_STRING_RANGE(StrList)>
-	_load_dll_data
-	_alloc_load_dll_data(const StrList &names, _load_dll_ctx &ctx) {
-		_load_dll_data data;
-
-		if (!_alloc_dll_loader()) {
-			return data;
-		}
-
-		bytes names_buf;
-		for (auto &name : names) {
-			names_buf += as_bytes(u8_to_w(name));
-			names_buf += as_bytes(L'\0');
-		}
-		names_buf += as_bytes(L'\0');
-
-		data.names = memory_alloc(names_buf);
-		if (!data.names) {
-			return data;
-		}
-
-		ctx.names = data.names.data();
-
-		static auto ntdll = dylib::from_loaded("ntdll.dll");
-		static auto rtl_init_unicode_string = ntdll["RtlInitUnicodeString"];
-		static auto ldr_load_dll = ntdll["LdrLoadDll"];
-
-		ctx.rtl_init_unicode_string = rtl_init_unicode_string;
-		ctx.ldr_load_dll = ldr_load_dll;
-
-		data.ctx = memory_alloc(as_bytes(ctx));
-		if (!data.ctx) {
-			return data;
-		}
-
+	data.loader = proc.memory_alloc(_proc_dll_loader_code, true);
+	if (!data.loader) {
 		return data;
 	}
 
-	template <RUA_STRING_RANGE(StrList)>
-	bool _start_with_load_dlls(const StrList &dll_names) {
-		assert(_ext);
+	bytes names_buf;
+	for (auto &name : names) {
+		names_buf += as_bytes(u8_to_w(name));
+		names_buf += as_bytes(L'\0');
+	}
+	names_buf += as_bytes(L'\0');
 
-		if (range_begin(dll_names) == range_end(dll_names)) {
-			return true;
+	data.names = proc.memory_alloc(names_buf);
+	if (!data.names) {
+		return data;
+	}
+
+	ctx.names = data.names.data();
+
+	static auto ntdll = dylib::from_loaded("ntdll.dll");
+	static auto rtl_init_unicode_string = ntdll["RtlInitUnicodeString"];
+	static auto ldr_load_dll = ntdll["LdrLoadDll"];
+
+	ctx.rtl_init_unicode_string = rtl_init_unicode_string;
+	ctx.ldr_load_dll = ldr_load_dll;
+
+	data.ctx = proc.memory_alloc(as_bytes(ctx));
+	if (!data.ctx) {
+		return data;
+	}
+
+	return data;
+}
+
+process::native_module_handle_t process::load_dylib(std::string name) {
+	_proc_load_dll_ctx ctx;
+	ctx.rtl_user_thread_start = nullptr;
+
+	auto data = _make_proc_load_dll_data(
+		*this, std::array<std::string, 1>{std::move(name)}, ctx);
+	if (!data) {
+		return nullptr;
+	}
+
+	return make_thread(data.loader.data(), data.ctx.data()).wait_for_exit();
+}
+
+namespace _this_process {
+
+inline process this_process() {
+	return process(GetCurrentProcess());
+}
+
+} // namespace _this_process
+
+using namespace _this_process;
+
+using _process_make_info =
+	_baisc_process_make_info<process, file_path, sys_stream>;
+
+namespace _make_process {
+
+class process_maker
+	: public process_maker_base<process_maker, _process_make_info> {
+public:
+	process_maker() = default;
+
+	~process_maker() {
+		if (!_file) {
+			return;
+		}
+		start();
+	}
+
+	process start() {
+		if (!_file) {
+			return nullptr;
+		}
+
+		std::wstringstream cmd;
+		if (_file.str().find(' ') == std::string::npos) {
+			cmd << u8_to_w(_file.str());
+		} else {
+			cmd << L"\"" << u8_to_w(_file.str()) << L"\"";
+		}
+		for (auto &arg : _args) {
+			if (arg.find(' ') == string_view::npos) {
+				cmd << L" " << u8_to_w(arg);
+			} else {
+				cmd << L" \"" << u8_to_w(arg) << L"\"";
+			}
+		}
+		_file = "";
+
+		STARTUPINFOW si;
+		memset(&si, 0, sizeof(si));
+		si.cb = sizeof(si);
+
+		if (_stdout_w || _stderr_w || _stdin_r) {
+			si.dwFlags |= STARTF_USESTDHANDLES;
+
+			if (_stdout_w) {
+				if (*_stdout_w && !SetHandleInformation(
+									  _stdout_w->native_handle(),
+									  HANDLE_FLAG_INHERIT,
+									  HANDLE_FLAG_INHERIT)) {
+					_stdout_w->close();
+				}
+				si.hStdOutput = _stdout_w->native_handle();
+			} else {
+				si.hStdOutput = out().native_handle();
+			}
+
+			if (_stderr_w) {
+				if (*_stderr_w && !SetHandleInformation(
+									  _stderr_w->native_handle(),
+									  HANDLE_FLAG_INHERIT,
+									  HANDLE_FLAG_INHERIT)) {
+					_stderr_w->close();
+				}
+				si.hStdError = _stderr_w->native_handle();
+			} else if (_stdout_w) {
+				si.hStdError = si.hStdOutput;
+			} else {
+				si.hStdError = err().native_handle();
+			}
+
+			if (_stdin_r) {
+				if (*_stdin_r && !SetHandleInformation(
+									 _stdin_r->native_handle(),
+									 HANDLE_FLAG_INHERIT,
+									 HANDLE_FLAG_INHERIT)) {
+					_stdin_r->close();
+				}
+				si.hStdInput = _stdin_r->native_handle();
+			} else {
+				si.hStdInput = in().native_handle();
+			}
+		}
+
+		if (_hide) {
+			si.dwFlags |= STARTF_USESHOWWINDOW;
+			si.wShowWindow = SW_HIDE;
+		}
+
+		PROCESS_INFORMATION pi;
+		memset(&pi, 0, sizeof(pi));
+
+		auto is_suspended = _on_start || _dlls.size();
+
+		if (!CreateProcessW(
+				nullptr,
+				const_cast<wchar_t *>(cmd.str().c_str()),
+				nullptr,
+				nullptr,
+				true,
+				is_suspended ? CREATE_SUSPENDED : 0,
+				nullptr,
+				_work_dir ? rua::u8_to_w(_work_dir.str()).c_str() : nullptr,
+				&si,
+				&pi)) {
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			return nullptr;
+		}
+
+		if (_stdout_w) {
+			_stdout_w.reset();
+		}
+		if (_stderr_w) {
+			_stderr_w.reset();
+		}
+		if (_stdin_r) {
+			_stdin_r.reset();
+		}
+
+		process proc(pi.hProcess);
+
+		if (!is_suspended) {
+			CloseHandle(pi.hThread);
+			return proc;
+		}
+
+		if (_on_start) {
+			_on_start(proc);
+		}
+
+		_start_with_load_dlls(proc, pi.hThread);
+
+		ResumeThread(pi.hThread);
+		CloseHandle(pi.hThread);
+		return proc;
+	}
+
+	void load_dylib(std::string name) {
+		this->_dlls.push_back(std::move(name));
+	}
+
+private:
+	std::list<std::string> _dlls;
+
+	process_maker(_process_make_info info) :
+		process_maker_base(std::move(info)) {}
+
+	bool _start_with_load_dlls(process &proc, HANDLE main_td_h) {
+		if (!_dlls.size()) {
+			return false;
 		}
 
 		CONTEXT main_td_ctx;
 		main_td_ctx.ContextFlags = CONTEXT_FULL;
-		if (!GetThreadContext(_ext->main_td.native_handle(), &main_td_ctx)) {
+		if (!GetThreadContext(main_td_h, &main_td_ctx)) {
 			return false;
 		}
 
-		_load_dll_ctx ctx;
+		_proc_load_dll_ctx ctx;
 
 #if RUA_X86 == 64
 		ctx.rtl_user_thread_start = generic_ptr(main_td_ctx.Rip);
@@ -977,36 +1038,48 @@ private:
 		ctx.td_param = generic_ptr(main_td_ctx.Edx);
 #endif
 
-		auto data = _alloc_load_dll_data(dll_names, ctx);
+		auto data = _make_proc_load_dll_data(proc, _dlls, ctx);
 		if (!data) {
 			return false;
 		}
 
 #if RUA_X86 == 64
-		main_td_ctx.Rip = _ext->dll_loader.data().uintptr();
+		main_td_ctx.Rip = data.loader.data().uintptr();
 		main_td_ctx.Rcx = data.ctx.data().uintptr();
 #elif RUA_X86 == 32
-		main_td_ctx.Eip = _ext->dll_loader.data().uintptr();
+		main_td_ctx.Eip = data.loader.data().uintptr();
 		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
-		auto stk =
-			memory_ref(generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
+		auto stk = proc.memory_ref(
+			generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
 		if (stk.write_at(
 				sizeof(uintptr_t), as_bytes(data.ctx.data().uintptr())) <= 0) {
 			return false;
 		}
 #endif
 
-		if (!SetThreadContext(_ext->main_td.native_handle(), &main_td_ctx)) {
+		if (!SetThreadContext(main_td_h, &main_td_ctx)) {
 			return false;
 		}
 
+		data.loader.detach();
 		data.ctx.detach();
 		data.names.detach();
-		_ext->dll_loader.detach();
 
 		return true;
 	}
+
+	friend process_maker make_process(file_path);
 };
+
+inline process_maker make_process(file_path file) {
+	return process_maker(_process_make_info(std::move(file)));
+}
+
+} // namespace _make_process
+
+using namespace _make_process;
+
+namespace _find_process {
 
 class process_finder : private wandering_iterator {
 public:
@@ -1054,11 +1127,6 @@ private:
 	HANDLE _snapshot;
 	PROCESSENTRY32W _entry;
 
-	void _reset() {
-		CloseHandle(_snapshot);
-		_snapshot = INVALID_HANDLE_VALUE;
-	}
-
 	process_finder(string_view name) {
 		_name = u8_to_w(name);
 
@@ -1083,18 +1151,22 @@ private:
 		_reset();
 	}
 
-	friend process;
+	void _reset() {
+		CloseHandle(_snapshot);
+		_snapshot = INVALID_HANDLE_VALUE;
+	}
+
+	friend process_finder find_process(string_view);
 };
 
-inline process_finder process::find(string_view name) {
+inline process_finder find_process(string_view name) {
 	return process_finder(name);
 }
 
-inline process_finder
-process::wait_for_found(string_view name, duration interval) {
+inline process_finder found_process(string_view name, duration interval) {
 	process_finder pf;
 	for (;;) {
-		pf = find(name);
+		pf = find_process(name);
 		if (pf) {
 			break;
 		}
@@ -1103,15 +1175,9 @@ process::wait_for_found(string_view name, duration interval) {
 	return pf;
 }
 
-namespace _this_process {
+} // namespace _find_process
 
-inline process this_process() {
-	return process(GetCurrentProcess());
-}
-
-} // namespace _this_process
-
-using namespace _this_process;
+using namespace _find_process;
 
 namespace _process_privileges {
 

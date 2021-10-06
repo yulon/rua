@@ -28,7 +28,7 @@ public:
 	}
 
 private:
-	constexpr _stdio_stream(int fd) : sys_stream(fd) {}
+	constexpr _stdio_stream(int fd) : sys_stream(fd, false) {}
 	_stdio_stream(const _stdio_stream &) = delete;
 	_stdio_stream(_stdio_stream &&) = delete;
 
