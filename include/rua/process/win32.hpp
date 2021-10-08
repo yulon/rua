@@ -33,7 +33,6 @@
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
-#include <list>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -57,17 +56,16 @@ class process {
 public:
 	using native_handle_t = HANDLE;
 
-	explicit process(pid_t id) :
-		_h(id ? OpenProcess(_all_access(), false, id) : nullptr) {}
+	template <
+		typename Pid,
+		typename = enable_if_t<std::is_integral<Pid>::value>>
+	explicit process(Pid id) :
+		_h(id ? OpenProcess(_all_access(), false, static_cast<pid_t>(id))
+			  : nullptr) {}
 
 	constexpr process(std::nullptr_t = nullptr) : _h(nullptr) {}
 
-	template <
-		typename NativeHandle,
-		typename = enable_if_t<
-			std::is_same<NativeHandle, native_handle_t>::value &&
-			!is_null_pointer<NativeHandle>::value>>
-	explicit process(NativeHandle h) : _h(h) {}
+	explicit process(native_handle_t h) : _h(h) {}
 
 	~process() {
 		reset();
@@ -879,79 +877,79 @@ public:
 	process_maker() = default;
 
 	~process_maker() {
-		if (!_file) {
+		if (!_info.file) {
 			return;
 		}
 		start();
 	}
 
 	process start() {
-		if (!_file) {
+		if (!_info.file) {
 			return nullptr;
 		}
 
 		std::wstringstream cmd;
-		if (_file.str().find(' ') == std::string::npos) {
-			cmd << u8_to_w(_file.str());
+		if (_info.file.str().find(' ') == std::string::npos) {
+			cmd << u8_to_w(_info.file.str());
 		} else {
-			cmd << L"\"" << u8_to_w(_file.str()) << L"\"";
+			cmd << L"\"" << u8_to_w(_info.file.str()) << L"\"";
 		}
-		for (auto &arg : _args) {
+		for (auto &arg : _info.args) {
 			if (arg.find(' ') == string_view::npos) {
 				cmd << L" " << u8_to_w(arg);
 			} else {
 				cmd << L" \"" << u8_to_w(arg) << L"\"";
 			}
 		}
-		_file = "";
+		_info.file = "";
 
 		STARTUPINFOW si;
 		memset(&si, 0, sizeof(si));
 		si.cb = sizeof(si);
 
-		if (_stdout_w || _stderr_w || _stdin_r) {
+		if (_info.stdout_w || _info.stderr_w || _info.stdin_r) {
 			si.dwFlags |= STARTF_USESTDHANDLES;
 
-			if (_stdout_w) {
-				if (*_stdout_w && !SetHandleInformation(
-									  _stdout_w->native_handle(),
-									  HANDLE_FLAG_INHERIT,
-									  HANDLE_FLAG_INHERIT)) {
-					_stdout_w->close();
+			if (_info.stdout_w) {
+				if (*_info.stdout_w && !SetHandleInformation(
+										   _info.stdout_w->native_handle(),
+										   HANDLE_FLAG_INHERIT,
+										   HANDLE_FLAG_INHERIT)) {
+					_info.stdout_w->close();
 				}
-				si.hStdOutput = _stdout_w->native_handle();
+				si.hStdOutput = _info.stdout_w->native_handle();
 			} else {
 				si.hStdOutput = out().native_handle();
 			}
 
-			if (_stderr_w) {
-				if (*_stderr_w && !SetHandleInformation(
-									  _stderr_w->native_handle(),
-									  HANDLE_FLAG_INHERIT,
-									  HANDLE_FLAG_INHERIT)) {
-					_stderr_w->close();
+			if (_info.stderr_w) {
+				if (*_info.stderr_w && !SetHandleInformation(
+										   _info.stderr_w->native_handle(),
+										   HANDLE_FLAG_INHERIT,
+										   HANDLE_FLAG_INHERIT)) {
+					_info.stderr_w->close();
 				}
-				si.hStdError = _stderr_w->native_handle();
-			} else if (_stdout_w) {
+				si.hStdError = _info.stderr_w->native_handle();
+			} else if (_info.stdout_w) {
 				si.hStdError = si.hStdOutput;
 			} else {
 				si.hStdError = err().native_handle();
 			}
 
-			if (_stdin_r) {
-				if (*_stdin_r && !SetHandleInformation(
-									 _stdin_r->native_handle(),
-									 HANDLE_FLAG_INHERIT,
-									 HANDLE_FLAG_INHERIT)) {
-					_stdin_r->close();
+			if (_info.stdin_r) {
+				if (*_info.stdin_r && !SetHandleInformation(
+										  _info.stdin_r->native_handle(),
+										  HANDLE_FLAG_INHERIT,
+										  HANDLE_FLAG_INHERIT)) {
+					_info.stdin_r->close();
 				}
-				si.hStdInput = _stdin_r->native_handle();
+				si.hStdInput = _info.stdin_r->native_handle();
 			} else {
 				si.hStdInput = in().native_handle();
 			}
 		}
 
-		if (_hide) {
+		if (_info.hide) {
 			si.dwFlags |= STARTF_USESHOWWINDOW;
 			si.wShowWindow = SW_HIDE;
 		}
@@ -959,7 +957,7 @@ public:
 		PROCESS_INFORMATION pi;
 		memset(&pi, 0, sizeof(pi));
 
-		auto is_suspended = _on_start || _dlls.size();
+		auto is_suspended = _info.on_start || _info.dylibs.size();
 
 		if (!CreateProcessW(
 				nullptr,
@@ -969,7 +967,8 @@ public:
 				true,
 				is_suspended ? CREATE_SUSPENDED : 0,
 				nullptr,
-				_work_dir ? rua::u8_to_w(_work_dir.str()).c_str() : nullptr,
+				_info.work_dir ? rua::u8_to_w(_info.work_dir.str()).c_str()
+							   : nullptr,
 				&si,
 				&pi)) {
 			CloseHandle(pi.hProcess);
@@ -977,14 +976,14 @@ public:
 			return nullptr;
 		}
 
-		if (_stdout_w) {
-			_stdout_w.reset();
+		if (_info.stdout_w) {
+			_info.stdout_w.reset();
 		}
-		if (_stderr_w) {
-			_stderr_w.reset();
+		if (_info.stderr_w) {
+			_info.stderr_w.reset();
 		}
-		if (_stdin_r) {
-			_stdin_r.reset();
+		if (_info.stdin_r) {
+			_info.stdin_r.reset();
 		}
 
 		process proc(pi.hProcess);
@@ -994,29 +993,23 @@ public:
 			return proc;
 		}
 
-		if (_on_start) {
-			_on_start(proc);
-		}
-
 		_start_with_load_dlls(proc, pi.hThread);
+
+		if (_info.on_start) {
+			_info.on_start(proc);
+		}
 
 		ResumeThread(pi.hThread);
 		CloseHandle(pi.hThread);
 		return proc;
 	}
 
-	void load_dylib(std::string name) {
-		this->_dlls.push_back(std::move(name));
-	}
-
 private:
-	std::list<std::string> _dlls;
-
 	process_maker(_process_make_info info) :
 		process_maker_base(std::move(info)) {}
 
 	bool _start_with_load_dlls(process &proc, HANDLE main_td_h) {
-		if (!_dlls.size()) {
+		if (!_info.dylibs.size()) {
 			return false;
 		}
 
@@ -1038,7 +1031,7 @@ private:
 		ctx.td_param = generic_ptr(main_td_ctx.Edx);
 #endif
 
-		auto data = _make_proc_load_dll_data(proc, _dlls, ctx);
+		auto data = _make_proc_load_dll_data(proc, _info.dylibs, ctx);
 		if (!data) {
 			return false;
 		}

@@ -16,13 +16,11 @@ class dylib {
 public:
 	using native_handle_t = HMODULE;
 
-	explicit dylib(string_view name) {
-		_h = LoadLibraryW(u8_to_w(name).c_str());
-		_need_unload = _h;
-	}
+	explicit dylib(string_view name, bool need_unload = true) :
+		dylib(LoadLibraryW(u8_to_w(name).c_str()), need_unload) {}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
-		_h(h), _need_unload(need_unload) {}
+		_h(h), _need_unload(need_unload && h) {}
 
 	static dylib from_loaded(string_view name) {
 		return dylib(GetModuleHandleW(u8_to_w(name).c_str()), false);

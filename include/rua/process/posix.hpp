@@ -3,6 +3,7 @@
 
 #include "base.hpp"
 
+#include "../dylib/posix.hpp"
 #include "../file/posix.hpp"
 #include "../sched/await.hpp"
 #include "../stdio/posix.hpp"
@@ -39,14 +40,12 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr process() : _id(-1) {}
-
-	constexpr explicit process(pid_t id) : _id(id) {}
-
 	template <
-		typename NullPtr,
-		typename = enable_if_t<is_null_pointer<NullPtr>::value>>
-	constexpr process(NullPtr) : process() {}
+		typename Pid,
+		typename = enable_if_t<std::is_integral<Pid>::value>>
+	constexpr explicit process(Pid id) : _id(static_cast<pid_t>(id)) {}
+
+	constexpr process(std::nullptr_t = nullptr) : _id(-1) {}
 
 	~process() {
 		reset();
@@ -158,79 +157,81 @@ public:
 	process_maker() = default;
 
 	~process_maker() {
-		if (!_file) {
+		if (!_info.file) {
 			return;
 		}
 		start();
 	}
 
 	process start() {
-		if (!_file) {
+		if (!_info.file) {
 			return nullptr;
 		}
 
-		if (!_stderr_w && _stdout_w) {
-			_stderr_w = _stdout_w;
+		if (!_info.stderr_w && _info.stdout_w) {
+			_info.stderr_w = _info.stdout_w;
 		}
 
 		auto id = ::fork();
 		if (id) {
-			_file = "";
+			_info.file = "";
 
 			if (id < 0) {
 				return nullptr;
 			}
 
-			if (_stdout_w) {
-				_stdout_w->detach();
-				_stdout_w.reset();
+			if (_info.stdout_w) {
+				_info.stdout_w->detach();
+				_info.stdout_w.reset();
 			}
-			if (_stderr_w) {
-				_stderr_w->detach();
-				_stderr_w.reset();
+			if (_info.stderr_w) {
+				_info.stderr_w->detach();
+				_info.stderr_w.reset();
 			}
-			if (_stdin_r) {
-				_stdin_r->detach();
-				_stdin_r.reset();
+			if (_info.stdin_r) {
+				_info.stdin_r->detach();
+				_info.stdin_r.reset();
 			}
 
 			return process(id);
 		}
 
 		std::vector<char *> argv;
-		argv.emplace_back(&_file.str()[0]);
-		for (auto &arg : _args) {
+		argv.emplace_back(&_info.file.str()[0]);
+		for (auto &arg : _info.args) {
 			argv.emplace_back(&arg[0]);
 		}
 		argv.emplace_back(nullptr);
 
-		if (_stdout_w) {
-			out() = std::move(*_stdout_w);
+		if (_info.stdout_w) {
+			out() = std::move(*_info.stdout_w);
 		}
-		if (_stderr_w) {
-			err() = std::move(*_stderr_w);
+		if (_info.stderr_w) {
+			err() = std::move(*_info.stderr_w);
 		}
-		if (_stdin_r) {
-			in() = std::move(*_stdin_r);
+		if (_info.stdin_r) {
+			in() = std::move(*_info.stdin_r);
 		}
 
-		if (_work_dir.str().size()) {
-			::setenv("PWD", &_work_dir.str()[0], 1);
+		if (_info.work_dir.str().size()) {
+			::setenv("PWD", &_info.work_dir.str()[0], 1);
+		}
+
+		for (auto &name : _info.dylibs) {
+			dylib(name, false);
 		}
 
 		process proc;
-		if (_on_start) {
+		if (_info.on_start) {
 			proc = this_process();
-			_on_start(proc);
+			_info.on_start(proc);
 		}
 
-		::exit(::execvp(_file.str().data(), argv.data()));
+		::exit(::execvp(_info.file.str().data(), argv.data()));
 		return nullptr;
 	}
 
 private:
-	std::list<std::string> _dlls;
-
 	process_maker(_process_make_info info) :
 		process_maker_base(std::move(info)) {}
 

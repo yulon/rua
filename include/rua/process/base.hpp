@@ -13,27 +13,26 @@
 namespace rua {
 
 template <typename Process, typename FilePath, typename StdioStream>
-class _baisc_process_make_info {
-public:
+struct _baisc_process_make_info {
 	using process_t = Process;
 	using file_path_t = FilePath;
 	using stdio_stream_t = StdioStream;
 
+	FilePath file, work_dir;
+	std::list<std::string> args;
+	optional<StdioStream> stdout_w, stderr_w, stdin_r;
+	bool hide;
+	std::function<void(process_t &)> on_start;
+	std::list<std::string> dylibs;
+
 	_baisc_process_make_info() = default;
 
 	_baisc_process_make_info(file_path_t file) :
-		_file(std::move(file)), _hide(false) {}
-
-protected:
-	FilePath _file, _work_dir;
-	std::list<std::string> _args;
-	optional<StdioStream> _stdout_w, _stderr_w, _stdin_r;
-	bool _hide;
-	std::function<void(process_t &)> _on_start;
+		file(std::move(file)), hide(false) {}
 };
 
 template <typename ProcessMaker, typename ProcessMakeInfo>
-class process_maker_base : public ProcessMakeInfo {
+class process_maker_base {
 public:
 	using process_t = typename ProcessMakeInfo::process_t;
 	using file_path_t = typename ProcessMakeInfo::file_path_t;
@@ -43,7 +42,7 @@ public:
 
 	template <typename Arg>
 	ProcessMaker &arg(Arg &&a) {
-		this->_args.emplace_back(to_string(std::forward<Arg>(a)));
+		_info.args.emplace_back(to_string(std::forward<Arg>(a)));
 		return *_this();
 	}
 
@@ -51,11 +50,11 @@ public:
 		if (!a_str_li.size()) {
 			return *_this();
 		}
-		if (this->_args.size()) {
-			this->_args.splice(this->_args.end(), std::move(a_str_li));
+		if (_info.args.size()) {
+			_info.args.splice(_info.args.end(), std::move(a_str_li));
 			return *_this();
 		}
-		this->_args = std::move(a_str_li);
+		_info.args = std::move(a_str_li);
 		return *_this();
 	}
 
@@ -88,32 +87,36 @@ public:
 	}
 
 	ProcessMaker &work_at(file_path_t work_dir) {
-		this->_work_dir = std::move(work_dir);
+		_info.work_dir = std::move(work_dir);
 		return *_this();
 	}
 
 	ProcessMaker &hide() {
-		this->_hide = true;
+		_info.hide = true;
 		return *_this();
 	}
 
 	ProcessMaker &stdout_to(stdio_stream_t stdout_w) {
-		this->_stdout_w = std::move(stdout_w);
+		_info.stdout_w = std::move(stdout_w);
 		return *_this();
 	}
 
 	ProcessMaker &stderr_to(stdio_stream_t stderr_w) {
-		this->_stderr_w = std::move(stderr_w);
+		_info.stderr_w = std::move(stderr_w);
 		return *_this();
 	}
 
 	ProcessMaker &stdin_from(stdio_stream_t stdin_r) {
-		this->_stdin_r = std::move(stdin_r);
+		_info.stdin_r = std::move(stdin_r);
 		return *_this();
 	}
 
 	void on_start(std::function<void(process_t &)> cb) {
-		this->_on_start = std::move(cb);
+		_info.on_start = std::move(cb);
+	}
+
+	void load_dylib(std::string name) {
+		_info.dylibs.push_back(std::move(name));
 	}
 
 	any_word run() {
@@ -121,8 +124,9 @@ public:
 	}
 
 protected:
-	process_maker_base(ProcessMakeInfo info) :
-		ProcessMakeInfo(std::move(info)) {}
+	ProcessMakeInfo _info;
+
+	process_maker_base(ProcessMakeInfo info) : _info(std::move(info)) {}
 
 private:
 	ProcessMaker *_this() {

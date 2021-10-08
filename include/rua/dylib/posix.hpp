@@ -15,13 +15,11 @@ class dylib {
 public:
 	using native_handle_t = void *;
 
-	dylib(string_view name) {
-		_h = dlopen(name.data(), RTLD_LAZY | RTLD_GLOBAL);
-		_need_unload = _h;
-	}
+	dylib(string_view name, bool need_unload = true) :
+		dylib(dlopen(name.data(), RTLD_GLOBAL), need_unload) {}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
-		_h(h), _need_unload(need_unload) {}
+		_h(h), _need_unload(need_unload && h) {}
 
 	static dylib from_loaded(string_view name) {
 		return dylib(dlopen(name.data(), RTLD_NOLOAD | RTLD_GLOBAL), false);
@@ -81,8 +79,7 @@ public:
 
 	constexpr unique_dylib() : _h(nullptr) {}
 
-	unique_dylib(string_view name) :
-		_h(dlopen(name.data(), RTLD_LAZY | RTLD_LOCAL)) {}
+	unique_dylib(string_view name) : _h(dlopen(name.data(), RTLD_LOCAL)) {}
 
 	~unique_dylib() {
 		unload();
