@@ -75,7 +75,10 @@ public:
 	}
 
 	template <typename... Args>
-	enable_if_t<!is_range<front_t<Args &&...>>::value, ProcessMaker &>
+	enable_if_t<
+		(sizeof...(Args) == 1) &&
+			std::is_convertible<front_t<Args &&...>, string_view>::value,
+		ProcessMaker &>
 	args(Args &&...a) {
 		return arg(std::forward<Args>(a)...);
 	}
