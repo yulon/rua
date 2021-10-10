@@ -16,43 +16,43 @@ inline vernum sys_version() {
 	static auto const cache = []() -> vernum {
 		static dylib version_dll("version.dll");
 
-		auto ntoskrnl = L"ntoskrnl.exe";
-
-		static auto GetFileVersionInfoSizeW_ptr =
+		static auto get_file_version_info_size_w =
 			version_dll.RUA_DYFN(GetFileVersionInfoSizeW);
-		if (!GetFileVersionInfoSizeW_ptr) {
+		if (!get_file_version_info_size_w) {
 			return 0;
 		}
 
+		auto version_dll_w = L"version.dll";
+
 		DWORD sz, h;
-		sz = GetFileVersionInfoSizeW_ptr(ntoskrnl, &h);
+		sz = get_file_version_info_size_w(version_dll_w, &h);
 		if (sz == 0) {
 			return 0;
 		}
 
-		static auto GetFileVersionInfoW_ptr =
+		static auto get_file_version_info_w =
 			version_dll.RUA_DYFN(GetFileVersionInfoW);
-		if (!GetFileVersionInfoW_ptr) {
+		if (!get_file_version_info_w) {
 			return 0;
 		}
 
 		std::vector<uint8_t> raw_ver_info(sz + 1);
-		if (!GetFileVersionInfoW_ptr(
-				ntoskrnl,
+		if (!get_file_version_info_w(
+				version_dll_w,
 				0,
 				sz,
 				reinterpret_cast<LPVOID>(raw_ver_info.data()))) {
 			return 0;
 		}
 
-		static auto VerQueryValueW_ptr = version_dll.RUA_DYFN(VerQueryValueW);
-		if (!VerQueryValueW_ptr) {
+		static auto ver_query_value_w = version_dll.RUA_DYFN(VerQueryValueW);
+		if (!ver_query_value_w) {
 			return 0;
 		}
 
 		VS_FIXEDFILEINFO *ver_info;
 		UINT len;
-		if (!VerQueryValueW_ptr(
+		if (!ver_query_value_w(
 				reinterpret_cast<LPCVOID>(raw_ver_info.data()),
 				L"\\",
 				reinterpret_cast<LPVOID *>(&ver_info),
