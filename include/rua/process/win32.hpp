@@ -52,6 +52,41 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
+namespace _this_process {
+
+inline bool has_full_permissions() {
+	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
+	PSID admin_group = nullptr;
+	auto r = AllocateAndInitializeSid(
+		&sna,
+		2,
+		SECURITY_BUILTIN_DOMAIN_RID,
+		DOMAIN_ALIAS_RID_ADMINS,
+		0,
+		0,
+		0,
+		0,
+		0,
+		0,
+		&admin_group);
+	if (r) {
+		BOOL is_member = FALSE;
+		r = CheckTokenMembership(nullptr, admin_group, &is_member);
+		if (r) {
+			r = is_member;
+		}
+	}
+	if (admin_group) {
+		FreeSid(admin_group);
+		admin_group = nullptr;
+	}
+	return r;
+}
+
+} // namespace _this_process
+
+using namespace _this_process;
+
 class process {
 public:
 	using native_handle_t = HANDLE;
@@ -59,9 +94,50 @@ public:
 	template <
 		typename Pid,
 		typename = enable_if_t<std::is_integral<Pid>::value>>
-	explicit process(Pid id) :
-		_h(id ? OpenProcess(_all_access(), false, static_cast<pid_t>(id))
-			  : nullptr) {}
+	explicit process(Pid id) {
+		if (!id) {
+			_h = nullptr;
+			return;
+		}
+
+		_h = OpenProcess(_all_access(), false, static_cast<pid_t>(id));
+		if (_h) {
+			return;
+		}
+
+		static auto is_ap = ([]() -> bool {
+			if (!has_full_permissions()) {
+				return false;
+			}
+			HANDLE token;
+			if (OpenProcessToken(
+					GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
+				TOKEN_PRIVILEGES tp;
+				tp.PrivilegeCount = 1;
+				tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+				bool r;
+				if (LookupPrivilegeValue(
+						NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid)) {
+					r = AdjustTokenPrivileges(
+							token, FALSE, &tp, sizeof(tp), NULL, NULL) ==
+						ERROR_SUCCESS;
+				} else {
+					r = false;
+				}
+				CloseHandle(token);
+				return r;
+			}
+			return false;
+		})();
+		if (is_ap) {
+			_h = OpenProcess(_all_access(), false, static_cast<pid_t>(id));
+			if (_h) {
+				return;
+			}
+		}
+
+		_h = OpenProcess(_read_access(), false, static_cast<pid_t>(id));
+	}
 
 	constexpr process(std::nullptr_t = nullptr) : _h(nullptr) {}
 
@@ -555,6 +631,10 @@ private:
 		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
 	}
 
+	static constexpr DWORD _read_access() {
+		return PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE;
+	}
+
 	struct _process_extended_basic_information {
 		SIZE_T Size;
 		PROCESS_BASIC_INFORMATION BasicInfo;
@@ -864,8 +944,6 @@ inline process this_process() {
 
 } // namespace _this_process
 
-using namespace _this_process;
-
 using _process_make_info =
 	_baisc_process_make_info<process, file_path, sys_stream>;
 
@@ -888,19 +966,65 @@ public:
 			return nullptr;
 		}
 
-		std::wstringstream cmd;
+		if (_el_perms && !has_full_permissions()) {
+			if (_info.stdout_w) {
+				_info.stdout_w.reset();
+			}
+			if (_info.stderr_w) {
+				_info.stderr_w.reset();
+			}
+			if (_info.stdin_r) {
+				_info.stdin_r.reset();
+			}
+
+			SHELLEXECUTEINFOW sei;
+			memset(&sei, 0, sizeof(sei));
+			sei.cbSize = sizeof(sei);
+			sei.lpVerb = L"runas";
+			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+			sei.nShow = _info.hide ? SW_HIDE : SW_SHOW;
+
+			auto path_w = u8_to_w(_info.file.str());
+			sei.lpFile = path_w.c_str();
+
+			_info.file = "";
+
+			std::wstringstream args_ss_w;
+			for (auto &arg : _info.args) {
+				if (arg.find(' ') == string_view::npos) {
+					args_ss_w << L" " << u8_to_w(arg);
+				} else {
+					args_ss_w << L" \"" << u8_to_w(arg) << L"\"";
+				}
+			}
+			auto args_w = args_ss_w.str();
+			if (args_w.length()) {
+				sei.lpParameters = args_w.c_str();
+			}
+
+			auto wd_w = u8_to_w(_info.work_dir.str());
+			sei.lpDirectory = wd_w.c_str();
+
+			if (!ShellExecuteExW(&sei)) {
+				return nullptr;
+			}
+			return process(sei.hProcess);
+		}
+
+		std::wstringstream cmd_ss_w;
 		if (_info.file.str().find(' ') == std::string::npos) {
-			cmd << u8_to_w(_info.file.str());
+			cmd_ss_w << u8_to_w(_info.file.str());
 		} else {
-			cmd << L"\"" << u8_to_w(_info.file.str()) << L"\"";
+			cmd_ss_w << L"\"" << u8_to_w(_info.file.str()) << L"\"";
 		}
 		for (auto &arg : _info.args) {
 			if (arg.find(' ') == string_view::npos) {
-				cmd << L" " << u8_to_w(arg);
+				cmd_ss_w << L" " << u8_to_w(arg);
 			} else {
-				cmd << L" \"" << u8_to_w(arg) << L"\"";
+				cmd_ss_w << L" \"" << u8_to_w(arg) << L"\"";
 			}
 		}
+
 		_info.file = "";
 
 		STARTUPINFOW si;
@@ -959,22 +1083,18 @@ public:
 
 		auto is_suspended = _info.on_start || _info.dylibs.size();
 
-		if (!CreateProcessW(
-				nullptr,
-				const_cast<wchar_t *>(cmd.str().c_str()),
-				nullptr,
-				nullptr,
-				true,
-				is_suspended ? CREATE_SUSPENDED : 0,
-				nullptr,
-				_info.work_dir ? rua::u8_to_w(_info.work_dir.str()).c_str()
-							   : nullptr,
-				&si,
-				&pi)) {
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			return nullptr;
-		}
+		auto ok = CreateProcessW(
+			nullptr,
+			const_cast<wchar_t *>(cmd_ss_w.str().c_str()),
+			nullptr,
+			nullptr,
+			true,
+			is_suspended ? CREATE_SUSPENDED : 0,
+			nullptr,
+			_info.work_dir ? rua::u8_to_w(_info.work_dir.str()).c_str()
+						   : nullptr,
+			&si,
+			&pi);
 
 		if (_info.stdout_w) {
 			_info.stdout_w.reset();
@@ -984,6 +1104,12 @@ public:
 		}
 		if (_info.stdin_r) {
 			_info.stdin_r.reset();
+		}
+
+		if (!ok) {
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			return nullptr;
 		}
 
 		process proc(pi.hProcess);
@@ -1004,9 +1130,16 @@ public:
 		return proc;
 	}
 
+	process_maker &elevate_permissions() {
+		_el_perms = true;
+		return *this;
+	}
+
 private:
+	bool _el_perms;
+
 	process_maker(_process_make_info info) :
-		process_maker_base(std::move(info)) {}
+		process_maker_base(std::move(info)), _el_perms(false) {}
 
 	bool _start_with_load_dlls(process &proc, HANDLE main_td_h) {
 		if (!_info.dylibs.size()) {
@@ -1071,6 +1204,23 @@ inline process_maker make_process(file_path file) {
 } // namespace _make_process
 
 using namespace _make_process;
+
+namespace _this_process {
+
+inline void elevate_permissions() {
+	if (has_full_permissions()) {
+		return;
+	}
+	auto p = this_process();
+	make_process(p.path())
+		.args(p.args())
+		.work_at(working_dir())
+		.elevate_permissions()
+		.start();
+	exit(0);
+}
+
+} // namespace _this_process
 
 namespace _find_process {
 
@@ -1171,97 +1321,6 @@ inline process_finder found_process(string_view name, duration interval) {
 } // namespace _find_process
 
 using namespace _find_process;
-
-namespace _process_privileges {
-
-inline bool this_process_is_privileged() {
-	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
-	PSID admin_group = nullptr;
-	auto r = AllocateAndInitializeSid(
-		&sna,
-		2,
-		SECURITY_BUILTIN_DOMAIN_RID,
-		DOMAIN_ALIAS_RID_ADMINS,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		&admin_group);
-	if (r) {
-		BOOL is_member = FALSE;
-		r = CheckTokenMembership(nullptr, admin_group, &is_member);
-		if (r) {
-			r = is_member;
-		}
-	}
-	if (admin_group) {
-		FreeSid(admin_group);
-		admin_group = nullptr;
-	}
-	return r;
-}
-
-template <RUA_STRING_RANGE(StrList)>
-inline int execute_with_highest_privileges(
-	const file_path &file, const StrList &args = {}, const file_path &wd = "") {
-
-	SHELLEXECUTEINFOW sei;
-	memset(&sei, 0, sizeof(sei));
-	sei.cbSize = sizeof(sei);
-	sei.lpVerb = L"runas";
-	sei.nShow = SW_NORMAL;
-
-	std::wstring path_w;
-	path_w = u8_to_w(file.str());
-	sei.lpFile = path_w.c_str();
-
-	std::wstringstream args_ss_w;
-	RUA_RANGE_FOR(string_view arg, args, {
-		if (arg.find(' ') == string_view::npos) {
-			args_ss_w << L" " << u8_to_w(arg);
-		} else {
-			args_ss_w << L" \"" << u8_to_w(arg) << L"\"";
-		}
-	})
-	auto args_w = args_ss_w.str();
-	if (args_w.length()) {
-		sei.lpParameters = args_w.c_str();
-	}
-
-	auto wd_w = u8_to_w(wd.str());
-	sei.lpDirectory = wd_w.c_str();
-
-	if (ShellExecuteExW(&sei)) {
-		return 0;
-	}
-	return static_cast<int>(GetLastError());
-}
-
-inline void restart_as_elevate_privileges() {
-	if (!this_process_is_privileged()) {
-		auto p = this_process();
-		exit(
-			execute_with_highest_privileges(p.path(), p.args(), working_dir()));
-		return;
-	}
-	HANDLE token;
-	if (OpenProcessToken(
-			GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
-		TOKEN_PRIVILEGES tp;
-		tp.PrivilegeCount = 1;
-		tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-		if (LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid)) {
-			AdjustTokenPrivileges(token, FALSE, &tp, sizeof(tp), NULL, NULL);
-		}
-		CloseHandle(token);
-	}
-}
-
-} // namespace _process_privileges
-
-using namespace _process_privileges;
 
 }} // namespace rua::win32
 
