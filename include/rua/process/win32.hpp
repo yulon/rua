@@ -57,29 +57,27 @@ namespace _this_process {
 inline bool has_full_permissions() {
 	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
 	PSID admin_group = nullptr;
-	auto r = AllocateAndInitializeSid(
-		&sna,
-		2,
-		SECURITY_BUILTIN_DOMAIN_RID,
-		DOMAIN_ALIAS_RID_ADMINS,
-		0,
-		0,
-		0,
-		0,
-		0,
-		0,
-		&admin_group);
+	if (!AllocateAndInitializeSid(
+			&sna,
+			2,
+			SECURITY_BUILTIN_DOMAIN_RID,
+			DOMAIN_ALIAS_RID_ADMINS,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			&admin_group) ||
+		!admin_group) {
+		return false;
+	}
+	BOOL is_member = FALSE;
+	auto r = CheckTokenMembership(nullptr, admin_group, &is_member);
 	if (r) {
-		BOOL is_member = FALSE;
-		r = CheckTokenMembership(nullptr, admin_group, &is_member);
-		if (r) {
-			r = is_member;
-		}
+		r = is_member;
 	}
-	if (admin_group) {
-		FreeSid(admin_group);
-		admin_group = nullptr;
-	}
+	FreeSid(admin_group);
 	return r;
 }
 
@@ -105,31 +103,28 @@ public:
 			return;
 		}
 
-		static auto is_ap = ([]() -> bool {
-			if (!has_full_permissions()) {
+		static auto has_dbg_priv = ([]() -> bool {
+			HANDLE token;
+			if (!OpenProcessToken(
+					GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
 				return false;
 			}
-			HANDLE token;
-			if (OpenProcessToken(
-					GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
-				TOKEN_PRIVILEGES tp;
-				tp.PrivilegeCount = 1;
-				tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-				bool r;
-				if (LookupPrivilegeValue(
-						NULL, SE_DEBUG_NAME, &tp.Privileges[0].Luid)) {
-					r = AdjustTokenPrivileges(
-							token, FALSE, &tp, sizeof(tp), NULL, NULL) ==
-						ERROR_SUCCESS;
-				} else {
-					r = false;
+			TOKEN_PRIVILEGES tp;
+			tp.PrivilegeCount = 1;
+			tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+			auto r = LookupPrivilegeValueW(
+				nullptr, L"SeDebugPrivilege", &tp.Privileges[0].Luid);
+			if (r) {
+				r = AdjustTokenPrivileges(
+					token, false, &tp, sizeof(tp), nullptr, nullptr);
+				if (r) {
+					r = GetLastError() != ERROR_NOT_ALL_ASSIGNED;
 				}
-				CloseHandle(token);
-				return r;
 			}
-			return false;
+			CloseHandle(token);
+			return r;
 		})();
-		if (is_ap) {
+		if (has_dbg_priv) {
 			_h = OpenProcess(_all_access(), false, static_cast<pid_t>(id));
 			if (_h) {
 				return;
@@ -966,7 +961,7 @@ public:
 			return nullptr;
 		}
 
-		if (_el_perms && !has_full_permissions()) {
+		if (_el_perms && sys_version() >= 6 && !has_full_permissions()) {
 			if (_info.stdout_w) {
 				_info.stdout_w.reset();
 			}
@@ -1208,7 +1203,7 @@ using namespace _make_process;
 namespace _this_process {
 
 inline void elevate_permissions() {
-	if (has_full_permissions()) {
+	if (sys_version() < 6 || has_full_permissions()) {
 		return;
 	}
 	auto p = this_process();
