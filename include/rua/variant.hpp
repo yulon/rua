@@ -212,7 +212,7 @@ private:
 	}
 
 	template <typename Visitor>
-	constexpr bool _visit_types(Visitor &&) const {
+	constexpr bool _visit_types(Visitor &&) const & {
 		return false;
 	}
 
@@ -236,7 +236,7 @@ private:
 			   _visit_types<Visitor, OtherTypes...>(std::forward<Visitor>(vis));
 	}
 
-	constexpr bool _visitors_visit_types() const {
+	constexpr bool _visitors_visit_types() const & {
 		return false;
 	}
 
