@@ -453,6 +453,10 @@ private:
 namespace _make_file {
 
 inline bool touch_dir(const file_path &path) {
+	if (!path) {
+		return true;
+	}
+
 	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
 
 	auto fa = GetFileAttributesW(path_w.c_str());

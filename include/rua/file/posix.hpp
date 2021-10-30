@@ -196,10 +196,7 @@ public:
 namespace _make_file {
 
 inline bool touch_dir(const file_path &path, mode_t mode = 0777) {
-	if (!path) {
-		return false;
-	}
-	if (path.is_dir()) {
+	if (!path || path.is_dir()) {
 		return true;
 	}
 	if (!touch_dir(path.rm_back(), mode)) {
