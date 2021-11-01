@@ -8,6 +8,7 @@
 #include "../dylib/win32.hpp"
 #include "../file/win32.hpp"
 #include "../generic_ptr.hpp"
+#include "../hard/win32.hpp"
 #include "../io.hpp"
 #include "../macros.hpp"
 #include "../memory.hpp"
@@ -391,13 +392,6 @@ public:
 	}
 
 	float cpu_usage(time &prev_get_time, time &prev_used_cpu_time) const {
-		static size_t cpu_core_num = ([]() -> DWORD {
-			SYSTEM_INFO si;
-			memset(&si, 0, sizeof(si));
-			GetSystemInfo(&si);
-			return si.dwNumberOfProcessors;
-		})();
-
 		FILETIME CreateTime, ExitTime, KernelTime, UserTime;
 		if (!GetProcessTimes(
 				_h, &CreateTime, &ExitTime, &KernelTime, &UserTime)) {
@@ -420,7 +414,7 @@ public:
 						  (used_cpu_time - prev_used_cpu_time).milliseconds()) /
 					  static_cast<double>(
 						  (now - prev_get_time).milliseconds()) /
-					  static_cast<double>(cpu_core_num))
+					  static_cast<double>(num_cpus()))
 				: 0.f;
 
 		prev_used_cpu_time = used_cpu_time;
