@@ -242,7 +242,13 @@ public:
 		}
 
 		void set(any_word val) {
-			return _set(_owner, val);
+			this->_set(_owner, val);
+			/*
+				G++ 11.2.0 may have bug:
+				_set(_owner, val) - no
+				_set(_owner, val.value()) - yes
+				this->_set(_owner, val) - yes
+			*/
 		}
 
 		any_word get() const {
