@@ -16,10 +16,8 @@ public:
 	template <typename T>
 	struct is_dynamic_allocation {
 		static constexpr auto value =
-			!std::is_void<T>::value &&
-			!(size_of<T>::value <= sizeof(uintptr_t) &&
-			  std::is_trivial<T>::value) &&
-			!std::is_base_of<any_word, T>::value;
+			(size_of<T>::value > sizeof(uintptr_t) ||
+			 !std::is_trivial<T>::value);
 	};
 
 	////////////////////////////////////////////////////////////////////////
@@ -45,8 +43,8 @@ public:
 		typename = enable_if_t<
 			!std::is_integral<DecayT>::value &&
 			!std::is_pointer<DecayT>::value &&
-			sizeof(DecayT) <= sizeof(uintptr_t) &&
-			std::is_trivial<DecayT>::value &&
+			!is_null_pointer<DecayT>::value &&
+			!is_dynamic_allocation<DecayT>::value &&
 			!std::is_base_of<any_word, DecayT>::value>>
 	any_word(const T &src) {
 		bit_set<DecayT>(&_val, src);
@@ -63,7 +61,7 @@ public:
 		typename T,
 		typename... Args,
 		typename = enable_if_t<is_dynamic_allocation<T>::value>>
-	any_word(in_place_type_t<T>, Args &&... args) :
+	explicit any_word(in_place_type_t<T>, Args &&...args) :
 		_val(reinterpret_cast<uintptr_t>(new T(std::forward<Args>(args)...))) {}
 
 	template <
@@ -71,19 +69,20 @@ public:
 		typename U,
 		typename... Args,
 		typename = enable_if_t<is_dynamic_allocation<T>::value>>
-	any_word(in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) :
+	explicit any_word(
+		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) :
 		_val(reinterpret_cast<uintptr_t>(
 			new T(il, std::forward<Args>(args)...))) {}
 
 	template <
 		typename T,
 		typename... Args,
-		typename = enable_if_t<!std::is_same<T, void>::value>,
+		typename = enable_if_t<!std::is_void<T>::value>,
 		typename = enable_if_t<!is_dynamic_allocation<T>::value>>
-	any_word(in_place_type_t<T>, Args &&... args) :
+	explicit any_word(in_place_type_t<T>, Args &&...args) :
 		_val(T(std::forward<Args>(args)...)) {}
 
-	any_word(in_place_type_t<void>) : _val(0) {}
+	explicit constexpr any_word(in_place_type_t<void>) : _val(0) {}
 
 	constexpr operator bool() const {
 		return _val;
@@ -114,36 +113,24 @@ public:
 	template <typename T>
 	enable_if_t<
 		!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value),
+			!is_dynamic_allocation<T>::value,
 		T>
 	as() const & {
 		return bit_get<T>(&_val);
 	}
 
 	template <typename T>
-	enable_if_t<
-		!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value),
-		const T &>
-	as() const & {
+	enable_if_t<is_dynamic_allocation<T>::value, const T &> as() const & {
 		return *reinterpret_cast<const T *>(_val);
 	}
 
 	template <typename T>
-	enable_if_t<
-		!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value),
-		T &>
-	as() & {
+	enable_if_t<is_dynamic_allocation<T>::value, T &> as() & {
 		return *reinterpret_cast<T *>(_val);
 	}
 
 	template <typename T>
-	enable_if_t<
-		!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value),
-		T>
-	as() && {
+	enable_if_t<is_dynamic_allocation<T>::value, T> as() && {
 		auto ptr = reinterpret_cast<T *>(_val);
 		T r(std::move(*ptr));
 		delete ptr;
@@ -154,43 +141,35 @@ public:
 		typename T,
 		typename = enable_if_t<
 			std::is_integral<T>::value || std::is_pointer<T>::value ||
-			(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value)>>
+			!is_dynamic_allocation<T>::value>>
 	operator T() const & {
 		return as<T>();
 	}
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value)>>
+		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	operator const T &() const & {
 		return as<T>();
 	}
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value)>>
+		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	operator T &() & {
 		return as<T>();
 	}
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value)>>
+		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	operator T() && {
 		return std::move(*this).as<T>();
 	}
 
 	template <
 		typename T,
-		typename = enable_if_t<
-			!std::is_integral<T>::value && !std::is_pointer<T>::value &&
-			!(sizeof(T) <= sizeof(uintptr_t) && std::is_trivial<T>::value)>>
+		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	void destruct() {
 		delete reinterpret_cast<T *>(_val);
 	}
