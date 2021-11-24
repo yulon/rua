@@ -1209,6 +1209,30 @@ inline void elevate_permissions() {
 	exit(0);
 }
 
+#if defined(RUA_X86) && RUA_X86 == 32
+
+inline bool is_x86_on_x64() {
+	static auto r = ([]() -> bool {
+		BOOL(WINAPI * is_wow64_process)
+		(HANDLE hProcess, PBOOL Wow64Process) =
+			dylib::from_loaded("kernel32.dll")["IsWow64Process"];
+		if (!is_wow64_process) {
+			return false;
+		}
+		BOOL is_wow64;
+		return is_wow64_process(GetCurrentProcess(), &is_wow64) && is_wow64;
+	})();
+	return r;
+}
+
+#else
+
+inline constexpr bool is_x86_on_x64() {
+	return false;
+}
+
+#endif
+
 } // namespace _this_process
 
 namespace _find_process {
