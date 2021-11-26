@@ -943,6 +943,12 @@ class process_maker
 public:
 	process_maker() = default;
 
+	process_maker(process_maker &&pm) :
+		process_maker_base(std::move(static_cast<process_maker_base &&>(pm))),
+		_el_perms(false) {}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(process_maker)
+
 	~process_maker() {
 		if (!_info.file) {
 			return;
