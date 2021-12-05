@@ -125,6 +125,14 @@ public:
 		return std::string(&buf[0], n);
 	}
 
+	pid_t parent_id() const {
+		return getppid();
+	}
+
+	process parent() const {
+		return process(parent_id());
+	}
+
 	void reset() {
 		if (_id < 0) {
 			return;

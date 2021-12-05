@@ -391,6 +391,24 @@ public:
 		return params;
 	}
 
+	pid_t parent_id() const {
+		auto nt_query_information_process =
+			_ntdll().nt_query_information_process;
+		if (!nt_query_information_process) {
+			return 0;
+		}
+		PROCESS_BASIC_INFORMATION pbi;
+		if (nt_query_information_process(_h, 0, &pbi, sizeof(pbi), nullptr) <
+			0) {
+			return 0;
+		}
+		return pbi.InheritedFromUniqueProcessId;
+	}
+
+	process parent() const {
+		return process(parent_id());
+	}
+
 	float cpu_usage(time &prev_get_time, time &prev_used_cpu_time) const {
 		FILETIME CreateTime, ExitTime, KernelTime, UserTime;
 		if (!GetProcessTimes(
