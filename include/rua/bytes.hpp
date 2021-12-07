@@ -527,17 +527,20 @@ inline size_t bytes_base<Span>::copy_from(SrcArgs &&...src) const {
 
 template <typename E, bool IsConst = std::is_const<E>::value>
 inline enable_if_t<
-	size_of<E>::value,
-	conditional_t<std::is_const<E>::value, bytes_view, bytes_ref>>
+	(size_of<E>::value > 0),
+	conditional_t<IsConst, bytes_view, bytes_ref>>
 as_bytes(E *ptr) {
 	return {
 		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(ptr),
 		sizeof(E)};
 }
 
-template <typename T>
-inline bytes_view as_bytes(T *ptr, size_t size) {
-	return {reinterpret_cast<const uchar *>(ptr), size};
+template <typename E, bool IsConst = std::is_const<E>::value>
+inline conditional_t<IsConst, bytes_view, bytes_ref>
+as_bytes(E *ptr, size_t size) {
+	return {
+		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(ptr),
+		size};
 }
 
 template <typename T, typename R, typename... Args>
