@@ -350,7 +350,7 @@ public:
 				return params;
 			}
 
-			PROCESS_BASIC_INFORMATION pbi;
+			_process_basic_information pbi;
 			if (nt_query_information_process(
 					_h, 0, &pbi, sizeof(pbi), nullptr) < 0) {
 				return params;
@@ -397,12 +397,12 @@ public:
 		if (!nt_query_information_process) {
 			return 0;
 		}
-		PROCESS_BASIC_INFORMATION pbi;
+		_process_basic_information pbi;
 		if (nt_query_information_process(_h, 0, &pbi, sizeof(pbi), nullptr) <
 			0) {
 			return 0;
 		}
-		return pbi.InheritedFromUniqueProcessId;
+		return static_cast<pid_t>(pbi.InheritedFromUniqueProcessId);
 	}
 
 	process parent() const {
@@ -642,9 +642,18 @@ private:
 		return PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE;
 	}
 
+	struct _process_basic_information {
+		NTSTATUS ExitStatus;
+		PPEB PebBaseAddress;
+		KAFFINITY AffinityMask;
+		KPRIORITY BasePriority;
+		ULONG_PTR UniqueProcessId;
+		ULONG_PTR InheritedFromUniqueProcessId;
+	};
+
 	struct _process_extended_basic_information {
 		SIZE_T Size;
-		PROCESS_BASIC_INFORMATION BasicInfo;
+		_process_basic_information BasicInfo;
 		union {
 			ULONG Flags;
 			struct {
