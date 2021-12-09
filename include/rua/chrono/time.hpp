@@ -318,30 +318,6 @@ inline time operator+(duration dur, const time &tim) {
 	return tim + dur;
 }
 
-inline time time_max() {
-	return time(duration_max());
-}
-
-inline time time_max(const date_t &epoch) {
-	return time(duration_max(), epoch);
-}
-
-inline time time_zero() {
-	return time(duration_zero());
-}
-
-inline time time_zero(const date_t &epoch) {
-	return time(duration_zero(), epoch);
-}
-
-inline time time_min() {
-	return time(duration_min());
-}
-
-inline time time_min(const date_t &epoch) {
-	return time(duration_min(), epoch);
-}
-
 } // namespace rua
 
 namespace std {

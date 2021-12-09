@@ -11,11 +11,9 @@ namespace rua { namespace darwin {
 
 namespace _tick {
 
-inline time tick() {
+inline duration tick() {
 	static auto start = mach_absolute_time();
-	return time(
-		nanoseconds(static_cast<int64_t>(mach_absolute_time() - start)),
-		nullepo);
+	return nanoseconds(static_cast<int64_t>(mach_absolute_time() - start));
 }
 
 } // namespace _tick

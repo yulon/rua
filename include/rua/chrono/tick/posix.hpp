@@ -11,10 +11,10 @@ namespace rua { namespace posix {
 
 namespace _tick {
 
-inline time tick() {
+inline duration tick() {
 	timespec ts;
 	clock_gettime(CLOCK_MONOTONIC, &ts);
-	return time(ts, nullepo);
+	return ts;
 }
 
 } // namespace _tick

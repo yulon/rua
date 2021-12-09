@@ -33,11 +33,11 @@ public:
 			return;
 		}
 		if (!dur) {
-			_ctx->end_ti.reset();
+			_ctx->end_ti = 0;
 		}
 		auto now = tick();
-		if (dur >= time_max() - now) {
-			_ctx->end_ti = time_max();
+		if (dur >= duration_max() - now) {
+			_ctx->end_ti = duration_max();
 			return;
 		}
 		_ctx->end_ti = now + dur;
@@ -56,7 +56,7 @@ private:
 		std::function<void()> tsk;
 
 		std::atomic<bool> is_stoped;
-		time end_ti;
+		duration end_ti;
 
 		ucontext_t _uc;
 		int stk_ix;
@@ -143,7 +143,7 @@ public:
 			if (_spds.size()) {
 
 				if (_cws.size()) {
-					time resume_ti;
+					duration resume_ti;
 					if (_cws.begin()->resume_ti < _spds.begin()->resume_ti) {
 						resume_ti = _cws.begin()->resume_ti;
 					} else {
@@ -199,11 +199,11 @@ public:
 
 		template <typename SleepingList>
 		void _suspend(SleepingList &sl, duration timeout) {
-			time resume_ti;
+			duration resume_ti;
 			if (!timeout) {
-				resume_ti.reset();
-			} else if (timeout >= time_max() - tick()) {
-				resume_ti = time_max();
+				resume_ti = 0;
+			} else if (timeout >= duration_max() - tick()) {
+				resume_ti = duration_max();
 			} else {
 				resume_ti = tick() + timeout;
 			}
@@ -268,7 +268,7 @@ private:
 	fiber _cur, _prev;
 
 	struct _suspending_t {
-		time resume_ti;
+		duration resume_ti;
 		fiber fbr;
 
 		bool operator<(const _suspending_t &s) const {
@@ -278,7 +278,7 @@ private:
 	sorted_list<_suspending_t> _spds;
 	sorted_list<_suspending_t> _cws;
 
-	void _check_spds(time now) {
+	void _check_spds(duration now) {
 		for (auto it = _spds.begin(); it != _spds.end(); it = _spds.erase(it)) {
 			if (now < it->resume_ti) {
 				break;
@@ -287,7 +287,7 @@ private:
 		}
 	}
 
-	void _check_cws(time now) {
+	void _check_cws(duration now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
 			if (it->fbr._ctx->rsmr->state() || now >= it->resume_ti) {
 				_exs.emplace(std::move(it->fbr));
@@ -389,7 +389,7 @@ private:
 				}
 
 				if (!_cur._ctx->has_yielded) {
-					_spds.emplace(time_zero(), std::move(_cur));
+					_spds.emplace(0, std::move(_cur));
 					break;
 				}
 				_cur._ctx->has_yielded = false;
