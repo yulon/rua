@@ -19,7 +19,7 @@ public:
 	sys_stream(
 		native_handle_t h = INVALID_HANDLE_VALUE, bool need_close = true) :
 		_h(h ? h : INVALID_HANDLE_VALUE),
-		_nc(h && h != INVALID_HANDLE_VALUE ? need_close : false) {}
+		_nc(h && h != INVALID_HANDLE_VALUE && need_close) {}
 
 	sys_stream(const sys_stream &src) {
 		if (!src) {
