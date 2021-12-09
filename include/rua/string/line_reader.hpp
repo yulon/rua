@@ -16,9 +16,21 @@ namespace rua {
 template <typename Reader>
 class line_reader {
 public:
-	line_reader() : _r(nullptr), _buf(), _data(), prev_b{0} {}
+	line_reader() : _r(nullptr), _buf(), _data(), _prev_b{0} {}
 
-	line_reader(Reader &r) : _r(&r), prev_b{0} {}
+	line_reader(Reader &r) : _r(&r), _prev_b{0} {}
+
+	line_reader(line_reader &&src) :
+		_r(src._r),
+		_buf(std::move(src._buf)),
+		_data(src._data),
+		_prev_b(src._prev_b) {
+		if (src) {
+			src._r = nullptr;
+		}
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(line_reader)
 
 	optional<std::string> read_line(size_t buf_sz = 1024) {
 		if (_buf.size() != buf_sz) {
@@ -29,22 +41,22 @@ public:
 			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(_data.size());
 				 ++i) {
 				if (_data[i] == '\n') {
-					if (prev_b != '\r') {
+					if (_prev_b != '\r') {
 						ln += as_string(_data(0, i));
-						prev_b = _data[i];
+						_prev_b = _data[i];
 						_data = _data(i + 1);
 						return ln;
 					}
-					prev_b = _data[i];
+					_prev_b = _data[i];
 					_data = _data(i + 1);
 					i = -1;
 				} else if (_data[i] == '\r') {
 					ln += as_string(_data(0, i));
-					prev_b = _data[i];
+					_prev_b = _data[i];
 					_data = _data(i + 1);
 					return ln;
 				} else {
-					prev_b = _data[i];
+					_prev_b = _data[i];
 				}
 			}
 			if (_data) {
@@ -85,16 +97,19 @@ public:
 			return;
 		}
 		_r = nullptr;
-		prev_b = 0;
-		_buf.resize(0);
 	}
 
 private:
 	Reader *_r;
 	bytes _buf;
 	bytes_ref _data;
-	uchar prev_b;
+	uchar _prev_b;
 };
+
+template <typename Reader>
+line_reader<Reader> make_line_reader(Reader &r) {
+	return r;
+}
 
 } // namespace rua
 
