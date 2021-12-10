@@ -131,6 +131,10 @@ public:
 		return !(*this == v);
 	}
 
+	explicit operator std::basic_string<CharT, Traits>() const {
+		return {data(), length()};
+	}
+
 private:
 	const CharT *_s;
 	size_type _c;
@@ -139,7 +143,7 @@ private:
 template <typename CharT, typename Traits>
 std::basic_string<CharT, Traits> &operator+=(
 	std::basic_string<CharT, Traits> &a, basic_string_view<CharT, Traits> b) {
-	return a += std::basic_string<CharT, Traits>(b.data(), b.size());
+	return a += std::basic_string<CharT, Traits>(b);
 }
 
 } // namespace rua
