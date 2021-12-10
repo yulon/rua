@@ -313,7 +313,7 @@ private:
 		_stk_ix = _cur._ctx->stk_ix;
 		auto &cur_stk = _cur_stk();
 		cur_stk(cur_stk.size() - _cur._ctx->stk_bak.size())
-			.copy_from(_cur._ctx->stk_bak);
+			.copy(_cur._ctx->stk_bak);
 		_cur._ctx->stk_bak.resize(0);
 
 		if (!oucp) {

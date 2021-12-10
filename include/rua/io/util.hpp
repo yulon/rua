@@ -172,7 +172,7 @@ public:
 				return 0;
 			}
 		}
-		auto csz = static_cast<ptrdiff_t>(p.copy_from(_buf));
+		auto csz = static_cast<ptrdiff_t>(p.copy(_buf));
 		_buf = _buf(csz);
 		return csz;
 	}

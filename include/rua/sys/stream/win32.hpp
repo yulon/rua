@@ -74,7 +74,7 @@ public:
 			if (buf) {
 				auto sz = await(std::move(dzr), _read, _h, bytes_ref(buf));
 				if (sz > 0) {
-					p.copy_from(buf);
+					p.copy(buf);
 				}
 				return sz;
 			}

@@ -1,7 +1,7 @@
 #include <rua/bytes.hpp>
 #include <rua/log.hpp>
-#include <rua/time.hpp>
 #include <rua/string.hpp>
+#include <rua/time.hpp>
 
 #include <doctest/doctest.h>
 
@@ -26,7 +26,7 @@ TEST_CASE("memory find") {
 
 	auto pat_pos = dat_str.length() - 100;
 
-	dat(pat_pos).copy_from(rua::as_bytes(&pat[0]));
+	dat(pat_pos).copy(rua::as_bytes(&pat[0]));
 
 	// bytes::index_of
 

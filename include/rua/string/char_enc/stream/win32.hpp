@@ -51,7 +51,7 @@ public:
 				}
 			}
 		};
-		auto sz = static_cast<ptrdiff_t>(p.copy_from(as_bytes(_cache)));
+		auto sz = static_cast<ptrdiff_t>(p.copy(as_bytes(_cache)));
 		_cache = _cache.substr(sz, _cache.size() - sz);
 		return sz;
 	}

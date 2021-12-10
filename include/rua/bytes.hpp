@@ -108,9 +108,6 @@ public:
 
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
-	template <typename... DestArgs>
-	inline size_t copy_to(DestArgs &&...dest) const;
-
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	generic_ptr derel(ptrdiff_t pos = 0) const {
 		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
@@ -232,7 +229,7 @@ public:
 	inline bytes_ref operator()(ptrdiff_t begin_offset);
 
 	template <typename... SrcArgs>
-	inline size_t copy_from(SrcArgs &&...src) const;
+	inline size_t copy(SrcArgs &&...src);
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	RelPtr enrel(generic_ptr abs_ptr, ptrdiff_t pos = 0) {
@@ -507,22 +504,16 @@ inline bytes_ref bytes_base<Span>::operator()(ptrdiff_t begin_offset) {
 }
 
 template <typename Span>
-template <typename... DestArgs>
-inline size_t const_bytes_base<Span>::copy_to(DestArgs &&...dest) const {
-	bytes_ref dest_ref(std::forward<DestArgs>(dest)...);
+template <typename... SrcArgs>
+inline size_t bytes_base<Span>::copy(SrcArgs &&...src) {
+	bytes_view src_b(std::forward<SrcArgs>(src)...);
 	auto cp_sz =
-		_this()->size() < dest_ref.size() ? _this()->size() : dest_ref.size();
+		src_b.size() < _this()->size() ? src_b.size() : _this()->size();
 	if (!cp_sz) {
 		return 0;
 	}
-	memcpy(dest_ref.data(), _this()->data(), cp_sz);
+	memcpy(_this()->data(), src_b.data(), cp_sz);
 	return cp_sz;
-}
-
-template <typename Span>
-template <typename... SrcArgs>
-inline size_t bytes_base<Span>::copy_from(SrcArgs &&...src) const {
-	return bytes_view(std::forward<SrcArgs>(src)...).copy_to(*_this());
 }
 
 template <typename E, bool IsConst = std::is_const<E>::value>
@@ -635,7 +626,7 @@ public:
 			return;
 		}
 		_alloc(bv.size());
-		copy_from(bv);
+		copy(bv);
 	}
 
 	bytes(std::initializer_list<uchar> il) : bytes(il.begin(), il.size()) {}
@@ -661,7 +652,7 @@ public:
 		resize(new_sz);
 		assert(size() == new_sz);
 
-		slice(old_sz).copy_from(tail);
+		slice(old_sz).copy(tail);
 
 		return *this;
 	}
@@ -676,7 +667,7 @@ public:
 			return;
 		}
 		bytes new_byts(size);
-		new_byts.copy_from(*this);
+		new_byts.copy(*this);
 		*this = std::move(new_byts);
 	}
 
@@ -725,8 +716,8 @@ private:
 
 inline bytes operator+(bytes_view a, bytes_view b) {
 	bytes r(a.size() + b.size());
-	r.copy_from(a);
-	r.slice(a.size()).copy_from(b);
+	r.copy(a);
+	r.slice(a.size()).copy(b);
 	return r;
 }
 
