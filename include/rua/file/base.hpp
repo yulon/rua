@@ -1,7 +1,7 @@
 #ifndef _RUA_FILE_BASE_HPP
 #define _RUA_FILE_BASE_HPP
 
-#include "../chrono/time.hpp"
+#include "../time/real.hpp"
 #include "../types/util.hpp"
 
 namespace rua {

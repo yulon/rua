@@ -1,5 +1,5 @@
-#ifndef _RUA_CHRONO_DURATION_HPP
-#define _RUA_CHRONO_DURATION_HPP
+#ifndef _RUA_TIME_DURATION_HPP
+#define _RUA_TIME_DURATION_HPP
 
 #include "../bytes.hpp"
 #include "../macros.hpp"

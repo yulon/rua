@@ -1,6 +1,6 @@
 #include <rua/bytes.hpp>
-#include <rua/chrono.hpp>
 #include <rua/log.hpp>
+#include <rua/time.hpp>
 #include <rua/string.hpp>
 
 #include <doctest/doctest.h>

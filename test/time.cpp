@@ -1,4 +1,4 @@
-#include <rua/chrono.hpp>
+#include <rua/time.hpp>
 
 #include <doctest/doctest.h>
 
@@ -21,7 +21,7 @@ TEST_CASE("date convert") {
 	tm c_tm;
 	_gmtime(&c_tm, &c_ti);
 
-	rua::date_t c_epo{
+	rua::date c_epo{
 		static_cast<int16_t>(c_tm.tm_year + 1900),
 		static_cast<signed char>(c_tm.tm_mon + 1),
 		static_cast<signed char>(c_tm.tm_mday),
@@ -35,7 +35,7 @@ TEST_CASE("date convert") {
 	_gmtime(&c_tm, &c_ti);
 
 	auto t = rua::time(rua::seconds(c_ti), c_epo);
-	auto d = t.date();
+	auto d = t.point();
 
 	REQUIRE(d.year == (c_tm.tm_year + 1900));
 	REQUIRE(d.month == (c_tm.tm_mon + 1));
@@ -44,8 +44,8 @@ TEST_CASE("date convert") {
 	REQUIRE(d.minute == c_tm.tm_min);
 	REQUIRE(d.second == c_tm.tm_sec);
 
-	rua::date_t epo{1995, 12, 14, 0, 0, 0, 0, 8};
-	auto d2 = rua::time(d, epo).date();
+	rua::date epo{1995, 12, 14, 0, 0, 0, 0, 8};
+	auto d2 = rua::time(d, epo).point();
 
 	REQUIRE(d.year == d2.year);
 	REQUIRE(d.month == d2.month);
@@ -58,7 +58,7 @@ TEST_CASE("date convert") {
 	auto ts = 1596008104;
 	d = {2020, 7, 29, 15, 35, 04, 0, 8};
 	t = rua::time(d);
-	d2 = t.date();
+	d2 = t.point();
 
 	REQUIRE(t.elapsed().seconds() == ts);
 	REQUIRE(d.year == d2.year);
@@ -70,7 +70,7 @@ TEST_CASE("date convert") {
 	REQUIRE(d.nanoseconds == d2.nanoseconds);
 
 	t = rua::time(rua::seconds(ts), 8);
-	d2 = t.date();
+	d2 = t.point();
 	REQUIRE(d.year == d2.year);
 	REQUIRE(d.month == d2.month);
 	REQUIRE(d.day == d2.day);

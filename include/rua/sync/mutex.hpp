@@ -3,8 +3,8 @@
 
 #include "lockfree_list.hpp"
 
-#include "../chrono/tick.hpp"
 #include "../sched/suspender.hpp"
+#include "../time/tick.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>
@@ -99,12 +99,12 @@ private:
 		if (timeout == duration_max()) {
 			for (;;) {
 				if (spdr->suspend(timeout) && (_locked.load() == rsmr_id ||
-											  !_waiters.emplace_front_if(
-												  [this, rsmr_id]() -> bool {
-													  return _locked.load() !=
-															 rsmr_id;
-												  },
-												  rsmr))) {
+											   !_waiters.emplace_front_if(
+												   [this, rsmr_id]() -> bool {
+													   return _locked.load() !=
+															  rsmr_id;
+												   },
+												   rsmr))) {
 					return true;
 				}
 			}

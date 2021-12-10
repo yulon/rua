@@ -1,7 +1,7 @@
-#ifndef _RUA_CHRONO_TICK_WIN32_HPP
-#define _RUA_CHRONO_TICK_WIN32_HPP
+#ifndef _RUA_TIME_TICK_WIN32_HPP
+#define _RUA_TIME_TICK_WIN32_HPP
 
-#include "../time.hpp"
+#include "../real.hpp"
 
 #include "../../dylib/win32.hpp"
 #include "../../types/util.hpp"

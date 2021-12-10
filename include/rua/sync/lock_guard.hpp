@@ -1,8 +1,8 @@
 #ifndef _RUA_SYNC_LOCK_GUARD_HPP
 #define _RUA_SYNC_LOCK_GUARD_HPP
 
-#include "../chrono/duration.hpp"
 #include "../macros.hpp"
+#include "../time/duration.hpp"
 
 namespace rua {
 

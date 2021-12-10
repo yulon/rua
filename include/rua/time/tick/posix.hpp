@@ -1,7 +1,7 @@
-#ifndef _RUA_CHRONO_TICK_POSIX_HPP
-#define _RUA_CHRONO_TICK_POSIX_HPP
+#ifndef _RUA_TIME_TICK_POSIX_HPP
+#define _RUA_TIME_TICK_POSIX_HPP
 
-#include "../time.hpp"
+#include "../real.hpp"
 
 #include "../../macros.hpp"
 

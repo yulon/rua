@@ -1,5 +1,5 @@
-#ifndef _RUA_CHRONO_TIME_HPP
-#define _RUA_CHRONO_TIME_HPP
+#ifndef _RUA_TIME_REAL_HPP
+#define _RUA_TIME_REAL_HPP
 
 #include "duration.hpp"
 
@@ -11,7 +11,7 @@
 
 namespace rua {
 
-struct date_t {
+struct date {
 	int16_t year;
 	signed char month;
 	signed char day;
@@ -22,39 +22,39 @@ struct date_t {
 	signed char zone;
 };
 
-inline bool operator==(const date_t &a, const date_t &b) {
+inline bool operator==(const date &a, const date &b) {
 	return &a == &b ||
 		   (a.year == b.year && a.month == b.month && a.day == b.day &&
 			a.hour == b.hour && a.minute == b.minute && a.second == b.second &&
 			a.nanoseconds == b.nanoseconds);
 }
 
-inline bool operator!=(const date_t &a, const date_t &b) {
+inline bool operator!=(const date &a, const date &b) {
 	return !(a == b);
 }
 
-inline bool operator>(const date_t &a, const date_t &b) {
+inline bool operator>(const date &a, const date &b) {
 	return &a != &b && (a.year > b.year || a.month > b.month || a.day > b.day ||
 						a.hour > b.hour || a.minute > b.minute ||
 						a.second > b.second || a.nanoseconds > b.nanoseconds);
 }
 
-inline bool operator>=(const date_t &a, const date_t &b) {
+inline bool operator>=(const date &a, const date &b) {
 	return a == b || a > b;
 }
 
-inline bool operator<(const date_t &a, const date_t &b) {
+inline bool operator<(const date &a, const date &b) {
 	return &a != &b && (a.year < b.year || a.month < b.month || a.day < b.day ||
 						a.hour < b.hour || a.minute < b.minute ||
 						a.second < b.second || a.nanoseconds < b.nanoseconds);
 }
 
-inline bool operator<=(const date_t &a, const date_t &b) {
+inline bool operator<=(const date &a, const date &b) {
 	return a == b || a < b;
 }
 
-RUA_MULTIDEF_VAR const date_t nullepo{0, 0, 0, 0, 0, 0, 0, 0};
-RUA_MULTIDEF_VAR const date_t unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
+RUA_MULTIDEF_VAR const date nullepo{0, 0, 0, 0, 0, 0, 0, 0};
+RUA_MULTIDEF_VAR const date unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
 
 inline constexpr bool is_leap_year(int16_t yr) {
 	return !(yr % 4) && ((yr % 100) || !(yr % 400));
@@ -86,17 +86,17 @@ public:
 	constexpr time(duration elapsed, int8_t zone = 0) :
 		_ela(elapsed), _zon(zone), _epo(&unix_epoch) {}
 
-	constexpr time(duration elapsed, const date_t &epoch) :
+	constexpr time(duration elapsed, const date &epoch) :
 		_ela(elapsed), _zon(0), _epo(&epoch) {}
 
-	time(duration elapsed, date_t &&epoch) = delete;
+	time(duration elapsed, date &&epoch) = delete;
 
-	constexpr time(duration elapsed, int8_t zone, const date_t &epoch) :
+	constexpr time(duration elapsed, int8_t zone, const date &epoch) :
 		_ela(elapsed), _zon(zone), _epo(&epoch) {}
 
-	time(duration elapsed, int8_t zone, date_t &&epoch) = delete;
+	time(duration elapsed, int8_t zone, date &&epoch) = delete;
 
-	time(const date_t &d8, const date_t &epoch = unix_epoch) :
+	time(const date &d8, const date &epoch = unix_epoch) :
 		_ela(), _zon(d8.zone), _epo(&epoch) {
 		if (d8 == epoch) {
 			return;
@@ -105,7 +105,7 @@ public:
 			   _d8_wo_yr_to_dur(d8) - _d8_wo_yr_to_dur(*_epo) - hours(d8.zone);
 	}
 
-	time(const date_t &d8, date_t &&epoch) = delete;
+	time(const date &d8, date &&epoch) = delete;
 
 	bool is_monotonic() const {
 		return *_epo == nullepo;
@@ -115,7 +115,7 @@ public:
 		return !is_monotonic() || _ela;
 	}
 
-	const date_t &epoch() const {
+	const date &epoch() const {
 		return *_epo;
 	}
 
@@ -135,10 +135,10 @@ public:
 		return _zon;
 	}
 
-	date_t date() const {
+	date point() const {
 		assert(!is_monotonic());
 
-		date_t nd;
+		date nd;
 
 		// zone
 		nd.zone = _zon;
@@ -205,13 +205,13 @@ public:
 		return nd;
 	}
 
-	time to(const date_t &target_epoch) const {
+	time to(const date &target_epoch) const {
 		assert(!is_monotonic());
 
 		if (*_epo == target_epoch) {
 			return *this;
 		}
-		return time(date(), target_epoch);
+		return time(point(), target_epoch);
 	}
 
 	time to_unix() const {
@@ -228,7 +228,7 @@ public:
 			*_epo == target.epoch()) {
 			return _ela == target.elapsed();
 		}
-		return _ela == time(target.date(), *_epo).elapsed();
+		return _ela == time(target.point(), *_epo).elapsed();
 	}
 
 	bool operator>(const time &target) const {
@@ -236,7 +236,7 @@ public:
 			*_epo == target.epoch()) {
 			return _ela > target.elapsed();
 		}
-		return _ela > time(target.date(), *_epo).elapsed();
+		return _ela > time(target.point(), *_epo).elapsed();
 	}
 
 	bool operator>=(const time &target) const {
@@ -244,7 +244,7 @@ public:
 			*_epo == target.epoch()) {
 			return _ela >= target.elapsed();
 		}
-		return _ela >= time(target.date(), *_epo).elapsed();
+		return _ela >= time(target.point(), *_epo).elapsed();
 	}
 
 	bool operator<(const time &target) const {
@@ -252,7 +252,7 @@ public:
 			*_epo == target.epoch()) {
 			return _ela < target.elapsed();
 		}
-		return _ela < time(target.date(), *_epo).elapsed();
+		return _ela < time(target.point(), *_epo).elapsed();
 	}
 
 	bool operator<=(const time &target) const {
@@ -260,7 +260,7 @@ public:
 			*_epo == target.epoch()) {
 			return _ela <= target.elapsed();
 		}
-		return _ela <= time(target.date(), *_epo).elapsed();
+		return _ela <= time(target.point(), *_epo).elapsed();
 	}
 
 	time operator+(duration dur) const {
@@ -281,10 +281,10 @@ public:
 			*_epo == target.epoch()) {
 			return _ela - target.elapsed();
 		}
-		return _ela - time(target.date(), *_epo).elapsed();
+		return _ela - time(target.point(), *_epo).elapsed();
 	}
 
-	duration operator-(const date_t &d8) const {
+	duration operator-(const date &d8) const {
 		return _ela - time(d8, *_epo).elapsed();
 	}
 
@@ -296,14 +296,14 @@ public:
 private:
 	duration _ela;
 	int8_t _zon;
-	const date_t *_epo;
+	const date *_epo;
 
 	static RUA_CONSTEXPR_14 int64_t _days_b4_yr(uint16_t yr) {
 		--yr;
 		return yr * 365 + yr / 4 - yr / 100 + yr / 400;
 	}
 
-	static duration _d8_wo_yr_to_dur(const date_t &d8) {
+	static duration _d8_wo_yr_to_dur(const date &d8) {
 		duration r;
 		if (d8.month > 1) {
 			r += days(_yr_days_at_mon(is_leap_year(d8.year), d8.month - 1));

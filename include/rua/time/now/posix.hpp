@@ -1,7 +1,7 @@
-#ifndef _RUA_CHRONO_NOW_POSIX_HPP
-#define _RUA_CHRONO_NOW_POSIX_HPP
+#ifndef _RUA_TIME_NOW_POSIX_HPP
+#define _RUA_TIME_NOW_POSIX_HPP
 
-#include "../time.hpp"
+#include "../real.hpp"
 
 #include "../../macros.hpp"
 #include "../../types/util.hpp"
@@ -29,8 +29,9 @@ from_sys_time(const sys_time_t &tv, int8_t zone = local_time_zone()) {
 
 inline sys_time_t to_sys_time(const time &ti) {
 	auto ela = ti.to_unix().elapsed();
-	return {ela.seconds<decltype(sys_time_t::tv_sec)>(),
-			ela.remaining_nanoseconds<decltype(sys_time_t::tv_usec)>() / 1000};
+	return {
+		ela.seconds<decltype(sys_time_t::tv_sec)>(),
+		ela.remaining_nanoseconds<decltype(sys_time_t::tv_usec)>() / 1000};
 }
 
 inline time now(int8_t zone = local_time_zone()) {

@@ -1,9 +1,9 @@
 #ifndef _RUA_PIPE_WIN32_HPP
 #define _RUA_PIPE_WIN32_HPP
 
-#include "../chrono/duration.hpp"
 #include "../string.hpp"
 #include "../sys/stream/win32.hpp"
+#include "../time/duration.hpp"
 #include "../types/util.hpp"
 
 #include <windows.h>

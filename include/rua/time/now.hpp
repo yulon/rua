@@ -1,5 +1,5 @@
-#ifndef _RUA_CHRONO_NOW_HPP
-#define _RUA_CHRONO_NOW_HPP
+#ifndef _RUA_TIME_NOW_HPP
+#define _RUA_TIME_NOW_HPP
 
 #include "../macros.hpp"
 

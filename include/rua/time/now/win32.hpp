@@ -1,7 +1,7 @@
-#ifndef _RUA_CHRONO_NOW_WIN32_HPP
-#define _RUA_CHRONO_NOW_WIN32_HPP
+#ifndef _RUA_TIME_NOW_WIN32_HPP
+#define _RUA_TIME_NOW_WIN32_HPP
 
-#include "../time.hpp"
+#include "../real.hpp"
 
 #include "../../dylib/win32.hpp"
 #include "../../macros.hpp"
@@ -19,7 +19,7 @@ inline int8_t local_time_zone() {
 	return static_cast<int8_t>(info.Bias / 60 + 16);
 }
 
-RUA_MULTIDEF_VAR const date_t sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
+RUA_MULTIDEF_VAR const date sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
 
 RUA_INLINE_CONST auto _FILETIME_low_bsz = sizeof(FILETIME::dwLowDateTime) * 8;
 RUA_INLINE_CONST auto _FILETIME_high_bsz = 64 - _FILETIME_low_bsz;
@@ -38,10 +38,11 @@ from_sys_time(const sys_time_t &ft, int8_t zone = local_time_zone()) {
 
 inline sys_time_t to_sys_time(const time &ti) {
 	auto num = ti.to(sys_epoch).elapsed().count<100>();
-	return {static_cast<decltype(FILETIME::dwLowDateTime)>(
-				num << _FILETIME_high_bsz >> _FILETIME_high_bsz),
-			static_cast<decltype(FILETIME::dwHighDateTime)>(
-				num >> _FILETIME_low_bsz)};
+	return {
+		static_cast<decltype(FILETIME::dwLowDateTime)>(
+			num << _FILETIME_high_bsz >> _FILETIME_high_bsz),
+		static_cast<decltype(FILETIME::dwHighDateTime)>(
+			num >> _FILETIME_low_bsz)};
 }
 
 inline time now(int8_t zone = local_time_zone()) {

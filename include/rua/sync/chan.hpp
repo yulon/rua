@@ -3,9 +3,9 @@
 
 #include "lockfree_list.hpp"
 
-#include "../chrono/tick.hpp"
 #include "../optional.hpp"
 #include "../sched/suspender.hpp"
+#include "../time/tick.hpp"
 #include "../types/util.hpp"
 
 #include <atomic>

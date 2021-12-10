@@ -1,8 +1,8 @@
 #ifndef _RUA_SCHED_SUSPENDER_ABSTRACT_HPP
 #define _RUA_SCHED_SUSPENDER_ABSTRACT_HPP
 
-#include "../../chrono.hpp"
 #include "../../interface_ptr.hpp"
+#include "../../time.hpp"
 
 #include <atomic>
 #include <memory>
