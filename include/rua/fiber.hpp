@@ -18,7 +18,8 @@
 
 namespace rua {
 
-class fiber_executor;
+class fiber_runer;
+class fiber_dozer;
 
 class fiber {
 public:
@@ -63,73 +64,105 @@ private:
 		bytes stk_bak;
 
 		bool has_yielded;
-		std::shared_ptr<secondary_resumer> rsmr;
+		std::shared_ptr<secondary_waker> wkr;
 	};
 
 	std::shared_ptr<_ctx_t> _ctx;
 
 	fiber(std::shared_ptr<_ctx_t> ctx) : _ctx(std::move(ctx)) {}
 
-	friend fiber_executor;
+	friend fiber_runer;
+	friend fiber_dozer;
 };
 
-class fiber_executor {
+class fiber_dozer : public rua::dozer_base {
 public:
-	fiber_executor(size_t stack_size = 0x100000) :
-		_stk_sz(stack_size), _stk_ix(0), _spdr(*this) {}
+	fiber_dozer() = default;
 
-	fiber execute(std::function<void()> task, duration lifetime = 0) {
+	virtual ~fiber_dozer() = default;
+
+	template <typename DozingList>
+	inline void _doze(DozingList &dl, duration timeout);
+
+	inline virtual void sleep(duration timeout);
+
+	inline virtual bool doze(duration timeout);
+
+	inline virtual waker get_waker();
+
+	virtual bool is_own_stack() const {
+		return false;
+	}
+
+	fiber_runer &get_runer() {
+		return *_fr;
+	}
+
+private:
+	fiber_runer *_fr;
+
+	explicit fiber_dozer(fiber_runer &fr) : _fr(&fr) {}
+
+	friend fiber_runer;
+};
+
+class fiber_runer {
+public:
+	fiber_runer(size_t stack_size = 0x100000) :
+		_stk_sz(stack_size), _stk_ix(0), _dzr(*this) {}
+
+	fiber add(std::function<void()> task, duration lifetime = 0) {
 		fiber fbr(std::make_shared<fiber::_ctx_t>());
 		fbr._ctx->tsk = std::move(task);
 		fbr._ctx->is_stoped.store(false);
 		fbr.reset_lifetime(lifetime);
-		_exs.emplace(fbr);
+		_runs.emplace(fbr);
 		return fbr;
 	}
 
-	fiber executing() const {
+	fiber running() const {
 		return _cur;
 	}
 
 	operator bool() const {
-		return _exs.size() || _spds.size() || _cws.size();
+		return _runs.size() || _dzs.size() || _cws.size();
 	}
 
 	// Does not block the current context.
-	// The current suspender will not be used.
+	// The current dozer will not be used.
 	// Mostly used for frame tasks.
 	void step() {
 		auto now = tick();
 
-		if (_spds.size()) {
-			_check_spds(now);
+		if (_dzs.size()) {
+			_check_dzs(now);
 		}
 		if (_cws.size()) {
 			_check_cws(now);
 		}
-		if (_exs.empty()) {
+		if (_runs.empty()) {
 			return;
 		}
 
-		suspender_guard sg(_spdr);
+		dozer_guard sg(_dzr);
 		_switch_to_runner_uc();
 	}
 
 	// May block the current context.
-	// The current suspender will be used.
+	// The current dozer will be used.
 	void run() {
-		if (_exs.empty() && _spds.empty() && _cws.empty()) {
+		if (_runs.empty() && _dzs.empty() && _cws.empty()) {
 			return;
 		}
 
-		suspender_guard sg(_spdr);
-		auto orig_spdr = sg.previous();
-		_orig_rsmr = orig_spdr->get_resumer();
+		dozer_guard sg(_dzr);
+		auto orig_dzr = sg.previous();
+		_orig_wkr = orig_dzr->get_waker();
 
 		auto now = tick();
 
-		if (_spds.size()) {
-			_check_spds(now);
+		if (_dzs.size()) {
+			_check_dzs(now);
 		}
 		if (_cws.size()) {
 			_check_cws(now);
@@ -140,45 +173,45 @@ public:
 
 			now = tick();
 
-			if (_spds.size()) {
+			if (_dzs.size()) {
 
 				if (_cws.size()) {
-					duration resume_ti;
-					if (_cws.begin()->resume_ti < _spds.begin()->resume_ti) {
-						resume_ti = _cws.begin()->resume_ti;
+					duration wake_ti;
+					if (_cws.begin()->wake_ti < _dzs.begin()->wake_ti) {
+						wake_ti = _cws.begin()->wake_ti;
 					} else {
-						resume_ti = _spds.begin()->resume_ti;
+						wake_ti = _dzs.begin()->wake_ti;
 					}
-					if (resume_ti > now) {
-						orig_spdr->suspend(resume_ti - now);
+					if (wake_ti > now) {
+						orig_dzr->doze(wake_ti - now);
 					} else {
-						orig_spdr->yield();
+						orig_dzr->yield();
 					}
 					now = tick();
-					if (now >= resume_ti) {
-						_check_spds(now);
+					if (now >= wake_ti) {
+						_check_dzs(now);
 					}
 					_check_cws(now);
 					continue;
 				}
 
-				auto resume_ti = _spds.begin()->resume_ti;
-				if (resume_ti > now) {
-					orig_spdr->sleep(resume_ti - now);
+				auto wake_ti = _dzs.begin()->wake_ti;
+				if (wake_ti > now) {
+					orig_dzr->sleep(wake_ti - now);
 				} else {
-					orig_spdr->yield();
+					orig_dzr->yield();
 				}
 				now = tick();
-				_check_spds(now);
+				_check_dzs(now);
 				continue;
 
 			} else if (_cws.size()) {
 
-				auto resume_ti = _cws.begin()->resume_ti;
-				if (resume_ti > now) {
-					orig_spdr->suspend(resume_ti - now);
+				auto wake_ti = _cws.begin()->wake_ti;
+				if (wake_ti > now) {
+					orig_dzr->doze(wake_ti - now);
 				} else {
-					orig_spdr->yield();
+					orig_dzr->yield();
 				}
 				now = tick();
 				_check_cws(now);
@@ -189,108 +222,38 @@ public:
 		}
 	}
 
-	class suspender : public rua::suspender {
-	public:
-		suspender() = default;
-
-		suspender(fiber_executor &fe) : _fe(&fe) {}
-
-		virtual ~suspender() = default;
-
-		template <typename SleepingList>
-		void _suspend(SleepingList &sl, duration timeout) {
-			duration resume_ti;
-			if (!timeout) {
-				resume_ti = 0;
-			} else if (timeout >= duration_max() - tick()) {
-				resume_ti = duration_max();
-			} else {
-				resume_ti = tick() + timeout;
-			}
-
-			_fe->_cur._ctx->has_yielded = true;
-			_fe->_cur._ctx->stk_ix = _fe->_stk_ix;
-			sl.emplace(resume_ti, _fe->_cur);
-
-			_fe->_prev = std::move(_fe->_cur);
-			if (_fe->_exs.size()) {
-				if (!_fe->_try_resume_exs_front()) {
-					_fe->_swap_new_runner_uc(&_fe->_prev._ctx->_uc);
-				}
-			} else {
-				swap_ucontext(&_fe->_prev._ctx->_uc, &_fe->_orig_uc);
-			}
-			_fe->_clear_prev();
-		}
-
-		virtual void sleep(duration timeout) {
-			_suspend(_fe->_spds, timeout);
-		}
-
-		virtual bool suspend(duration timeout) {
-			auto &rsmr = _fe->_cur._ctx->rsmr;
-			if (!rsmr->state()) {
-				_suspend(_fe->_cws, timeout);
-			}
-			return rsmr->state();
-		}
-
-		virtual resumer_i get_resumer() {
-			assert(_fe->_cur._ctx);
-
-			auto &rsmr = _fe->_cur._ctx->rsmr;
-			if (rsmr) {
-				rsmr.reset();
-			} else {
-				rsmr = std::make_shared<secondary_resumer>(_fe->_orig_rsmr);
-			}
-			return rsmr;
-		}
-
-		virtual bool is_own_stack() const {
-			return false;
-		}
-
-		fiber_executor &get_executor() {
-			return *_fe;
-		}
-
-	private:
-		fiber_executor *_fe;
-	};
-
-	suspender &get_suspender() {
-		return _spdr;
+	fiber_dozer &get_dozer() {
+		return _dzr;
 	}
 
 private:
-	std::queue<fiber> _exs;
+	std::queue<fiber> _runs;
 	fiber _cur, _prev;
 
-	struct _suspending_t {
-		duration resume_ti;
+	struct _dozing_t {
+		duration wake_ti;
 		fiber fbr;
 
-		bool operator<(const _suspending_t &s) const {
-			return resume_ti < s.resume_ti;
+		bool operator<(const _dozing_t &s) const {
+			return wake_ti < s.wake_ti;
 		}
 	};
-	sorted_list<_suspending_t> _spds;
-	sorted_list<_suspending_t> _cws;
+	sorted_list<_dozing_t> _dzs;
+	sorted_list<_dozing_t> _cws;
 
-	void _check_spds(duration now) {
-		for (auto it = _spds.begin(); it != _spds.end(); it = _spds.erase(it)) {
-			if (now < it->resume_ti) {
+	void _check_dzs(duration now) {
+		for (auto it = _dzs.begin(); it != _dzs.end(); it = _dzs.erase(it)) {
+			if (now < it->wake_ti) {
 				break;
 			}
-			_exs.emplace(std::move(it->fbr));
+			_runs.emplace(std::move(it->fbr));
 		}
 	}
 
 	void _check_cws(duration now) {
 		for (auto it = _cws.begin(); it != _cws.end();) {
-			if (it->fbr._ctx->rsmr->state() || now >= it->resume_ti) {
-				_exs.emplace(std::move(it->fbr));
+			if (it->fbr._ctx->wkr->state() || now >= it->wake_ti) {
+				_runs.emplace(std::move(it->fbr));
 				it = _cws.erase(it);
 				continue;
 			}
@@ -330,12 +293,12 @@ private:
 		_prev._ctx.reset();
 	}
 
-	bool _try_resume_exs_front(ucontext_t *oucp = nullptr) {
-		if (!_exs.front()._ctx->stk_bak.size()) {
+	bool _try_wake_runs_front(ucontext_t *oucp = nullptr) {
+		if (!_runs.front()._ctx->stk_bak.size()) {
 			return false;
 		}
 
-		if (oucp != &_orig_uc && _exs.front()._ctx->stk_ix == _stk_ix) {
+		if (oucp != &_orig_uc && _runs.front()._ctx->stk_ix == _stk_ix) {
 			if (!oucp) {
 				set_ucontext(&_orig_uc);
 				return true;
@@ -344,8 +307,8 @@ private:
 			return true;
 		}
 
-		_cur = std::move(_exs.front());
-		_exs.pop();
+		_cur = std::move(_runs.front());
+		_runs.pop();
 
 		_stk_ix = _cur._ctx->stk_ix;
 		auto &cur_stk = _cur_stk();
@@ -364,13 +327,13 @@ private:
 	void _run() {
 		_clear_prev();
 
-		while (_exs.size()) {
-			assert(_exs.front()._ctx);
-			_try_resume_exs_front();
+		while (_runs.size()) {
+			assert(_runs.front()._ctx);
+			_try_wake_runs_front();
 
-			_cur = std::move(_exs.front());
-			assert(!_exs.front()._ctx);
-			_exs.pop();
+			_cur = std::move(_runs.front());
+			assert(!_runs.front()._ctx);
+			_runs.pop();
 
 			if (_cur._ctx->is_stoped.load()) {
 				continue;
@@ -389,7 +352,7 @@ private:
 				}
 
 				if (!_cur._ctx->has_yielded) {
-					_spds.emplace(0, std::move(_cur));
+					_dzs.emplace(0, std::move(_cur));
 					break;
 				}
 				_cur._ctx->has_yielded = false;
@@ -400,7 +363,7 @@ private:
 	}
 
 	static void _runner(any_word th1s) {
-		th1s.as<fiber_executor *>()->_run();
+		th1s.as<fiber_runer *>()->_run();
 	}
 
 	void _swap_new_runner_uc(ucontext_t *oucp) {
@@ -417,48 +380,99 @@ private:
 	}
 
 	void _switch_to_runner_uc() {
-		while (_exs.size()) {
-			if (!_try_resume_exs_front(&_orig_uc)) {
+		while (_runs.size()) {
+			if (!_try_wake_runs_front(&_orig_uc)) {
 				_swap_new_runner_uc(&_orig_uc);
 			}
 			_clear_prev();
 		}
 	}
 
-	friend suspender;
-	suspender _spdr;
+	waker _orig_wkr;
 
-	resumer_i _orig_rsmr;
+	friend fiber_dozer;
+
+	fiber_dozer _dzr;
 };
 
-inline fiber_executor *this_fiber_executor() {
-	auto spdr = this_suspender();
-	if (!spdr) {
+template <typename DozingList>
+inline void fiber_dozer::_doze(DozingList &dl, duration timeout) {
+	duration wake_ti;
+	if (!timeout) {
+		wake_ti = 0;
+	} else if (timeout >= duration_max() - tick()) {
+		wake_ti = duration_max();
+	} else {
+		wake_ti = tick() + timeout;
+	}
+
+	_fr->_cur._ctx->has_yielded = true;
+	_fr->_cur._ctx->stk_ix = _fr->_stk_ix;
+	dl.emplace(wake_ti, _fr->_cur);
+
+	_fr->_prev = std::move(_fr->_cur);
+	if (_fr->_runs.size()) {
+		if (!_fr->_try_wake_runs_front()) {
+			_fr->_swap_new_runner_uc(&_fr->_prev._ctx->_uc);
+		}
+	} else {
+		swap_ucontext(&_fr->_prev._ctx->_uc, &_fr->_orig_uc);
+	}
+	_fr->_clear_prev();
+}
+
+inline void fiber_dozer::sleep(duration timeout) {
+	_doze(_fr->_dzs, timeout);
+}
+
+inline bool fiber_dozer::doze(duration timeout) {
+	auto &wkr = _fr->_cur._ctx->wkr;
+	if (!wkr->state()) {
+		_doze(_fr->_cws, timeout);
+	}
+	return wkr->state();
+}
+
+inline waker fiber_dozer::get_waker() {
+	assert(_fr->_cur._ctx);
+
+	auto &wkr = _fr->_cur._ctx->wkr;
+	if (wkr) {
+		wkr.reset();
+	} else {
+		wkr = std::make_shared<secondary_waker>(_fr->_orig_wkr);
+	}
+	return wkr;
+}
+
+inline fiber_runer *this_fiber_runer() {
+	auto dzr = this_dozer();
+	if (!dzr) {
 		return nullptr;
 	}
-	auto fs = spdr.as<fiber_executor::suspender>();
-	if (!fs) {
+	auto fd = dzr.as<fiber_dozer>();
+	if (!fd) {
 		return nullptr;
 	}
-	return &fs->get_executor();
+	return &fd->get_runer();
 }
 
 inline fiber this_fiber() {
-	auto fe = this_fiber_executor();
-	if (fe) {
-		return fe->executing();
+	auto fr = this_fiber_runer();
+	if (fr) {
+		return fr->running();
 	}
 	return fiber();
 }
 
 inline fiber co(std::function<void()> task, duration lifetime = 0) {
-	auto fe = this_fiber_executor();
-	if (fe) {
-		return fe->execute(std::move(task), lifetime);
+	auto fr = this_fiber_runer();
+	if (fr) {
+		return fr->add(std::move(task), lifetime);
 	}
-	auto tmp_fe = std::make_shared<fiber_executor>();
-	tmp_fe->execute(std::move(task), lifetime);
-	tmp_fe->run();
+	auto tmp_fr = std::make_shared<fiber_runer>();
+	tmp_fr->add(std::move(task), lifetime);
+	tmp_fr->run();
 	return fiber();
 }
 

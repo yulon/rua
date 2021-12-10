@@ -1,8 +1,8 @@
-#ifndef _RUA_THREAD_SUSPENDER_POSIX_HPP
-#define _RUA_THREAD_SUSPENDER_POSIX_HPP
+#ifndef _RUA_THREAD_DOZER_POSIX_HPP
+#define _RUA_THREAD_DOZER_POSIX_HPP
 
 #include "../../macros.hpp"
-#include "../../sched/suspender/abstract.hpp"
+#include "../../sched/dozer/abstract.hpp"
 #include "../../types/util.hpp"
 
 #include <sched.h>
@@ -14,15 +14,15 @@
 
 namespace rua { namespace posix {
 
-class thread_resumer : public resumer {
+class thread_waker : public waker_base {
 public:
 	using native_handle_t = sem_t *;
 
-	thread_resumer() {
+	thread_waker() {
 		_need_close = !sem_init(&_sem, 0, 0);
 	}
 
-	virtual ~thread_resumer() {
+	virtual ~thread_waker() {
 		if (!_need_close) {
 			return;
 		}
@@ -34,7 +34,7 @@ public:
 		return &_sem;
 	}
 
-	virtual void resume() {
+	virtual void wake() {
 		sem_post(&_sem);
 	}
 
@@ -48,12 +48,12 @@ private:
 	bool _need_close;
 };
 
-class thread_suspender : public suspender {
+class thread_dozer : public dozer_base {
 public:
-	constexpr thread_suspender(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _rsmr() {}
+	constexpr thread_dozer(duration yield_dur = 0) :
+		_yield_dur(yield_dur), _wkr() {}
 
-	virtual ~thread_suspender() = default;
+	virtual ~thread_dozer() = default;
 
 	virtual void yield() {
 		if (_yield_dur > 1_us) {
@@ -75,28 +75,28 @@ public:
 		::nanosleep(&ts, nullptr);
 	}
 
-	virtual bool suspend(duration timeout) {
-		assert(_rsmr);
+	virtual bool doze(duration timeout) {
+		assert(_wkr);
 
 		if (timeout == duration_max()) {
-			return !sem_wait(_rsmr->native_handle());
+			return !sem_wait(_wkr->native_handle());
 		}
 		auto ts = timeout.c_timespec();
-		return !sem_timedwait(_rsmr->native_handle(), &ts);
+		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
 
-	virtual resumer_i get_resumer() {
-		if (_rsmr) {
-			_rsmr->reset();
+	virtual waker get_waker() {
+		if (_wkr) {
+			_wkr->reset();
 		} else {
-			_rsmr = std::make_shared<thread_resumer>();
+			_wkr = std::make_shared<thread_waker>();
 		}
-		return _rsmr;
+		return _wkr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_resumer> _rsmr;
+	std::shared_ptr<thread_waker> _wkr;
 };
 
 }} // namespace rua::posix

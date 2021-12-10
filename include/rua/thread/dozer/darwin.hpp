@@ -1,8 +1,8 @@
-#ifndef _RUA_THREAD_SUSPENDER_DARWIN_HPP
-#define _RUA_THREAD_SUSPENDER_DARWIN_HPP
+#ifndef _RUA_THREAD_DOZER_DARWIN_HPP
+#define _RUA_THREAD_DOZER_DARWIN_HPP
 
 #include "../../macros.hpp"
-#include "../../sched/suspender/abstract.hpp"
+#include "../../sched/dozer/abstract.hpp"
 #include "../../types/util.hpp"
 
 #include <dispatch/dispatch.h>
@@ -13,13 +13,13 @@
 
 namespace rua { namespace darwin {
 
-class thread_resumer : public resumer {
+class thread_waker : public waker_base {
 public:
 	using native_handle_t = dispatch_semaphore_t;
 
-	thread_resumer() : _sem(dispatch_semaphore_create(0)) {}
+	thread_waker() : _sem(dispatch_semaphore_create(0)) {}
 
-	virtual ~thread_resumer() {
+	virtual ~thread_waker() {
 		if (!_sem) {
 			return;
 		}
@@ -31,7 +31,7 @@ public:
 		return _sem;
 	}
 
-	virtual void resume() {
+	virtual void wake() {
 		dispatch_semaphore_signal(_sem);
 	}
 
@@ -44,12 +44,12 @@ private:
 	dispatch_semaphore_t _sem;
 };
 
-class thread_suspender : public suspender {
+class thread_dozer : public dozer_base {
 public:
-	constexpr thread_suspender(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _rsmr() {}
+	constexpr thread_dozer(duration yield_dur = 0) :
+		_yield_dur(yield_dur), _wkr() {}
 
-	virtual ~thread_suspender() = default;
+	virtual ~thread_dozer() = default;
 
 	virtual void yield() {
 		if (_yield_dur > 1_us) {
@@ -69,26 +69,26 @@ public:
 		::nanosleep(&ts, nullptr);
 	}
 
-	virtual bool suspend(duration timeout) {
-		assert(_rsmr);
+	virtual bool doze(duration timeout) {
+		assert(_wkr);
 
 		return !dispatch_semaphore_wait(
-			_rsmr->native_handle(),
+			_wkr->native_handle(),
 			timeout.nanoseconds<dispatch_time_t, DISPATCH_TIME_FOREVER>());
 	}
 
-	virtual resumer_i get_resumer() {
-		if (_rsmr) {
-			_rsmr->reset();
+	virtual waker get_waker() {
+		if (_wkr) {
+			_wkr->reset();
 		} else {
-			_rsmr = std::make_shared<thread_resumer>();
+			_wkr = std::make_shared<thread_waker>();
 		}
-		return _rsmr;
+		return _wkr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_resumer> _rsmr;
+	std::shared_ptr<thread_waker> _wkr;
 };
 
 }} // namespace rua::darwin

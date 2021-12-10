@@ -1,8 +1,8 @@
-#ifndef _RUA_THREAD_SUSPENDER_WIN32_HPP
-#define _RUA_THREAD_SUSPENDER_WIN32_HPP
+#ifndef _RUA_THREAD_DOZER_WIN32_HPP
+#define _RUA_THREAD_DOZER_WIN32_HPP
 
 #include "../../macros.hpp"
-#include "../../sched/suspender/abstract.hpp"
+#include "../../sched/dozer/abstract.hpp"
 #include "../../types/util.hpp"
 
 #include <windows.h>
@@ -12,13 +12,13 @@
 
 namespace rua { namespace win32 {
 
-class thread_resumer : public resumer {
+class thread_waker : public waker_base {
 public:
 	using native_handle_t = HANDLE;
 
-	thread_resumer() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
+	thread_waker() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
 
-	virtual ~thread_resumer() {
+	virtual ~thread_waker() {
 		if (!_h) {
 			return;
 		}
@@ -34,7 +34,7 @@ public:
 		return _h;
 	}
 
-	virtual void resume() {
+	virtual void wake() {
 		SetEvent(_h);
 	}
 
@@ -46,12 +46,12 @@ private:
 	HANDLE _h;
 };
 
-class thread_suspender : public suspender {
+class thread_dozer : public dozer_base {
 public:
-	constexpr thread_suspender(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _rsmr() {}
+	constexpr thread_dozer(duration yield_dur = 0) :
+		_yield_dur(yield_dur), _wkr() {}
 
-	virtual ~thread_suspender() = default;
+	virtual ~thread_dozer() = default;
 
 	virtual void yield() {
 		if (_yield_dur > 1) {
@@ -70,26 +70,26 @@ public:
 		Sleep(timeout.milliseconds<DWORD, INFINITE>());
 	}
 
-	virtual bool suspend(duration timeout) {
-		assert(_rsmr);
+	virtual bool doze(duration timeout) {
+		assert(_wkr);
 
 		return WaitForSingleObject(
-				   _rsmr->native_handle(),
+				   _wkr->native_handle(),
 				   timeout.milliseconds<DWORD, INFINITE>()) != WAIT_TIMEOUT;
 	}
 
-	virtual resumer_i get_resumer() {
-		if (_rsmr) {
-			_rsmr->reset();
+	virtual waker get_waker() {
+		if (_wkr) {
+			_wkr->reset();
 		} else {
-			_rsmr = std::make_shared<thread_resumer>();
+			_wkr = std::make_shared<thread_waker>();
 		}
-		return _rsmr;
+		return _wkr;
 	}
 
 private:
 	duration _yield_dur;
-	std::shared_ptr<thread_resumer> _rsmr;
+	std::shared_ptr<thread_waker> _wkr;
 };
 
 }} // namespace rua::win32

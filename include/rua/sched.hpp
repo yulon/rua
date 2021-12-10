@@ -2,6 +2,6 @@
 #define _RUA_SCHED_HPP
 
 #include "sched/await.hpp"
-#include "sched/suspender.hpp"
+#include "sched/dozer.hpp"
 
 #endif

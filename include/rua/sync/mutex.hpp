@@ -3,7 +3,7 @@
 
 #include "lockfree_list.hpp"
 
-#include "../sched/suspender.hpp"
+#include "../sched/dozer.hpp"
 #include "../time/tick.hpp"
 #include "../types/util.hpp"
 
@@ -37,25 +37,25 @@ public:
 		if (!timeout) {
 			return false;
 		}
-		return _wait_and_lock(this_suspender(), timeout);
+		return _wait_and_lock(this_dozer(), timeout);
 	}
 
-	bool try_lock(suspender_i spdr, duration timeout) {
+	bool try_lock(dozer dzr, duration timeout) {
 		if (try_lock()) {
 			return true;
 		}
 		if (!timeout) {
 			return false;
 		}
-		return _wait_and_lock(std::move(spdr), timeout);
+		return _wait_and_lock(std::move(dzr), timeout);
 	}
 
 	void lock() {
 		try_lock(duration_max());
 	}
 
-	void lock(suspender_i spdr) {
-		try_lock(std::move(spdr), duration_max());
+	void lock(dozer dzr) {
+		try_lock(std::move(dzr), duration_max());
 	}
 
 	void unlock() {
@@ -76,35 +76,35 @@ public:
 #else
 		assert(_locked.exchange(reinterpret_cast<uintptr_t>(waiter.get())));
 #endif
-		waiter->resume();
+		waiter->wake();
 	}
 
 private:
 	std::atomic<uintptr_t> _locked;
-	lockfree_list<resumer_i> _waiters;
+	lockfree_list<waker> _waiters;
 
-	bool _wait_and_lock(suspender_i spdr, duration timeout) {
-		assert(spdr);
+	bool _wait_and_lock(dozer dzr, duration timeout) {
+		assert(dzr);
 		assert(timeout);
 
-		auto rsmr = spdr->get_resumer();
-		auto rsmr_id = reinterpret_cast<uintptr_t>(rsmr.get());
+		auto wkr = dzr->get_waker();
+		auto wkr_id = reinterpret_cast<uintptr_t>(wkr.get());
 
 		if (!_waiters.emplace_front_if(
-				[this, rsmr_id]() -> bool { return _locked.load() != rsmr_id; },
-				rsmr)) {
+				[this, wkr_id]() -> bool { return _locked.load() != wkr_id; },
+				wkr)) {
 			return true;
 		}
 
 		if (timeout == duration_max()) {
 			for (;;) {
-				if (spdr->suspend(timeout) && (_locked.load() == rsmr_id ||
-											   !_waiters.emplace_front_if(
-												   [this, rsmr_id]() -> bool {
-													   return _locked.load() !=
-															  rsmr_id;
-												   },
-												   rsmr))) {
+				if (dzr->doze(timeout) && (_locked.load() == wkr_id ||
+										   !_waiters.emplace_front_if(
+											   [this, wkr_id]() -> bool {
+												   return _locked.load() !=
+														  wkr_id;
+											   },
+											   wkr))) {
 					return true;
 				}
 			}
@@ -112,17 +112,17 @@ private:
 
 		for (;;) {
 			auto t = tick();
-			auto r = spdr->suspend(timeout);
+			auto r = dzr->doze(timeout);
 			timeout -= tick() - t;
 			if (timeout <= 0) {
-				return _locked.load() == rsmr_id;
+				return _locked.load() == wkr_id;
 			}
-			if (r && (_locked.load() == rsmr_id ||
+			if (r && (_locked.load() == wkr_id ||
 					  !_waiters.emplace_front_if(
-						  [this, rsmr_id]() -> bool {
-							  return _locked.load() != rsmr_id;
+						  [this, wkr_id]() -> bool {
+							  return _locked.load() != wkr_id;
 						  },
-						  rsmr))) {
+						  wkr))) {
 				return true;
 			}
 		}

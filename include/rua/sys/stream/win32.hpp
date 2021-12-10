@@ -68,31 +68,31 @@ public:
 	ptrdiff_t read(bytes_ref p) {
 		assert(*this);
 
-		auto spdr = this_suspender();
-		if (!spdr->is_own_stack()) {
+		auto dzr = this_dozer();
+		if (!dzr->is_own_stack()) {
 			auto buf = try_make_heap_buffer(p);
 			if (buf) {
-				auto sz = await(std::move(spdr), _read, _h, bytes_ref(buf));
+				auto sz = await(std::move(dzr), _read, _h, bytes_ref(buf));
 				if (sz > 0) {
 					p.copy_from(buf);
 				}
 				return sz;
 			}
 		}
-		return await(std::move(spdr), _read, _h, p);
+		return await(std::move(dzr), _read, _h, p);
 	}
 
 	ptrdiff_t write(bytes_view p) {
 		assert(*this);
 
-		auto spdr = this_suspender();
-		if (!spdr->is_own_stack()) {
+		auto dzr = this_dozer();
+		if (!dzr->is_own_stack()) {
 			auto data = try_make_heap_data(p);
 			if (data) {
-				return await(std::move(spdr), _write, _h, bytes_view(data));
+				return await(std::move(dzr), _write, _h, bytes_view(data));
 			}
 		}
-		return await(std::move(spdr), _write, _h, p);
+		return await(std::move(dzr), _write, _h, p);
 	}
 
 	bool is_need_close() const {

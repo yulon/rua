@@ -3,7 +3,7 @@
 
 #include "../listen/win32.hpp"
 
-#include "../../sched/suspender.hpp"
+#include "../../sched/dozer.hpp"
 #include "../../sync/chan.hpp"
 
 #include <memory>
@@ -13,11 +13,11 @@ namespace rua { namespace win32 {
 namespace _sys_wait {
 
 inline bool
-sys_wait(suspender_i spdr, HANDLE handle, duration timeout = duration_max()) {
-	assert(spdr);
+sys_wait(dozer dzr, HANDLE handle, duration timeout = duration_max()) {
+	assert(dzr);
 	assert(handle);
 
-	if (spdr.type_is<rua::thread_suspender>()) {
+	if (dzr.type_is<rua::thread_dozer>()) {
 		return WaitForSingleObject(
 				   handle, timeout.milliseconds<DWORD, INFINITE>()) !=
 			   WAIT_TIMEOUT;
@@ -26,13 +26,13 @@ sys_wait(suspender_i spdr, HANDLE handle, duration timeout = duration_max()) {
 	std::unique_ptr<chan<bool>> ch_uptr(ch_ptr);
 	sys_listen(
 		handle, [=](bool r) mutable { *ch_ptr << r; }, timeout);
-	return ch_ptr->pop(std::move(spdr));
+	return ch_ptr->pop(std::move(dzr));
 }
 
 inline bool sys_wait(HANDLE handle, duration timeout = duration_max()) {
 	assert(handle);
 
-	return sys_wait(this_suspender(), handle, timeout);
+	return sys_wait(this_dozer(), handle, timeout);
 }
 
 } // namespace _sys_wait

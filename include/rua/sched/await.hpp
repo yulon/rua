@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_AWAIT_HPP
 #define _RUA_THREAD_AWAIT_HPP
 
-#include "suspender.hpp"
+#include "dozer.hpp"
 
 #include "../sync/chan.hpp"
 #include "../thread/reuse.hpp"
@@ -16,10 +16,10 @@ template <
 	typename... Args,
 	typename Ret = invoke_result_t<F &&, Args &&...>>
 inline enable_if_t<std::is_same<Ret, void>::value>
-await(suspender_i spdr, F &&f, Args &&...args) {
-	assert(spdr);
+await(dozer dzr, F &&f, Args &&...args) {
+	assert(dzr);
 
-	if (spdr.type_is<thread_suspender>()) {
+	if (dzr.type_is<thread_dozer>()) {
 		return std::forward<F>(f)(std::forward<Args>(args)...);
 	}
 	auto ch_ptr = new chan<bool>;
@@ -28,7 +28,7 @@ await(suspender_i spdr, F &&f, Args &&...args) {
 		f(args...);
 		*ch_ptr << true;
 	});
-	ch_ptr->pop(std::move(spdr));
+	ch_ptr->pop(std::move(dzr));
 }
 
 template <
@@ -36,22 +36,21 @@ template <
 	typename... Args,
 	typename Ret = invoke_result_t<F &&, Args &&...>>
 inline enable_if_t<!std::is_same<Ret, void>::value, Ret>
-await(suspender_i spdr, F &&f, Args &&...args) {
-	assert(spdr);
+await(dozer dzr, F &&f, Args &&...args) {
+	assert(dzr);
 
-	if (spdr.type_is<thread_suspender>()) {
+	if (dzr.type_is<thread_dozer>()) {
 		return std::forward<F>(f)(std::forward<Args>(args)...);
 	}
 	auto ch_ptr = new chan<Ret>;
 	std::unique_ptr<chan<Ret>> ch_uptr(ch_ptr);
 	reuse_thread([=]() mutable { *ch_ptr << f(args...); });
-	return ch_ptr->pop(std::move(spdr));
+	return ch_ptr->pop(std::move(dzr));
 }
 
 template <typename F, typename... Args>
 inline invoke_result_t<F &&, Args &&...> await(F &&f, Args &&...args) {
-	return await(
-		this_suspender(), std::forward<F>(f), std::forward<Args>(args)...);
+	return await(this_dozer(), std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 } // namespace rua
