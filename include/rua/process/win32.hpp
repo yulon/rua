@@ -409,14 +409,15 @@ public:
 		return process(parent_id());
 	}
 
-	float cpu_usage(time &prev_get_time, time &prev_used_cpu_time) const {
+	float
+	cpu_usage(duration &prev_get_time, duration &prev_used_cpu_time) const {
 		FILETIME CreateTime, ExitTime, KernelTime, UserTime;
 		if (!GetProcessTimes(
 				_h, &CreateTime, &ExitTime, &KernelTime, &UserTime)) {
 			return 0.f;
 		}
 
-		rua::time used_cpu_time(
+		duration used_cpu_time(
 			((static_cast<int64_t>(KernelTime.dwHighDateTime) << 32 |
 			  static_cast<int64_t>(KernelTime.dwLowDateTime)) +
 			 (static_cast<int64_t>(UserTime.dwHighDateTime) << 32 |
@@ -622,7 +623,7 @@ public:
 
 private:
 	HANDLE _h;
-	rua::time _prev_get_cpu_usage_time, _prev_used_cpu_time;
+	duration _prev_get_cpu_usage_time, _prev_used_cpu_time;
 
 	void _reset() {
 		assert(_h);
