@@ -181,7 +181,7 @@ public:
 		for (size_t i = 12; i > 0; --i) {
 			nd.month = static_cast<int8_t>(i);
 			auto ydam = _yr_days_at_mon(is_ly, i - 1);
-			if (ydam < ela_days) {
+			if (ydam <= ela_days) {
 				ela_days -= ydam;
 				break;
 			}
