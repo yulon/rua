@@ -17,11 +17,28 @@ class read_util {
 public:
 	// ptrdiff_t read(bytes_ref);
 
-	ptrdiff_t read_full(bytes_ref p) {
-		auto psz = static_cast<ptrdiff_t>(p.size());
+	///////////////////////////////////////////////////////
+
+	bytes read_buffer;
+
+	ptrdiff_t buffered_read(bytes_ref buf) {
+		if (!read_buffer) {
+			return _this()->read(buf);
+		}
+		auto sz = _fill();
+		if (sz <= 0) {
+			return sz;
+		}
+		auto cp_sz = buf.copy(_r_data);
+		_r_data = _r_data(cp_sz);
+		return cp_sz;
+	}
+
+	ptrdiff_t read_full(bytes_ref buf) {
+		auto psz = static_cast<ptrdiff_t>(buf.size());
 		ptrdiff_t tsz = 0;
 		while (tsz < psz) {
-			auto sz = _this()->read(p(tsz));
+			auto sz = _this()->buffered_read(buf(tsz));
 			if (sz <= 0) {
 				return tsz ? tsz : sz;
 			}
@@ -30,11 +47,13 @@ public:
 		return tsz;
 	}
 
-	bytes read_all(size_t buf_grain_sz = 1024) {
-		bytes buf(buf_grain_sz);
+	bytes read_all(bytes buf = nullptr, size_t buf_grain_sz = 1024) {
+		if (!buf) {
+			buf.resize(buf_grain_sz);
+		}
 		size_t tsz = 0;
 		for (;;) {
-			auto sz = _this()->read(buf(tsz));
+			auto sz = _this()->buffered_read(buf(tsz));
 			if (!sz) {
 				break;
 			}
@@ -44,7 +63,65 @@ public:
 			}
 		}
 		buf.resize(tsz);
-		return buf;
+		return std::move(buf);
+	}
+
+	bytes read_all(size_t buf_grain_szf) {
+		return read_all(nullptr, buf_grain_szf);
+	}
+
+	bytes_ref peek() {
+		if (read_buffer) {
+			_fill();
+		}
+		return _r_data;
+	}
+
+	bool discard(size_t sz) {
+		while (sz) {
+			auto filled_sz = _fill();
+			if (filled_sz <= 0) {
+				return false;
+			}
+			if (sz < filled_sz) {
+				_r_data = _r_data(sz);
+				return true;
+			}
+			sz -= filled_sz;
+			_r_data.reset();
+		}
+		return true;
+	}
+
+	optional<bytes> read_line() {
+		if (!read_buffer) {
+			read_buffer.resize(1024);
+		}
+		bytes ln;
+		while (_fill() > 0) {
+			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(_r_data.size());
+				 ++i) {
+				if (_r_data[i] == '\n') {
+					ln += _r_data(0, i);
+					_r_data = _r_data(i + 1);
+					return std::move(ln);
+				}
+				if (_r_data[i] == '\r') {
+					ln += _r_data(0, i);
+					_r_data = _r_data(i + 1);
+					if (_fill() > 0 && _r_data[0] == '\n') {
+						_r_data = _r_data(1);
+					}
+					return std::move(ln);
+				}
+			}
+			ln += _r_data;
+			_r_data.reset();
+		}
+		if (ln) {
+			return std::move(ln);
+		}
+		return nullopt;
 	}
 
 protected:
@@ -54,12 +131,28 @@ private:
 	Reader *_this() {
 		return static_cast<Reader *>(this);
 	}
+
+	bytes_ref _r_data;
+
+	ptrdiff_t _fill() {
+		if (_r_data) {
+			return _r_data.size();
+		}
+		auto sz = _this()->read(read_buffer);
+		if (sz <= 0) {
+			return sz;
+		}
+		_r_data = read_buffer(0, sz);
+		return _r_data.size();
+	}
 };
 
 template <typename Writer>
 class write_util {
 public:
 	// ptrdiff_t write(bytes_view);
+
+	///////////////////////////////////////////////////////
 
 	bool write_all(bytes_view p) {
 		size_t tsz = 0;
@@ -112,6 +205,8 @@ template <typename Seeker>
 class seek_util {
 public:
 	// size_t seek(size_t offset, uchar whence);
+
+	///////////////////////////////////////////////////////
 
 	int64_t seek_to_begin(uint64_t offset = 0) {
 		return _this()->seek(offset, 0);
