@@ -292,6 +292,18 @@ public:
 			span_data(std::forward<Span>(span)),
 			span_size(std::forward<Span>(span))) {}
 
+	~bytes_view() {
+		reset();
+	}
+
+	bytes_view(const bytes_view &src) : _p(src._p), _n(src._n) {}
+
+	bytes_view(bytes_view &&src) : _p(src._p), _n(src._n) {
+		src.reset();
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT(bytes_view)
+
 	const uchar *data() const {
 		return _p;
 	}
@@ -401,6 +413,18 @@ public:
 		bytes_ref(
 			span_data(std::forward<Span>(span)),
 			span_size(std::forward<Span>(span))) {}
+
+	~bytes_ref() {
+		reset();
+	}
+
+	bytes_ref(const bytes_ref &src) : _p(src._p), _n(src._n) {}
+
+	bytes_ref(bytes_ref &&src) : _p(src._p), _n(src._n) {
+		src.reset();
+	}
+
+	RUA_OVERLOAD_ASSIGNMENT(bytes_ref)
 
 	uchar *data() {
 		return _p;
@@ -637,11 +661,7 @@ public:
 
 	bytes(const bytes &src) : bytes(bytes_view(src)) {}
 
-	bytes(bytes &&src) : bytes_ref(static_cast<bytes_ref &&>(std::move(src))) {
-		if (src) {
-			src.bytes_ref::reset();
-		}
-	}
+	bytes(bytes &&src) : bytes_ref(static_cast<bytes_ref &&>(std::move(src))) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(bytes)
 
