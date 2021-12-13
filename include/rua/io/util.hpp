@@ -2,6 +2,7 @@
 #define _RUA_IO_UTIL_HPP
 
 #include "../macros.hpp"
+#include "../string/conv.hpp"
 #include "../sync/chan.hpp"
 #include "../thread.hpp"
 #include "../types/util.hpp"
@@ -12,6 +13,14 @@
 
 namespace rua {
 
+#ifndef RUA_IO_SIZE_DEFAULT
+#define RUA_IO_SIZE_DEFAULT 4096
+#endif
+
+#ifndef RUA_LINE_SIZE_DEFAULT
+#define RUA_LINE_SIZE_DEFAULT 1024
+#endif
+
 template <typename Reader>
 class read_util {
 public:
@@ -20,25 +29,70 @@ public:
 	///////////////////////////////////////////////////////
 
 	bytes read_buffer;
+	bytes_ref read_cache;
 
-	ptrdiff_t buffered_read(bytes_ref buf) {
+	ptrdiff_t get(bytes_ref buf) {
 		if (!read_buffer) {
 			return _this()->read(buf);
 		}
-		auto sz = _fill();
+		auto sz = _peek();
 		if (sz <= 0) {
 			return sz;
 		}
-		auto cp_sz = buf.copy(_r_data);
-		_r_data = _r_data(cp_sz);
+		auto cp_sz = buf.copy(read_cache);
+		read_cache = read_cache(cp_sz);
 		return cp_sz;
 	}
 
+	bytes_ref get(size_t max_sz = nmax<size_t>()) {
+		if (!read_buffer) {
+			read_buffer.reset(RUA_IO_SIZE_DEFAULT);
+		}
+		auto sz = _peek();
+		if (max_sz < sz) {
+			auto got = read_cache(0, max_sz);
+			read_cache = read_cache(max_sz);
+			return got;
+		}
+		return std::move(read_cache);
+	}
+
+	bytes_ref peek(size_t max_sz = nmax<size_t>()) {
+		if (!read_buffer) {
+			read_buffer.reset(RUA_IO_SIZE_DEFAULT);
+		}
+		auto sz = _peek();
+		if (max_sz < sz) {
+			return read_cache(0, max_sz);
+		}
+		return read_cache;
+	}
+
+	bool discard(size_t sz) {
+		if (!read_buffer) {
+			read_buffer.reset(
+				sz > RUA_IO_SIZE_DEFAULT ? RUA_IO_SIZE_DEFAULT : sz);
+		}
+		while (sz) {
+			auto csz = _peek();
+			if (csz <= 0) {
+				return false;
+			}
+			if (sz < csz) {
+				read_cache = read_cache(sz);
+				return true;
+			}
+			sz -= csz;
+			read_cache.reset();
+		}
+		return true;
+	}
+
 	ptrdiff_t read_full(bytes_ref buf) {
-		auto psz = static_cast<ptrdiff_t>(buf.size());
-		ptrdiff_t tsz = 0;
-		while (tsz < psz) {
-			auto sz = _this()->buffered_read(buf(tsz));
+		auto full_sz = buf.size();
+		size_t tsz = 0;
+		while (tsz < full_sz) {
+			auto sz = get(buf(tsz));
 			if (sz <= 0) {
 				return tsz ? tsz : sz;
 			}
@@ -48,18 +102,33 @@ public:
 	}
 
 	bytes read_all(bytes buf = nullptr, size_t buf_grain_sz = 1024) {
+		auto csz = read_cache.size();
+		auto buf_init_sz = csz + buf_grain_sz;
 		if (!buf) {
-			buf.resize(buf_grain_sz);
+			buf.reset(buf_init_sz);
 		}
 		size_t tsz = 0;
+		if (csz) {
+			if (buf.size() < buf_init_sz) {
+				buf.reset(buf_init_sz);
+			}
+			auto cp_sz = buf.copy(read_cache);
+			if (cp_sz != csz) {
+				buf.resize(0);
+				return std::move(buf);
+			}
+			read_cache.reset();
+			tsz += cp_sz;
+		}
 		for (;;) {
-			auto sz = _this()->buffered_read(buf(tsz));
+			auto sz = _this()->read(buf(tsz));
 			if (!sz) {
 				break;
 			}
 			tsz += static_cast<size_t>(sz);
 			if (buf.size() - tsz < buf_grain_sz / 2) {
 				buf.resize(buf.size() + buf_grain_sz);
+				buf_grain_sz *= 2;
 			}
 		}
 		buf.resize(tsz);
@@ -70,56 +139,33 @@ public:
 		return read_all(nullptr, buf_grain_szf);
 	}
 
-	bytes_ref peek() {
-		if (read_buffer) {
-			_fill();
-		}
-		return _r_data;
-	}
-
-	bool discard(size_t sz) {
-		while (sz) {
-			auto filled_sz = _fill();
-			if (filled_sz <= 0) {
-				return false;
-			}
-			if (sz < filled_sz) {
-				_r_data = _r_data(sz);
-				return true;
-			}
-			sz -= filled_sz;
-			_r_data.reset();
-		}
-		return true;
-	}
-
-	optional<bytes> read_line() {
+	optional<std::string> get_line() {
 		if (!read_buffer) {
-			read_buffer.resize(1024);
+			read_buffer.reset(RUA_LINE_SIZE_DEFAULT);
 		}
-		bytes ln;
-		while (_fill() > 0) {
-			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(_r_data.size());
+		std::string ln;
+		while (_peek() > 0) {
+			for (ptrdiff_t i = 0; i < static_cast<ptrdiff_t>(read_cache.size());
 				 ++i) {
-				if (_r_data[i] == '\n') {
-					ln += _r_data(0, i);
-					_r_data = _r_data(i + 1);
-					return std::move(ln);
+				if (read_cache[i] == '\n') {
+					ln += as_string(read_cache(0, i));
+					read_cache = read_cache(i + 1);
+					return {std::move(ln)};
 				}
-				if (_r_data[i] == '\r') {
-					ln += _r_data(0, i);
-					_r_data = _r_data(i + 1);
-					if (_fill() > 0 && _r_data[0] == '\n') {
-						_r_data = _r_data(1);
+				if (read_cache[i] == '\r') {
+					ln += as_string(read_cache(0, i));
+					read_cache = read_cache(i + 1);
+					if (_peek() > 0 && read_cache[0] == '\n') {
+						read_cache = read_cache(1);
 					}
-					return std::move(ln);
+					return {std::move(ln)};
 				}
 			}
-			ln += _r_data;
-			_r_data.reset();
+			ln += as_string(read_cache);
+			read_cache.reset();
 		}
-		if (ln) {
-			return std::move(ln);
+		if (ln.length()) {
+			return {std::move(ln)};
 		}
 		return nullopt;
 	}
@@ -132,18 +178,16 @@ private:
 		return static_cast<Reader *>(this);
 	}
 
-	bytes_ref _r_data;
-
-	ptrdiff_t _fill() {
-		if (_r_data) {
-			return _r_data.size();
+	ptrdiff_t _peek() {
+		if (read_cache) {
+			return read_cache.size();
 		}
 		auto sz = _this()->read(read_buffer);
 		if (sz <= 0) {
 			return sz;
 		}
-		_r_data = read_buffer(0, sz);
-		return _r_data.size();
+		read_cache = read_buffer(0, sz);
+		return read_cache.size();
 	}
 };
 
@@ -174,7 +218,7 @@ public:
 			buf = inner_buf;
 		}
 		for (;;) {
-			auto sz = std::forward<Reader>(r).read(buf);
+			auto sz = std::forward<Reader>(r).get(buf);
 			if (sz <= 0) {
 				return true;
 			}
@@ -247,7 +291,7 @@ public:
 		thread([this, &r]() {
 			bytes buf(_buf_sz.load());
 			for (;;) {
-				auto sz = r.read(buf);
+				auto sz = r.get(buf);
 				if (sz <= 0) {
 					_ch << nullptr;
 					return;
