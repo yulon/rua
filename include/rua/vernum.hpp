@@ -61,7 +61,7 @@ private:
 };
 
 inline std::string to_string(const vernum &vn) {
-	return str_join(
+	return join(
 		{to_string(vn.whole() >> 48),
 		 to_string(vn.whole() >> 32 & 0xFFFF),
 		 to_string(vn.whole() >> 16 & 0xFFFF),

@@ -720,7 +720,7 @@ private:
 
 	static generic_ptr
 	_load_psapi(dylib &kernel32, dylib &psapi, string_view name) {
-		auto fp = kernel32[str_join("K32", name)];
+		auto fp = kernel32[join("K32", name)];
 		if (fp) {
 			return fp;
 		}

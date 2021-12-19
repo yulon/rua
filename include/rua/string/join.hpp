@@ -13,11 +13,6 @@
 
 namespace rua {
 
-struct str_join_options {
-	bool is_ignore_space = false;
-	size_t pre_reserved_size = 0;
-};
-
 #define RUA_STRING_RANGE(StringRange)                                          \
 	typename StringRange = std::initializer_list<string_view>,                 \
 			 typename = enable_if_t<std::is_convertible<                       \
@@ -25,11 +20,9 @@ struct str_join_options {
 				 string_view>::value>
 
 template <RUA_STRING_RANGE(StrList)>
-inline void str_join(
-	std::string &buf,
-	const StrList &strs,
-	string_view sep = "",
-	const str_join_options &opt = {}) {
+inline std::string
+join(const StrList &strs, string_view sep = "", bool ignore_empty = false) {
+	std::string r;
 
 	if (sep.empty()) {
 		size_t len = 0;
@@ -37,19 +30,19 @@ inline void str_join(
 			len += str.size();
 		}
 		if (!len) {
-			return;
+			return r;
 		}
-		buf.reserve(buf.size() + len + opt.pre_reserved_size);
+		r.reserve(r.size() + len);
 		for (auto &str : strs) {
-			buf += str;
+			r += str;
 		}
-		return;
+		return r;
 	}
 
 	size_t len = 0;
 	bool no_add_sep = true;
-	RUA_RANGE_FOR(auto &str, strs, {
-		if (opt.is_ignore_space && is_space(str)) {
+	for (auto &str : strs) {
+		if (ignore_empty && is_space(str)) {
 			continue;
 		}
 		if (is_control(str)) {
@@ -63,66 +56,45 @@ inline void str_join(
 			len += sep.size();
 		}
 		len += str.size();
-	})
+	}
 
 	if (!len) {
-		return;
+		return r;
 	}
-	buf.reserve(buf.size() + len + opt.pre_reserved_size);
+	r.reserve(r.size() + len);
 
 	no_add_sep = true;
-	RUA_RANGE_FOR(auto &str, strs, {
-		if (!str.size() && opt.is_ignore_space) {
+	for (auto &str : strs) {
+		if (!str.size() && ignore_empty) {
 			continue;
 		}
 		if (is_control(str)) {
 			no_add_sep = true;
-			buf += str;
+			r += str;
 			continue;
 		}
 		if (no_add_sep) {
 			no_add_sep = false;
 		} else {
-			buf += sep;
+			r += sep;
 		}
-		buf += str;
-	})
-	return;
-}
-
-template <RUA_STRING_RANGE(StrList)>
-inline void str_join(
-	std::string &buf,
-	const StrList &strs,
-	const char sep,
-	const str_join_options &opt = {}) {
-	str_join(buf, strs, string_view(&sep, 1), opt);
-}
-
-template <RUA_STRING_RANGE(StrList)>
-inline std::string str_join(
-	const StrList &strs,
-	string_view sep = "",
-	const str_join_options &opt = {}) {
-	std::string r;
-	str_join(r, strs, sep, opt);
+		r += str;
+	}
 	return r;
 }
 
 template <RUA_STRING_RANGE(StrList)>
-inline std::string str_join(
-	const StrList &strs, const char sep, const str_join_options &opt = {}) {
-	std::string r;
-	str_join(r, strs, sep, opt);
-	return r;
+inline std::string
+join(const StrList &strs, const char sep, bool ignore_empty = false) {
+	return join(strs, string_view(&sep, 1), ignore_empty);
 }
 
 template <
 	typename... Strs,
 	typename = decltype(std::initializer_list<string_view>{
 		std::declval<Strs &&>()...})>
-inline std::string str_join(Strs &&...strs) {
-	return str_join({strs...});
+inline std::string join(Strs &&...strs) {
+	return join({strs...});
 }
 
 } // namespace rua

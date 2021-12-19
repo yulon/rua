@@ -25,10 +25,7 @@ public:
 			(sizeof...(Parts) > 1) ||
 			!std::is_base_of<path_base, decay_t<front_t<Parts...>>>::value>>
 	path_base(Parts &&...parts) :
-		_s(str_join(
-			_fix_parts({to_string(std::forward<Parts>(parts))...}),
-			Sep,
-			RUA_DI(str_join_options, $.is_ignore_space = true))) {}
+		_s(join(_fix_parts({to_string(std::forward<Parts>(parts))...}), Sep)) {}
 
 	template <
 		typename PartList,
@@ -38,10 +35,7 @@ public:
 		typename = decltype(to_string(
 			std::declval<typename span_traits<PartList>::element_type>()))>
 	path_base(PartList &&part_list) :
-		_s(str_join(
-			_fix_part_list(std::forward<PartList>(part_list)),
-			Sep,
-			RUA_DI(str_join_options, $.is_ignore_space = true))) {}
+		_s(join(_fix_part_list(std::forward<PartList>(part_list)), Sep)) {}
 
 	explicit operator bool() const {
 		return _s.length();

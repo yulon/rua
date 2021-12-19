@@ -8,7 +8,7 @@
 namespace rua {
 
 inline RUA_CONSTEXPR_14 bool
-str_starts_with(string_view str, string_view search_str) {
+starts_with(string_view str, string_view search_str) {
 	if (str.length() < search_str.length()) {
 		return false;
 	}
@@ -16,7 +16,7 @@ str_starts_with(string_view str, string_view search_str) {
 }
 
 inline RUA_CONSTEXPR_14 bool
-str_ends_with(string_view str, string_view search_str) {
+ends_with(string_view str, string_view search_str) {
 	if (str.length() < search_str.length()) {
 		return false;
 	}

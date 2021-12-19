@@ -577,15 +577,15 @@ public:
 	virtual std::string get_outer_xml(bool xml_style) const {
 		std::string attrs_str;
 		for (auto &attr : _attrs) {
-			attrs_str += str_join({" ", attr.first});
+			attrs_str += join({" ", attr.first});
 			if (attr.second.length() || xml_style) {
-				attrs_str += str_join({"=\"", attr.second, "\""});
+				attrs_str += join({"=\"", attr.second, "\""});
 			}
 		}
 		if (child_nodes().empty() && xml_style) {
-			return str_join({"<", _name, attrs_str, " />"});
+			return join({"<", _name, attrs_str, " />"});
 		}
-		return str_join(
+		return join(
 			{"<",
 			 _name,
 			 attrs_str,

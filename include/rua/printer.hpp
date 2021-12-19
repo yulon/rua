@@ -10,9 +10,9 @@ namespace rua {
 template <typename Writer>
 class printer {
 public:
-	printer() {}
+	constexpr printer() : _w(nullptr), _eol(eol::lf) {}
 
-	printer(std::nullptr_t) : printer() {}
+	constexpr printer(std::nullptr_t) : printer() {}
 
 	explicit printer(Writer &w, const char *eol = eol::lf) :
 		_w(&w), _eol(eol) {}
@@ -30,9 +30,7 @@ public:
 
 	template <typename... Args>
 	void print(Args &&...args) {
-		str_join(_buf, {to_temp_string(args)...}, " ");
-		_w->write_all(as_bytes(_buf));
-		_buf.resize(0);
+		_w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
 	}
 
 	template <typename... Args>
@@ -56,7 +54,6 @@ public:
 private:
 	Writer *_w;
 	const char *_eol;
-	std::string _buf;
 };
 
 template <typename Writer>

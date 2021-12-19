@@ -111,7 +111,7 @@ inline void post_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	move_only<std::string> s(str_join({to_temp_string(args)...}, " "));
+	move_only<std::string> s(join({to_temp_string(args)...}, " "));
 	log_chan() << [&p, s]() mutable {
 		auto lg = make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));
@@ -124,7 +124,7 @@ inline void post_err_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	move_only<std::string> s(str_join({to_temp_string(args)...}, " "));
+	move_only<std::string> s(join({to_temp_string(args)...}, " "));
 	log_chan() << [&p, s]() mutable {
 		auto lg = make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));

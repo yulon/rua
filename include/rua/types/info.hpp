@@ -25,10 +25,7 @@ namespace rua {
 
 #define _RUA_TYPE_NAME_GET_2_FROM_1                                            \
 	static std::string get(string_view declarator) {                           \
-		return str_join(                                                       \
-			{get(), declarator},                                               \
-			" ",                                                               \
-			RUA_DI(str_join_options, $.is_ignore_space = true));               \
+		return join({get(), declarator}, ' ', true);                           \
 	}
 
 template <typename T, typename = void>
@@ -141,8 +138,7 @@ struct type_name<
 		!std::is_same<T, schar>::value &&
 		!std::is_same<T, max_align_t>::value && !std::is_volatile<T>::value>> {
 	static string_view get() {
-		static const auto n =
-			str_join("int", std::to_string(sizeof(T) * 8), "_t");
+		static const auto n = join("int", std::to_string(sizeof(T) * 8), "_t");
 		return n;
 	}
 
@@ -157,8 +153,7 @@ struct type_name<
 		!std::is_same<T, uint>::value && !std::is_same<T, uchar>::value &&
 		!std::is_same<T, max_align_t>::value && !std::is_volatile<T>::value>> {
 	static string_view get() {
-		static const auto n =
-			str_join("uint", std::to_string(sizeof(T) * 8), "_t");
+		static const auto n = join("uint", std::to_string(sizeof(T) * 8), "_t");
 		return n;
 	}
 
@@ -211,10 +206,7 @@ struct type_name<T const, enable_if_t<!std::is_array<T>::value>> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<T>::get(str_join(
-			{"const", declarator},
-			" ",
-			RUA_DI(str_join_options, $.is_ignore_space = true)));
+		return type_name<T>::get(join({"const", declarator}, ' ', true));
 	}
 };
 
@@ -223,10 +215,7 @@ struct type_name<T *> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<T>::get(str_join(
-			{"*", declarator},
-			" ",
-			RUA_DI(str_join_options, $.is_ignore_space = true)));
+		return type_name<T>::get(join({"*", declarator}, ' ', true));
 	}
 };
 
@@ -235,10 +224,7 @@ struct type_name<T &> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<T>::get(str_join(
-			{"&", declarator},
-			" ",
-			RUA_DI(str_join_options, $.is_ignore_space = true)));
+		return type_name<T>::get(join({"&", declarator}, ' ', true));
 	}
 };
 
@@ -247,10 +233,7 @@ struct type_name<T &&> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<T>::get(str_join(
-			{"&&", declarator},
-			" ",
-			RUA_DI(str_join_options, $.is_ignore_space = true)));
+		return type_name<T>::get(join({"&&", declarator}, ' ', true));
 	}
 };
 
@@ -259,8 +242,8 @@ struct type_name<T[N]> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<T>::get(str_join(
-			declarator.length() ? str_join("(", declarator, ")") : "",
+		return type_name<T>::get(join(
+			declarator.length() ? join("(", declarator, ")") : "",
 			"[",
 			std::to_string(N),
 			"]"));
@@ -274,12 +257,12 @@ template <typename Ret, typename... Args, bool HasVa>
 struct _func_name<Ret(Args...), HasVa> {
 	static std::string
 	make(string_view declarator = "", string_view suffix = "") {
-		return str_join(
+		return join(
 			type_name<Ret>::get(),
-			" ",
-			declarator.length() ? str_join("(", declarator, ")") : "",
+			' ',
+			declarator.length() ? join("(", declarator, ")") : "",
 			"(",
-			str_join({type_name<Args>::get()...}, ", "),
+			join({type_name<Args>::get()...}, ", "),
 			HasVa ? (sizeof...(Args) ? ", ..." : "...") : "",
 			")",
 			suffix.length() ? " " : "",
@@ -300,15 +283,15 @@ struct type_name<Func, enable_if_t<std::is_function<Func>::value>> {
 			is_function_has_va<Func>::value>::
 			make(
 				declarator,
-				str_join(
+				join(
 					{is_function_has_const<Func>::value ? "const" : "",
 					 is_function_has_volatile<Func>::value ? "volatile" : "",
 					 is_function_has_lref<Func>::value
 						 ? "&"
 						 : (is_function_has_rref<Func>::value ? "&&" : ""),
 					 is_function_has_noexcept<Func>::value ? "noexcept" : ""},
-					" ",
-					RUA_DI(str_join_options, $.is_ignore_space = true)));
+					' ',
+					true));
 	}
 };
 
@@ -317,10 +300,8 @@ struct type_name<E T::*> {
 	_RUA_TYPE_NAME_GET_1_FROM_2
 
 	static std::string get(string_view declarator) {
-		return type_name<E>::get(str_join(
-			{str_join(type_name<T>::get(), "::*"), declarator},
-			" ",
-			RUA_DI(str_join_options, $.is_ignore_space = true)));
+		return type_name<E>::get(
+			join({join(type_name<T>::get(), "::*"), declarator}, ' ', true));
 	}
 };
 
@@ -345,7 +326,7 @@ struct type_name<std::wstring> {
 template <typename CharT, typename Traits, typename Allocator>
 struct type_name<std::basic_string<CharT, Traits, Allocator>> {
 	static string_view get() {
-		static const auto n = str_join(
+		static const auto n = join(
 			"std::basic_string<",
 			type_name<CharT>::get(),
 			", ",
@@ -392,7 +373,7 @@ struct type_name<wstring_view> {
 template <typename CharT, typename Traits>
 struct type_name<basic_string_view<CharT, Traits>> {
 	static string_view get() {
-		static const auto n = str_join(
+		static const auto n = join(
 #ifdef __cpp_lib_string_view
 			"std::basic_string_view<"
 #else
@@ -708,7 +689,7 @@ struct type_name<
 		return typeid(T).name();
 #else
 		static const auto n =
-			str_join("class _", std::to_string(type_id<T>().hash_code()));
+			join("class _", std::to_string(type_id<T>().hash_code()));
 		return n;
 #endif
 	}
@@ -723,7 +704,7 @@ struct type_name<
 		return typeid(T).name();
 #else
 		static const auto n =
-			str_join("enum _", std::to_string(type_id<T>().hash_code()));
+			join("enum _", std::to_string(type_id<T>().hash_code()));
 		return n;
 #endif
 	}
@@ -738,7 +719,7 @@ struct type_name<
 		return typeid(T).name();
 #else
 		static const auto n =
-			str_join("union _", std::to_string(type_id<T>().hash_code()));
+			join("union _", std::to_string(type_id<T>().hash_code()));
 		return n;
 #endif
 	}
