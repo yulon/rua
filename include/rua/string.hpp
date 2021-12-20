@@ -7,6 +7,7 @@
 #include "string/join.hpp"
 #include "string/len.hpp"
 #include "string/parse.hpp"
+#include "string/split.hpp"
 #include "string/view.hpp"
 #include "string/with.hpp"
 

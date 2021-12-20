@@ -39,10 +39,15 @@ public:
 
 	constexpr basic_string_view(const CharT *s, size_type count) :
 		_s(s), _c(count) {}
+
 	constexpr basic_string_view(const CharT *s) : _s(s), _c(c_str_len(s)) {}
 
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :
-		basic_string_view(s.c_str(), s.size()) {}
+		basic_string_view(s.c_str(), s.length()) {}
+
+	constexpr size_type length() const {
+		return _c;
+	}
 
 	constexpr size_type size() const {
 		return _c;
@@ -52,16 +57,12 @@ public:
 		return static_cast<size_type>(-1);
 	}
 
-	constexpr size_type length() const {
-		return size();
-	}
-
 	constexpr const CharT *data() const {
 		return _s;
 	}
 
 	constexpr bool empty() const {
-		return !size();
+		return !length();
 	}
 
 	constexpr const CharT &operator[](ptrdiff_t ix) const {
@@ -77,46 +78,24 @@ public:
 	}
 
 	constexpr const CharT *end() const {
-		return begin() + size();
+		return begin() + length();
 	}
 
 	constexpr const CharT *cend() const {
-		return cbegin() + size();
+		return cbegin() + length();
 	}
 
 	constexpr basic_string_view substr(size_t pos, size_t len) const {
 		return basic_string_view(data() + pos, len);
 	}
 
-	static constexpr auto npos = static_cast<size_type>(-1);
-
-	RUA_CONSTEXPR_14 size_type
-	find(basic_string_view v, size_type pos = 0) const {
-		auto vsz = v.size();
-		auto end_ix = size() - vsz + 1;
-		for (size_type i = pos; i < end_ix; ++i) {
-			size_type j = 0;
-			for (; j < vsz && (*this)[i + j] == v[j]; ++j)
-				;
-			if (j == vsz) {
-				return i;
-			}
-		}
-		return npos;
-	}
-
-	RUA_CONSTEXPR_14 size_type find(CharT ch, size_type pos = 0) const {
-		return find(basic_string_view(&ch, 1), pos);
-	}
-
-	RUA_CONSTEXPR_14 size_type
-	find(const CharT *s, size_type pos, size_type count) const {
-		return find(basic_string_view(s, count), pos);
+	constexpr basic_string_view substr(size_t pos) const {
+		return substr(pos, length() - pos);
 	}
 
 	RUA_CONSTEXPR_14 bool operator==(basic_string_view v) const {
-		auto sz = size();
-		if (size() != v.size()) {
+		auto sz = length();
+		if (length() != v.length()) {
 			return false;
 		}
 		for (size_type i = 0; i < sz; ++i) {
@@ -129,6 +108,50 @@ public:
 
 	RUA_CONSTEXPR_14 bool operator!=(basic_string_view v) const {
 		return !(*this == v);
+	}
+
+	static constexpr auto npos = static_cast<size_type>(-1);
+
+	RUA_CONSTEXPR_14 size_type
+	find(basic_string_view sub, size_type pos = 0) const {
+		auto end = length() - sub.length();
+		for (size_type i = pos; i < end; ++i) {
+			if (substr(i, sub.length()) == sub) {
+				return i;
+			}
+		}
+		return npos;
+	}
+
+	RUA_CONSTEXPR_14 size_type find(CharT ch, size_type pos = 0) const {
+		return find({&ch, 1}, pos);
+	}
+
+	RUA_CONSTEXPR_14 size_type
+	find(const CharT *s, size_type pos, size_type count) const {
+		return find({s, count}, pos);
+	}
+
+	RUA_CONSTEXPR_14 size_type
+	rfind(basic_string_view sub, size_type pos = npos) const {
+		if (pos == npos) {
+			pos = length() - sub.length();
+		}
+		for (auto i = to_signed(pos); i >= 0; --i) {
+			if (substr(i, sub.length()) == sub) {
+				return i;
+			}
+		}
+		return npos;
+	}
+
+	RUA_CONSTEXPR_14 size_type rfind(CharT ch, size_type pos = npos) const {
+		return rfind({&ch, 1}, pos);
+	}
+
+	RUA_CONSTEXPR_14 size_type
+	rfind(const CharT *s, size_type pos, size_type count) const {
+		return rfind({s, count}, pos);
 	}
 
 	explicit operator std::basic_string<CharT, Traits>() const {

@@ -5,7 +5,11 @@
 #include "move_only.hpp"
 #include "printer.hpp"
 #include "stdio.hpp"
-#include "string.hpp"
+#include "string/char_enc.hpp"
+#include "string/char_set.hpp"
+#include "string/conv.hpp"
+#include "string/join.hpp"
+#include "string/view.hpp"
 #include "sync.hpp"
 #include "thread.hpp"
 

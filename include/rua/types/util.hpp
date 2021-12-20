@@ -184,6 +184,18 @@ is_valid(T *val) {
 	return val;
 }
 
+////////////////////////////////////////////////////////////////////////////
+
+template <typename Unsigned, typename Signed = make_signed_t<Unsigned>>
+Signed to_signed(Unsigned u) {
+	return static_cast<Signed>(u);
+}
+
+template <typename Signed, typename Unsigned = make_unsigned_t<Signed>>
+Unsigned to_unsigned(Signed i) {
+	return static_cast<Unsigned>(i);
+}
+
 } // namespace rua
 
 #endif

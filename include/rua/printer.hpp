@@ -2,7 +2,7 @@
 #define _RUA_PRINTER_HPP
 
 #include "io.hpp"
-#include "string.hpp"
+#include "string/join.hpp"
 #include "types/util.hpp"
 
 namespace rua {
