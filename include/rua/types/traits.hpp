@@ -3,6 +3,7 @@
 
 #include "def.hpp"
 
+#include <functional>
 #include <type_traits>
 
 namespace rua {
@@ -255,6 +256,37 @@ struct is_invocable : _is_invocable<void, F, Args...> {};
 template <typename F, typename... Args>
 inline constexpr auto is_invocable_v = is_invocable<F, Args...>::value;
 #endif
+
+#ifdef __cpp_lib_unwrap_ref
+
+template <typename T>
+using unwrap_reference = typename std::unwrap_reference<T>;
+
+template <typename T>
+using unwrap_ref_decay = typename std::unwrap_ref_decay<T>;
+
+#else
+
+template <typename T>
+struct unwrap_reference {
+	using type = T;
+};
+
+template <typename U>
+struct unwrap_reference<std::reference_wrapper<U>> {
+	using type = U &;
+};
+
+template <typename T>
+struct unwrap_ref_decay : unwrap_reference<decay_t<T>> {};
+
+#endif
+
+template <typename T>
+using unwrap_reference_t = typename unwrap_reference<T>::type;
+
+template <typename T>
+using unwrap_ref_decay_t = typename unwrap_ref_decay<T>::type;
 
 ////////////////////////////// Non-standard ////////////////////////////////
 
