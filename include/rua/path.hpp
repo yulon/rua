@@ -3,12 +3,13 @@
 
 #include "macros.hpp"
 #include "span.hpp"
+#include "string/conv.hpp"
 #include "string/join.hpp"
 #include "string/view.hpp"
 #include "types/traits.hpp"
 
+#include <list>
 #include <string>
-#include <vector>
 
 namespace rua {
 
@@ -25,17 +26,18 @@ public:
 			(sizeof...(Parts) > 1) ||
 			!std::is_base_of<path_base, decay_t<front_t<Parts...>>>::value>>
 	path_base(Parts &&...parts) :
-		_s(join(_fix_parts({to_string(std::forward<Parts>(parts))...}), Sep)) {}
+		path_base(std::initializer_list<string_view>(
+			{to_temp_string(std::forward<Parts>(parts))...})) {}
 
 	template <
 		typename PartList,
 		typename = enable_if_t<
 			!std::is_base_of<path_base, decay_t<PartList>>::value &&
-			!std::is_convertible<PartList &&, string_view>::value>,
-		typename = decltype(to_string(
+			!std::is_constructible<string_view, PartList &&>::value>,
+		typename = decltype(to_temp_string(
 			std::declval<typename span_traits<PartList>::element_type>()))>
 	path_base(PartList &&part_list) :
-		_s(join(_fix_part_list(std::forward<PartList>(part_list)), Sep)) {}
+		_s(_join(std::forward<PartList>(part_list))) {}
 
 	explicit operator bool() const {
 		return _s.length();
@@ -91,7 +93,7 @@ public:
 private:
 	std::string _s;
 
-	static void _fix_seps(std::string &part) {
+	static std::string &&_fix_seps(std::string &&part) {
 		static constexpr string_view other_seps(
 			Sep == '/' ? "\\" : (Sep == '\\' ? "/" : "/\\"));
 
@@ -103,26 +105,23 @@ private:
 				}
 			}
 		}
-	}
-
-	static std::vector<std::string> &&
-	_fix_parts(std::vector<std::string> &&parts) {
-		for (auto &part : parts) {
-			_fix_seps(part);
-		}
-		return std::move(parts);
+		return std::move(part);
 	}
 
 	template <typename PartList>
-	static std::vector<std::string> _fix_part_list(PartList &&part_list) {
-		std::vector<std::string> parts;
-		parts.reserve(span_size(std::forward<PartList>(part_list)));
+	static std::string _join(PartList &&part_list) {
+		std::list<std::string> parts;
 		for (auto &part : std::forward<PartList>(part_list)) {
-			auto part_str = to_string(std::move(part));
-			_fix_seps(part_str);
-			parts.emplace_back(std::move(part_str));
+			parts.emplace_back(_fix_seps(std::string(part)));
 		}
-		return parts;
+		auto sep = Sep;
+		string_view sep_sv(&sep, 1);
+		if (parts.front() == sep_sv) {
+			auto front = std::move(parts.front());
+			parts.pop_front();
+			return front + join(parts, sep_sv, true);
+		}
+		return join(parts, sep_sv, true);
 	}
 };
 
@@ -171,11 +170,6 @@ inline std::string &to_string(path_base<Path, Sep> &p) {
 template <typename Path, char Sep>
 inline std::string &&to_string(path_base<Path, Sep> &&p) {
 	return std::move(p).str();
-}
-
-template <typename Path, char Sep>
-inline const std::string &to_tmp_string(const path_base<Path, Sep> &p) {
-	return p.str();
 }
 
 #define RUA_PATH_CTORS(Path)                                                   \
