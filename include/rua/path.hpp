@@ -18,8 +18,6 @@ class path_base {
 public:
 	static constexpr auto sep = Sep;
 
-	path_base() = default;
-
 	template <
 		typename... Parts,
 		typename = enable_if_t<
@@ -90,6 +88,9 @@ public:
 		return pos != std::string::npos ? _s.substr(pos + 1) : "";
 	}
 
+protected:
+	path_base() = default;
+
 private:
 	std::string _s;
 
@@ -153,8 +154,8 @@ inline Path operator/(Part &&part, const path_base<Path, Sep> &path) {
 
 template <typename Path, char Sep, typename Part>
 inline Path &operator/=(path_base<Path, Sep> &path, Part &&part) {
-	path = Path(path, std::forward<Part>(part));
-	return path;
+	static_cast<Path &>(path) = Path(path, std::forward<Part>(part));
+	return static_cast<Path &>(path);
 }
 
 template <typename Path, char Sep>
