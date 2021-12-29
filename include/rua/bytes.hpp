@@ -540,11 +540,15 @@ inline size_t bytes_base<Span>::copy(SrcArgs &&...src) {
 	return cp_sz;
 }
 
-template <typename E, bool IsConst = std::is_const<E>::value>
+template <
+	typename Ptr,
+	typename PurePtr = remove_cvref_t<Ptr>,
+	typename E = remove_pointer_t<remove_cv_t<PurePtr>>,
+	bool IsConst = std::is_const<E>::value>
 inline enable_if_t<
-	(size_of<E>::value > 0),
+	std::is_pointer<PurePtr>::value && (size_of<E>::value > 0),
 	conditional_t<IsConst, bytes_view, bytes_ref>>
-as_bytes(E *ptr) {
+as_bytes(Ptr &&ptr) {
 	return {
 		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(ptr),
 		sizeof(E)};
