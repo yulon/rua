@@ -667,7 +667,7 @@ public:
 
 	bytes(bytes &&src) : bytes_ref(static_cast<bytes_ref &&>(std::move(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT(bytes)
+	RUA_OVERLOAD_ASSIGNMENT_S(bytes)
 
 	bytes &operator+=(bytes_view tail) {
 		auto old_sz = size();
