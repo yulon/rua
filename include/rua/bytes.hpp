@@ -1155,6 +1155,9 @@ protected:
 template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
 public:
+	template <typename... Bytes>
+	constexpr bytes_block(Bytes... byts) : _raw{static_cast<uchar>(byts)...} {}
+
 	uchar *data() {
 		return &_raw[0];
 	}
