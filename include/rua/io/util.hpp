@@ -102,6 +102,12 @@ public:
 	}
 
 	bytes read_all(bytes buf = nullptr, size_t buf_grain_sz = 1024) {
+		if (_discard_lf) {
+			auto sz = _peek();
+			if (!sz) {
+				return nullptr;
+			}
+		}
 		auto csz = read_cache.size();
 		auto buf_init_sz = csz + buf_grain_sz;
 		if (!buf) {
@@ -155,8 +161,10 @@ public:
 				if (read_cache[i] == '\r') {
 					ln += as_string(read_cache(0, i));
 					read_cache = read_cache(i + 1);
-					if (_peek() > 0 && read_cache[0] == '\n') {
+					if (read_cache.size() > 0 && read_cache[0] == '\n') {
 						read_cache = read_cache(1);
+					} else {
+						_discard_lf = true;
 					}
 					return {std::move(ln)};
 				}
@@ -171,7 +179,13 @@ public:
 	}
 
 protected:
-	read_util() = default;
+	constexpr read_util() : _discard_lf(false) {}
+
+	~read_util() {
+		if (_discard_lf) {
+			_discard_lf = false;
+		}
+	}
 
 private:
 	Reader *_this() {
@@ -179,16 +193,31 @@ private:
 	}
 
 	ptrdiff_t _peek() {
-		if (read_cache) {
-			return read_cache.size();
+		for (;;) {
+			if (read_cache) {
+				return read_cache.size();
+			}
+
+			auto sz = _this()->read(read_buffer);
+			if (sz <= 0) {
+				return sz;
+			}
+			read_cache = read_buffer(0, sz);
+
+			if (!_discard_lf) {
+				return sz;
+			}
+			_discard_lf = false;
+
+			if (read_buffer[0] != '\n') {
+				return sz;
+			}
+			read_cache = read_cache(1);
 		}
-		auto sz = _this()->read(read_buffer);
-		if (sz <= 0) {
-			return sz;
-		}
-		read_cache = read_buffer(0, sz);
-		return read_cache.size();
+		return -211229;
 	}
+
+	bool _discard_lf;
 };
 
 template <typename Writer>
