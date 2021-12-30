@@ -113,6 +113,11 @@ public:
 		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
+	inline bytes reverse() const;
+
+	template <size_t Unit>
+	inline bytes reverse() const;
+
 	inline bool equal(bytes_view) const;
 
 	inline bool operator==(bytes_view) const;
@@ -237,19 +242,6 @@ public:
 			static_cast<RelPtr>(abs_ptr - (_this()->data() + pos + SlotSize));
 		this->template set<RelPtr>(pos, rel_ptr);
 		return rel_ptr;
-	}
-
-	template <typename T = uchar>
-	void reverse() {
-		auto n = _this()->size() / sizeof(T);
-		std::vector<T> r(n);
-		auto p = reinterpret_cast<T *>(_this()->data());
-		for (size_t i = 0; i < n; ++i) {
-			r[i] = p[n - 1 - i];
-		}
-		for (size_t i = 0; i < n; ++i) {
-			p[i] = r[n - 1 - i];
-		}
 	}
 
 	inline bytes_finder find(bytes_pattern, size_t start_pos = 0);
@@ -737,6 +729,31 @@ private:
 		return bit_get<size_t>(data() - sizeof(size_t));
 	}
 };
+
+template <typename Span>
+inline bytes const_bytes_base<Span>::reverse() const {
+	auto n = _this()->size();
+	bytes r(n);
+	auto p = _this()->data();
+	auto r_p = r.data();
+	for (size_t i = 0; i < n; ++i) {
+		r_p[i] = p[n - 1 - i];
+	}
+	return r;
+}
+
+template <typename Span>
+template <size_t Unit>
+inline bytes const_bytes_base<Span>::reverse() const {
+	auto n = _this()->size();
+	bytes r(n);
+	auto p = _this()->data();
+	auto r_p = r.data();
+	for (size_t i = 0; i < n; i += Unit) {
+		memcpy(&r_p[i], &p[n - Unit - i], Unit);
+	}
+	return r;
+}
 
 inline bytes operator+(bytes_view a, bytes_view b) {
 	bytes r(a.size() + b.size());
