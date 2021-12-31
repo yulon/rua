@@ -3,6 +3,8 @@
 
 #include "../bytes.hpp"
 
+#include <cassert>
+
 namespace rua {
 
 class ip {
@@ -75,26 +77,20 @@ public:
 		   v6_7 >> 8,
 		   v6_7 & 0xFF) {}
 
-	ip(bytes_view b) {
+	explicit ip(bytes_view b) {
+		if (b.size() == 16) {
+			_v6.copy(b);
+			return;
+		}
 		if (b.size() == 4) {
 			memset(_v6.data(), 0, 10);
 			memset(_v6.data() + 10, 0xFF, 2);
 			_v6(12).copy(b);
 			return;
 		}
-		if (b.size() == 16) {
-			_v6.copy(b);
-			return;
-		}
+		assert(!b);
 		memset(_v6.data(), 0, 16);
 	}
-
-	template <
-		typename Bytes,
-		typename = enable_if_t<
-			std::is_convertible<Bytes &&, bytes_view>::value &&
-			!std::is_base_of<bytes_view, remove_cvref_t<Bytes>>::value>>
-	ip(Bytes &&b) : ip(bytes_view(std::forward<Bytes>(b))) {}
 
 	explicit operator bool() const {
 		return !is_unspecified();
