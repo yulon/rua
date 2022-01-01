@@ -116,7 +116,7 @@ public:
 		reset();
 	}
 
-	inline any_word wait_for_exit();
+	inline any_word wait();
 
 	void reset() {
 		if (_h) {

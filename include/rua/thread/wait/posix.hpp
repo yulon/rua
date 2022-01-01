@@ -9,7 +9,7 @@
 
 namespace rua { namespace posix {
 
-inline any_word thread::wait_for_exit() {
+inline any_word thread::wait() {
 	if (!_id) {
 		return nullptr;
 	}

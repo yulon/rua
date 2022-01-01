@@ -10,7 +10,7 @@ TEST_CASE("thread") {
 	rua::thread([]() mutable {
 		rua::sleep(100);
 		r = "ok";
-	}).wait_for_exit();
+	}).wait();
 
 	REQUIRE(r == "ok");
 }

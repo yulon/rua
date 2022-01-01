@@ -196,7 +196,7 @@ public:
 	}
 
 	any_word run() {
-		return _this()->start().wait_for_exit();
+		return _this()->start().wait();
 	}
 
 protected:

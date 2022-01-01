@@ -174,7 +174,7 @@ public:
 		return _h;
 	}
 
-	int wait_for_exit() {
+	int wait() {
 		if (!_h) {
 			return -1;
 		}
@@ -950,7 +950,7 @@ process::native_module_handle_t process::load_dylib(std::string name) {
 		return nullptr;
 	}
 
-	return make_thread(data.loader.data(), data.ctx.data()).wait_for_exit();
+	return make_thread(data.loader.data(), data.ctx.data()).wait();
 }
 
 namespace _this_process {

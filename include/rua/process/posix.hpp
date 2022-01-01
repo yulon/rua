@@ -81,7 +81,7 @@ public:
 
 	void start() {}
 
-	int wait_for_exit() {
+	int wait() {
 		if (_id <= 0) {
 			return -1;
 		}

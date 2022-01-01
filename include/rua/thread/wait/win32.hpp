@@ -9,7 +9,7 @@
 
 namespace rua { namespace win32 {
 
-inline any_word thread::wait_for_exit() {
+inline any_word thread::wait() {
 	if (!_h) {
 		return 0;
 	}
