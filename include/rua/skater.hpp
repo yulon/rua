@@ -121,7 +121,7 @@ private:
 };
 
 template <typename T>
-skater<decay_t<T>> make_skater(T &&val) {
+skater<decay_t<T>> skate(T &&val) {
 	return skater<decay_t<T>>(std::forward<T>(val));
 }
 
