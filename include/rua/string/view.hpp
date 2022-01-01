@@ -93,23 +93,6 @@ public:
 		return substr(pos, length() - pos);
 	}
 
-	RUA_CONSTEXPR_14 bool operator==(basic_string_view v) const {
-		auto sz = length();
-		if (length() != v.length()) {
-			return false;
-		}
-		for (size_type i = 0; i < sz; ++i) {
-			if ((*this)[i] != v[i]) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	RUA_CONSTEXPR_14 bool operator!=(basic_string_view v) const {
-		return !(*this == v);
-	}
-
 	static constexpr auto npos = static_cast<size_type>(-1);
 
 	RUA_CONSTEXPR_14 size_type
@@ -164,9 +147,58 @@ private:
 };
 
 template <typename CharT, typename Traits>
-std::basic_string<CharT, Traits> &operator+=(
-	std::basic_string<CharT, Traits> &a, basic_string_view<CharT, Traits> b) {
-	return a += std::basic_string<CharT, Traits>(b);
+inline std::basic_string<CharT, Traits> &operator+=(
+	std::basic_string<CharT, Traits> &s, basic_string_view<CharT, Traits> sv) {
+	return s += std::basic_string<CharT, Traits>(sv);
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator==(
+	basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b) {
+	auto sz = a.length();
+	if (sz != b.length()) {
+		return false;
+	}
+	for (decltype(sz) i = 0; i < sz; ++i) {
+		if (a[i] != b[i]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator==(
+	const std::basic_string<CharT, Traits> &s,
+	basic_string_view<CharT, Traits> sv) {
+	return basic_string_view<CharT, Traits>(s) == sv;
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator==(
+	basic_string_view<CharT, Traits> sv,
+	const std::basic_string<CharT, Traits> &s) {
+	return sv == basic_string_view<CharT, Traits>(s);
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator!=(
+	basic_string_view<CharT, Traits> a, basic_string_view<CharT, Traits> b) {
+	return !(a == b);
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator!=(
+	const std::basic_string<CharT, Traits> &s,
+	basic_string_view<CharT, Traits> sv) {
+	return basic_string_view<CharT, Traits>(s) != sv;
+}
+
+template <typename CharT, typename Traits>
+inline RUA_CONSTEXPR_14 bool operator!=(
+	basic_string_view<CharT, Traits> sv,
+	const std::basic_string<CharT, Traits> &s) {
+	return sv != basic_string_view<CharT, Traits>(s);
 }
 
 } // namespace rua
