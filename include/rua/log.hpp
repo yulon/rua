@@ -2,8 +2,8 @@
 #define _RUA_LOG_HPP
 
 #include "macros.hpp"
-#include "move_only.hpp"
 #include "printer.hpp"
+#include "skater.hpp"
 #include "stdio.hpp"
 #include "string/char_enc.hpp"
 #include "string/char_set.hpp"
@@ -115,7 +115,7 @@ inline void post_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	move_only<std::string> s(join({to_temp_string(args)...}, " "));
+	skater<std::string> s(join({to_temp_string(args)...}, " "));
 	log_chan() << [&p, s]() mutable {
 		auto lg = make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));
@@ -128,7 +128,7 @@ inline void post_err_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	move_only<std::string> s(join({to_temp_string(args)...}, " "));
+	skater<std::string> s(join({to_temp_string(args)...}, " "));
 	log_chan() << [&p, s]() mutable {
 		auto lg = make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));

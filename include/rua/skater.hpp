@@ -1,5 +1,5 @@
-#ifndef _RUA_MOVE_ONLY_HPP
-#define _RUA_MOVE_ONLY_HPP
+#ifndef _RUA_SKATER_HPP
+#define _RUA_SKATER_HPP
 
 #include "macros.hpp"
 #include "types/traits.hpp"
@@ -8,9 +8,9 @@
 namespace rua {
 
 template <typename T>
-class move_only {
+class skater {
 public:
-	move_only() {
+	skater() {
 		new (&value()) T();
 	}
 
@@ -21,8 +21,8 @@ public:
 			std::is_constructible<T, Args &&...>::value &&
 			(sizeof...(Args) > 1 ||
 			 (!std::is_base_of<T, ArgsFront>::value &&
-			  !std::is_base_of<move_only, ArgsFront>::value))>>
-	move_only(Args &&...args) {
+			  !std::is_base_of<skater, ArgsFront>::value))>>
+	skater(Args &&...args) {
 		new (&value()) T(std::forward<Args>(args)...);
 	}
 
@@ -33,31 +33,29 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
-	move_only(std::initializer_list<U> il, Args &&...args) {
+	skater(std::initializer_list<U> il, Args &&...args) {
 		new (&value()) T(il, std::forward<Args>(args)...);
 	}
 
-	move_only(T &&val) {
+	skater(T &&val) {
 		new (&value()) T(std::move(val));
 	}
 
-	move_only(T &val) : move_only(std::move(val)) {}
+	skater(T &val) : skater(std::move(val)) {}
 
-	move_only(const T &val) :
-		move_only(static_cast<T &&>(const_cast<T &>(val))) {}
+	skater(const T &val) : skater(static_cast<T &&>(const_cast<T &>(val))) {}
 
-	~move_only() {
+	~skater() {
 		value().~T();
 	}
 
-	move_only(move_only &&src) {
+	skater(skater &&src) {
 		new (&value()) T(std::move(src.value()));
 	}
 
-	move_only(const move_only &src) :
-		move_only(std::move(const_cast<move_only &>(src))) {}
+	skater(const skater &src) : skater(std::move(const_cast<skater &>(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT(move_only)
+	RUA_OVERLOAD_ASSIGNMENT(skater)
 
 	T &value() & {
 		return *reinterpret_cast<T *>(&_sto[0]);
@@ -123,8 +121,8 @@ private:
 };
 
 template <typename T>
-move_only<decay_t<T>> make_move_only(T &&val) {
-	return move_only<decay_t<T>>(std::forward<T>(val));
+skater<decay_t<T>> make_skater(T &&val) {
+	return skater<decay_t<T>>(std::forward<T>(val));
 }
 
 } // namespace rua
