@@ -1,4 +1,5 @@
 #include <rua/thread.hpp>
+#include <rua/time.hpp>
 
 #include <doctest/doctest.h>
 
@@ -13,6 +14,20 @@ TEST_CASE("thread") {
 	}).wait();
 
 	REQUIRE(r == "ok");
+}
+
+TEST_CASE("reset thread_waker when woke") {
+	auto dzr = rua::this_dozer();
+	auto wkr = dzr->get_waker();
+	for (size_t i = 0; i < 3; ++i) {
+		auto t = rua::tick();
+		rua::thread([=]() mutable {
+			rua::sleep(200);
+			wkr->wake();
+		});
+		REQUIRE(dzr->doze(300));
+		REQUIRE(rua::tick() - t > 100);
+	}
 }
 
 TEST_CASE("use chan on thread") {
