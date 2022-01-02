@@ -72,13 +72,14 @@ public:
 
 	virtual void sleep(duration timeout) {
 		auto start = tick();
-		while (doze(timeout)) {
+		auto rem = timeout;
+		while (doze(rem)) {
 			auto now = tick();
-			auto suspended = now - start;
-			if (suspended >= timeout) {
+			auto slept = now - start;
+			if (slept >= timeout) {
 				return;
 			}
-			timeout -= suspended;
+			rem = timeout - slept;
 		}
 	}
 

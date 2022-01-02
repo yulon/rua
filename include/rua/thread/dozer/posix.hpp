@@ -71,8 +71,16 @@ public:
 	}
 
 	virtual void sleep(duration timeout) {
-		auto ts = timeout.c_timespec();
-		::nanosleep(&ts, nullptr);
+		auto start = tick();
+		auto rem = timeout.c_timespec();
+		while (::nanosleep(&rem, nullptr)) {
+			auto now = tick();
+			auto slept = now - start;
+			if (slept >= timeout) {
+				return;
+			}
+			rem = (timeout - slept).c_timespec();
+		}
 	}
 
 	virtual bool doze(duration timeout) {
@@ -81,7 +89,7 @@ public:
 		if (timeout == duration_max()) {
 			return !sem_wait(_wkr->native_handle());
 		}
-		auto ts = timeout.c_timespec();
+		auto ts = (now().to_unix().elapsed() + timeout).c_timespec();
 		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
 

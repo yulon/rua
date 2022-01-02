@@ -65,8 +65,16 @@ public:
 	}
 
 	virtual void sleep(duration timeout) {
-		auto ts = timeout.c_timespec();
-		::nanosleep(&ts, nullptr);
+		auto start = tick();
+		auto rem = timeout.c_timespec();
+		while (::nanosleep(&rem, nullptr)) {
+			auto now = tick();
+			auto slept = now - start;
+			if (slept >= timeout) {
+				return;
+			}
+			rem = (timeout - slept).c_timespec();
+		}
 	}
 
 	virtual bool doze(duration timeout) {
@@ -74,7 +82,9 @@ public:
 
 		return !dispatch_semaphore_wait(
 			_wkr->native_handle(),
-			timeout.nanoseconds<dispatch_time_t, DISPATCH_TIME_FOREVER>());
+			timeout == duration_max()
+				? DISPATCH_TIME_FOREVER
+				: dispatch_time(DISPATCH_TIME_NOW, timeout.nanoseconds()));
 	}
 
 	virtual waker get_waker() {
