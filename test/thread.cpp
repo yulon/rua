@@ -25,7 +25,7 @@ TEST_CASE("reset thread_waker when woke") {
 			rua::sleep(200);
 			wkr->wake();
 		});
-		REQUIRE(dzr->doze(300));
+		CHECK(dzr->doze(300));
 		REQUIRE(rua::tick() - t > 100);
 	}
 }
