@@ -83,7 +83,7 @@ public:
 		}
 	}
 
-	virtual bool doze(duration timeout) {
+	virtual bool doze(duration timeout = duration_max()) {
 		if (!timeout) {
 			yield();
 			return true;

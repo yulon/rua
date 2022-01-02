@@ -77,7 +77,7 @@ public:
 		}
 	}
 
-	virtual bool doze(duration timeout) {
+	virtual bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
 		return !dispatch_semaphore_wait(

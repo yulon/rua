@@ -83,7 +83,7 @@ public:
 		}
 	}
 
-	virtual bool doze(duration timeout) {
+	virtual bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
 		if (timeout == duration_max()) {

@@ -86,7 +86,7 @@ public:
 
 	inline virtual void sleep(duration timeout);
 
-	inline virtual bool doze(duration timeout);
+	inline virtual bool doze(duration timeout = duration_max());
 
 	inline virtual waker get_waker();
 

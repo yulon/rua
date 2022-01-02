@@ -70,7 +70,7 @@ public:
 		Sleep(timeout.milliseconds<DWORD, INFINITE>());
 	}
 
-	virtual bool doze(duration timeout) {
+	virtual bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
 		return WaitForSingleObject(
