@@ -369,6 +369,10 @@ public:
 		return static_cast<ptrdiff_t>(p.size());
 	}
 
+	operator bool() const {
+		return _wa_li.size();
+	}
+
 private:
 	std::vector<std::function<bool(bytes_view)>> _wa_li;
 };

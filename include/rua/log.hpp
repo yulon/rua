@@ -58,12 +58,16 @@ inline decltype(make_printer(sout())) &log_printer() {
 #ifdef _WIN32
 
 inline printer<write_group> &err_log_printer() {
-	static win32::msgbox_writer mbw("ERROR", MB_ICONERROR);
+	static auto wg = ([]() -> write_group {
+		write_group wg;
 
-	static write_group wg;
-	wg.add(serr());
-	wg.add(mbw);
+		wg.add(serr());
 
+		static win32::msgbox_writer mbw("ERROR", MB_ICONERROR);
+		wg.add(mbw);
+
+		return wg;
+	})();
 	static printer<write_group> p(wg);
 	return p;
 }
@@ -85,7 +89,7 @@ inline mutex &log_mutex() {
 template <typename... Args>
 inline void log(Args &&...args) {
 	auto &p = log_printer();
-	if (!p.get()) {
+	if (!p) {
 		return;
 	}
 	auto lg = make_lock_guard(log_mutex());
@@ -95,6 +99,9 @@ inline void log(Args &&...args) {
 template <typename... Args>
 inline void err_log(Args &&...args) {
 	auto &p = err_log_printer();
+	if (!p) {
+		return;
+	}
 	auto lg = make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }
