@@ -3,13 +3,18 @@
 
 #include "../../macros.hpp"
 #include "../../sched/dozer/abstract.hpp"
+#include "../../string/conv.hpp"
+#include "../../string/join.hpp"
 #include "../../types/util.hpp"
 
+#include <fcntl.h>
+#include <pthread.h>
 #include <sched.h>
 #include <semaphore.h>
 #include <time.h>
 #include <unistd.h>
 
+#include <cassert>
 #include <memory>
 
 namespace rua { namespace posix {
@@ -19,33 +24,52 @@ public:
 	using native_handle_t = sem_t *;
 
 	thread_waker() {
-		_need_close = !sem_init(&_sem, 0, 0);
+		if (!sem_init(&_sem, 0, 0)) {
+			_sem_ptr = &_sem;
+			return;
+		}
+		auto name = join(
+			"/rua_posix_spare_thread_waker",
+			to_string(getpid()),
+			to_string(pthread_self()),
+			"__");
+		_sem_ptr = sem_open(name.c_str(), O_CREAT, 0644, 0);
+		assert(_sem_ptr);
+		sem_unlink(name.c_str());
 	}
 
 	virtual ~thread_waker() {
-		if (!_need_close) {
+		if (!_sem_ptr) {
 			return;
 		}
-		sem_destroy(&_sem);
-		_need_close = false;
+		if (_sem_ptr == &_sem) {
+			sem_destroy(_sem_ptr);
+		} else {
+			sem_close(_sem_ptr);
+		}
+		_sem_ptr = nullptr;
 	}
 
 	native_handle_t native_handle() {
-		return &_sem;
+		return _sem_ptr;
+	}
+
+	operator bool() const {
+		return _sem_ptr;
 	}
 
 	virtual void wake() {
-		sem_post(&_sem);
+		sem_post(_sem_ptr);
 	}
 
 	void reset() {
-		while (!sem_trywait(&_sem))
+		while (!sem_trywait(_sem_ptr))
 			;
 	}
 
 private:
+	sem_t *_sem_ptr;
 	sem_t _sem;
-	bool _need_close;
 };
 
 class thread_dozer : public dozer_base {
