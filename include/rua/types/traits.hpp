@@ -130,9 +130,6 @@ using remove_extent_t = typename std::remove_extent<T>::type;
 template <typename T>
 using remove_all_extents_t = typename std::remove_all_extents<T>::type;
 
-template <std::size_t Len, std::size_t Align = Len>
-using aligned_storage_t = typename std::aligned_storage<Len, Align>::type;
-
 template <typename T>
 using decay_t = typename std::decay<T>::type;
 
