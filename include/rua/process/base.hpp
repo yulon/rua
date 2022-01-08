@@ -1,7 +1,6 @@
 #ifndef _RUA_PROCESS_BASE_HPP
 #define _RUA_PROCESS_BASE_HPP
 
-#include "../any_word.hpp"
 #include "../optional.hpp"
 #include "../range.hpp"
 #include "../string/conv.hpp"
@@ -195,7 +194,7 @@ public:
 		return std::move(load_dylib(std::move(name)));
 	}
 
-	any_word run() {
+	int run() {
 		return _this()->start().wait();
 	}
 
