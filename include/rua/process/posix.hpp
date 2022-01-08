@@ -79,13 +79,10 @@ public:
 		return _id >= 0;
 	}
 
-	void start() {}
-
 	int wait() {
 		if (_id <= 0) {
 			return -1;
 		}
-		start();
 		int status;
 		await(waitpid, _id, &status, 0);
 		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
@@ -95,7 +92,7 @@ public:
 		if (_id <= 0) {
 			return true;
 		}
-		if (::kill(_id, 0) != 0) {
+		if (::kill(_id, SIGKILL) != 0) {
 			return false;
 		}
 		_id = -1;
