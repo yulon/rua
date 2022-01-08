@@ -1,8 +1,8 @@
 #ifndef _RUA_THREAD_BASIC_WIN32_HPP
 #define _RUA_THREAD_BASIC_WIN32_HPP
 
-#include "../../any_word.hpp"
 #include "../../dylib/win32.hpp"
+#include "../../generic_word.hpp"
 #include "../../macros.hpp"
 #include "../../sys/info/win32.hpp"
 
@@ -108,7 +108,7 @@ public:
 		return _h;
 	}
 
-	void exit(any_word code = 1) {
+	void exit(generic_word code = 1) {
 		if (!_h) {
 			return;
 		}
@@ -116,7 +116,7 @@ public:
 		reset();
 	}
 
-	inline any_word wait();
+	inline generic_word wait();
 
 	void reset() {
 		if (_h) {

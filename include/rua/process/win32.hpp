@@ -3,7 +3,6 @@
 
 #include "base.hpp"
 
-#include "../any_word.hpp"
 #include "../bytes.hpp"
 #include "../dylib/win32.hpp"
 #include "../file/win32.hpp"
@@ -30,7 +29,6 @@
 #include <windows.h>
 #include <winternl.h>
 
-#include <array>
 #include <cassert>
 #include <cstdlib>
 #include <cstring>
@@ -944,8 +942,7 @@ process::native_module_handle_t process::load_dylib(std::string name) {
 	_proc_load_dll_ctx ctx;
 	ctx.rtl_user_thread_start = nullptr;
 
-	auto data = _make_proc_load_dll_data(
-		*this, std::array<std::string, 1>{std::move(name)}, ctx);
+	auto data = _make_proc_load_dll_data(*this, {std::move(name)}, ctx);
 	if (!data) {
 		return nullptr;
 	}

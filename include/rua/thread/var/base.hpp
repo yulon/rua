@@ -4,7 +4,7 @@
 #include "../basic.hpp"
 
 #include "../../any.hpp"
-#include "../../any_word.hpp"
+#include "../../generic_word.hpp"
 #include "../../macros.hpp"
 #include "../../sync/lockfree_list.hpp"
 #include "../../types/util.hpp"
@@ -42,7 +42,7 @@ private:
 
 class spare_thread_word_var {
 public:
-	spare_thread_word_var(void (*dtor)(any_word)) :
+	spare_thread_word_var(void (*dtor)(generic_word)) :
 		_ix(_ctx().ixer.alloc()), _dtor(dtor) {}
 
 	~spare_thread_word_var() {
@@ -72,7 +72,7 @@ public:
 		return _ix != static_cast<size_t>(-1);
 	}
 
-	void set(any_word value) {
+	void set(generic_word value) {
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex> lg(ctx.mtx);
 
@@ -102,7 +102,7 @@ public:
 		li[_ix] = value;
 	}
 
-	any_word get() const {
+	generic_word get() const {
 		auto &ctx = _ctx();
 		std::lock_guard<std::mutex> lg(ctx.mtx);
 
@@ -140,7 +140,7 @@ public:
 
 private:
 	size_t _ix;
-	void (*_dtor)(any_word);
+	void (*_dtor)(generic_word);
 
 	using _map_t =
 		std::unordered_map<tid_t, std::pair<size_t, std::vector<uintptr_t>>>;
@@ -237,11 +237,11 @@ public:
 			_bind<SpareThreadWordVar>();
 		}
 
-		any_word native_handle() const {
+		generic_word native_handle() const {
 			return _nh(_owner);
 		}
 
-		void set(any_word val) {
+		void set(generic_word val) {
 			this->_set(_owner, val);
 			/*
 				G++ 11.2.0 may have bug:
@@ -251,7 +251,7 @@ public:
 			*/
 		}
 
-		any_word get() const {
+		generic_word get() const {
 			return _get(_owner);
 		}
 
@@ -261,20 +261,20 @@ public:
 
 	private:
 		void *_owner;
-		any_word (*_nh)(void *owner);
-		void (*_set)(void *owner, any_word);
-		any_word (*_get)(void *owner);
+		generic_word (*_nh)(void *owner);
+		void (*_set)(void *owner, generic_word);
+		generic_word (*_get)(void *owner);
 		void (*_reset)(void *owner);
 
 		template <typename TWV>
 		void _bind() {
-			_nh = [](void *owner) -> any_word {
+			_nh = [](void *owner) -> generic_word {
 				return reinterpret_cast<TWV *>(owner)->native_handle();
 			};
-			_set = [](void *owner, any_word val) {
+			_set = [](void *owner, generic_word val) {
 				reinterpret_cast<TWV *>(owner)->set(val);
 			};
-			_get = [](void *owner) -> any_word {
+			_get = [](void *owner) -> generic_word {
 				return reinterpret_cast<TWV *>(owner)->get();
 			};
 			_reset = [](void *owner) {
@@ -293,7 +293,7 @@ private:
 
 	template <typename TWV>
 	static TWV &_word_var() {
-		static TWV inst([](any_word val) {
+		static TWV inst([](generic_word val) {
 			if (!val) {
 				return;
 			}

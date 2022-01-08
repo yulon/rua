@@ -3,7 +3,7 @@
 
 #include "base.hpp"
 
-#include "../../any_word.hpp"
+#include "../../generic_word.hpp"
 #include "../../macros.hpp"
 #include "../../sys/listen/win32.hpp"
 #include "../../types/util.hpp"
@@ -16,7 +16,8 @@ namespace rua { namespace win32 {
 
 class thread_word_var {
 public:
-	thread_word_var(void (*dtor)(any_word)) : _ix(TlsAlloc()), _dtor(dtor) {}
+	thread_word_var(void (*dtor)(generic_word)) :
+		_ix(TlsAlloc()), _dtor(dtor) {}
 
 	~thread_word_var() {
 		if (!is_storable()) {
@@ -46,11 +47,11 @@ public:
 		return _ix != TLS_OUT_OF_INDEXES;
 	}
 
-	void set(any_word value) {
+	void set(generic_word value) {
 		_get(TlsGetValue(_ix)) = value;
 	}
 
-	any_word get() const {
+	generic_word get() const {
 		auto val_ptr = TlsGetValue(_ix);
 		if (!val_ptr) {
 			return 0;
@@ -69,11 +70,11 @@ public:
 
 private:
 	DWORD _ix;
-	void (*_dtor)(any_word);
+	void (*_dtor)(generic_word);
 
-	any_word &_get(LPVOID val_ptr) const {
+	generic_word &_get(LPVOID val_ptr) const {
 		if (!val_ptr) {
-			auto p = new any_word(0);
+			auto p = new generic_word(0);
 			TlsSetValue(_ix, p);
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
@@ -85,7 +86,7 @@ private:
 			});
 			val_ptr = p;
 		}
-		return *reinterpret_cast<any_word *>(val_ptr);
+		return *reinterpret_cast<generic_word *>(val_ptr);
 	}
 };
 

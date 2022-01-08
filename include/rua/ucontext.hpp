@@ -8,9 +8,9 @@
 #ifndef _RUA_UCONTEXT_HPP
 #define _RUA_UCONTEXT_HPP
 
-#include "any_word.hpp"
 #include "bytes.hpp"
 #include "generic_ptr.hpp"
+#include "generic_word.hpp"
 #include "macros.hpp"
 #include "types/util.hpp"
 
@@ -134,8 +134,8 @@ RUA_CODE_FN(
 
 inline void make_ucontext(
 	ucontext_t *ucp,
-	void (*func)(any_word),
-	any_word func_param,
+	void (*func)(generic_word),
+	generic_word func_param,
 	bytes_ref stack) {
 
 	ucp->stack.base = stack.data() + stack.size();
@@ -235,8 +235,8 @@ RUA_CODE_FN(
 
 inline void make_ucontext(
 	ucontext_t *ucp,
-	void (*func)(any_word),
-	any_word func_param,
+	void (*func)(generic_word),
+	generic_word func_param,
 	bytes_ref stack) {
 	auto stack_bottom = stack.data().uintptr() + stack.size();
 	stack_bottom -= stack_bottom % sizeof(uintptr_t) + sizeof(uintptr_t);
@@ -290,8 +290,8 @@ swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
 
 inline void make_ucontext(
 	ucontext_t *ucp,
-	void (*func)(any_word),
-	any_word func_param,
+	void (*func)(generic_word),
+	generic_word func_param,
 	bytes_ref stack) {
 	ucp->uc_link = nullptr;
 	ucp->uc_stack.ss_sp = stack.data();

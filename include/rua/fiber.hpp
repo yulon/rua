@@ -362,7 +362,7 @@ private:
 		set_ucontext(&_orig_uc);
 	}
 
-	static void _runner(any_word th1s) {
+	static void _runner(generic_word th1s) {
 		th1s.as<fiber_runer *>()->_run();
 	}
 

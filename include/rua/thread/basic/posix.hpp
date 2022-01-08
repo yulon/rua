@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_BASIC_POSIX_HPP
 #define _RUA_THREAD_BASIC_POSIX_HPP
 
-#include "../../any_word.hpp"
+#include "../../generic_word.hpp"
 #include "../../macros.hpp"
 
 #include <pthread.h>
@@ -94,7 +94,7 @@ public:
 		return _id != target._id;
 	}
 
-	void exit(any_word retval = nullptr) {
+	void exit(generic_word retval = nullptr) {
 		if (!_id) {
 			return;
 		}
@@ -106,7 +106,7 @@ public:
 		reset();
 	}
 
-	inline any_word wait();
+	inline generic_word wait();
 
 	void reset() {
 		if (_id) {
