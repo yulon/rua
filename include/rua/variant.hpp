@@ -42,7 +42,7 @@ public:
 			return;
 		}
 		assert(_type.is_copyable());
-		_type.copy_ctor(&_sto[0], &src.data());
+		_type.copy_to(&_sto[0], &src.data());
 	}
 
 	template <
@@ -56,7 +56,7 @@ public:
 			return;
 		}
 		assert(_type.is_moveable());
-		_type.move_ctor(&_sto[0], &src.data());
+		_type.move_to(&_sto[0], &src.data());
 	}
 
 	~variant() {
@@ -68,7 +68,7 @@ public:
 			return;
 		}
 		assert(_type.is_copyable());
-		_type.copy_ctor(&_sto[0], &src._sto);
+		_type.copy_to(&_sto[0], &src._sto);
 	}
 
 	variant(variant &&src) : enable_type_info(src._type) {
@@ -76,7 +76,7 @@ public:
 			return;
 		}
 		assert(_type.is_moveable());
-		_type.move_ctor(&_sto[0], &src._sto);
+		_type.move_to(&_sto[0], &src._sto);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(variant)
@@ -150,7 +150,7 @@ public:
 		if (!_type) {
 			return;
 		}
-		_type.dtor(reinterpret_cast<void *>(&_sto[0]));
+		_type.destruct(reinterpret_cast<void *>(&_sto[0]));
 		_type = type_id<void>();
 	}
 

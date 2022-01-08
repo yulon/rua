@@ -7,22 +7,16 @@
 
 namespace rua {
 
-#define _RUA_ANY_IS_DYNAMIC_ALLOCATION(val_len, val_align, sto_len, sto_align) \
-	(val_len > sto_len || val_align > sto_align)
+#define _RUA_IS_CONTAINABLE(val_len, val_align, sto_len, sto_align)            \
+	(val_len <= sto_len && val_align <= sto_align)
 
 template <size_t StorageLen, size_t StorageAlign>
 class basic_any : public enable_type_info {
 public:
 	template <typename T>
-	struct is_dynamic_allocation {
-		static constexpr auto value = _RUA_ANY_IS_DYNAMIC_ALLOCATION(
+	struct is_containable {
+		static constexpr auto value = _RUA_IS_CONTAINABLE(
 			size_of<T>::value, align_of<T>::value, StorageLen, StorageAlign);
-	};
-
-	template <typename T>
-	struct is_destructible {
-		static constexpr auto value =
-			is_dynamic_allocation<T>::value || !std::is_trivial<T>::value;
 	};
 
 	////////////////////////////////////////////////////////////////////////
@@ -37,13 +31,13 @@ public:
 	}
 
 	template <typename T, typename... Args>
-	explicit basic_any(in_place_type_t<T>, Args &&... args) {
+	explicit basic_any(in_place_type_t<T>, Args &&...args) {
 		_emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
 	explicit basic_any(
-		in_place_type_t<T>, std::initializer_list<U> il, Args &&... args) {
+		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) {
 		_emplace<T>(il, std::forward<Args>(args)...);
 	}
 
@@ -58,13 +52,13 @@ public:
 
 		assert(_type.is_copyable());
 
-		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+		if (_RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			*reinterpret_cast<void **>(&_sto[0]) = _type.copy_new(
-				*reinterpret_cast<const void *const *>(&src._sto));
+			_type.copy_to(&_sto[0], &src._sto);
 			return;
 		}
-		_type.copy_ctor(&_sto[0], &src._sto);
+		*reinterpret_cast<void **>(&_sto[0]) = _type.copy_to_new(
+			*reinterpret_cast<const void *const *>(&src._sto));
 	}
 
 	basic_any(basic_any &&src) : enable_type_info(src._type) {
@@ -74,14 +68,14 @@ public:
 
 		assert(_type.is_moveable());
 
-		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+		if (_RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			*reinterpret_cast<void **>(&_sto[0]) =
-				*reinterpret_cast<void **>(&src._sto);
-			src._type = type_id<void>();
+			_type.move_to(&_sto[0], &src._sto);
 			return;
 		}
-		_type.move_ctor(&_sto[0], &src._sto);
+		*reinterpret_cast<void **>(&_sto[0]) =
+			*reinterpret_cast<void **>(&src._sto);
+		src._type = type_id<void>();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
@@ -95,13 +89,13 @@ public:
 	}
 
 	template <typename T>
-	enable_if_t<!is_dynamic_allocation<decay_t<T>>::value, T &> as() & {
+	enable_if_t<is_containable<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
 		return *reinterpret_cast<T *>(&_sto[0]);
 	}
 
 	template <typename T>
-	enable_if_t<is_dynamic_allocation<decay_t<T>>::value, T &> as() & {
+	enable_if_t<!is_containable<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
 		return **reinterpret_cast<T **>(&_sto[0]);
 	}
@@ -112,38 +106,36 @@ public:
 	}
 
 	template <typename T>
-	enable_if_t<!is_dynamic_allocation<decay_t<T>>::value, const T &>
-	as() const & {
+	enable_if_t<is_containable<decay_t<T>>::value, const T &> as() const & {
 		assert(type_is<T>());
 		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
 
 	template <typename T>
-	enable_if_t<is_dynamic_allocation<decay_t<T>>::value, const T &>
-	as() const & {
+	enable_if_t<!is_containable<decay_t<T>>::value, const T &> as() const & {
 		assert(type_is<T>());
 		return **reinterpret_cast<const T *const *>(&_sto[0]);
 	}
 
 	template <typename T, typename... Args>
-	T &emplace(Args &&... args) & {
+	T &emplace(Args &&...args) & {
 		reset();
 		return _emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
-	T &&emplace(Args &&... args) && {
+	T &&emplace(Args &&...args) && {
 		return std::move(emplace<T>(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename U, typename... Args>
-	T &emplace(std::initializer_list<U> il, Args &&... args) & {
+	T &emplace(std::initializer_list<U> il, Args &&...args) & {
 		reset();
 		return _emplace<T>(il, std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
-	T &&emplace(std::initializer_list<U> il, Args &&... args) && {
+	T &&emplace(std::initializer_list<U> il, Args &&...args) && {
 		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
@@ -151,11 +143,11 @@ public:
 		if (!_type) {
 			return;
 		}
-		if (_RUA_ANY_IS_DYNAMIC_ALLOCATION(
+		if (_RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			_type.del(*reinterpret_cast<void **>(&_sto[0]));
+			_type.destruct(reinterpret_cast<void *>(&_sto[0]));
 		} else {
-			_type.dtor(reinterpret_cast<void *>(&_sto[0]));
+			_type.dealloc(*reinterpret_cast<void **>(&_sto[0]));
 		}
 		_type = type_id<void>();
 	}
@@ -164,15 +156,13 @@ private:
 	alignas(StorageAlign) char _sto[StorageLen];
 
 	template <typename T, typename... Args>
-	enable_if_t<!is_dynamic_allocation<T>::value, T &>
-	_emplace(Args &&... args) {
+	enable_if_t<is_containable<T>::value, T &> _emplace(Args &&...args) {
 		_type = type_id<T>();
 		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
 	}
 
 	template <typename T, typename... Args>
-	enable_if_t<is_dynamic_allocation<T>::value, T &>
-	_emplace(Args &&... args) {
+	enable_if_t<!is_containable<T>::value, T &> _emplace(Args &&...args) {
 		_type = type_id<T>();
 		return *(
 			*reinterpret_cast<T **>(&_sto[0]) =
@@ -183,12 +173,12 @@ private:
 using any = basic_any<sizeof(void *), alignof(void *)>;
 
 template <typename T, typename... Args>
-any make_any(Args &&... args) {
+any make_any(Args &&...args) {
 	return any(in_place_type_t<T>{}, std::forward<Args>(args)...);
 }
 
 template <typename T, typename U, typename... Args>
-any make_any(std::initializer_list<U> il, Args &&... args) {
+any make_any(std::initializer_list<U> il, Args &&...args) {
 	return any(in_place_type_t<T>{}, il, std::forward<Args>(args)...);
 }
 

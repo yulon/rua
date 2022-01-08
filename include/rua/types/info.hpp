@@ -426,7 +426,7 @@ public:
 		return static_cast<size_t>(reinterpret_cast<uintptr_t>(_tab));
 	}
 
-	void dtor(void *ptr) const {
+	void destruct(void *ptr) const {
 		assert(_tab);
 		if (!_tab->dtor) {
 			return;
@@ -434,7 +434,7 @@ public:
 		_tab->dtor(ptr);
 	}
 
-	void del(void *ptr) const {
+	void dealloc(void *ptr) const {
 		assert(_tab);
 		assert(_tab->del);
 		_tab->del(ptr);
@@ -444,13 +444,13 @@ public:
 		return _tab && _tab->copy_ctor;
 	}
 
-	void copy_ctor(void *ptr, const void *src) const {
+	void copy_to(void *ptr, const void *src) const {
 		assert(_tab);
 		assert(_tab->copy_ctor);
 		_tab->copy_ctor(ptr, src);
 	}
 
-	void *copy_new(const void *src) const {
+	void *copy_to_new(const void *src) const {
 		assert(_tab);
 		assert(_tab->copy_new);
 		return _tab->copy_new(src);
@@ -460,13 +460,13 @@ public:
 		return _tab && _tab->move_ctor;
 	}
 
-	void move_ctor(void *ptr, void *src) const {
+	void move_to(void *ptr, void *src) const {
 		assert(_tab);
 		assert(_tab->move_ctor);
 		_tab->move_ctor(ptr, src);
 	}
 
-	void *move_new(void *src) const {
+	void *move_to_new(void *src) const {
 		assert(_tab);
 		assert(_tab->move_new);
 		return _tab->move_new(src);
@@ -476,7 +476,7 @@ public:
 		return _tab && _tab->to_bool;
 	}
 
-	bool to_bool(void *ptr) const {
+	bool convert_to_bool(void *ptr) const {
 		assert(_tab);
 		assert(_tab->to_bool);
 		return _tab->to_bool(ptr);
