@@ -1,16 +1,17 @@
 #ifndef _RUA_THREAD_DOZER_POSIX_HPP
 #define _RUA_THREAD_DOZER_POSIX_HPP
 
+#include "../basic/posix.hpp"
+
 #include "../../macros.hpp"
 #include "../../sched/dozer/abstract.hpp"
 #include "../../string/conv.hpp"
 #include "../../string/join.hpp"
 #include "../../types/util.hpp"
 
-#include <fcntl.h>
 #include <pthread.h>
 #include <sched.h>
-#include <semaphore.h>
+#include <signal.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -21,55 +22,21 @@ namespace rua { namespace posix {
 
 class thread_waker : public waker_base {
 public:
-	using native_handle_t = sem_t *;
-
-	thread_waker() {
-		if (!sem_init(&_sem, 0, 0)) {
-			_sem_ptr = &_sem;
-			return;
-		}
-		auto name = join(
-			"/rua_posix_spare_thread_waker",
-			to_string(getpid()),
-			to_string(pthread_self()),
-			"__");
-		_sem_ptr = sem_open(name.c_str(), O_CREAT, 0644, 0);
-		assert(_sem_ptr);
-		sem_unlink(name.c_str());
-	}
+	thread_waker(pthread_t tid) : _tid(tid) {}
 
 	virtual ~thread_waker() {
-		if (!_sem_ptr) {
+		if (!_tid) {
 			return;
 		}
-		if (_sem_ptr == &_sem) {
-			sem_destroy(_sem_ptr);
-		} else {
-			sem_close(_sem_ptr);
-		}
-		_sem_ptr = nullptr;
-	}
-
-	native_handle_t native_handle() {
-		return _sem_ptr;
-	}
-
-	operator bool() const {
-		return _sem_ptr;
+		_tid = 0;
 	}
 
 	virtual void wake() {
-		sem_post(_sem_ptr);
-	}
-
-	void reset() {
-		while (!sem_trywait(_sem_ptr))
-			;
+		pthread_kill(_tid, SIGCONT);
 	}
 
 private:
-	sem_t *_sem_ptr;
-	sem_t _sem;
+	pthread_t _tid;
 };
 
 class thread_dozer : public dozer_base {
@@ -110,18 +77,26 @@ public:
 	virtual bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
-		if (timeout == duration_max()) {
-			return !sem_wait(_wkr->native_handle());
-		}
-		auto ts = (now().to_unix().elapsed() + timeout).c_timespec();
-		return !sem_timedwait(_wkr->native_handle(), &ts);
+		auto c_ti = timeout.c_timespec();
+		return ::nanosleep(&c_ti, nullptr) == -1;
 	}
 
 	virtual waker get_waker() {
-		if (_wkr) {
-			_wkr->reset();
-		} else {
-			_wkr = std::make_shared<thread_waker>();
+		if (!_wkr) {
+			static auto act_r = ([]() -> int {
+				static struct sigaction new_act, old_act;
+				new_act.sa_handler = [](int sig) {
+					if (old_act.sa_handler) {
+						old_act.sa_handler(sig);
+					}
+				};
+				new_act.sa_flags = 0;
+				sigfillset(&new_act.sa_mask);
+				old_act.sa_handler = nullptr;
+				return sigaction(SIGCONT, &new_act, &old_act);
+			})();
+			assert(act_r == 0);
+			_wkr = std::make_shared<thread_waker>(this_tid());
 		}
 		return _wkr;
 	}
