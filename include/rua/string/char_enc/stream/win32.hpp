@@ -14,7 +14,7 @@ class loc_to_u8_reader : public stream_base {
 public:
 	loc_to_u8_reader() : _lr(nullptr), _data_sz(0) {}
 
-	loc_to_u8_reader(stream loc_reader) :
+	loc_to_u8_reader(stream_i loc_reader) :
 		_lr(std::move(loc_reader)), _data_sz(0) {}
 
 	virtual ~loc_to_u8_reader() {
@@ -57,7 +57,7 @@ public:
 	}
 
 private:
-	stream _lr;
+	stream_i _lr;
 	std::string _cache;
 	bytes _buf;
 	ssize_t _data_sz;
@@ -67,7 +67,7 @@ class u8_to_loc_writer : public stream_base {
 public:
 	constexpr u8_to_loc_writer() : _lw(nullptr) {}
 
-	u8_to_loc_writer(stream loc_writer) : _lw(std::move(loc_writer)) {}
+	u8_to_loc_writer(stream_i loc_writer) : _lw(std::move(loc_writer)) {}
 
 	virtual ~u8_to_loc_writer() {
 		if (!_lw) {
@@ -86,7 +86,7 @@ public:
 	}
 
 private:
-	stream _lw;
+	stream_i _lw;
 };
 
 } // namespace _string_char_enc_stream

@@ -27,10 +27,10 @@ class buffered_reader : public stream_base {
 public:
 	buffered_reader() = default;
 
-	buffered_reader(stream r, bytes &&buf = nullptr) :
+	buffered_reader(stream_i r, bytes &&buf = nullptr) :
 		_r(std::move(r)), _r_buf(std::move(buf)), _skip_lf(false) {}
 
-	buffered_reader(stream r, size_t buf_sz) :
+	buffered_reader(stream_i r, size_t buf_sz) :
 		buffered_reader(std::move(r), bytes(buf_sz)) {}
 
 	virtual ~buffered_reader() = default;
@@ -168,7 +168,7 @@ public:
 	}
 
 private:
-	stream _r;
+	stream_i _r;
 	bytes _r_buf;
 	bytes_ref _r_cache;
 	optional<std::string> _ln_buf_opt;
@@ -204,10 +204,10 @@ class buffered_writer : public stream_base {
 public:
 	constexpr buffered_writer() = default;
 
-	buffered_writer(stream w, bytes &&w_buf = nullptr) :
+	buffered_writer(stream_i w, bytes &&w_buf = nullptr) :
 		_w(std::move(w)), _w_buf(std::move(w_buf)) {}
 
-	buffered_writer(stream w, size_t buf_sz) :
+	buffered_writer(stream_i w, size_t buf_sz) :
 		buffered_writer(std::move(w), bytes(buf_sz)) {}
 
 	virtual ~buffered_writer() = default;
@@ -245,7 +245,7 @@ public:
 	}
 
 private:
-	stream _w;
+	stream_i _w;
 	bytes _w_buf;
 	bytes_ref _w_cache;
 
@@ -263,7 +263,7 @@ class read_group : public stream_base {
 public:
 	constexpr read_group(size_t buf_sz = 1024) : _c(0), _buf_sz(buf_sz) {}
 
-	read_group(std::initializer_list<stream> r_li, size_t buf_sz = 1024) :
+	read_group(std::initializer_list<stream_i> r_li, size_t buf_sz = 1024) :
 		read_group(buf_sz) {
 		for (auto &r : r_li) {
 			add(std::move(r));
@@ -272,7 +272,7 @@ public:
 
 	virtual ~read_group() = default;
 
-	void add(stream r) {
+	void add(stream_i r) {
 		++_c;
 		thread([this, r]() {
 			bytes buf(_buf_sz.load());
@@ -316,11 +316,11 @@ class write_group : public stream_base {
 public:
 	write_group() = default;
 
-	write_group(std::vector<stream> w_li) : _w_li(std::move(w_li)) {}
+	write_group(std::vector<stream_i> w_li) : _w_li(std::move(w_li)) {}
 
 	virtual ~write_group() = default;
 
-	void add(stream w) {
+	void add(stream_i w) {
 		_w_li.emplace_back(std::move(w));
 	}
 
@@ -338,7 +338,7 @@ public:
 	}
 
 private:
-	std::vector<stream> _w_li;
+	std::vector<stream_i> _w_li;
 };
 
 inline bool _is_stack_data(bytes_view data) {

@@ -22,13 +22,13 @@ public:
 	virtual void wake() {}
 };
 
-using waker = interface_ptr<waker_base>;
+using waker_i = interface_ptr<waker_base>;
 
 class secondary_waker : public waker_base {
 public:
 	constexpr secondary_waker() : _pri(nullptr), _state(false) {}
 
-	explicit secondary_waker(waker primary_waker) :
+	explicit secondary_waker(waker_i primary_waker) :
 		_pri(primary_waker), _state(false) {}
 
 	virtual ~secondary_waker() = default;
@@ -48,12 +48,12 @@ public:
 		_state.store(false);
 	}
 
-	waker primary() const {
+	waker_i primary() const {
 		return _pri;
 	}
 
 private:
-	waker _pri;
+	waker_i _pri;
 	std::atomic<bool> _state;
 };
 
@@ -95,7 +95,7 @@ public:
 		return true;
 	}
 
-	virtual waker get_waker() {
+	virtual waker_i get_waker() {
 		static waker_base wkr;
 		return wkr;
 	}
@@ -108,7 +108,7 @@ protected:
 	constexpr dozer_base() = default;
 };
 
-using dozer = interface_ptr<dozer_base>;
+using dozer_i = interface_ptr<dozer_base>;
 
 } // namespace rua
 

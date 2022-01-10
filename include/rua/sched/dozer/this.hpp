@@ -11,8 +11,8 @@
 
 namespace rua {
 
-inline dozer &_this_dozer_ref() {
-	static thread_var<dozer> sto;
+inline dozer_i &_this_dozer_ref() {
+	static thread_var<dozer_i> sto;
 	if (!sto.has_value()) {
 		return sto.emplace(make_default_dozer());
 	}
@@ -20,13 +20,13 @@ inline dozer &_this_dozer_ref() {
 	return sto.value();
 }
 
-inline dozer this_dozer() {
+inline dozer_i this_dozer() {
 	return _this_dozer_ref();
 }
 
 class dozer_guard {
 public:
-	dozer_guard(dozer dzr) {
+	dozer_guard(dozer_i dzr) {
 		auto &dzr_ref = _this_dozer_ref();
 		_prev = std::move(dzr_ref);
 		dzr_ref = std::move(dzr);
@@ -40,12 +40,12 @@ public:
 		_this_dozer_ref() = std::move(_prev);
 	}
 
-	dozer previous() {
+	dozer_i previous() {
 		return _prev;
 	}
 
 private:
-	dozer _prev;
+	dozer_i _prev;
 };
 
 inline void yield() {

@@ -88,7 +88,7 @@ public:
 
 	inline virtual bool doze(duration timeout = duration_max());
 
-	inline virtual waker get_waker();
+	inline virtual waker_i get_waker();
 
 	virtual bool is_own_stack() const {
 		return false;
@@ -388,7 +388,7 @@ private:
 		}
 	}
 
-	waker _orig_wkr;
+	waker_i _orig_wkr;
 
 	friend fiber_dozer;
 
@@ -433,7 +433,7 @@ inline bool fiber_dozer::doze(duration timeout) {
 	return wkr->state();
 }
 
-inline waker fiber_dozer::get_waker() {
+inline waker_i fiber_dozer::get_waker() {
 	assert(_fr->_cur._ctx);
 
 	auto &wkr = _fr->_cur._ctx->wkr;

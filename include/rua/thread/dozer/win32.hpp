@@ -78,7 +78,7 @@ public:
 				   timeout.milliseconds<DWORD, INFINITE>()) != WAIT_TIMEOUT;
 	}
 
-	virtual waker get_waker() {
+	virtual waker_i get_waker() {
 		if (_wkr) {
 			_wkr->reset();
 		} else {

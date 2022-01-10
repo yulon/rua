@@ -44,7 +44,7 @@ public:
 		return _wait_and_pop(this_dozer(), timeout);
 	}
 
-	optional<T> try_pop(dozer dzr, duration timeout) {
+	optional<T> try_pop(dozer_i dzr, duration timeout) {
 		auto val_opt = _buf.pop_back();
 		if (val_opt || !timeout || !dzr) {
 			return val_opt;
@@ -57,15 +57,15 @@ public:
 		return try_pop(duration_max()).value();
 	}
 
-	T pop(dozer dzr) {
+	T pop(dozer_i dzr) {
 		return try_pop(std::move(dzr), duration_max()).value();
 	}
 
 protected:
 	lockfree_list<T> _buf;
-	lockfree_list<waker> _waiters;
+	lockfree_list<waker_i> _waiters;
 
-	optional<T> _wait_and_pop(dozer dzr, duration timeout) {
+	optional<T> _wait_and_pop(dozer_i dzr, duration timeout) {
 		assert(dzr);
 		assert(timeout);
 

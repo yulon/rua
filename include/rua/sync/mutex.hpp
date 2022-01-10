@@ -40,7 +40,7 @@ public:
 		return _wait_and_lock(this_dozer(), timeout);
 	}
 
-	bool try_lock(dozer dzr, duration timeout) {
+	bool try_lock(dozer_i dzr, duration timeout) {
 		if (try_lock()) {
 			return true;
 		}
@@ -54,7 +54,7 @@ public:
 		try_lock(duration_max());
 	}
 
-	void lock(dozer dzr) {
+	void lock(dozer_i dzr) {
 		try_lock(std::move(dzr), duration_max());
 	}
 
@@ -81,9 +81,9 @@ public:
 
 private:
 	std::atomic<uintptr_t> _locked;
-	lockfree_list<waker> _waiters;
+	lockfree_list<waker_i> _waiters;
 
-	bool _wait_and_lock(dozer dzr, duration timeout) {
+	bool _wait_and_lock(dozer_i dzr, duration timeout) {
 		assert(dzr);
 		assert(timeout);
 

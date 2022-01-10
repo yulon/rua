@@ -13,7 +13,7 @@ public:
 
 	constexpr printer(std::nullptr_t) : printer() {}
 
-	explicit printer(stream w, const char *eol = eol::lf) :
+	explicit printer(stream_i w, const char *eol = eol::lf) :
 		_w(std::move(w)), _eol(eol) {}
 
 	~printer() {
@@ -37,21 +37,21 @@ public:
 		print(std::forward<Args>(args)..., _eol);
 	}
 
-	stream get() {
+	stream_i get() {
 		return *_w;
 	}
 
-	void reset(stream w = nullptr) {
+	void reset(stream_i w = nullptr) {
 		_w = std::move(w);
 	}
 
-	void reset(stream w, const char *eol) {
+	void reset(stream_i w, const char *eol) {
 		_w = std::move(w);
 		_eol = eol;
 	}
 
 private:
-	stream _w;
+	stream_i _w;
 	const char *_eol;
 };
 

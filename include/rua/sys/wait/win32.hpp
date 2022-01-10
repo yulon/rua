@@ -13,7 +13,7 @@ namespace rua { namespace win32 {
 namespace _sys_wait {
 
 inline bool
-sys_wait(dozer dzr, HANDLE handle, duration timeout = duration_max()) {
+sys_wait(dozer_i dzr, HANDLE handle, duration timeout = duration_max()) {
 	assert(dzr);
 	assert(handle);
 

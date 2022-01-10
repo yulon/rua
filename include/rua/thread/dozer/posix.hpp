@@ -81,7 +81,7 @@ public:
 		return ::nanosleep(&c_ti, nullptr) == -1;
 	}
 
-	virtual waker get_waker() {
+	virtual waker_i get_waker() {
 		if (!_wkr) {
 			static auto act_r = ([]() -> int {
 				static struct sigaction new_act, old_act;

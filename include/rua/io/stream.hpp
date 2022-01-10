@@ -9,7 +9,7 @@ namespace rua {
 
 class stream_base;
 
-using stream = interface_ptr<stream_base>;
+using stream_i = interface_ptr<stream_base>;
 
 class stream_base {
 public:
@@ -73,7 +73,7 @@ public:
 		return tsz;
 	}
 
-	bool copy(stream r, bytes_ref buf = nullptr) {
+	bool copy(stream_i r, bytes_ref buf = nullptr) {
 		bytes inner_buf;
 		if (!buf) {
 			inner_buf.reset(1024);

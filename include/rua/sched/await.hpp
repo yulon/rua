@@ -16,7 +16,7 @@ template <
 	typename... Args,
 	typename Ret = invoke_result_t<F &&, Args &&...>>
 inline enable_if_t<std::is_same<Ret, void>::value>
-await(dozer dzr, F &&f, Args &&...args) {
+await(dozer_i dzr, F &&f, Args &&...args) {
 	assert(dzr);
 
 	if (dzr.type_is<thread_dozer>()) {
@@ -36,7 +36,7 @@ template <
 	typename... Args,
 	typename Ret = invoke_result_t<F &&, Args &&...>>
 inline enable_if_t<!std::is_same<Ret, void>::value, Ret>
-await(dozer dzr, F &&f, Args &&...args) {
+await(dozer_i dzr, F &&f, Args &&...args) {
 	assert(dzr);
 
 	if (dzr.type_is<thread_dozer>()) {

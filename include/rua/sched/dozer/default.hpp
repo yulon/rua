@@ -10,11 +10,11 @@
 
 namespace rua {
 
-inline dozer
-make_default_dozer(std::function<dozer()> make_dozer = []() -> dozer {
+inline dozer_i
+make_default_dozer(std::function<dozer_i()> make_dozer = []() -> dozer_i {
 	return std::make_shared<thread_dozer>();
 }) {
-	static std::function<dozer()> make = std::move(make_dozer);
+	static std::function<dozer_i()> make = std::move(make_dozer);
 	return make();
 }
 
