@@ -174,7 +174,7 @@ private:
 
 using file_info = basic_file_info<BY_HANDLE_FILE_INFORMATION>;
 
-class file : public sys_stream, public seek_util<file> {
+class file : public sys_stream {
 public:
 	file() : sys_stream() {}
 
@@ -204,7 +204,7 @@ public:
 		return static_cast<uint64_t>(sz.QuadPart);
 	}
 
-	int64_t seek(int64_t offset, uchar whence = 0) {
+	virtual int64_t seek(int64_t offset, uchar whence = 0) {
 		LARGE_INTEGER off_li, seeked_li;
 		off_li.QuadPart =
 			static_cast<decltype(LARGE_INTEGER::QuadPart)>(offset);

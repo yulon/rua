@@ -131,7 +131,7 @@ private:
 	struct stat _data;
 };
 
-class file : public sys_stream, public seek_util<file> {
+class file : public sys_stream {
 public:
 	file() : sys_stream() {}
 
@@ -162,7 +162,7 @@ public:
 		return info().size();
 	}
 
-	int64_t seek(int64_t offset, uchar whence = 0) {
+	virtual int64_t seek(int64_t offset, uchar whence = 0) {
 		return static_cast<int64_t>(lseek(native_handle(), offset, whence));
 	}
 

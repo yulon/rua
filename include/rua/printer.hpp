@@ -7,15 +7,14 @@
 
 namespace rua {
 
-template <typename Writer>
 class printer {
 public:
 	constexpr printer() : _w(nullptr), _eol(eol::lf) {}
 
 	constexpr printer(std::nullptr_t) : printer() {}
 
-	explicit printer(Writer &w, const char *eol = eol::lf) :
-		_w(&w), _eol(eol) {}
+	explicit printer(stream w, const char *eol = eol::lf) :
+		_w(std::move(w)), _eol(eol) {}
 
 	~printer() {
 		if (!_w) {
@@ -25,7 +24,7 @@ public:
 	}
 
 	operator bool() const {
-		return is_valid(_w);
+		return _w;
 	}
 
 	template <typename... Args>
@@ -38,28 +37,23 @@ public:
 		print(std::forward<Args>(args)..., _eol);
 	}
 
-	Writer &get() {
+	stream get() {
 		return *_w;
 	}
 
-	void reset(Writer &w = nullptr) {
-		_w = &w;
+	void reset(stream w = nullptr) {
+		_w = std::move(w);
 	}
 
-	void reset(Writer &w, const char *eol) {
-		_w = &w;
+	void reset(stream w, const char *eol) {
+		_w = std::move(w);
 		_eol = eol;
 	}
 
 private:
-	Writer *_w;
+	stream _w;
 	const char *_eol;
 };
-
-template <typename Writer>
-printer<Writer> make_printer(Writer &w, const char *eol = eol::lf) {
-	return printer<Writer>(w, eol);
-}
 
 } // namespace rua
 

@@ -12,7 +12,7 @@
 
 namespace rua { namespace win32 {
 
-class sys_stream : public read_write_util<sys_stream> {
+class sys_stream : public stream_base {
 public:
 	using native_handle_t = HANDLE;
 
@@ -49,7 +49,7 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
-	~sys_stream() {
+	virtual ~sys_stream() {
 		close();
 	}
 
@@ -61,11 +61,11 @@ public:
 		return _h;
 	}
 
-	explicit operator bool() const {
+	virtual operator bool() const {
 		return _h != INVALID_HANDLE_VALUE;
 	}
 
-	ptrdiff_t read(bytes_ref p) {
+	virtual ssize_t read(bytes_ref p) {
 		assert(*this);
 
 		auto dzr = this_dozer();
@@ -82,7 +82,7 @@ public:
 		return await(std::move(dzr), _read, _h, p);
 	}
 
-	ptrdiff_t write(bytes_view p) {
+	virtual ssize_t write(bytes_view p) {
 		assert(*this);
 
 		auto dzr = this_dozer();
@@ -99,7 +99,7 @@ public:
 		return _h && _nc;
 	}
 
-	void close() {
+	virtual void close() {
 		if (!*this) {
 			return;
 		}
@@ -134,20 +134,20 @@ private:
 	HANDLE _h;
 	bool _nc;
 
-	static ptrdiff_t _read(HANDLE h, bytes_ref p) {
+	static ssize_t _read(HANDLE h, bytes_ref p) {
 		DWORD rsz;
 		return ReadFile(
 				   h, p.data(), static_cast<DWORD>(p.size()), &rsz, nullptr)
-				   ? static_cast<ptrdiff_t>(rsz)
-				   : static_cast<ptrdiff_t>(0);
+				   ? static_cast<ssize_t>(rsz)
+				   : static_cast<ssize_t>(0);
 	}
 
-	static ptrdiff_t _write(HANDLE h, bytes_view p) {
+	static ssize_t _write(HANDLE h, bytes_view p) {
 		DWORD wsz;
 		return WriteFile(
 				   h, p.data(), static_cast<DWORD>(p.size()), &wsz, nullptr)
-				   ? static_cast<ptrdiff_t>(wsz)
-				   : static_cast<ptrdiff_t>(0);
+				   ? static_cast<ssize_t>(wsz)
+				   : static_cast<ssize_t>(0);
 	}
 };
 

@@ -2,6 +2,7 @@
 #define _RUA_IO_HPP
 
 #include "io/c_stream.hpp"
+#include "io/stream.hpp"
 #include "io/util.hpp"
 
 #endif

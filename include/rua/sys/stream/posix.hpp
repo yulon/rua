@@ -12,7 +12,7 @@
 
 namespace rua { namespace posix {
 
-class sys_stream : public read_write_util<sys_stream> {
+class sys_stream : public stream_base {
 public:
 	using native_handle_t = int;
 
@@ -45,7 +45,7 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(sys_stream)
 
-	~sys_stream() {
+	virtual ~sys_stream() {
 		close();
 	}
 
@@ -57,11 +57,11 @@ public:
 		return _fd;
 	}
 
-	explicit operator bool() const {
+	virtual operator bool() const {
 		return _fd >= 0;
 	}
 
-	ptrdiff_t read(bytes_ref p) {
+	virtual ssize_t read(bytes_ref p) {
 		assert(*this);
 
 		auto dzr = this_dozer();
@@ -78,7 +78,7 @@ public:
 		return await(std::move(dzr), _read, _fd, p);
 	}
 
-	ptrdiff_t write(bytes_view p) {
+	virtual ssize_t write(bytes_view p) {
 		assert(*this);
 
 		auto dzr = this_dozer();
@@ -95,7 +95,7 @@ public:
 		return _fd >= 0 && _nc;
 	}
 
-	void close() {
+	virtual void close() {
 		if (_fd < 0) {
 			return;
 		}
@@ -120,12 +120,12 @@ private:
 	int _fd;
 	bool _nc;
 
-	static ptrdiff_t _read(int _fd, bytes_ref p) {
-		return static_cast<ptrdiff_t>(::read(_fd, p.data(), p.size()));
+	static ssize_t _read(int _fd, bytes_ref p) {
+		return static_cast<ssize_t>(::read(_fd, p.data(), p.size()));
 	}
 
-	static ptrdiff_t _write(int _fd, bytes_view p) {
-		return static_cast<ptrdiff_t>(::write(_fd, p.data(), p.size()));
+	static ssize_t _write(int _fd, bytes_view p) {
+		return static_cast<ssize_t>(::write(_fd, p.data(), p.size()));
 	}
 };
 

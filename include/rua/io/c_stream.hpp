@@ -1,14 +1,14 @@
 #ifndef _RUA_IO_C_STREAM_HPP
 #define _RUA_IO_C_STREAM_HPP
 
-#include "util.hpp"
+#include "stream.hpp"
 
 #include <cstddef>
 #include <cstdio>
 
 namespace rua {
 
-class c_stream : public read_write_util<c_stream> {
+class c_stream : public stream_base {
 public:
 	using native_handle_t = FILE *;
 
@@ -19,13 +19,9 @@ public:
 		src.detach();
 	}
 
-	c_stream &operator=(c_stream &&src) {
-		close();
-		new (this) c_stream(std::move(src));
-		return *this;
-	}
+	RUA_OVERLOAD_ASSIGNMENT_R(c_stream)
 
-	~c_stream() {
+	virtual ~c_stream() {
 		close();
 	}
 
@@ -37,15 +33,15 @@ public:
 		return _f;
 	}
 
-	explicit operator bool() const {
+	virtual operator bool() const {
 		return _f;
 	}
 
-	ptrdiff_t read(bytes_ref p) {
+	virtual ptrdiff_t read(bytes_ref p) {
 		return static_cast<ptrdiff_t>(fread(p.data(), 1, p.size(), _f));
 	}
 
-	ptrdiff_t write(bytes_view p) {
+	virtual ptrdiff_t write(bytes_view p) {
 		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), _f));
 	}
 
@@ -53,7 +49,7 @@ public:
 		return _f && _nc;
 	}
 
-	void close() {
+	virtual void close() {
 		if (!_f) {
 			return;
 		}

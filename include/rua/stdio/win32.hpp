@@ -23,15 +23,15 @@ using stderr_stream = _basic_stdio_stream<STD_ERROR_HANDLE>;
 using stdin_stream = _basic_stdio_stream<STD_INPUT_HANDLE>;
 
 template <DWORD Id>
-class _basic_stdio_stream : public read_write_util<_basic_stdio_stream<Id>> {
+class _basic_stdio_stream : public stream_base {
 public:
 	using native_handle_t = HANDLE;
 
-	ptrdiff_t read(bytes_ref p) {
+	virtual ssize_t read(bytes_ref p) {
 		return sys_stream(GetStdHandle(Id), false).read(p);
 	}
 
-	ptrdiff_t write(bytes_view p) {
+	virtual ssize_t write(bytes_view p) {
 		return sys_stream(GetStdHandle(Id), false).write(p);
 	}
 
@@ -43,7 +43,7 @@ public:
 		return sys_stream(GetStdHandle(Id), false);
 	}
 
-	operator bool() const {
+	virtual operator bool() const {
 		return GetStdHandle(Id);
 	}
 
@@ -68,8 +68,8 @@ public:
 		return *this;
 	}
 
-	void close() {
-		operator=(nullptr);
+	virtual void close() {
+		operator=(INVALID_HANDLE_VALUE);
 	}
 
 private:
@@ -97,18 +97,18 @@ inline stdin_stream &in() {
 	return s;
 }
 
-inline decltype(make_u8_to_loc_writer(out())) &sout() {
-	static auto s = make_u8_to_loc_writer(out());
+inline u8_to_loc_writer &sout() {
+	static u8_to_loc_writer s(out());
 	return s;
 }
 
-inline decltype(make_u8_to_loc_writer(err())) &serr() {
-	static auto s = make_u8_to_loc_writer(err());
+inline u8_to_loc_writer &serr() {
+	static u8_to_loc_writer s(err());
 	return s;
 }
 
-inline decltype(make_loc_to_u8_reader(in())) &sin() {
-	static auto s = make_loc_to_u8_reader(in());
+inline loc_to_u8_reader &sin() {
+	static loc_to_u8_reader s(in());
 	return s;
 }
 
