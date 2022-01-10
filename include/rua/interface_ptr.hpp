@@ -138,7 +138,7 @@ public:
 	}
 
 	operator bool() const {
-		return _raw;
+		return is_valid(_raw);
 	}
 
 	bool operator==(const interface_ptr<T> &src) const {
@@ -235,7 +235,9 @@ public:
 		_raw(nullptr), _weak(), _type() {}
 
 	weak_interface(const interface_ptr<T> &r) :
-		_raw(r.get()), _weak(r.get_shared()), _type(r.type()) {}
+		_raw(r.get_shared() ? r.get() : nullptr),
+		_weak(r.get_shared()),
+		_type(r.type()) {}
 
 	~weak_interface() {
 		reset();
@@ -246,10 +248,13 @@ public:
 	}
 
 	interface_ptr<T> lock() const {
+		if (_raw) {
+			return interface_ptr<T>(_raw, _type);
+		}
 		if (_weak.use_count()) {
 			return interface_ptr<T>(_weak.lock(), _type);
 		}
-		return interface_ptr<T>(_raw, _type);
+		return nullptr;
 	}
 
 	void reset() {
