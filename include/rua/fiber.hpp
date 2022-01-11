@@ -437,7 +437,7 @@ inline waker_i fiber_dozer::get_waker() {
 
 	auto &wkr = _fr->_cur._ctx->wkr;
 	if (wkr) {
-		wkr.reset();
+		wkr->reset();
 	} else {
 		wkr = std::make_shared<secondary_waker>(_fr->_orig_wkr);
 	}
