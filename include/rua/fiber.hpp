@@ -90,9 +90,7 @@ public:
 
 	inline virtual waker_i get_waker();
 
-	virtual bool is_own_stack() const {
-		return false;
-	}
+	inline virtual bool is_unowned_data(bytes_view data) const;
 
 	fiber_runer &get_runer() {
 		return *_fr;
@@ -287,8 +285,9 @@ private:
 		auto stk_used =
 			stk(_prev._ctx->_uc.sp() - reinterpret_cast<uintptr_t>(stk.data()));
 		auto rmdr = stk_used.size() % 1024;
-		_prev._ctx->stk_bak.resize(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
-		_prev._ctx->stk_bak = stk_used;
+		_prev._ctx->stk_bak.reset(stk_used.size() + (rmdr ? 1024 - rmdr : 0));
+		_prev._ctx->stk_bak.reset(stk_used.size());
+		_prev._ctx->stk_bak.copy(stk_used);
 
 		_prev._ctx.reset();
 	}
@@ -443,6 +442,11 @@ inline waker_i fiber_dozer::get_waker() {
 		wkr = std::make_shared<secondary_waker>(_fr->_orig_wkr);
 	}
 	return wkr;
+}
+
+inline bool fiber_dozer::is_unowned_data(bytes_view data) const {
+	auto &cur_stk = _fr->_cur_stk();
+	return data.data() >= cur_stk.data() && data.data() < cur_stk.end();
 }
 
 inline fiber_runer *this_fiber_runer() {

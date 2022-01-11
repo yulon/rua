@@ -61,34 +61,30 @@ public:
 		return _fd >= 0;
 	}
 
-	virtual ssize_t read(bytes_ref p) {
+	virtual ssize_t read(bytes_ref buf) {
 		assert(*this);
 
 		auto dzr = this_dozer();
-		if (!dzr->is_own_stack()) {
-			auto buf = try_make_heap_buffer(p);
-			if (buf) {
-				auto sz = await(std::move(dzr), _read, _fd, bytes_ref(buf));
-				if (sz > 0) {
-					p.copy(buf);
-				}
-				return sz;
+		if (dzr->is_unowned_data(buf)) {
+			bytes buf_s(buf.size());
+			auto sz = await(std::move(dzr), _read, _fd, bytes_ref(buf_s));
+			if (sz > 0) {
+				buf.copy(buf_s);
 			}
+			return sz;
 		}
-		return await(std::move(dzr), _read, _fd, p);
+		return await(std::move(dzr), _read, _fd, buf);
 	}
 
-	virtual ssize_t write(bytes_view p) {
+	virtual ssize_t write(bytes_view data) {
 		assert(*this);
 
 		auto dzr = this_dozer();
-		if (!dzr->is_own_stack()) {
-			auto data = try_make_heap_data(p);
-			if (data) {
-				return await(std::move(dzr), _write, _fd, bytes_view(data));
-			}
+		if (dzr->is_unowned_data(data)) {
+			bytes data_s(data);
+			return await(std::move(dzr), _write, _fd, bytes_view(data_s));
 		}
-		return await(std::move(dzr), _write, _fd, p);
+		return await(std::move(dzr), _write, _fd, data);
 	}
 
 	bool is_need_close() const {

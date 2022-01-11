@@ -100,8 +100,8 @@ public:
 		return wkr;
 	}
 
-	virtual bool is_own_stack() const {
-		return true;
+	virtual bool is_unowned_data(bytes_view) const {
+		return false;
 	}
 
 protected:
