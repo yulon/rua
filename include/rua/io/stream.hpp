@@ -95,15 +95,15 @@ public:
 		return 0;
 	}
 
-	int64_t seek_from_begin(int64_t offset) {
+	int64_t seek_from_begin(int64_t offset = 0) {
 		return seek(offset, 0);
 	}
 
-	int64_t seek_from_current(int64_t offset) {
+	int64_t seek_from_current(int64_t offset = 0) {
 		return seek(offset, 1);
 	}
 
-	int64_t seek_from_end(int64_t offset) {
+	int64_t seek_from_end(int64_t offset = 0) {
 		return seek(offset, 1);
 	}
 
