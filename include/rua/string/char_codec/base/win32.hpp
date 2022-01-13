@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_ENC_BASE_WIN32_HPP
-#define _RUA_STRING_CHAR_ENC_BASE_WIN32_HPP
+#ifndef _RUA_STRING_CHAR_CODEC_BASE_WIN32_HPP
+#define _RUA_STRING_CHAR_CODEC_BASE_WIN32_HPP
 
 #include "../../view.hpp"
 
@@ -13,9 +13,9 @@
 
 namespace rua { namespace win32 {
 
-namespace _string_char_enc_base {
+namespace _string_char_codec_base {
 
-inline std::wstring mb_to_w(UINT mb_cp, string_view mb_str) {
+inline std::wstring b2w(UINT mb_cp, string_view mb_str) {
 	if (mb_str.empty()) {
 		return L"";
 	}
@@ -40,7 +40,7 @@ inline std::wstring mb_to_w(UINT mb_cp, string_view mb_str) {
 	return w_str;
 }
 
-inline std::string w_to_mb(wstring_view w_str, UINT mb_cp) {
+inline std::string w2b(wstring_view w_str, UINT mb_cp) {
 	if (w_str.empty()) {
 		return "";
 	}
@@ -75,33 +75,33 @@ inline std::string w_to_mb(wstring_view w_str, UINT mb_cp) {
 	return u8_str;
 }
 
-inline std::wstring u8_to_w(string_view u8_str) {
-	return mb_to_w(CP_UTF8, u8_str);
+inline std::wstring u2w(string_view u8_str) {
+	return b2w(CP_UTF8, u8_str);
 }
 
-inline std::string w_to_u8(wstring_view w_str) {
-	return w_to_mb(w_str, CP_UTF8);
+inline std::string w2u(wstring_view w_str) {
+	return w2b(w_str, CP_UTF8);
 }
 
-inline std::wstring loc_to_w(string_view str) {
-	return mb_to_w(CP_ACP, str);
+inline std::wstring l2w(string_view str) {
+	return b2w(CP_ACP, str);
 }
 
-inline std::string w_to_loc(wstring_view w_str) {
-	return w_to_mb(w_str, CP_ACP);
+inline std::string w2l(wstring_view w_str) {
+	return w2b(w_str, CP_ACP);
 }
 
-inline std::string loc_to_u8(string_view str) {
-	return w_to_u8(loc_to_w(str));
+inline std::string l2u(string_view str) {
+	return w2u(l2w(str));
 }
 
-inline std::string u8_to_loc(string_view u8_str) {
-	return w_to_loc(u8_to_w(u8_str));
+inline std::string u2l(string_view u8_str) {
+	return w2l(u2w(u8_str));
 }
 
-} // namespace _string_char_enc_base
+} // namespace _string_char_codec_base
 
-using namespace _string_char_enc_base;
+using namespace _string_char_codec_base;
 
 }} // namespace rua::win32
 

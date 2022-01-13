@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_CONV_HPP
 #define _RUA_STRING_CONV_HPP
 
-#include "char_enc/base.hpp"
+#include "char_codec/base.hpp"
 #include "join.hpp"
 #include "view.hpp"
 
@@ -91,11 +91,11 @@ inline enable_if_t<
 	std::is_same<remove_cv_t<WChar>, wchar_t>::value,
 	std::string>
 to_string(WChar *c_wstr) {
-	return w_to_u8(c_wstr);
+	return w2u(c_wstr);
 }
 
 inline std::string to_string(const wchar_t *c_wstr, size_t size) {
-	return w_to_u8({c_wstr, size});
+	return w2u({c_wstr, size});
 }
 
 template <
@@ -106,7 +106,7 @@ inline constexpr enable_if_t<
 		!std::is_array<remove_reference_t<WStringLike>>::value,
 	std::string>
 to_string(WStringLike &&wstr) {
-	return w_to_u8(
+	return w2u(
 		{span_data(std::forward<WStringLike>(wstr)),
 		 span_size(std::forward<WStringLike>(wstr))});
 }

@@ -2,7 +2,7 @@
 #define _RUA_STDIO_WIN32_HPP
 
 #include "../macros.hpp"
-#include "../string/char_enc/stream/win32.hpp"
+#include "../string/char_codec/stream/win32.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../types/util.hpp"
 
@@ -97,18 +97,18 @@ inline stdin_stream &in() {
 	return s;
 }
 
-inline u8_to_loc_writer &sout() {
-	static u8_to_loc_writer s(out());
+inline u2l_writer &sout() {
+	static u2l_writer s(out());
 	return s;
 }
 
-inline u8_to_loc_writer &serr() {
-	static u8_to_loc_writer s(err());
+inline u2l_writer &serr() {
+	static u2l_writer s(err());
 	return s;
 }
 
-inline loc_to_u8_reader &sin() {
-	static loc_to_u8_reader s(in());
+inline l2u_reader &sin() {
+	static l2u_reader s(in());
 	return s;
 }
 

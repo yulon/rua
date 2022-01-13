@@ -12,7 +12,7 @@
 #include "../macros.hpp"
 #include "../memory.hpp"
 #include "../stdio/win32.hpp"
-#include "../string/char_enc/base/win32.hpp"
+#include "../string/char_codec/base/win32.hpp"
 #include "../string/char_set.hpp"
 #include "../string/join.hpp"
 #include "../string/len.hpp"
@@ -317,7 +317,7 @@ public:
 		if (!pth_sz) {
 			return "";
 		}
-		return w_to_u8({pth, pth_sz});
+		return w2u({pth, pth_sz});
 	}
 
 	std::string name(native_module_handle_t mdu = nullptr) const {
@@ -330,7 +330,7 @@ public:
 		if (!n_sz) {
 			return path().back();
 		}
-		return w_to_u8({n, n_sz});
+		return w2u({n, n_sz});
 	}
 
 	std::vector<std::string> args() const {
@@ -380,7 +380,7 @@ public:
 		if (argc > 1) {
 			params.reserve(argc - 1);
 			for (int i = 1; i < argc; ++i) {
-				params.emplace_back(w_to_u8(argv[i]));
+				params.emplace_back(w2u(argv[i]));
 			}
 		}
 
@@ -911,7 +911,7 @@ _proc_load_dll_data _make_proc_load_dll_data(
 
 	bytes names_buf;
 	for (auto &name : names) {
-		names_buf += as_bytes(u8_to_w(name));
+		names_buf += as_bytes(u2w(name));
 		names_buf += as_bytes(L'\0');
 	}
 	names_buf += as_bytes(L'\0');
@@ -1004,7 +1004,7 @@ public:
 			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
 			sei.nShow = _info.hide ? SW_HIDE : SW_SHOW;
 
-			auto path_w = u8_to_w(_info.file.str());
+			auto path_w = u2w(_info.file.str());
 			sei.lpFile = path_w.c_str();
 
 			_info.file = "";
@@ -1012,9 +1012,9 @@ public:
 			std::wstringstream args_ss_w;
 			for (auto &arg : _info.args) {
 				if (arg.find(' ') == string_view::npos) {
-					args_ss_w << L" " << u8_to_w(arg);
+					args_ss_w << L" " << u2w(arg);
 				} else {
-					args_ss_w << L" \"" << u8_to_w(arg) << L"\"";
+					args_ss_w << L" \"" << u2w(arg) << L"\"";
 				}
 			}
 			auto args_w = args_ss_w.str();
@@ -1022,7 +1022,7 @@ public:
 				sei.lpParameters = args_w.c_str();
 			}
 
-			auto wd_w = u8_to_w(_info.work_dir.str());
+			auto wd_w = u2w(_info.work_dir.str());
 			sei.lpDirectory = wd_w.c_str();
 
 			if (!ShellExecuteExW(&sei)) {
@@ -1033,15 +1033,15 @@ public:
 
 		std::wstringstream cmd_ss_w;
 		if (_info.file.str().find(' ') == std::string::npos) {
-			cmd_ss_w << u8_to_w(_info.file.str());
+			cmd_ss_w << u2w(_info.file.str());
 		} else {
-			cmd_ss_w << L"\"" << u8_to_w(_info.file.str()) << L"\"";
+			cmd_ss_w << L"\"" << u2w(_info.file.str()) << L"\"";
 		}
 		for (auto &arg : _info.args) {
 			if (arg.find(' ') == string_view::npos) {
-				cmd_ss_w << L" " << u8_to_w(arg);
+				cmd_ss_w << L" " << u2w(arg);
 			} else {
-				cmd_ss_w << L" \"" << u8_to_w(arg) << L"\"";
+				cmd_ss_w << L" \"" << u2w(arg) << L"\"";
 			}
 		}
 
@@ -1111,8 +1111,7 @@ public:
 			true,
 			is_suspended ? CREATE_SUSPENDED : 0,
 			nullptr,
-			_info.work_dir ? rua::u8_to_w(_info.work_dir.str()).c_str()
-						   : nullptr,
+			_info.work_dir ? rua::u2w(_info.work_dir.str()).c_str() : nullptr,
 			&si,
 			&pi);
 
@@ -1315,7 +1314,7 @@ private:
 	PROCESSENTRY32W _entry;
 
 	process_finder(string_view name) {
-		_name = u8_to_w(name);
+		_name = u2w(name);
 
 		_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 		if (_snapshot == INVALID_HANDLE_VALUE) {

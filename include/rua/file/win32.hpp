@@ -5,7 +5,7 @@
 
 #include "../path.hpp"
 #include "../range.hpp"
-#include "../string/char_enc/base/win32.hpp"
+#include "../string/char_codec/base/win32.hpp"
 #include "../string/join.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../time/now/win32.hpp"
@@ -25,13 +25,13 @@ public:
 	RUA_PATH_CTORS(file_path)
 
 	bool is_exist() const {
-		auto path_w = u8_to_w("\\\\?\\" + abs().str());
+		auto path_w = u2w("\\\\?\\" + abs().str());
 
 		return GetFileAttributesW(path_w.c_str()) != INVALID_FILE_ATTRIBUTES;
 	}
 
 	bool is_dir() const {
-		auto path_w = u8_to_w("\\\\?\\" + abs().str());
+		auto path_w = u2w("\\\\?\\" + abs().str());
 
 		auto fa = GetFileAttributesW(path_w.c_str());
 		return fa != INVALID_FILE_ATTRIBUTES ? fa & FILE_ATTRIBUTE_DIRECTORY
@@ -50,7 +50,7 @@ public:
 				}
 			}
 		}
-		auto rel_w = u8_to_w(s);
+		auto rel_w = u2w(s);
 		auto abs_w_len = GetFullPathNameW(rel_w.c_str(), 0, nullptr, nullptr);
 		if (!abs_w_len) {
 			return *this;
@@ -70,7 +70,7 @@ public:
 				}
 			}
 		}
-		auto rel_w = u8_to_w(s);
+		auto rel_w = u2w(s);
 		auto abs_w_len = GetFullPathNameW(rel_w.c_str(), 0, nullptr, nullptr);
 		if (!abs_w_len) {
 			return std::move(*this);
@@ -86,7 +86,7 @@ private:
 		abs_w_len = GetFullPathNameW(
 			rel_c_wstr, static_cast<DWORD>(abs_w_len), abs_c_wstr, nullptr);
 
-		auto r = w_to_u8(wstring_view(abs_c_wstr, abs_w_len));
+		auto r = w2u(wstring_view(abs_c_wstr, abs_w_len));
 		delete[] abs_c_wstr;
 		return r;
 	}
@@ -104,7 +104,7 @@ inline file_path working_dir() {
 	auto c_wstr = new WCHAR[buf_sz];
 	w_len = GetCurrentDirectoryW(buf_sz, c_wstr);
 
-	auto r = w_to_u8(wstring_view(c_wstr, w_len));
+	auto r = w2u(wstring_view(c_wstr, w_len));
 	delete[] c_wstr;
 	return r;
 }
@@ -115,7 +115,7 @@ inline bool work_at(const file_path &path) {
 #else
 	return
 #endif
-		SetCurrentDirectoryW(u8_to_w(path.abs().str()).c_str());
+		SetCurrentDirectoryW(u2w(path.abs().str()).c_str());
 #ifndef NDEBUG
 	assert(r);
 	return r;
@@ -297,7 +297,7 @@ public:
 	dir_entry() = default;
 
 	std::string name() const {
-		return w_to_u8(native_data().cFileName);
+		return w2u(native_data().cFileName);
 	}
 
 	file_path path() const {
@@ -331,7 +331,7 @@ public:
 
 		_entry._dir_path = path.abs().str();
 
-		auto find_path = u8_to_w("\\\\?\\" + _entry._dir_path + "\\*");
+		auto find_path = u2w("\\\\?\\" + _entry._dir_path + "\\*");
 
 		_h = FindFirstFileW(find_path.c_str(), &_entry.native_data());
 		if (!*this) {
@@ -457,7 +457,7 @@ inline bool touch_dir(const file_path &path) {
 		return true;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+	auto path_w = u2w("\\\\?\\" + path.abs().str());
 
 	auto fa = GetFileAttributesW(path_w.c_str());
 	if (fa != INVALID_FILE_ATTRIBUTES && fa & FILE_ATTRIBUTE_DIRECTORY) {
@@ -474,7 +474,7 @@ inline file make_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+	auto path_w = u2w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -491,7 +491,7 @@ inline file touch_file(const file_path &path) {
 		return nullptr;
 	}
 
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+	auto path_w = u2w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -504,7 +504,7 @@ inline file touch_file(const file_path &path) {
 }
 
 inline file modify_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+	auto path_w = u2w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -518,7 +518,7 @@ inline file modify_file(const file_path &path, bool stat_only = false) {
 }
 
 inline file view_file(const file_path &path, bool stat_only = false) {
-	auto path_w = u8_to_w("\\\\?\\" + path.abs().str());
+	auto path_w = u2w("\\\\?\\" + path.abs().str());
 
 	return CreateFileW(
 		path_w.c_str(),
@@ -532,14 +532,14 @@ inline file view_file(const file_path &path, bool stat_only = false) {
 
 inline bool remove_file(const file_path &path) {
 	if (!path.is_dir()) {
-		return DeleteFileW(u8_to_w("\\\\?\\" + path.abs().str()).c_str());
+		return DeleteFileW(u2w("\\\\?\\" + path.abs().str()).c_str());
 	}
 	for (auto &ety : view_dir(path)) {
 		if (!remove_file(ety.path())) {
 			return false;
 		}
 	}
-	return RemoveDirectoryW(u8_to_w("\\\\?\\" + path.abs().str()).c_str());
+	return RemoveDirectoryW(u2w("\\\\?\\" + path.abs().str()).c_str());
 }
 
 } // namespace _make_file
