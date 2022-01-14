@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <list>
+#include <map>
 
 namespace rua {
 
@@ -20,6 +21,7 @@ struct _baisc_process_make_info {
 	FilePath file, work_dir;
 	std::list<std::string> args;
 	optional<StdioStream> stdout_w, stderr_w, stdin_r;
+	std::map<std::string, std::string> envs;
 	bool hide;
 	std::function<void(process_t &)> on_start;
 	std::list<std::string> dylibs;
@@ -138,6 +140,24 @@ public:
 
 	ProcessMaker &&work_at(file_path_t work_dir) && {
 		return std::move(work_at(std::move(work_dir)));
+	}
+
+	ProcessMaker &env(std::string name, std::string val) & {
+		_info.envs[std::move(name)] = std::move(val);
+		return *_this();
+	}
+
+	ProcessMaker &&env(std::string name, std::string val) && {
+		return std::move(env(std::move(name), std::move(val)));
+	}
+
+	ProcessMaker &envs(std::map<std::string, std::string> env_map) & {
+		_info.envs = std::move(env_map);
+		return *_this();
+	}
+
+	ProcessMaker &&envs(std::map<std::string, std::string> env_map) && {
+		return std::move(envs(std::move(env_map)));
 	}
 
 	ProcessMaker &hide() & {

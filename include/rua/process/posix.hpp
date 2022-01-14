@@ -224,7 +224,11 @@ public:
 		}
 
 		if (_info.work_dir.str().size()) {
-			::setenv("PWD", &_info.work_dir.str()[0], 1);
+			::setenv("PWD", _info.work_dir.str().c_str(), 1);
+		}
+
+		for (auto &env : _info.envs) {
+			::setenv(env.first.c_str(), env.second.c_str(), 1);
 		}
 
 		for (auto &name : _info.dylibs) {

@@ -1098,10 +1098,47 @@ public:
 			si.wShowWindow = SW_HIDE;
 		}
 
+		auto is_suspended = _info.on_start || _info.dylibs.size();
+
+		DWORD creation_flags = is_suspended ? CREATE_SUSPENDED : 0;
+
+		std::wstring envs;
+		if (_info.envs.size()) {
+			creation_flags |= CREATE_UNICODE_ENVIRONMENT;
+
+			auto begin = GetEnvironmentStringsW();
+			LPWCH eq_begin = nullptr;
+			for (auto p = begin;; ++p) {
+				if (*p) {
+					if (*p == L'=') {
+						eq_begin = p;
+					}
+					continue;
+				}
+				if (begin == p) {
+					break;
+				}
+				if (eq_begin) {
+					if (eq_begin < p - 1) {
+						if (_info.envs.find(
+								w2u(wstring_view(begin, eq_begin - begin))) ==
+							_info.envs.end()) {
+							envs += wstring_view(begin, p - begin + 1);
+						}
+					}
+					eq_begin = nullptr;
+				}
+				begin = p + 1;
+			}
+
+			for (auto &env : _info.envs) {
+				envs += u2w(join(
+					env.first, "=", env.second, rua::string_view("\0", 1)));
+			}
+		}
+
 		PROCESS_INFORMATION pi;
 		memset(&pi, 0, sizeof(pi));
-
-		auto is_suspended = _info.on_start || _info.dylibs.size();
 
 		auto ok = CreateProcessW(
 			nullptr,
@@ -1109,8 +1146,8 @@ public:
 			nullptr,
 			nullptr,
 			true,
-			is_suspended ? CREATE_SUSPENDED : 0,
-			nullptr,
+			creation_flags,
+			envs.size() ? &envs[0] : nullptr,
 			_info.work_dir ? rua::u2w(_info.work_dir.str()).c_str() : nullptr,
 			&si,
 			&pi);
