@@ -104,7 +104,7 @@ public:
 	}
 
 	int64_t seek_from_end(int64_t offset = 0) {
-		return seek(offset, 1);
+		return seek(offset, 2);
 	}
 
 	virtual void close() {}
