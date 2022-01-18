@@ -26,15 +26,15 @@ TEST_CASE("reset thread_waker when woke") {
 		wkr->wake();
 	});
 	CHECK(dzr->doze());
-	REQUIRE(rua::tick() - t > 100);
+	CHECK((rua::tick() - t).milliseconds() > 100);
 
 	t = rua::tick();
 	rua::thread([=]() mutable {
 		rua::sleep(200);
 		wkr->wake();
 	});
-	CHECK(dzr->doze(300));
-	REQUIRE(rua::tick() - t > 100);
+	CHECK(dzr->doze());
+	CHECK((rua::tick() - t).milliseconds() > 100);
 
 	t = rua::tick();
 	rua::thread([=]() mutable {
@@ -42,7 +42,15 @@ TEST_CASE("reset thread_waker when woke") {
 		wkr->wake();
 	});
 	CHECK(dzr->doze(1000));
-	REQUIRE(rua::tick() - t > 100);
+	CHECK((rua::tick() - t).milliseconds() > 100);
+
+	t = rua::tick();
+	rua::thread([=]() mutable {
+		rua::sleep(200);
+		wkr->wake();
+	});
+	CHECK(dzr->doze(300));
+	CHECK((rua::tick() - t).milliseconds() > 100);
 }
 
 TEST_CASE("use chan on thread") {
