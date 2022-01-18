@@ -77,15 +77,10 @@ public:
 	}
 
 	virtual void sleep(duration timeout) {
-		auto start = tick();
-		auto rem = timeout.c_timespec();
-		while (::nanosleep(&rem, nullptr)) {
-			auto now = tick();
-			auto slept = now - start;
-			if (slept >= timeout) {
-				return;
-			}
-			rem = (timeout - slept).c_timespec();
+		auto dur = timeout.c_timespec();
+		timespec rem;
+		while (::nanosleep(&dur, &rem) == -1) {
+			dur = rem;
 		}
 	}
 
@@ -108,25 +103,23 @@ public:
 			}
 		}
 
-		auto now = tick();
-		auto end = now + timeout;
-		auto rem = timeout.c_timespec();
+		auto dur = timeout.c_timespec();
+		timespec rem;
 		for (;;) {
-			auto is_time_up = !::nanosleep(&rem, nullptr);
+			auto is_time_up = ::nanosleep(&dur, &rem) != -1;
 			auto state_val = state.load();
-			auto is_woken = state_val == 2;
-			if (is_woken) {
+			if (state_val == 2) {
 				_wkr->reset();
 				return true;
 			}
-			if (is_time_up || assign(now, tick()) >= end) {
-				if (state_val) {
-					assert(state_val == 1);
-					is_woken = state.exchange(0) == 2;
-				}
-				return is_woken;
+			if (timeout == duration_max()) {
+				continue;
 			}
-			rem = (end - now).c_timespec();
+			if (is_time_up) {
+				assert(state_val == 1);
+				return state.exchange(0) == 2;
+			}
+			dur = rem;
 		}
 		return false;
 	}
