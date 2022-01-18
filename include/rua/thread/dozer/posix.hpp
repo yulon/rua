@@ -33,8 +33,8 @@ public:
 	}
 
 	virtual void wake() {
-		auto old_state = _state.exchange(2);
-		if (!old_state || old_state == 2) {
+		auto state_val = _state.exchange(2);
+		if (!state_val || state_val == 2) {
 			return;
 		}
 		while (!pthread_kill(_tid, SIGCONT) && _state.load())
@@ -45,21 +45,8 @@ public:
 		_state.store(0);
 	}
 
-	bool try_doze() {
-		auto old_state = _state.load();
-		if (old_state == 2) {
-			reset();
-			return false;
-		}
-		assert(!old_state);
-		while (!_state.compare_exchange_weak(old_state, 1)) {
-			assert(old_state != 1);
-			if (old_state == 2) {
-				reset();
-				return false;
-			}
-		}
-		return true;
+	std::atomic<uintptr_t> &state() {
+		return _state;
 	}
 
 private:
@@ -105,15 +92,43 @@ public:
 	virtual bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
-		if (!_wkr->try_doze()) {
+		auto &state = _wkr->state();
+
+		auto state_val = state.load();
+		if (state_val == 2) {
+			_wkr->reset();
 			return true;
 		}
-		auto c_ti = timeout.c_timespec();
-		auto is_woke = ::nanosleep(&c_ti, nullptr) == -1;
-		if (is_woke) {
-			_wkr->reset();
+		assert(!state_val);
+		while (!state.compare_exchange_weak(state_val, 1)) {
+			assert(state_val != 1);
+			if (state_val == 2) {
+				_wkr->reset();
+				return true;
+			}
 		}
-		return is_woke;
+
+		auto now = tick();
+		auto end = now + timeout;
+		auto rem = timeout.c_timespec();
+		for (;;) {
+			auto is_time_up = !::nanosleep(&rem, nullptr);
+			auto state_val = state.load();
+			auto is_woken = state_val == 2;
+			if (is_woken) {
+				_wkr->reset();
+				return true;
+			}
+			if (is_time_up || assign(now, tick()) >= end) {
+				if (state_val) {
+					assert(state_val == 1);
+					is_woken = state.exchange(0) == 2;
+				}
+				return is_woken;
+			}
+			rem = (end - now).c_timespec();
+		}
+		return false;
 	}
 
 	virtual waker_i get_waker() {
