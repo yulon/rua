@@ -3,22 +3,22 @@ cmake_minimum_required(VERSION 3.0)
 project(rua)
 
 add_library(rua INTERFACE)
-set(rua_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set(rua_INCLUDE_DIR "include")
 target_include_directories(rua INTERFACE ${rua_INCLUDE_DIR})
 if(UNIX)
 	target_link_libraries(rua INTERFACE pthread)
 endif()
 
 if(DEFINED RUA_TEST)
-	include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/DepPull.cmake")
+	include("cmake/deppull.cmake")
 
-	DepPull(
+	deppull(
 		doctest
 		USE_PACKAGE TRUE
 		GIT_REPO "https://github.com/onqtam/doctest.git"
 	)
 
-	set(rua_test_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test")
+	set(rua_test_SOURCE_DIR "test")
 	if(${RUA_TEST} STREQUAL "all")
 		file(GLOB_RECURSE rua_test_SOURCES "${rua_test_SOURCE_DIR}/*.cpp")
 	else()
