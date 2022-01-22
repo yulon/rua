@@ -34,7 +34,7 @@ endif()
 
 file(TO_CMAKE_PATH "${DEPPULL_CACHE}" DEPPULL_CACHE)
 
-message(STATUS "deppull: DEPPULL_CACHE = ${DEPPULL_CACHE}")
+message(STATUS "Deppull: DEPPULL_CACHE = ${DEPPULL_CACHE}")
 
 if(NOT DEFINED DEPPULL_DEV)
 	if(DEFINED CACHE{DEPPULL_DEV})
@@ -48,7 +48,7 @@ endif()
 
 if(DEPPULL_DEV)
 	file(TO_CMAKE_PATH "${DEPPULL_DEV}" DEPPULL_DEV)
-	message(STATUS "deppull: DEPPULL_DEV = ${DEPPULL_DEV}")
+	message(STATUS "Deppull: DEPPULL_DEV = ${DEPPULL_DEV}")
 endif()
 
 function(_deppull_mkpaths A_STORAGE_PREFIX A_SRC_FIX)
@@ -73,7 +73,7 @@ function(deppull A_NAME)
 		return()
 	endif()
 
-	message(STATUS "deppull: Checking '${A_NAME}' ...")
+	message(STATUS "Deppull: Checking '${A_NAME}' ...")
 
 	set(oneValueArgs
 		USE_PACKAGE
@@ -106,10 +106,10 @@ function(deppull A_NAME)
 		find_package(${A_NAME} QUIET)
 		if(${A_NAME}_FOUND)
 			if(DEFINED ${A_NAME}_VERSION)
-				message(STATUS "deppull: Found '${A_NAME}@${${A_NAME}_VERSION}'")
+				message(STATUS "Deppull: Found '${A_NAME}@${${A_NAME}_VERSION}'")
 				return()
 			endif()
-			message(STATUS "deppull: Found '${A_NAME}'")
+			message(STATUS "Deppull: Found '${A_NAME}'")
 			return()
 		endif()
 	endif()
@@ -237,10 +237,10 @@ function(deppull A_NAME)
 	endif()
 
 	if(NOT FOUND)
-		message(FATAL_ERROR "deppull: Not found '${A_NAME}'")
+		message(FATAL_ERROR "Deppull: Not found '${A_NAME}'")
 	endif()
 
-	message(STATUS "deppull: Using '${A_NAME}' at ${SRC}")
+	message(STATUS "Deppull: Using '${A_NAME}' at ${SRC}")
 
 	set(BUILD "${CMAKE_CURRENT_BINARY_DIR}/deppull/${STORAGE_PREFIX}/build")
 	if(EXISTS "${BUILD}" AND "${ROOT}.ready" IS_NEWER_THAN "${BUILD}")
