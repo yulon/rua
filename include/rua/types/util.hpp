@@ -204,6 +204,32 @@ Unsigned to_unsigned(Signed i) {
 	return static_cast<Unsigned>(i);
 }
 
+////////////////////////////////////////////////////////////////////////////
+
+#ifdef __cpp_binary_literals
+
+#define RUA_B(n) (0b##n)
+
+#else
+
+inline constexpr int _b_non_lowest(int n, int off);
+
+inline constexpr int _b_non_zero(int n, int off) {
+	return n ? _b_non_lowest(n, off) : 0;
+}
+
+inline constexpr int _b_non_lowest(int n, int off) {
+	return (n & 1) << off | _b_non_zero(n / 10, off + 1);
+}
+
+inline constexpr int _b(int n) {
+	return (n & 1) | _b_non_lowest(n / 10, 1);
+}
+
+#define RUA_B(n) (rua::_b(n))
+
+#endif
+
 } // namespace rua
 
 #endif
