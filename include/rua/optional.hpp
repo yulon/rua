@@ -13,7 +13,7 @@ namespace rua {
 
 using nullopt_t = std::nullopt_t;
 
-RUA_INLINE_CONST auto nullopt = std::nullopt;
+RUA_CVAL auto nullopt = std::nullopt;
 
 template <typename T>
 class optional : public std::optional<T> {
@@ -27,7 +27,7 @@ public:
 			(sizeof...(Args) > 1 ||
 			 !std::is_base_of<std::optional<T>, decay_t<front_t<Args...>>>::
 				 value)>>
-	constexpr optional(Args &&... args) :
+	constexpr optional(Args &&...args) :
 		std::optional<T>(std::in_place, std::forward<Args>(args)...) {}
 
 	template <
@@ -36,7 +36,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
-	constexpr optional(std::initializer_list<U> il, Args &&... args) :
+	constexpr optional(std::initializer_list<U> il, Args &&...args) :
 		std::optional<T>(std::in_place, il, std::forward<Args>(args)...) {}
 
 	template <
@@ -54,17 +54,17 @@ public:
 	optional(std::optional<U> &&src) : std::optional<T>(std::move(src)) {}
 
 	template <class... Args>
-	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
+	invoke_result_t<T &, Args &&...> operator()(Args &&...args) & {
 		return this->value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<const T &, Args &&...> operator()(Args &&... args) const & {
+	invoke_result_t<const T &, Args &&...> operator()(Args &&...args) const & {
 		return this->value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<T &&, Args &&...> operator()(Args &&... args) && {
+	invoke_result_t<T &&, Args &&...> operator()(Args &&...args) && {
 		return std::move(*this).value()(std::forward<Args>(args)...);
 	}
 };
@@ -77,7 +77,7 @@ namespace rua {
 
 struct nullopt_t {};
 
-RUA_INLINE_CONST nullopt_t nullopt;
+RUA_CVAL nullopt_t nullopt;
 
 template <typename T>
 class _optional_base {
@@ -170,17 +170,17 @@ public:
 	}
 
 	template <class... Args>
-	invoke_result_t<T &, Args &&...> operator()(Args &&... args) & {
+	invoke_result_t<T &, Args &&...> operator()(Args &&...args) & {
 		return value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<const T &, Args &&...> operator()(Args &&... args) const & {
+	invoke_result_t<const T &, Args &&...> operator()(Args &&...args) const & {
 		return value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
-	invoke_result_t<T &&, Args &&...> operator()(Args &&... args) && {
+	invoke_result_t<T &&, Args &&...> operator()(Args &&...args) && {
 		return std::move(value())(std::forward<Args>(args)...);
 	}
 
@@ -195,7 +195,7 @@ public:
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
-	void emplace(Args &&... args) {
+	void emplace(Args &&...args) {
 		reset();
 		_emplace(std::forward<Args>(args)...);
 		_has_val = true;
@@ -206,7 +206,7 @@ public:
 		typename... Args,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	void emplace(std::initializer_list<U> il, Args &&... args) {
+	void emplace(std::initializer_list<U> il, Args &&...args) {
 		reset();
 		_emplace(il, std::forward<Args>(args)...);
 		_has_val = true;
@@ -219,7 +219,7 @@ protected:
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
-	void _emplace(Args &&... args) {
+	void _emplace(Args &&...args) {
 		new (&value()) T(std::forward<Args>(args)...);
 	}
 
@@ -228,7 +228,7 @@ protected:
 		typename... Args,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	void _emplace(std::initializer_list<U> il, Args &&... args) {
+	void _emplace(std::initializer_list<U> il, Args &&...args) {
 		new (&value()) T(il, std::forward<Args>(args)...);
 	}
 };
@@ -244,7 +244,7 @@ public:
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
 			 !std::is_base_of<optional, decay_t<front_t<Args...>>>::value)>>
-	optional(Args &&... args) : _optional_base<T>(true) {
+	optional(Args &&...args) : _optional_base<T>(true) {
 		this->_emplace(std::forward<Args>(args)...);
 	}
 
@@ -253,7 +253,7 @@ public:
 		typename... Args,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	optional(std::initializer_list<U> il, Args &&... args) :
+	optional(std::initializer_list<U> il, Args &&...args) :
 		_optional_base<T>(true) {
 		this->_emplace(il, std::forward<Args>(args)...);
 	}

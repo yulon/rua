@@ -779,7 +779,7 @@ static HMODULE WINAPI _dll_loader(_load_dll_ctx *ctx) {
 #endif
 
 // clang-format off
-RUA_MULTIDEF_VAR const uchar _proc_dll_loader_code[] {
+RUA_CVAR const uchar _proc_dll_loader_code[] {
 #if RUA_X86 == 64
 	0x55,                                                  // push   %rbp
 	0x57,                                                  // push   %rdi

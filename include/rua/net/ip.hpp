@@ -166,24 +166,24 @@ private:
 	bytes_block<16> _v6;
 };
 
-RUA_INLINE_CONST ip ip4_zero(0, 0, 0, 0);			   // all zeros
-RUA_INLINE_CONST ip ip4_loopback(127, 0, 0, 1);		   // limited broadcast
-RUA_INLINE_CONST ip ip4_broadcast(255, 255, 255, 255); // limited broadcast
-RUA_INLINE_CONST ip ip4_all_systems(224, 0, 0, 1);	   // all systems
-RUA_INLINE_CONST ip ip4_all_routers(224, 0, 0, 2);	   // all routers
+RUA_CVAL ip ip4_zero(0, 0, 0, 0);			   // all zeros
+RUA_CVAL ip ip4_loopback(127, 0, 0, 1);		   // limited broadcast
+RUA_CVAL ip ip4_broadcast(255, 255, 255, 255); // limited broadcast
+RUA_CVAL ip ip4_all_systems(224, 0, 0, 1);	   // all systems
+RUA_CVAL ip ip4_all_routers(224, 0, 0, 2);	   // all routers
 
-RUA_INLINE_CONST ip ip6_zero(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-RUA_INLINE_CONST
+RUA_CVAL ip ip6_zero(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+RUA_CVAL
 ip ip6_unspecified(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-RUA_INLINE_CONST
+RUA_CVAL
 ip ip6_loopback(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
-RUA_INLINE_CONST
+RUA_CVAL
 ip ip6_interface_local_all_nodes(
 	0xff, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01);
-RUA_INLINE_CONST
+RUA_CVAL
 ip ip6_link_local_all_nodes(
 	0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01);
-RUA_INLINE_CONST ip ip6_link_local_all_routers(
+RUA_CVAL ip ip6_link_local_all_routers(
 	0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x02);
 
 inline bool ip::is_v4() const {

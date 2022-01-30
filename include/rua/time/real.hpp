@@ -53,14 +53,14 @@ inline bool operator<=(const date &a, const date &b) {
 	return a == b || a < b;
 }
 
-RUA_MULTIDEF_VAR const date nullepo{0, 0, 0, 0, 0, 0, 0, 0};
-RUA_MULTIDEF_VAR const date unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
+RUA_CVAR const date nullepo{0, 0, 0, 0, 0, 0, 0, 0};
+RUA_CVAR const date unix_epoch{1970, 1, 1, 0, 0, 0, 0, 0};
 
 inline constexpr bool is_leap_year(int16_t yr) {
 	return !(yr % 4) && ((yr % 100) || !(yr % 400));
 }
 
-RUA_INLINE_CONST int16_t _yr_days_at_mon_tab[]{
+RUA_CVAL int16_t _yr_days_at_mon_tab[]{
 	0,
 	31,
 	31 + 28,

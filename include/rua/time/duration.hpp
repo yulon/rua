@@ -15,16 +15,16 @@ namespace rua {
 
 namespace multiple_of_nanosecond {
 
-RUA_INLINE_CONST int64_t nanosecond = 1;
-RUA_INLINE_CONST int64_t microsecond = 1000 * nanosecond;
-RUA_INLINE_CONST int64_t millisecond = 1000 * microsecond;
-RUA_INLINE_CONST int64_t second = 1000 * millisecond;
-RUA_INLINE_CONST int64_t minute = 60 * second;
-RUA_INLINE_CONST int64_t hour = 60 * minute;
-RUA_INLINE_CONST int64_t day = 24 * hour;
-RUA_INLINE_CONST int64_t week = 7 * day;
-RUA_INLINE_CONST int64_t year = 365 * day;
-RUA_INLINE_CONST int64_t leep_year = 366 * day;
+RUA_CVAL int64_t nanosecond = 1;
+RUA_CVAL int64_t microsecond = 1000 * nanosecond;
+RUA_CVAL int64_t millisecond = 1000 * microsecond;
+RUA_CVAL int64_t second = 1000 * millisecond;
+RUA_CVAL int64_t minute = 60 * second;
+RUA_CVAL int64_t hour = 60 * minute;
+RUA_CVAL int64_t day = 24 * hour;
+RUA_CVAL int64_t week = 7 * day;
+RUA_CVAL int64_t year = 365 * day;
+RUA_CVAL int64_t leep_year = 366 * day;
 
 } // namespace multiple_of_nanosecond
 
@@ -548,16 +548,16 @@ inline constexpr duration operator""_ly(unsigned long long count) {
 
 using namespace duration_literals;
 
-RUA_INLINE_CONST auto nanosecond = 1_ns;
-RUA_INLINE_CONST auto microsecond = 1_us;
-RUA_INLINE_CONST auto millisecond = 1_ms;
-RUA_INLINE_CONST auto second = 1_s;
-RUA_INLINE_CONST auto minute = 1_m;
-RUA_INLINE_CONST auto hour = 1_h;
-RUA_INLINE_CONST auto day = 1_d;
-RUA_INLINE_CONST auto week = 1_w;
-RUA_INLINE_CONST auto year = 1_y;
-RUA_INLINE_CONST auto leep_year = 1_ly;
+RUA_CVAL auto nanosecond = 1_ns;
+RUA_CVAL auto microsecond = 1_us;
+RUA_CVAL auto millisecond = 1_ms;
+RUA_CVAL auto second = 1_s;
+RUA_CVAL auto minute = 1_m;
+RUA_CVAL auto hour = 1_h;
+RUA_CVAL auto day = 1_d;
+RUA_CVAL auto week = 1_w;
+RUA_CVAL auto year = 1_y;
+RUA_CVAL auto leep_year = 1_ly;
 
 ////////////////////////////////////////////////////////////////////////////
 

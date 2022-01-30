@@ -18,7 +18,7 @@
 
 #define RUA_CODE_SEG __declspec(allocate(".text"))
 
-#define RUA_CODE(name) RUA_MULTIDEF_VAR RUA_CODE_SEG const unsigned char name[]
+#define RUA_CODE(name) RUA_CVAR RUA_CODE_SEG const unsigned char name[]
 
 #endif
 

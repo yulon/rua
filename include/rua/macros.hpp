@@ -73,28 +73,32 @@
 #define RUA_CONSTEXPR_17
 #endif
 
-#define RUA_INLINE_VAR_S(type, name, init_declarator)                          \
-	inline type &name##_instance() {                                           \
+#if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
+
+// global constexpr variable
+#define RUA_CVAL inline constexpr
+
+// global variable with different addresses
+#define RUA_CVAR inline
+
+// global inline variable
+#define RUA_IVAR(type, name, init_declarator) inline type name init_declarator
+
+#else
+
+// global constexpr variable
+#define RUA_CVAL static constexpr
+
+// global variable with different addresses
+#define RUA_CVAR static
+
+// global inline variable
+#define RUA_IVAR(type, name, init_declarator)                                  \
+	inline type &_##name##_instance() {                                        \
 		static type instance init_declarator;                                  \
 		return instance;                                                       \
 	}                                                                          \
 	static type &name = name##_instance()
-
-#if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
-
-#define RUA_INLINE_CONST inline constexpr
-#define RUA_MULTIDEF_VAR inline
-
-#define RUA_INLINE_VAR(type, name, init_declarator)                            \
-	inline type name init_declarator
-
-#else
-
-#define RUA_INLINE_CONST static constexpr
-#define RUA_MULTIDEF_VAR static
-
-#define RUA_INLINE_VAR(type, name, init_declarator)                            \
-	RUA_INLINE_VAR_S(type, name, init_declarator)
 
 #endif
 

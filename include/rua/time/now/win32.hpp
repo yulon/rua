@@ -19,10 +19,10 @@ inline int8_t local_time_zone() {
 	return static_cast<int8_t>(info.Bias / 60 + 16);
 }
 
-RUA_MULTIDEF_VAR const date sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
+RUA_CVAR const date sys_epoch{1601, 1, 1, 0, 0, 0, 0, 0};
 
-RUA_INLINE_CONST auto _FILETIME_low_bsz = sizeof(FILETIME::dwLowDateTime) * 8;
-RUA_INLINE_CONST auto _FILETIME_high_bsz = 64 - _FILETIME_low_bsz;
+RUA_CVAL auto _FILETIME_low_bsz = sizeof(FILETIME::dwLowDateTime) * 8;
+RUA_CVAL auto _FILETIME_high_bsz = 64 - _FILETIME_low_bsz;
 
 using sys_time_t = FILETIME;
 

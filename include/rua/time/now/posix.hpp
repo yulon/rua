@@ -18,7 +18,7 @@ inline int8_t local_time_zone() {
 	return static_cast<int8_t>(timezone / 3600 + 16);
 }
 
-RUA_MULTIDEF_VAR const auto sys_epoch = unix_epoch;
+RUA_CVAR const auto sys_epoch = unix_epoch;
 
 using sys_time_t = struct timeval;
 
