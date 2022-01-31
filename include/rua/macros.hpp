@@ -82,7 +82,7 @@
 #define RUA_CVAR inline
 
 // global inline variable
-#define RUA_IVAR(type, name, init_declarator) inline type name init_declarator
+#define RUA_GVAR(type, name, init_declarator) inline type name init_declarator
 
 #else
 
@@ -93,7 +93,7 @@
 #define RUA_CVAR static
 
 // global inline variable
-#define RUA_IVAR(type, name, init_declarator)                                  \
+#define RUA_GVAR(type, name, init_declarator)                                  \
 	inline type &_##name##_instance() {                                        \
 		static type instance init_declarator;                                  \
 		return instance;                                                       \
