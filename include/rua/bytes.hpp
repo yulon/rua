@@ -17,6 +17,7 @@
 #include "bit.hpp"
 #include "macros.hpp"
 #include "optional.hpp"
+#include "range.hpp"
 #include "span.hpp"
 #include "string/conv.hpp"
 #include "string/len.hpp"
@@ -122,11 +123,12 @@ public:
 
 	inline bool operator==(bytes_view) const;
 
-	inline size_t index_of(const bytes_pattern &, size_t start_pos = 0) const;
+	inline optional<size_t>
+	index_of(const bytes_pattern &, size_t start_pos = 0) const;
 
 	inline const_bytes_finder find(bytes_pattern, size_t start_pos = 0) const;
 
-	inline size_t
+	inline optional<size_t>
 	last_index_of(const bytes_pattern &, size_t start_pos = nullpos) const;
 
 	inline const_bytes_rfinder
@@ -786,7 +788,7 @@ public:
 
 	template <
 		typename IntList,
-		typename IntListTraits = span_traits<IntList &&>,
+		typename IntListTraits = range_traits<IntList>,
 		typename Int = typename IntListTraits::value_type,
 		typename = enable_if_t<
 			std::is_integral<Int>::value && (sizeof(Int) > sizeof(uchar))>>
@@ -846,13 +848,13 @@ private:
 };
 
 template <typename Span>
-inline size_t const_bytes_base<Span>::index_of(
+inline optional<size_t> const_bytes_base<Span>::index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
 	auto sz = _this()->size();
 	auto mb_sz = pat.size();
 	if (sz < mb_sz) {
-		return nullpos;
+		return nullopt;
 	}
 
 	auto begin = _this()->data() + start_pos;
@@ -866,14 +868,14 @@ inline size_t const_bytes_base<Span>::index_of(
 				return it - begin;
 			}
 		}
-		return nullpos;
+		return nullopt;
 	}
 
 	if (sz == mb_sz) {
 		if (bit_equal(begin, mb_begin, sz)) {
 			return 0;
 		}
-		return nullpos;
+		return nullopt;
 	}
 
 	size_t h = 0;
@@ -899,17 +901,17 @@ inline size_t const_bytes_base<Span>::index_of(
 			return it - begin;
 		}
 	}
-	return nullpos;
+	return nullopt;
 }
 
 template <typename Span>
-inline size_t const_bytes_base<Span>::last_index_of(
+inline optional<size_t> const_bytes_base<Span>::last_index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
 	auto sz = _this()->size();
 	auto mb_sz = pat.size();
 	if (sz < mb_sz) {
-		return nullpos;
+		return nullopt;
 	}
 
 	if (start_pos >= sz) {
@@ -928,14 +930,14 @@ inline size_t const_bytes_base<Span>::last_index_of(
 				return it - begin;
 			}
 		}
-		return nullpos;
+		return nullopt;
 	}
 
 	if (sz == mb_sz) {
 		if (bit_equal(end, mb_begin, sz)) {
 			return 0;
 		}
-		return nullpos;
+		return nullopt;
 	}
 
 	size_t h = 0;
@@ -960,7 +962,7 @@ inline size_t const_bytes_base<Span>::last_index_of(
 			return it - begin;
 		}
 	}
-	return nullpos;
+	return nullopt;
 }
 
 template <typename Bytes>
@@ -975,11 +977,11 @@ public:
 		bytes_pattern pat,
 		std::vector<sub_area_t> vas,
 		size_t start_pos = 0) {
-		auto pos = place.index_of(pat, start_pos);
-		if (pos == nullpos) {
+		auto pos_opt = place.index_of(pat, start_pos);
+		if (!pos_opt) {
 			return basic_bytes_finder();
 		}
-		return basic_bytes_finder(place, pat, std::move(vas), pos);
+		return basic_bytes_finder(place, pat, std::move(vas), *pos_opt);
 	}
 
 	static basic_bytes_finder rfind(
@@ -987,11 +989,11 @@ public:
 		bytes_pattern pat,
 		std::vector<sub_area_t> vas,
 		size_t start_pos = nullpos) {
-		auto pos = place.last_index_of(pat, start_pos);
-		if (pos == nullpos) {
+		auto pos_opt = place.last_index_of(pat, start_pos);
+		if (!pos_opt) {
 			return basic_bytes_finder();
 		}
-		return basic_bytes_finder(place, pat, std::move(vas), pos);
+		return basic_bytes_finder(place, pat, std::move(vas), *pos_opt);
 	}
 
 	basic_bytes_finder() = default;
