@@ -13,7 +13,7 @@ public:
 
 	constexpr printer(std::nullptr_t) : printer() {}
 
-	explicit printer(stream_i w, const char *eol = eol::lf) :
+	explicit printer(stream_i w, string_view eol = eol::lf) :
 		_w(std::move(w)), _eol(eol) {}
 
 	~printer() {
@@ -52,7 +52,7 @@ public:
 
 private:
 	stream_i _w;
-	const char *_eol;
+	string_view _eol;
 };
 
 } // namespace rua

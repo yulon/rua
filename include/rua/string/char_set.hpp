@@ -214,24 +214,21 @@ inline RUA_CONSTEXPR_14 bool is_space(string_view sv) {
 
 namespace eol {
 
-RUA_CVAL const char *lf = "\n";
-RUA_CVAL const char *crlf = "\r\n";
-RUA_CVAL const char *cr = "\r";
+RUA_CVAL string_view lf("\n");
+RUA_CVAL string_view crlf("\r\n");
+RUA_CVAL string_view cr("\r");
 
 #ifdef _WIN32
 
-RUA_CVAL const char *sys_text = crlf;
-RUA_CVAL const char *sys_con = crlf;
+RUA_CVAL auto sys = crlf;
 
 #elif defined(RUA_DARWIN)
 
-RUA_CVAL const char *sys_text = cr;
-RUA_CVAL const char *sys_con = lf;
+RUA_CVAL auto sys = lf;
 
 #else
 
-RUA_CVAL const char *sys_text = lf;
-RUA_CVAL const char *sys_con = lf;
+RUA_CVAL auto sys = lf;
 
 #endif
 

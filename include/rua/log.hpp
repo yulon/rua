@@ -28,8 +28,8 @@ public:
 	virtual ~msgbox_writer() = default;
 
 	virtual ssize_t write(bytes_view p) {
-		auto eol_b = as_bytes(eol::sys_con);
-		auto fr = p.find(as_bytes(eol::sys_con));
+		auto eol_b = as_bytes(eol::sys);
+		auto fr = p.find(as_bytes(eol::sys));
 		if (fr) {
 			MessageBoxW(
 				0,
@@ -52,7 +52,7 @@ private:
 #endif
 
 inline printer &log_printer() {
-	static printer p(sout(), eol::sys_con);
+	static printer p(sout(), eol::sys);
 	return p;
 }
 
@@ -69,7 +69,7 @@ inline printer &err_log_printer() {
 #else
 
 inline printer &err_log_printer() {
-	static printer p(serr(), eol::sys_con);
+	static printer p(serr(), eol::sys);
 	return p;
 }
 
