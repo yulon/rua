@@ -18,7 +18,7 @@
 
 namespace rua {
 
-class fiber_runer;
+class fiber_pool;
 class fiber_dozer;
 
 class fiber {
@@ -71,7 +71,7 @@ private:
 
 	fiber(std::shared_ptr<_ctx_t> ctx) : _ctx(std::move(ctx)) {}
 
-	friend fiber_runer;
+	friend fiber_pool;
 	friend fiber_dozer;
 };
 
@@ -92,21 +92,21 @@ public:
 
 	inline virtual bool is_unowned_data(bytes_view data) const;
 
-	fiber_runer &get_runer() {
+	fiber_pool &get_runer() {
 		return *_fr;
 	}
 
 private:
-	fiber_runer *_fr;
+	fiber_pool *_fr;
 
-	explicit fiber_dozer(fiber_runer &fr) : _fr(&fr) {}
+	explicit fiber_dozer(fiber_pool &fp) : _fr(&fp) {}
 
-	friend fiber_runer;
+	friend fiber_pool;
 };
 
-class fiber_runer {
+class fiber_pool {
 public:
-	fiber_runer(size_t stack_size = 0x100000) :
+	fiber_pool(size_t stack_size = 0x100000) :
 		_stk_sz(stack_size), _stk_ix(0), _dzr(*this) {}
 
 	fiber add(std::function<void()> task, duration lifetime = 0) {
@@ -362,7 +362,7 @@ private:
 	}
 
 	static void _runner(generic_word th1s) {
-		th1s.as<fiber_runer *>()->_run();
+		th1s.as<fiber_pool *>()->_run();
 	}
 
 	void _swap_new_runner_uc(ucontext_t *oucp) {
@@ -449,7 +449,7 @@ inline bool fiber_dozer::is_unowned_data(bytes_view data) const {
 	return data.data() >= cur_stk.data() && data.data() < cur_stk.end();
 }
 
-inline fiber_runer *this_fiber_runer() {
+inline fiber_pool *this_fiber_runer() {
 	auto dzr = this_dozer();
 	if (!dzr) {
 		return nullptr;
@@ -462,19 +462,19 @@ inline fiber_runer *this_fiber_runer() {
 }
 
 inline fiber this_fiber() {
-	auto fr = this_fiber_runer();
-	if (fr) {
-		return fr->running();
+	auto fp = this_fiber_runer();
+	if (fp) {
+		return fp->running();
 	}
 	return fiber();
 }
 
 inline fiber co(std::function<void()> task, duration lifetime = 0) {
-	auto fr = this_fiber_runer();
-	if (fr) {
-		return fr->add(std::move(task), lifetime);
+	auto fp = this_fiber_runer();
+	if (fp) {
+		return fp->add(std::move(task), lifetime);
 	}
-	auto tmp_fr = std::make_shared<fiber_runer>();
+	auto tmp_fr = std::make_shared<fiber_pool>();
 	tmp_fr->add(std::move(task), lifetime);
 	tmp_fr->run();
 	return fiber();
