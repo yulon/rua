@@ -123,7 +123,7 @@ public:
 	}
 
 	operator bool() const {
-		return _runs.size() || _dzs.size() || _cws.size();
+		return _runs.size() || _slps.size() || _dzs.size();
 	}
 
 	// Does not block the current context.
@@ -132,38 +132,38 @@ public:
 	void step() {
 		auto now = tick();
 
+		if (_slps.size()) {
+			_check_slps(now);
+		}
 		if (_dzs.size()) {
 			_check_dzs(now);
-		}
-		if (_cws.size()) {
-			_check_cws(now);
 		}
 		if (_runs.empty()) {
 			return;
 		}
 
-		dozer_guard sg(_dzr);
+		dozer_guard dg(_dzr);
 		_switch_to_runner_uc();
 	}
 
 	// May block the current context.
 	// The current dozer will be used.
 	void run() {
-		if (_runs.empty() && _dzs.empty() && _cws.empty()) {
+		if (_runs.empty() && _slps.empty() && _dzs.empty()) {
 			return;
 		}
 
-		dozer_guard sg(_dzr);
-		auto orig_dzr = sg.previous();
+		dozer_guard dg(_dzr);
+		auto orig_dzr = dg.previous();
 		_orig_wkr = orig_dzr->get_waker();
 
 		auto now = tick();
 
+		if (_slps.size()) {
+			_check_slps(now);
+		}
 		if (_dzs.size()) {
 			_check_dzs(now);
-		}
-		if (_cws.size()) {
-			_check_cws(now);
 		}
 
 		for (;;) {
@@ -171,14 +171,14 @@ public:
 
 			now = tick();
 
-			if (_dzs.size()) {
+			if (_slps.size()) {
 
-				if (_cws.size()) {
+				if (_dzs.size()) {
 					duration wake_ti;
-					if (_cws.begin()->wake_ti < _dzs.begin()->wake_ti) {
-						wake_ti = _cws.begin()->wake_ti;
-					} else {
+					if (_dzs.begin()->wake_ti < _slps.begin()->wake_ti) {
 						wake_ti = _dzs.begin()->wake_ti;
+					} else {
+						wake_ti = _slps.begin()->wake_ti;
 					}
 					if (wake_ti > now) {
 						orig_dzr->doze(wake_ti - now);
@@ -187,32 +187,32 @@ public:
 					}
 					now = tick();
 					if (now >= wake_ti) {
-						_check_dzs(now);
+						_check_slps(now);
 					}
-					_check_cws(now);
+					_check_dzs(now);
 					continue;
 				}
 
-				auto wake_ti = _dzs.begin()->wake_ti;
+				auto wake_ti = _slps.begin()->wake_ti;
 				if (wake_ti > now) {
 					orig_dzr->sleep(wake_ti - now);
 				} else {
 					orig_dzr->yield();
 				}
 				now = tick();
-				_check_dzs(now);
+				_check_slps(now);
 				continue;
 
-			} else if (_cws.size()) {
+			} else if (_dzs.size()) {
 
-				auto wake_ti = _cws.begin()->wake_ti;
+				auto wake_ti = _dzs.begin()->wake_ti;
 				if (wake_ti > now) {
 					orig_dzr->doze(wake_ti - now);
 				} else {
 					orig_dzr->yield();
 				}
 				now = tick();
-				_check_cws(now);
+				_check_dzs(now);
 
 			} else {
 				return;
@@ -236,11 +236,11 @@ private:
 			return wake_ti < s.wake_ti;
 		}
 	};
+	sorted_list<_dozing_t> _slps;
 	sorted_list<_dozing_t> _dzs;
-	sorted_list<_dozing_t> _cws;
 
-	void _check_dzs(duration now) {
-		for (auto it = _dzs.begin(); it != _dzs.end(); it = _dzs.erase(it)) {
+	void _check_slps(duration now) {
+		for (auto it = _slps.begin(); it != _slps.end(); it = _slps.erase(it)) {
 			if (now < it->wake_ti) {
 				break;
 			}
@@ -248,11 +248,11 @@ private:
 		}
 	}
 
-	void _check_cws(duration now) {
-		for (auto it = _cws.begin(); it != _cws.end();) {
+	void _check_dzs(duration now) {
+		for (auto it = _dzs.begin(); it != _dzs.end();) {
 			if (it->fbr._ctx->wkr->state() || now >= it->wake_ti) {
 				_runs.emplace(std::move(it->fbr));
-				it = _cws.erase(it);
+				it = _dzs.erase(it);
 				continue;
 			}
 			++it;
@@ -351,7 +351,7 @@ private:
 				}
 
 				if (!_cur._ctx->has_yielded) {
-					_dzs.emplace(0, std::move(_cur));
+					_slps.emplace(0, std::move(_cur));
 					break;
 				}
 				_cur._ctx->has_yielded = false;
@@ -421,13 +421,13 @@ inline void fiber_dozer::_doze(DozingList &dl, duration timeout) {
 }
 
 inline void fiber_dozer::sleep(duration timeout) {
-	_doze(_fr->_dzs, timeout);
+	_doze(_fr->_slps, timeout);
 }
 
 inline bool fiber_dozer::doze(duration timeout) {
 	auto &wkr = _fr->_cur._ctx->wkr;
 	if (!wkr->state()) {
-		_doze(_fr->_cws, timeout);
+		_doze(_fr->_dzs, timeout);
 	}
 	return wkr->state();
 }
