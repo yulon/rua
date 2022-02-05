@@ -107,10 +107,17 @@ inline constexpr bool is_lowest(T n) {
 
 ////////////////////////////////////////////////////////////////////////////
 
-template <typename A, typename B>
-inline constexpr decltype(std::declval<A &&>() = std::declval<B &&>())
-assign(A &&a, B &&b) {
-	return std::forward<A>(a) = std::forward<B>(b);
+template <typename T, typename U = T>
+inline constexpr decltype(std::declval<T &&>() = std::declval<U &&>())
+assign(T &&obj, U &&value) {
+	return std::forward<T>(obj) = std::forward<U>(value);
+}
+
+template <class T, class U = T>
+inline constexpr T exchange(T &&obj, U &&new_value) {
+	T old_value = std::move(obj);
+	std::forward<T>(obj) = std::forward<U>(new_value);
+	return old_value;
 }
 
 ////////////////////////////////////////////////////////////////////////////
