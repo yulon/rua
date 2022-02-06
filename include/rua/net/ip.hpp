@@ -1,7 +1,7 @@
 #ifndef _RUA_NET_IP_HPP
 #define _RUA_NET_IP_HPP
 
-#include "../bytes.hpp"
+#include "../binary/bytes.hpp"
 
 #include <cassert>
 

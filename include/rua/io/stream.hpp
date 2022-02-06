@@ -1,7 +1,7 @@
 #ifndef _RUA_IO_STREAM_HPP
 #define _RUA_IO_STREAM_HPP
 
-#include "../bytes.hpp"
+#include "../binary/bytes.hpp"
 #include "../interface_ptr.hpp"
 #include "../types/util.hpp"
 

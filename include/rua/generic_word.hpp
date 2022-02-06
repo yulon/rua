@@ -1,7 +1,7 @@
 #ifndef _RUA_GENERIC_WORD_HPP
 #define _RUA_GENERIC_WORD_HPP
 
-#include "bit.hpp"
+#include "binary/bits.hpp"
 #include "macros.hpp"
 #include "string/conv.hpp"
 #include "types/traits.hpp"

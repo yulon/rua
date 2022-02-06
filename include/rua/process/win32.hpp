@@ -3,7 +3,7 @@
 
 #include "base.hpp"
 
-#include "../bytes.hpp"
+#include "../binary/bytes.hpp"
 #include "../dylib/win32.hpp"
 #include "../file/win32.hpp"
 #include "../generic_ptr.hpp"

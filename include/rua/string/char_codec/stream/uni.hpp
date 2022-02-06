@@ -3,7 +3,7 @@
 
 #include "../base/uni.hpp"
 
-#include "../../../bytes.hpp"
+#include "../../../binary/bytes.hpp"
 #include "../../../io/stream.hpp"
 
 namespace rua { namespace uni {

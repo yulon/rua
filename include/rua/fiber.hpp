@@ -1,7 +1,7 @@
 #ifndef _RUA_FIBER_HPP
 #define _RUA_FIBER_HPP
 
-#include "bytes.hpp"
+#include "binary/bytes.hpp"
 #include "sched.hpp"
 #include "sorted_list.hpp"
 #include "sync.hpp"

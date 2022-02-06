@@ -8,7 +8,7 @@
 #ifndef _RUA_UCONTEXT_HPP
 #define _RUA_UCONTEXT_HPP
 
-#include "bytes.hpp"
+#include "binary/bytes.hpp"
 #include "generic_ptr.hpp"
 #include "generic_word.hpp"
 #include "macros.hpp"

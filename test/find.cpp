@@ -1,4 +1,4 @@
-#include <rua/bytes.hpp>
+#include <rua/binary/bytes.hpp>
 #include <rua/log.hpp>
 #include <rua/string.hpp>
 #include <rua/time.hpp>

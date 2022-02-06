@@ -1,5 +1,5 @@
-#ifndef _RUA_BYTES_HPP
-#define _RUA_BYTES_HPP
+#ifndef _RUA_BINARY_BYTES_HPP
+#define _RUA_BINARY_BYTES_HPP
 
 /*
 	Q: Why don't I use std::byte?
@@ -14,16 +14,17 @@
 	   but G++ can use {{n}, ...}.
 */
 
-#include "bit.hpp"
-#include "macros.hpp"
-#include "optional.hpp"
-#include "range.hpp"
-#include "span.hpp"
-#include "string/conv.hpp"
-#include "string/len.hpp"
-#include "string/view.hpp"
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "bits.hpp"
+
+#include "../macros.hpp"
+#include "../optional.hpp"
+#include "../range.hpp"
+#include "../span.hpp"
+#include "../string/conv.hpp"
+#include "../string/len.hpp"
+#include "../string/view.hpp"
+#include "../types/traits.hpp"
+#include "../types/util.hpp"
 
 #include <cassert>
 #include <cstring>

@@ -1,7 +1,7 @@
 #ifndef _RUA_MEMORY_HPP
 #define _RUA_MEMORY_HPP
 
-#include "bytes.hpp"
+#include "binary/bytes.hpp"
 #include "generic_ptr.hpp"
 #include "macros.hpp"
 

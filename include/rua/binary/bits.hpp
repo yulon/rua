@@ -1,10 +1,10 @@
-#ifndef _RUA_BIT_HPP
-#define _RUA_BIT_HPP
+#ifndef _RUA_BINARY_BITS_HPP
+#define _RUA_BINARY_BITS_HPP
 
-#include "generic_ptr.hpp"
-#include "macros.hpp"
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "../generic_ptr.hpp"
+#include "../macros.hpp"
+#include "../types/traits.hpp"
+#include "../types/util.hpp"
 
 #ifdef __cpp_lib_bitops
 #include <bit>

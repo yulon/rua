@@ -1,7 +1,7 @@
 #ifndef _RUA_TIME_DURATION_HPP
 #define _RUA_TIME_DURATION_HPP
 
-#include "../bytes.hpp"
+#include "../binary/bytes.hpp"
 #include "../macros.hpp"
 #include "../string/conv.hpp"
 #include "../string/len.hpp"

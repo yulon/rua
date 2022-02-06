@@ -3,7 +3,7 @@
 
 #include "../base/win32.hpp"
 
-#include "../../../bytes.hpp"
+#include "../../../binary/bytes.hpp"
 #include "../../../io/stream.hpp"
 
 namespace rua { namespace win32 {
