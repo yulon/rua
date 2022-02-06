@@ -6,6 +6,10 @@
 #include "types/traits.hpp"
 #include "types/util.hpp"
 
+#ifdef __cpp_lib_bitops
+#include <bit>
+#endif
+
 #include <cstdio>
 #include <cstring>
 
@@ -262,6 +266,127 @@ inline bool bit_contains(
 		unmasked.as<const uchar *>(),
 		mask.as<const uchar *>(),
 		size);
+}
+
+// bit operations
+
+#ifdef __cpp_lib_bitops
+
+template <typename Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countl_zero(const Uint val) noexcept {
+	return std::countl_zero(val);
+}
+
+template <typename Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countl_one(const Uint val) noexcept {
+	return std::countl_one(val);
+}
+
+template <typename Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countr_zero(const Uint val) noexcept {
+	return std::countr_zero(val);
+}
+
+template <class Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countr_one(const Uint val) noexcept {
+	return std::countr_one(val);
+}
+
+template <typename Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+popcount(const Uint val) noexcept {
+	return std::popcount(val);
+}
+
+#else
+
+template <typename Uint>
+inline RUA_CONSTEXPR_14 enable_if_t<std::is_unsigned<Uint>::value, int>
+countl_zero(const Uint val) noexcept {
+	constexpr auto len = static_cast<int>(sizeof(Uint) * 8);
+	constexpr auto len_dec = len - 1;
+	auto i = 0;
+	for (; i < len; ++i) {
+		if ((val >> (len_dec - i)) & 1) {
+			return i;
+		}
+	}
+	return i;
+}
+
+template <typename Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countl_one(const Uint val) noexcept {
+	return countl_zero(static_cast<Uint>(~val));
+}
+
+template <typename Uint>
+inline RUA_CONSTEXPR_14 enable_if_t<std::is_unsigned<Uint>::value, int>
+countr_zero(const Uint val) noexcept {
+	constexpr auto len = static_cast<int>(sizeof(Uint) * 8);
+	auto i = 0;
+	for (; i < len; ++i) {
+		if ((val >> i) & 1) {
+			return i;
+		}
+	}
+	return i;
+}
+
+template <class Uint>
+inline constexpr enable_if_t<std::is_unsigned<Uint>::value, int>
+countr_one(const Uint val) noexcept {
+	return countr_zero(static_cast<Uint>(~val));
+}
+
+template <typename Uint>
+inline RUA_CONSTEXPR_14 enable_if_t<std::is_unsigned<Uint>::value, int>
+popcount(const Uint val) noexcept {
+	constexpr auto len = sizeof(Uint) * 8;
+	constexpr auto len_dec = len - 1;
+	auto c = 0;
+	for (size_t i = 0; i < len; ++i) {
+		if ((val >> (len_dec - i)) & 1) {
+			++c;
+		}
+	}
+	return c;
+}
+
+#endif
+
+template <typename Int>
+inline constexpr enable_if_t<std::is_signed<Int>::value, int>
+countl_zero(const Int val) noexcept {
+	return countl_zero(to_unsigned(val));
+}
+
+template <typename Int>
+inline constexpr enable_if_t<std::is_signed<Int>::value, int>
+countl_one(const Int val) noexcept {
+	return countl_one(to_unsigned(val));
+}
+
+template <typename Int>
+inline constexpr enable_if_t<std::is_signed<Int>::value, int>
+countr_zero(const Int val) noexcept {
+	return countr_zero(to_unsigned(val));
+}
+
+template <class Int>
+inline constexpr enable_if_t<std::is_signed<Int>::value, int>
+countr_one(const Int val) noexcept {
+	return countr_one(to_unsigned(val));
+}
+
+template <typename Int>
+inline constexpr enable_if_t<std::is_signed<Int>::value, int>
+popcount(const Int val) noexcept {
+	return popcount(to_unsigned(val));
 }
 
 } // namespace rua
