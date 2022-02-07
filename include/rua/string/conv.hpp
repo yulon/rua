@@ -6,7 +6,7 @@
 #include "view.hpp"
 
 #include "../macros.hpp"
-#include "../range.hpp"
+#include "../range/traits.hpp"
 #include "../span.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
@@ -197,15 +197,13 @@ to_string(Range &&range) {
 	std::string buf;
 	buf += '{';
 	bool is_first = true;
-	for (auto it = range_begin(std::forward<Range>(range));
-		 it != range_end(std::forward<Range>(range));
-		 ++it) {
+	for (auto &val : std::forward<Range>(range)) {
 		if (is_first) {
 			is_first = false;
 		} else {
 			buf += ", ";
 		}
-		buf += to_temp_string(*it);
+		buf += to_temp_string(val);
 	}
 	buf += '}';
 	return buf;

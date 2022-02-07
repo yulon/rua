@@ -2,7 +2,7 @@
 #define _RUA_PROCESS_BASE_HPP
 
 #include "../optional.hpp"
-#include "../range.hpp"
+#include "../range/traits.hpp"
 #include "../string/conv.hpp"
 #include "../types/traits.hpp"
 
@@ -92,9 +92,9 @@ public:
 		ProcessMaker &>
 	args(StrList &&a_str_li) & {
 		std::list<std::string> backs;
-		RUA_RANGE_FOR(auto &a_str, a_str_li, {
+		for (auto &a_str : a_str_li) {
 			backs.emplace_back(to_string(std::move(a_str)));
-		})
+		}
 		return args(std::move(backs));
 	}
 

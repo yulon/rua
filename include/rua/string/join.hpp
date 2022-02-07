@@ -5,7 +5,7 @@
 #include "view.hpp"
 
 #include "../macros.hpp"
-#include "../range.hpp"
+#include "../range/traits.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
