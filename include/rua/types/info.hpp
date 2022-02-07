@@ -693,6 +693,8 @@ struct type_name<
 		return n;
 #endif
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -708,6 +710,8 @@ struct type_name<
 		return n;
 #endif
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 template <typename T>
@@ -723,6 +727,8 @@ struct type_name<
 		return n;
 #endif
 	}
+
+	_RUA_TYPE_NAME_GET_2_FROM_1
 };
 
 #ifdef RUA_RTTI
