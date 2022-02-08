@@ -100,15 +100,15 @@ inline void _check_ex(
 			_check_hs_expr(rhs_expr, bracketed_rhs_expr),
 			eol::sys,
 			"LHS:",
-			join("<", type_name<LHS &&>::get(), ">"),
+			join("<", type_name<LHS &&>(), ">"),
 			std::forward<LHS>(lhs),
 			eol::sys,
 			"RHS:",
-			join("<", type_name<RHS &&>::get(), ">"),
+			join("<", type_name<RHS &&>(), ">"),
 			std::forward<RHS>(rhs),
 			eol::sys,
 			"Result:",
-			join("<", type_name<Result &&>::get(), ">"),
+			join("<", type_name<Result &&>(), ">"),
 			std::forward<Result>(result));
 		abort();
 	}
@@ -161,7 +161,7 @@ inline void _success_ex(
 			expr,
 			eol::sys,
 			"Result:",
-			join("<", type_name<Result &&>::get(), ">"),
+			join("<", type_name<Result &&>(), ">"),
 			std::forward<Result>(result));
 		abort();
 	}
