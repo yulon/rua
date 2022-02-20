@@ -97,7 +97,7 @@ public:
 
 	RUA_CONSTEXPR_14 size_type
 	find(basic_string_view sub, size_type pos = 0) const {
-		auto end = length() - sub.length();
+		auto end = length();
 		for (size_type i = pos; i < end; ++i) {
 			if (substr(i, sub.length()) == sub) {
 				return i;

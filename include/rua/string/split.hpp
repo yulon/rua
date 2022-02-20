@@ -37,11 +37,12 @@ inline std::vector<Part> _basic_split(
 				pos = pos + sep.length();
 				++sc;
 			}
-			if (cut_count != nmax<int>() && cc == cut_count) {
+			if (start >= str.length() ||
+				(cut_count != nmax<int>() && cc == cut_count)) {
 				break;
 			}
 		}
-		if (start < str.length() && sc == skip_count) {
+		if (start <= str.length() && sc == skip_count) {
 			r_li.emplace_back(str.substr(start));
 		}
 	} else {
@@ -60,10 +61,10 @@ inline std::vector<Part> _basic_split(
 			} else {
 				++sc;
 			}
-			--pos;
-			if ((cut_count != nmin<int>() && cc == cut_count)) {
+			if (!pos || (cut_count != nlowest<int>() && cc == cut_count)) {
 				break;
 			}
+			--pos;
 		}
 		if (end && sc == skip_count) {
 			r_li.emplace_front(str.substr(0, end));
