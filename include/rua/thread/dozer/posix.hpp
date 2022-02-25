@@ -1,12 +1,8 @@
 #ifndef _RUA_THREAD_DOZER_POSIX_HPP
 #define _RUA_THREAD_DOZER_POSIX_HPP
 
-#include "../basic/posix.hpp"
-
 #include "../../macros.hpp"
-#include "../../sched/dozer/abstract.hpp"
-#include "../../string/conv.hpp"
-#include "../../string/join.hpp"
+#include "../../time/duration.hpp"
 #include "../../types/util.hpp"
 
 #include <pthread.h>
@@ -21,18 +17,18 @@
 
 namespace rua { namespace posix {
 
-class thread_waker : public waker_base {
+class thread_waker {
 public:
-	thread_waker(pthread_t tid) : _tid(tid) {}
+	thread_waker(pthread_t tid) : _tid(tid), _state(0) {}
 
-	virtual ~thread_waker() {
+	~thread_waker() {
 		if (!_tid) {
 			return;
 		}
 		_tid = 0;
 	}
 
-	virtual void wake() {
+	void wake() {
 		auto state_val = _state.exchange(2);
 		if (!state_val || state_val == 2) {
 			return;
@@ -54,29 +50,11 @@ private:
 	std::atomic<uintptr_t> _state;
 };
 
-class thread_dozer : public dozer_base {
+class thread_dozer {
 public:
-	constexpr thread_dozer(duration yield_dur = 0) :
-		_yield_dur(yield_dur), _wkr() {}
+	constexpr thread_dozer() : _wkr() {}
 
-	virtual ~thread_dozer() = default;
-
-	virtual void yield() {
-		if (_yield_dur > 1_us) {
-			sleep(_yield_dur);
-			return;
-		}
-#ifdef _POSIX_PRIORITY_SCHEDULING
-		for (auto i = 0; i < 3; ++i) {
-			if (!sched_yield()) {
-				return;
-			}
-		}
-#endif
-		::usleep(1);
-	}
-
-	virtual void sleep(duration timeout) {
+	void sleep(duration timeout) {
 		auto dur = timeout.c_timespec();
 		timespec rem;
 		while (::nanosleep(&dur, &rem) == -1) {
@@ -84,7 +62,7 @@ public:
 		}
 	}
 
-	virtual bool doze(duration timeout = duration_max()) {
+	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
 		auto &state = _wkr->state();
@@ -124,30 +102,28 @@ public:
 		return false;
 	}
 
-	virtual waker_i get_waker() {
-		if (_wkr) {
+	std::weak_ptr<thread_waker> get_waker() {
+		if (_wkr && _wkr.use_count() == 1) {
 			_wkr->reset();
-		} else {
-			static auto act_r = ([]() -> int {
-				static struct sigaction new_act, old_act;
-				new_act.sa_handler = [](int sig) {
-					if (old_act.sa_handler) {
-						old_act.sa_handler(sig);
-					}
-				};
-				new_act.sa_flags = 0;
-				sigfillset(&new_act.sa_mask);
-				old_act.sa_handler = nullptr;
-				return sigaction(SIGCONT, &new_act, &old_act);
-			})();
-			assert(act_r == 0);
-			_wkr = std::make_shared<thread_waker>(this_tid());
+			return _wkr;
 		}
-		return _wkr;
+		static auto act_r = ([]() -> int {
+			static struct sigaction new_act, old_act;
+			new_act.sa_handler = [](int sig) {
+				if (old_act.sa_handler) {
+					old_act.sa_handler(sig);
+				}
+			};
+			new_act.sa_flags = 0;
+			sigfillset(&new_act.sa_mask);
+			old_act.sa_handler = nullptr;
+			return sigaction(SIGCONT, &new_act, &old_act);
+		})();
+		assert(act_r == 0);
+		return assign(_wkr, std::make_shared<thread_waker>(pthread_self()));
 	}
 
 private:
-	duration _yield_dur;
 	std::shared_ptr<thread_waker> _wkr;
 };
 

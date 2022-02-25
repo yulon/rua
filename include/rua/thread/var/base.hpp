@@ -1,12 +1,12 @@
 #ifndef _RUA_THREAD_VAR_BASE_HPP
 #define _RUA_THREAD_VAR_BASE_HPP
 
-#include "../basic.hpp"
+#include "../core.hpp"
 
 #include "../../any.hpp"
 #include "../../generic_word.hpp"
 #include "../../macros.hpp"
-#include "../../sync/lockfree_list.hpp"
+#include "../../lockfree_list.hpp"
 #include "../../types/util.hpp"
 
 #include <atomic>

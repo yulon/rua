@@ -1,10 +1,16 @@
-#ifndef _RUA_THREAD_BASIC_WIN32_HPP
-#define _RUA_THREAD_BASIC_WIN32_HPP
+#ifndef _RUA_THREAD_CORE_WIN32_HPP
+#define _RUA_THREAD_CORE_WIN32_HPP
 
+#include "../dozer/win32.hpp"
+
+#include "../../async/result.hpp"
 #include "../../dylib/win32.hpp"
 #include "../../generic_word.hpp"
 #include "../../macros.hpp"
+#include "../../skater.hpp"
+#include "../../sync/wait.hpp"
 #include "../../sys/info/win32.hpp"
+#include "../../sys/listen/win32.hpp"
 
 #include <tlhelp32.h>
 #include <windows.h>
@@ -25,7 +31,7 @@ inline tid_t this_tid() {
 
 using namespace _this_tid;
 
-class thread {
+class thread : public waiter<thread, generic_word> {
 public:
 	using native_handle_t = HANDLE;
 
@@ -108,7 +114,7 @@ public:
 		return _h;
 	}
 
-	void exit(generic_word code = 1) {
+	void exit(generic_word code = 0) {
 		if (!_h) {
 			return;
 		}
@@ -116,7 +122,22 @@ public:
 		reset();
 	}
 
-	inline generic_word wait();
+	class awaiter : public sys_waiter {
+	public:
+		constexpr awaiter() : sys_waiter() {}
+
+		explicit awaiter(const thread &td) : sys_waiter(td.native_handle()) {}
+
+		generic_word await_resume() {
+			DWORD ec;
+			GetExitCodeThread(target(), &ec);
+			return ec;
+		}
+	};
+
+	awaiter RUA_OPERATOR_AWAIT() const {
+		return awaiter(*this);
+	}
 
 	void reset() {
 		if (_h) {

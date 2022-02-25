@@ -1,8 +1,12 @@
-#ifndef _RUA_THREAD_BASIC_POSIX_HPP
-#define _RUA_THREAD_BASIC_POSIX_HPP
+#ifndef _RUA_THREAD_CORE_POSIX_HPP
+#define _RUA_THREAD_CORE_POSIX_HPP
+
+#include "../dozer/posix.hpp"
 
 #include "../../generic_word.hpp"
 #include "../../macros.hpp"
+#include "../../sync/future.hpp"
+#include "../../sync/wait.hpp"
 
 #include <pthread.h>
 
@@ -23,7 +27,7 @@ inline tid_t this_tid() {
 
 using namespace _this_tid;
 
-class thread {
+class thread : public waiter<thread, generic_word> {
 public:
 	using native_handle_t = pthread_t;
 
@@ -106,7 +110,7 @@ public:
 		reset();
 	}
 
-	inline generic_word wait();
+	inline future<generic_word> RUA_OPERATOR_AWAIT() const;
 
 	void reset() {
 		if (_id) {

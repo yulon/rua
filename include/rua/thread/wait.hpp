@@ -3,11 +3,8 @@
 
 #include "../macros.hpp"
 
-#ifdef _WIN32
-
-#include "wait/win32.hpp"
-
-#elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
+#if !defined(_WIN32) &&                                                        \
+	(defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H))
 
 #include "wait/posix.hpp"
 

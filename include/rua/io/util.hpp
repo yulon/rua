@@ -279,17 +279,17 @@ public:
 			for (;;) {
 				auto sz = r->read(buf);
 				if (sz <= 0) {
-					_ch << nullptr;
+					_ch.send(nullptr);
 					return;
 				}
-				_ch << bytes(buf(0, sz));
+				_ch.send(bytes(buf(0, sz)));
 			}
 		});
 	}
 
 	virtual ssize_t read(bytes_ref buf) {
 		while (!_buf) {
-			_buf << _ch;
+			_buf = *_ch.recv();
 			if (!_buf) {
 				if (--_c) {
 					continue;

@@ -16,7 +16,7 @@ public:
 		node_t *after;
 
 		template <typename... Args>
-		node_t(Args &&... args) : value(std::forward<Args>(args)...) {}
+		node_t(Args &&...args) : value(std::forward<Args>(args)...) {}
 	};
 
 	class const_iterator {
@@ -122,7 +122,7 @@ public:
 	}
 
 	template <typename... Args>
-	iterator emplace_front(Args &&... args) {
+	iterator emplace_front(Args &&...args) {
 		auto new_front = new node_t(std::forward<Args>(args)...);
 		push_front_node(new_front);
 		return iterator(new_front);
@@ -134,7 +134,7 @@ public:
 	}
 
 	template <typename... Args>
-	iterator emplace_back(Args &&... args) {
+	iterator emplace_back(Args &&...args) {
 		auto new_back = new node_t(std::forward<Args>(args)...);
 		push_back_node(new_back);
 		return iterator(new_back);
@@ -149,7 +149,7 @@ public:
 	}
 
 	template <typename... Args>
-	iterator emplace_after(const_iterator before, Args &&... args) {
+	iterator emplace_after(const_iterator before, Args &&...args) {
 		assert(before);
 
 		auto new_after = new node_t(std::forward<Args>(args)...);

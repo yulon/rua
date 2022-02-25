@@ -4,6 +4,5 @@
 #include "sys/info.hpp"
 #include "sys/listen.hpp"
 #include "sys/stream.hpp"
-#include "sys/wait.hpp"
 
 #endif

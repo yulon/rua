@@ -211,4 +211,8 @@
 #define RUA_S(s) #s
 #define RUA_M2S(m) RUA_S(m)
 
+#if defined(__cpp_impl_coroutine) || defined(__cpp_lib_coroutine)
+#define RUA_AWAIT_SUPPORTED
+#endif
+
 #endif

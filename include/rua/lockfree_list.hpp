@@ -1,10 +1,10 @@
-#ifndef _RUA_SYNC_LOCKFREE_LIST_HPP
-#define _RUA_SYNC_LOCKFREE_LIST_HPP
+#ifndef _RUA_LOCKFREE_LIST_HPP
+#define _RUA_LOCKFREE_LIST_HPP
 
-#include "../forward_list.hpp"
-#include "../macros.hpp"
-#include "../optional.hpp"
-#include "../types/util.hpp"
+#include "forward_list.hpp"
+#include "macros.hpp"
+#include "optional.hpp"
+#include "types/util.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -48,7 +48,7 @@ public:
 	}
 
 	template <typename... Args>
-	bool emplace_front(Args &&... args) {
+	bool emplace_front(Args &&...args) {
 		auto new_front = new node_t(std::forward<Args>(args)...);
 		auto old_front = _front.load();
 		do {
@@ -61,7 +61,7 @@ public:
 	}
 
 	template <typename Cond, typename... Args>
-	bool emplace_front_if(Cond &&cond, Args &&... args) {
+	bool emplace_front_if(Cond &&cond, Args &&...args) {
 		auto li = lock();
 		auto r = cond();
 		if (r) {
@@ -72,9 +72,9 @@ public:
 	}
 
 	template <typename Cond, typename... Args>
-	bool emplace_front_if_non_empty_or(Cond &&cond, Args &&... args) {
+	bool emplace_front_if_non_empty_or(Cond &&cond, Args &&...args) {
 		auto li = lock();
-		auto r = !li || cond();
+		auto r = li || cond();
 		if (r) {
 			li.emplace_front(std::forward<Args>(args)...);
 		}
@@ -83,7 +83,7 @@ public:
 	}
 
 	template <typename... Args>
-	void emplace_back(Args &&... args) {
+	void emplace_back(Args &&...args) {
 		auto new_back = new node_t(std::forward<Args>(args)...);
 		new_back->after = nullptr;
 		auto old_front = _front.load();
@@ -108,7 +108,7 @@ public:
 	}
 
 	template <typename Cond, typename... Args>
-	bool emplace_back_if(Cond &&cond, Args &&... args) {
+	bool emplace_back_if(Cond &&cond, Args &&...args) {
 		auto li = lock();
 		auto r = cond();
 		if (r) {
@@ -119,7 +119,7 @@ public:
 	}
 
 	template <typename Cond, typename... Args>
-	bool emplace_back_if_non_empty_or(Cond &&cond, Args &&... args) {
+	bool emplace_back_if_non_empty_or(Cond &&cond, Args &&...args) {
 		auto li = lock();
 		auto r = !li || cond();
 		if (r) {
@@ -164,6 +164,17 @@ public:
 	template <typename Cond>
 	optional<T> pop_front_if(Cond &&cond) {
 		optional<T> r;
+		auto li = lock();
+		if (cond() && li) {
+			r.emplace(li.pop_front());
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename Cond>
+	optional<T> pop_front_if_non_empty_and(Cond &&cond) {
+		optional<T> r;
 		auto li = lock_if_non_empty();
 		if (!li) {
 			return r;
@@ -172,6 +183,20 @@ public:
 			r.emplace(li.pop_front());
 		}
 		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename OnEmpty>
+	optional<T> pop_front_or(OnEmpty &&on_empty) {
+		optional<T> r;
+		auto li = lock();
+		if (li) {
+			r.emplace(li.pop_front());
+			unlock_and_prepend(std::move(li));
+			return r;
+		}
+		on_empty();
+		unlock();
 		return r;
 	}
 
@@ -188,6 +213,17 @@ public:
 
 	template <typename Cond>
 	optional<T> pop_back_if(Cond &&cond) {
+		optional<T> r;
+		auto li = lock();
+		if (cond() && li) {
+			r.emplace(li.pop_back());
+		}
+		unlock_and_prepend(std::move(li));
+		return r;
+	}
+
+	template <typename Cond>
+	optional<T> pop_back_if_non_empty_and(Cond &&cond) {
 		optional<T> r;
 		auto li = lock_if_non_empty();
 		if (!li) {
@@ -272,7 +308,7 @@ public:
 	}
 
 	template <typename... Args>
-	void unlock_and_emplace(Args &&... args) {
+	void unlock_and_emplace(Args &&...args) {
 #ifdef NDEBUG
 		_front.store(new node_t(std::forward<Args>(args)...));
 #else

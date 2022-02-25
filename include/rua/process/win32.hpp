@@ -17,10 +17,11 @@
 #include "../string/join.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
+#include "../sync/future.hpp"
+#include "../sync/wait.hpp"
 #include "../sys/info/win32.hpp"
+#include "../sys/listen/win32.hpp"
 #include "../sys/stream/win32.hpp"
-#include "../sys/wait/win32.hpp"
-#include "../thread/wait/win32.hpp"
 #include "../types/util.hpp"
 
 #include <psapi.h>
@@ -84,7 +85,7 @@ inline bool has_full_permissions() {
 
 using namespace _this_process;
 
-class process {
+class process : public waiter<process, int> {
 public:
 	using native_handle_t = HANDLE;
 
@@ -172,15 +173,22 @@ public:
 		return _h;
 	}
 
-	int wait() {
-		if (!_h) {
-			return -1;
+	class awaiter : public sys_waiter {
+	public:
+		constexpr awaiter() : sys_waiter() {}
+
+		explicit awaiter(const process &proc) :
+			sys_waiter(proc.native_handle()) {}
+
+		generic_word await_resume() {
+			DWORD ec;
+			GetExitCodeProcess(target(), &ec);
+			return ec;
 		}
-		sys_wait(_h);
-		DWORD exit_code;
-		GetExitCodeProcess(_h, &exit_code);
-		_reset();
-		return static_cast<int>(exit_code);
+	};
+
+	awaiter RUA_OPERATOR_AWAIT() const {
+		return awaiter(*this);
 	}
 
 	bool kill() {
@@ -610,7 +618,7 @@ public:
 			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
-	native_module_handle_t load_dylib(std::string name);
+	thread load_dylib(std::string name);
 
 	void reset() {
 		if (!_h) {
@@ -938,7 +946,7 @@ _proc_load_dll_data _make_proc_load_dll_data(
 	return data;
 }
 
-process::native_module_handle_t process::load_dylib(std::string name) {
+thread process::load_dylib(std::string name) {
 	_proc_load_dll_ctx ctx;
 	ctx.rtl_user_thread_start = nullptr;
 
@@ -947,7 +955,7 @@ process::native_module_handle_t process::load_dylib(std::string name) {
 		return nullptr;
 	}
 
-	return make_thread(data.loader.data(), data.ctx.data()).wait();
+	return make_thread(data.loader.data(), data.ctx.data());
 }
 
 namespace _this_process {
@@ -969,7 +977,8 @@ public:
 	process_maker() = default;
 
 	process_maker(process_maker &&pm) :
-		process_maker_base(std::move(static_cast<process_maker_base &&>(pm))),
+		process_maker_base<process_maker, _process_make_info>(
+			std::move(static_cast<process_maker_base &&>(pm))),
 		_el_perms(false) {}
 
 	RUA_OVERLOAD_ASSIGNMENT_R(process_maker)

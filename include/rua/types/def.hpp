@@ -25,6 +25,11 @@ RUA_CVAL auto nullpos = (std::numeric_limits<size_t>::max)();
 
 ////////////////////////////////////////////////////////////////////////////
 
+#define RUA_FULLPTR(T)                                                         \
+	(reinterpret_cast<T *>((std::numeric_limits<uintptr_t>::max)()))
+
+////////////////////////////////////////////////////////////////////////////
+
 #if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
 
 template <typename T>

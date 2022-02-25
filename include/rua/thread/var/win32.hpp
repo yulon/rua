@@ -74,19 +74,20 @@ private:
 
 	generic_word &_get(LPVOID val_ptr) const {
 		if (!val_ptr) {
-			auto p = new generic_word(0);
+			auto p = new std::pair<generic_word, sys_waiter>;
 			TlsSetValue(_ix, p);
 			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 			assert(h);
 			auto dtor = _dtor;
-			sys_listen(h, [=](bool) {
-				dtor(*p);
+			p->second = sys_listen(h, [p, dtor, h]() {
+				dtor(p->first);
 				delete p;
 				CloseHandle(h);
 			});
 			val_ptr = p;
 		}
-		return *reinterpret_cast<generic_word *>(val_ptr);
+		return reinterpret_cast<std::pair<generic_word, sys_waiter> *>(val_ptr)
+			->first;
 	}
 };
 

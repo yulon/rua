@@ -38,7 +38,7 @@ public:
 	}
 
 	stream_i get() {
-		return *_w;
+		return _w;
 	}
 
 	void reset(stream_i w = nullptr) {

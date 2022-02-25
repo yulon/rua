@@ -113,9 +113,9 @@ assign(T &&obj, U &&value) {
 	return std::forward<T>(obj) = std::forward<U>(value);
 }
 
-template <class T, class U = T>
-inline constexpr T exchange(T &&obj, U &&new_value) {
-	T old_value = std::move(obj);
+template <typename T, typename U = decay_t<T>, typename R = decay_t<T>>
+inline RUA_CONSTEXPR_14 R exchange(T &&obj, U &&new_value) {
+	R old_value = std::move(obj);
 	std::forward<T>(obj) = std::forward<U>(new_value);
 	return old_value;
 }

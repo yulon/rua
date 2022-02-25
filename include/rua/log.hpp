@@ -86,7 +86,7 @@ inline void log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	auto lg = make_lock_guard(log_mutex());
+	auto lg = *make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }
 
@@ -96,7 +96,7 @@ inline void err_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	auto lg = make_lock_guard(log_mutex());
+	auto lg = *make_lock_guard(log_mutex());
 	p.println(std::forward<Args>(args)...);
 }
 
@@ -104,7 +104,7 @@ inline chan<std::function<void()>> &log_chan() {
 	static chan<std::function<void()>> ch;
 	static thread log_td([]() {
 		for (;;) {
-			ch.pop()();
+			(*ch.recv())();
 		}
 	});
 	return ch;
@@ -117,10 +117,10 @@ inline void post_log(Args &&...args) {
 		return;
 	}
 	auto s = skate(join({to_temp_string(args)...}, " "));
-	log_chan() << [&p, s]() mutable {
-		auto lg = make_lock_guard(log_mutex());
+	log_chan().send([&p, s]() mutable {
+		auto lg = *make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));
-	};
+	});
 }
 
 template <typename... Args>
@@ -130,10 +130,10 @@ inline void post_err_log(Args &&...args) {
 		return;
 	}
 	auto s = skate(join({to_temp_string(args)...}, " "));
-	log_chan() << [&p, s]() mutable {
-		auto lg = make_lock_guard(log_mutex());
+	log_chan().send([&p, s]() mutable {
+		auto lg = *make_lock_guard(log_mutex());
 		p.println(std::move(s.value()));
-	};
+	});
 }
 
 } // namespace rua

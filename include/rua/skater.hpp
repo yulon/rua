@@ -18,10 +18,9 @@ public:
 		typename... Args,
 		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
+			(sizeof...(Args) > 0) &&
 			std::is_constructible<T, Args &&...>::value &&
-			(sizeof...(Args) > 1 ||
-			 (!std::is_base_of<T, ArgsFront>::value &&
-			  !std::is_base_of<skater, ArgsFront>::value))>>
+			!std::is_base_of<skater, ArgsFront>::value>>
 	skater(Args &&...args) {
 		new (&value()) T(std::forward<Args>(args)...);
 	}
@@ -29,21 +28,12 @@ public:
 	template <
 		typename U,
 		typename... Args,
-		typename ArgsFront = decay_t<front_t<Args...>>,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
 	skater(std::initializer_list<U> il, Args &&...args) {
 		new (&value()) T(il, std::forward<Args>(args)...);
 	}
-
-	skater(T &&val) {
-		new (&value()) T(std::move(val));
-	}
-
-	skater(T &val) : skater(std::move(val)) {}
-
-	skater(const T &val) : skater(static_cast<T &&>(const_cast<T &>(val))) {}
 
 	~skater() {
 		value().~T();
@@ -120,9 +110,14 @@ private:
 	alignas(alignof(T)) uchar _sto[sizeof(T)];
 };
 
-template <typename T>
-skater<decay_t<T>> skate(T &&val) {
-	return skater<decay_t<T>>(std::forward<T>(val));
+template <typename T, typename Skater = skater<decay_t<T>>>
+Skater make_skater(T &&val) {
+	return Skater(std::forward<T>(val));
+}
+
+template <typename T, typename Skater = skater<decay_t<T>>>
+Skater skate(T &&val) {
+	return Skater(std::move(val));
 }
 
 } // namespace rua

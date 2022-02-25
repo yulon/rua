@@ -214,10 +214,6 @@ public:
 		return std::move(load_dylib(std::move(name)));
 	}
 
-	int run() {
-		return _this()->start().wait();
-	}
-
 protected:
 	ProcessMakeInfo _info;
 

@@ -1,7 +1,9 @@
 #ifndef _RUA_SYS_LISTEN_WIN32_HPP
 #define _RUA_SYS_LISTEN_WIN32_HPP
 
+#include "../../async/result.hpp"
 #include "../../macros.hpp"
+#include "../../sync/wait.hpp"
 #include "../../time.hpp"
 #include "../../types/util.hpp"
 
@@ -12,35 +14,87 @@
 
 namespace rua { namespace win32 {
 
-struct _sys_listen_ctx_t {
-	HANDLE wait_h;
-	std::function<void(bool)> cb;
-};
+class sys_waiter : public waiter<sys_waiter> {
+public:
+	using native_handle_t = HANDLE;
 
-inline VOID CALLBACK _sys_listen_cb(PVOID _ctx, BOOLEAN timeouted) {
-	auto ctx = reinterpret_cast<_sys_listen_ctx_t *>(_ctx);
-	ctx->cb(!timeouted);
-	UnregisterWaitEx(ctx->wait_h, nullptr);
-	delete ctx;
-}
+	////////////////////////////////////////////////////////////////
+
+	constexpr sys_waiter() : _h(nullptr), _wh(nullptr), _ar() {}
+
+	explicit sys_waiter(HANDLE h) : _h(h), _wh(nullptr), _ar() {}
+
+	~sys_waiter() {
+		reset();
+	}
+
+	sys_waiter(sys_waiter &&src) :
+		_h(exchange(src._h, nullptr)),
+		_wh(exchange(src._wh, nullptr)),
+		_ar(std::move(src._ar)) {}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(sys_waiter);
+
+	native_handle_t native_handle() const {
+		return _wh;
+	}
+
+	native_handle_t target() const {
+		return _h;
+	}
+
+	bool await_ready() const {
+		return WaitForSingleObject(_h, 0) != WAIT_TIMEOUT;
+	}
+
+	template <typename Resume>
+	void await_suspend(Resume resume) {
+		auto arc = _ar.get_putter(std::move(resume)).release();
+		RegisterWaitForSingleObject(
+			&_wh,
+			_h,
+			_rw4so_cb,
+			arc,
+			INFINITE,
+			WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
+	}
+
+	void await_resume() const {}
+
+	void reset() {
+		if (_h) {
+			_h = nullptr;
+		}
+		if (!_ar) {
+			return;
+		}
+		assert(_wh);
+		_ar.checkout_or_lose_putter(!UnregisterWaitEx(_wh, nullptr));
+		_wh = nullptr;
+	}
+
+private:
+	HANDLE _h, _wh;
+	async_result<> _ar;
+
+	static VOID CALLBACK _rw4so_cb(PVOID arc, BOOLEAN /* timeouted */) {
+		async_result_putter<> (
+			*reinterpret_cast<async_result_context<> *>(arc))();
+	}
+};
 
 namespace _sys_listen {
 
-inline void sys_listen(
-	HANDLE handle,
-	std::function<void(bool)> callback,
-	duration timeout = duration_max()) {
+inline sys_waiter sys_listen(HANDLE handle, std::function<void()> callback) {
 	assert(handle);
 
-	auto ctx = new _sys_listen_ctx_t{nullptr, std::move(callback)};
-
-	RegisterWaitForSingleObject(
-		&ctx->wait_h,
-		handle,
-		_sys_listen_cb,
-		ctx,
-		timeout.milliseconds<DWORD, INFINITE>(),
-		WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
+	sys_waiter wtr(handle);
+	if (wtr.await_ready()) {
+		callback();
+		return wtr;
+	}
+	wtr.await_suspend(std::move(callback));
+	return wtr;
 }
 
 } // namespace _sys_listen

@@ -3,7 +3,6 @@
 
 #include "../../io/util.hpp"
 #include "../../macros.hpp"
-#include "../../sched.hpp"
 
 #include <windows.h>
 
@@ -68,27 +67,13 @@ public:
 	virtual ssize_t read(bytes_ref buf) {
 		assert(*this);
 
-		auto dzr = this_dozer();
-		if (dzr->is_unowned_data(buf)) {
-			bytes buf_s(buf.size());
-			auto sz = await(std::move(dzr), _read, _h, bytes_ref(buf_s));
-			if (sz > 0) {
-				buf.copy(buf_s);
-			}
-			return sz;
-		}
-		return await(std::move(dzr), _read, _h, buf);
+		return _read(_h, buf);
 	}
 
 	virtual ssize_t write(bytes_view data) {
 		assert(*this);
 
-		auto dzr = this_dozer();
-		if (dzr->is_unowned_data(data)) {
-			bytes data_s(data);
-			return await(std::move(dzr), _write, _h, bytes_view(data_s));
-		}
-		return await(std::move(dzr), _write, _h, data);
+		return _write(_h, data);
 	}
 
 	bool is_need_close() const {

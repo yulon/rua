@@ -5,9 +5,10 @@
 
 #include "../dylib/posix.hpp"
 #include "../file/posix.hpp"
-#include "../sched/await.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
+#include "../sync/future.hpp"
+#include "../sync/wait.hpp"
 #include "../types/traits.hpp"
 #include "../types/util.hpp"
 
@@ -34,7 +35,7 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
-class process {
+class process : public waiter<process, int> {
 public:
 	using native_handle_t = pid_t;
 
@@ -79,13 +80,16 @@ public:
 		return _id >= 0;
 	}
 
-	int wait() {
-		if (_id <= 0) {
-			return -1;
+	future<int> RUA_OPERATOR_AWAIT() const {
+		if (!_id) {
+			return 0;
 		}
-		int status;
-		await(waitpid, _id, &status, 0);
-		return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
+		auto id = _id;
+		return parallel([id]() -> generic_word {
+			int status;
+			waitpid(id, &status, 0);
+			return WIFEXITED(status) ? 0 : WEXITSTATUS(status);
+		});
 	}
 
 	bool kill() {

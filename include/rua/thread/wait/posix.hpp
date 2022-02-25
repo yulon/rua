@@ -1,24 +1,23 @@
 #ifndef _RUA_THREAD_WAIT_POSIX_HPP
 #define _RUA_THREAD_WAIT_POSIX_HPP
 
-#include "../basic/posix.hpp"
-
-#include "../../sched/await.hpp"
+#include "../core/posix.hpp"
+#include "../parallel.hpp"
 
 #include <pthread.h>
 
 namespace rua { namespace posix {
 
-inline generic_word thread::wait() {
+inline future<generic_word> thread::RUA_OPERATOR_AWAIT() const {
 	if (!_id) {
-		return nullptr;
+		return 0;
 	}
-	void *retval;
-	if (await(pthread_join, _id, &retval)) {
-		return nullptr;
-	}
-	reset();
-	return retval;
+	auto id = _id;
+	return parallel([id]() -> generic_word {
+		void *retval;
+		pthread_join(id, &retval);
+		return retval;
+	});
 }
 
 }} // namespace rua::posix

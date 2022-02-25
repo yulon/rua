@@ -1,28 +1,21 @@
 #ifndef _RUA_SYNC_LOCK_GUARD_HPP
 #define _RUA_SYNC_LOCK_GUARD_HPP
 
-#include "../macros.hpp"
-#include "../time/duration.hpp"
+#include "wait.hpp"
 
 namespace rua {
 
 template <typename Lock>
-class lock_guard {
+class lock_guard : public waiter<lock_guard<Lock>, lock_guard<Lock>> {
 public:
-	explicit lock_guard(Lock &lck, duration try_lock_timeout = duration_max()) :
-		_lck(&lck) {
-		_lck->try_lock(try_lock_timeout);
-	}
+	explicit lock_guard(Lock &lck) : _lck(&lck), _lcking(lck.lock()) {}
 
 	~lock_guard() {
 		unlock();
 	}
 
-	lock_guard(lock_guard &&src) : _lck(src._lck) {
-		if (src._lck) {
-			src._lck = nullptr;
-		}
-	}
+	lock_guard(lock_guard &&src) :
+		_lck(exchange(src._lck, nullptr)), _lcking(std::move(src._lcking)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT_R(lock_guard)
 
@@ -30,22 +23,38 @@ public:
 		return _lck;
 	}
 
+	bool await_ready() {
+		return _lcking.await_ready();
+	}
+
+	template <typename Resume>
+	bool await_suspend(Resume resume) {
+		assert(_lck);
+		return _lcking.await_suspend(std::move(resume));
+	}
+
+	lock_guard await_resume() {
+		return std::move(*this);
+	}
+
 	void unlock() {
 		if (!_lck) {
 			return;
 		}
-		_lck->unlock();
+		if (_lcking.await_ready()) {
+			_lck->unlock();
+		}
 		_lck = nullptr;
 	}
 
 private:
 	Lock *_lck;
+	future<> _lcking;
 };
 
 template <typename Lock>
-inline lock_guard<Lock>
-make_lock_guard(Lock &lck, duration try_lock_timeout = duration_max()) {
-	return lock_guard<Lock>(lck, try_lock_timeout);
+inline lock_guard<Lock> make_lock_guard(Lock &lck) {
+	return lock_guard<Lock>(lck);
 }
 
 } // namespace rua
