@@ -32,14 +32,8 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
 			!std::is_constructible<T, future<U, Promised> &&>::value>>
-	future(future<U, Promised> &&src) : _ar(std::move(src._ar)) {
-		if (!src._r) {
-			return;
-		}
-		assert(!_ar);
-		_r.emplace(static_cast<T>(*std::move(_r)));
-		_r.reset();
-	}
+	future(future<U, Promised> &&src) :
+		_r(std::move(src._r)), _ar(std::move(src._ar)) {}
 
 	template <
 		typename U,
