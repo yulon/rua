@@ -43,15 +43,15 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(const std::optional<U> &src) : std::optional<T>(src) {}
+			!std::is_constructible<T, const optional<U> &>::value>>
+	optional(const optional<U> &src) : std::optional<T>(src) {}
 
 	template <
 		typename U,
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
 			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(std::optional<U> &&src) : std::optional<T>(std::move(src)) {}
+	optional(optional<U> &&src) : std::optional<T>(std::move(src)) {}
 
 	template <class... Args>
 	invoke_result_t<T &, Args &&...> operator()(Args &&...args) & {
@@ -262,7 +262,7 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
-			!std::is_constructible<T, optional<U> &&>::value>>
+			!std::is_constructible<T, const optional<U> &>::value>>
 	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
