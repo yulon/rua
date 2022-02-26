@@ -158,7 +158,8 @@ private:
 	template <typename T, typename... Args>
 	enable_if_t<is_containable<T>::value, T &> _emplace(Args &&...args) {
 		_type = type_id<T>();
-		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
+		return construct(
+			*reinterpret_cast<T *>(&_sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>

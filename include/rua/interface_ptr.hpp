@@ -32,8 +32,8 @@ public:
 	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
 	interface_ptr(SameBase &&rv, type_info typ = nullptr) {
 		_type = typ ? typ : type_id<SameBase>();
-		new (&_shared) std::shared_ptr<T>(std::static_pointer_cast<T>(
-			std::make_shared<SameBase>(std::move(rv))));
+		_shared = std::static_pointer_cast<T>(
+			std::make_shared<SameBase>(std::move(rv)));
 		_raw = _shared.get();
 	}
 
@@ -43,7 +43,7 @@ public:
 			return;
 		}
 		_type = typ ? typ : type_id<T>();
-		new (&_shared) std::shared_ptr<T>(std::move(base_shared_ptr));
+		_shared = std::move(base_shared_ptr);
 		_raw = _shared.get();
 	}
 
@@ -55,8 +55,7 @@ public:
 			return;
 		}
 		_type = typ ? typ : type_id<Derived>();
-		new (&_shared) std::shared_ptr<T>(
-			std::static_pointer_cast<T>(std::move(derived_shared_ptr)));
+		_shared = std::static_pointer_cast<T>(std::move(derived_shared_ptr));
 		_raw = _shared.get();
 	}
 
@@ -74,8 +73,7 @@ public:
 			return;
 		}
 		_type = typ ? typ : type_id<SameBase>();
-		new (&_shared)
-			std::shared_ptr<T>(static_cast<T *>(unique_ptr_rv.release()));
+		_shared.reset(static_cast<T *>(unique_ptr_rv.release()));
 		_raw = _shared.get();
 	}
 

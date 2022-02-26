@@ -95,14 +95,14 @@ public:
 		if (!src._has_val) {
 			return;
 		}
-		new (&value()) T(src.value());
+		_emplace(src.value());
 	}
 
 	_optional_base(_optional_base &&src) : _has_val(src._has_val) {
 		if (!src._has_val) {
 			return;
 		}
-		new (&value()) T(std::move(src.value()));
+		_emplace(std::move(src.value()));
 		src.value().~T();
 		src._has_val = false;
 	}
@@ -220,7 +220,7 @@ protected:
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	void _emplace(Args &&...args) {
-		new (&value()) T(std::forward<Args>(args)...);
+		construct(value(), std::forward<Args>(args)...);
 	}
 
 	template <
@@ -229,7 +229,7 @@ protected:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	void _emplace(std::initializer_list<U> il, Args &&...args) {
-		new (&value()) T(il, std::forward<Args>(args)...);
+		construct(value(), il, std::forward<Args>(args)...);
 	}
 };
 

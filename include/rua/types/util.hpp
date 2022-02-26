@@ -21,39 +21,6 @@
 					   std::is_base_of<_B, remove_reference_t<_D>>::value &&   \
 				   !std::is_same<_B, _D>::value >
 
-#define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
-	T &operator=(const T &src) {                                               \
-		if (this == &src) {                                                    \
-			return *this;                                                      \
-		}                                                                      \
-		this->~T();                                                            \
-		new (this) T(src);                                                     \
-		return *this;                                                          \
-	}
-
-#define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
-	T &operator=(T &&src) {                                                    \
-		if (this == &src) {                                                    \
-			return *this;                                                      \
-		}                                                                      \
-		this->~T();                                                            \
-		new (this) T(std::move(src));                                          \
-		return *this;                                                          \
-	}
-
-#define RUA_OVERLOAD_ASSIGNMENT(T)                                             \
-	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
-	RUA_OVERLOAD_ASSIGNMENT_R(T)
-
-#define RUA_OVERLOAD_ASSIGNMENT_S(T)                                           \
-	T &operator=(const T &src) {                                               \
-		if (this == &src) {                                                    \
-			return *this;                                                      \
-		}                                                                      \
-		return operator=(T(src));                                              \
-	}                                                                          \
-	RUA_OVERLOAD_ASSIGNMENT_R(T)
-
 #if defined(__cpp_rtti) && __cpp_rtti
 #define RUA_RTTI __cpp_rtti
 #elif defined(_HAS_STATIC_RTTI) && _HAS_STATIC_RTTI
@@ -119,6 +86,78 @@ inline RUA_CONSTEXPR_14 R exchange(T &&obj, U &&new_value) {
 	std::forward<T>(obj) = std::forward<U>(new_value);
 	return old_value;
 }
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename... Args>
+inline enable_if_t<std::is_trivial<T>::value && std::is_class<T>::value, T &>
+construct(T &ref, Args &&...args) {
+	return assign(ref, T(std::forward<Args>(args)...));
+}
+
+template <typename T, typename Arg>
+inline enable_if_t<
+	std::is_trivial<T>::value && !std::is_class<T>::value &&
+		!std::is_array<T>::value && !std::is_function<T>::value,
+	T &>
+construct(T &ref, Arg &&arg) {
+	return assign(ref, std::forward<Arg>(arg));
+}
+
+template <typename T, typename... Args>
+inline enable_if_t<!std::is_trivial<T>::value || std::is_array<T>::value, T &>
+construct(T &ref, Args &&...args) {
+	return *(new (&ref) T(std::forward<Args>(args)...));
+}
+
+template <typename T, typename U, typename... Args>
+inline enable_if_t<!std::is_trivial<T>::value, T &>
+construct(T &ref, std::initializer_list<U> il, Args &&...args) {
+	return *(new (&ref) T(il, std::forward<Args>(args)...));
+}
+
+template <typename T>
+inline enable_if_t<std::is_trivially_destructible<T>::value> destruct(T &) {}
+
+template <typename T>
+inline enable_if_t<!std::is_trivially_destructible<T>::value> destruct(T &ref) {
+	ref.~T();
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+#define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
+	T &operator=(const T &src) {                                               \
+		if (this == &src) {                                                    \
+			return *this;                                                      \
+		}                                                                      \
+		destruct(*this);                                                       \
+		construct(*this, src);                                                 \
+		return *this;                                                          \
+	}
+
+#define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
+	T &operator=(T &&src) {                                                    \
+		if (this == &src) {                                                    \
+			return *this;                                                      \
+		}                                                                      \
+		destruct(*this);                                                       \
+		construct(*this, std::move(src));                                      \
+		return *this;                                                          \
+	}
+
+#define RUA_OVERLOAD_ASSIGNMENT(T)                                             \
+	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
+	RUA_OVERLOAD_ASSIGNMENT_R(T)
+
+#define RUA_OVERLOAD_ASSIGNMENT_S(T)                                           \
+	T &operator=(const T &src) {                                               \
+		if (this == &src) {                                                    \
+			return *this;                                                      \
+		}                                                                      \
+		return operator=(T(src));                                              \
+	}                                                                          \
+	RUA_OVERLOAD_ASSIGNMENT_R(T)
 
 ////////////////////////////////////////////////////////////////////////////
 

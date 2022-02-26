@@ -171,7 +171,8 @@ private:
 		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullpos));
 
 		_type = type_id<T>();
-		return *(new (&_sto[0]) T(std::forward<Args>(args)...));
+		return construct(
+			*reinterpret_cast<T *>(&_sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename Visitor>

@@ -11,7 +11,7 @@ template <typename T>
 class skater {
 public:
 	skater() {
-		new (&value()) T();
+		construct(value());
 	}
 
 	template <
@@ -22,7 +22,7 @@ public:
 			std::is_constructible<T, Args &&...>::value &&
 			!std::is_base_of<skater, ArgsFront>::value>>
 	skater(Args &&...args) {
-		new (&value()) T(std::forward<Args>(args)...);
+		construct(value(), std::forward<Args>(args)...);
 	}
 
 	template <
@@ -32,7 +32,7 @@ public:
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
 	skater(std::initializer_list<U> il, Args &&...args) {
-		new (&value()) T(il, std::forward<Args>(args)...);
+		construct(value(), il, std::forward<Args>(args)...);
 	}
 
 	~skater() {
@@ -40,7 +40,7 @@ public:
 	}
 
 	skater(skater &&src) {
-		new (&value()) T(std::move(src.value()));
+		construct(value(), std::move(src.value()));
 	}
 
 	skater(const skater &src) : skater(std::move(const_cast<skater &>(src))) {}

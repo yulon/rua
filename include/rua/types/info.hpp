@@ -233,8 +233,9 @@ private:
 			std::is_copy_constructible<T>::value &&
 			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, const void *src) {
-			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
-				T(*reinterpret_cast<const T *>(src));
+			construct(
+				*reinterpret_cast<remove_cv_t<T> *>(ptr),
+				*reinterpret_cast<const T *>(src));
 		};
 	};
 
@@ -266,8 +267,9 @@ private:
 			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
 			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, void *src) {
-			new (reinterpret_cast<remove_cv_t<T> *>(ptr))
-				T(std::move(*reinterpret_cast<T *>(src)));
+			construct(
+				*reinterpret_cast<remove_cv_t<T> *>(ptr),
+				std::move(*reinterpret_cast<T *>(src)));
 		}
 	};
 

@@ -19,8 +19,9 @@ public:
 	template <
 		typename... Result,
 		typename = enable_if_t<
-			(sizeof...(Result) > 0) &&
-			std::is_convertible<T, Result &&...>::value>>
+			std::is_constructible<T, Result &&...>::value &&
+			(sizeof...(Result) > 1 ||
+			 !std::is_base_of<future, decay_t<front_t<Result &&...>>>::value)>>
 	future(Result &&...result) : _r(std::forward<Result>(result)...) {}
 
 	explicit future(async_result<T> ar) : _ar(std::move(ar)) {}
@@ -153,8 +154,8 @@ public:
 
 	explicit promise(async_result_context<T> &ctx) : _ar_put(ctx) {}
 
-	operator bool() const {
-		return _ar_put;
+	explicit operator bool() const {
+		return !!_ar_put;
 	}
 
 	future<T> get_future() {
@@ -190,8 +191,8 @@ public:
 
 	explicit promise(async_result_context<> &ctx) : _ar_put(ctx) {}
 
-	operator bool() const {
-		return _ar_put;
+	explicit operator bool() const {
+		return !!_ar_put;
 	}
 
 	future<> get_future() {

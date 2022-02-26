@@ -59,7 +59,7 @@ public:
 		return _ctx;
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return _ctx;
 	}
 
@@ -200,7 +200,7 @@ public:
 		return _ctx;
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return _ctx;
 	}
 
