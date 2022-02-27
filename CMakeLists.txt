@@ -10,9 +10,9 @@ if(UNIX)
 endif()
 
 if(DEFINED RUA_TEST)
-	include("cmake/deppull.cmake")
+	include("cmake/depu.cmake")
 
-	deppull(
+	depu(
 		doctest
 		USE_PACKAGE TRUE
 		GIT_REPO "https://github.com/onqtam/doctest.git"
