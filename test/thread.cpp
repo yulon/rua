@@ -93,14 +93,14 @@ TEST_CASE("use chan on multi-thread") {
 		}
 	});
 
-	// rua::thread recv_td2([]() {
-	while (*ch.recv()) {
-		++recv_c;
-	}
-	//});
+	rua::thread recv_td2([]() {
+		while (*ch.recv()) {
+			++recv_c;
+		}
+	});
 
 	*recv_td1;
-	//*recv_td2;
+	*recv_td2;
 
 	REQUIRE(recv_c.load() == 200);
 }

@@ -41,7 +41,7 @@ public:
 		promise<> prom;
 		ftr = prom.get_future();
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
-			[this, &ftr]() -> bool { return _c.load() == 1; }, std::move(prom));
+			[this]() -> bool { return _c.load() == 1; }, std::move(prom));
 		if (!is_emplaced) {
 			ftr.reset();
 		}
