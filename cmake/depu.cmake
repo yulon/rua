@@ -51,7 +51,7 @@ if(DEPU_DEV)
 	message(STATUS "Depu: DEPU_DEV = ${DEPU_DEV}")
 endif()
 
-function(_deppull_mkpaths A_STORAGE_PREFIX A_SRC_FIX)
+function(_depu_mkpaths A_STORAGE_PREFIX A_SRC_FIX)
 	set(ROOT_REL "${A_STORAGE_PREFIX}/src")
 	set(ROOT_REL "${ROOT_REL}" PARENT_SCOPE)
 
@@ -118,7 +118,7 @@ function(depu A_NAME)
 		string(MAKE_C_IDENTIFIER "${A_PKG_HASH}" PKG_NAME)
 		set(STORAGE_PREFIX "${NAME_TOLOWER}/${PKG_NAME}")
 
-		_deppull_mkpaths("${STORAGE_PREFIX}" "${A_SRC_FIX}")
+		_depu_mkpaths("${STORAGE_PREFIX}" "${A_SRC_FIX}")
 
 		if(EXISTS "${ROOT}.ready")
 			set(FOUND TRUE)
@@ -171,7 +171,7 @@ function(depu A_NAME)
 			set(STORAGE_PREFIX "${STORAGE_PREFIX}-${GIT_TAG}")
 		endif()
 
-		_deppull_mkpaths("${STORAGE_PREFIX}" "${A_SRC_FIX}")
+		_depu_mkpaths("${STORAGE_PREFIX}" "${A_SRC_FIX}")
 
 		if(NOT EXISTS "${ROOT}.ready")
 
