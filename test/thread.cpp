@@ -67,15 +67,12 @@ TEST_CASE("use chan on thread") {
 
 TEST_CASE("use chan on multi-thread") {
 	static rua::chan<bool> ch;
-	static std::atomic<size_t> recv_c(0);
 
 	rua::thread([]() {
 		rua::sleep(100);
 		for (size_t i = 0; i < 100; ++i) {
 			ch.send(true);
 		}
-		rua::sleep(100);
-		ch.send(false);
 	});
 
 	rua::thread([]() {
@@ -83,24 +80,25 @@ TEST_CASE("use chan on multi-thread") {
 		for (size_t i = 0; i < 100; ++i) {
 			ch.send(true);
 		}
-		rua::sleep(100);
-		ch.send(false);
 	});
 
-	rua::thread recv_td1([]() {
+	static rua::chan<bool> ch2;
+
+	rua::thread([]() {
 		while (*ch.recv()) {
-			++recv_c;
+			ch2.send(true);
 		}
 	});
 
-	rua::thread recv_td2([]() {
+	rua::thread([]() {
 		while (*ch.recv()) {
-			++recv_c;
+			ch2.send(false);
 		}
 	});
 
-	*recv_td1;
-	*recv_td2;
-
-	REQUIRE(recv_c.load() == 200);
+	size_t i = 0;
+	for (; i < 200; ++i) {
+		*ch2.recv();
+	}
+	REQUIRE(i == 200);
 }
