@@ -3,8 +3,7 @@
 
 #include "../optional.hpp"
 #include "../skater.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <atomic>
 #include <cassert>

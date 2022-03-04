@@ -1,10 +1,10 @@
-#ifndef _RUA_TYPES_UTIL_HPP
-#define _RUA_TYPES_UTIL_HPP
+#ifndef _RUA_UTIL_ASSIST_HPP
+#define _RUA_UTIL_ASSIST_HPP
 
-#include "def.hpp"
-#include "traits.hpp"
+#include "base.hpp"
+#include "type_traits.hpp"
 
-#include "../macros.hpp"
+namespace rua {
 
 #define RUA_CONTAINER_OF(member_ptr, type, member)                             \
 	reinterpret_cast<type *>(                                                  \
@@ -21,18 +21,7 @@
 					   std::is_base_of<_B, remove_reference_t<_D>>::value &&   \
 				   !std::is_same<_B, _D>::value >
 
-#if defined(__cpp_rtti) && __cpp_rtti
-#define RUA_RTTI __cpp_rtti
-#elif defined(_HAS_STATIC_RTTI) && _HAS_STATIC_RTTI
-#define RUA_RTTI _HAS_STATIC_RTTI
-#endif
-
-#define RUA_DI(T, ...)                                                         \
-	([&]() -> T {                                                              \
-		T $;                                                                   \
-		__VA_ARGS__;                                                           \
-		return $;                                                              \
-	}())
+////////////////////////////////////////////////////////////////////////////
 
 #if RUA_CPP >= RUA_CPP_17
 #define RUA_WEAK_FROM_THIS weak_from_this()
@@ -40,7 +29,27 @@
 #define RUA_WEAK_FROM_THIS shared_from_this()
 #endif
 
-namespace rua {
+////////////////////////////////////////////////////////////////////////////
+
+#if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
+
+template <typename T>
+using in_place_type_t = std::in_place_type_t<T>;
+
+template <size_t I>
+using in_place_index_t = std::in_place_index_t<I>;
+
+#else
+
+template <typename T>
+struct in_place_type_t {};
+
+template <size_t I>
+struct in_place_index_t {};
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 inline constexpr T nmax() {
@@ -249,32 +258,6 @@ template <typename Signed, typename Unsigned = make_unsigned_t<Signed>>
 Unsigned to_unsigned(Signed i) {
 	return static_cast<Unsigned>(i);
 }
-
-////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cpp_binary_literals
-
-#define RUA_B(n) (0b##n)
-
-#else
-
-inline constexpr int _b_non_lowest(int n, int off);
-
-inline constexpr int _b_non_zero(int n, int off) {
-	return n ? _b_non_lowest(n, off) : 0;
-}
-
-inline constexpr int _b_non_lowest(int n, int off) {
-	return (n & 1) << off | _b_non_zero(n / 10, off + 1);
-}
-
-inline constexpr int _b(int n) {
-	return (n & 1) | _b_non_lowest(n / 10, 1);
-}
-
-#define RUA_B(n) (rua::_b(n))
-
-#endif
 
 } // namespace rua
 

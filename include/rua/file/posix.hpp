@@ -8,8 +8,7 @@
 #include "../string/join.hpp"
 #include "../sys/stream/posix.hpp"
 #include "../time/now/posix.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <dirent.h>
 #include <fcntl.h>

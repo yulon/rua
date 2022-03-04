@@ -2,8 +2,7 @@
 #define _RUA_SYS_STREAM_POSIX_HPP
 
 #include "../../io/util.hpp"
-#include "../../macros.hpp"
-#include "../../types/traits.hpp"
+#include "../../util.hpp"
 
 #include <unistd.h>
 

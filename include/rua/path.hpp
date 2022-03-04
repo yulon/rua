@@ -1,12 +1,11 @@
 #ifndef _RUA_PATH_HPP
 #define _RUA_PATH_HPP
 
-#include "macros.hpp"
 #include "span.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
 #include "string/view.hpp"
-#include "types/traits.hpp"
+#include "util.hpp"
 
 #include <list>
 #include <string>

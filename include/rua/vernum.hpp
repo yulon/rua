@@ -3,7 +3,7 @@
 
 #include "string/conv.hpp"
 #include "string/join.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 namespace rua {
 

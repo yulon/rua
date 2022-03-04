@@ -9,7 +9,6 @@
 #include "../generic_ptr.hpp"
 #include "../hard/win32.hpp"
 #include "../io.hpp"
-#include "../macros.hpp"
 #include "../memory.hpp"
 #include "../stdio/win32.hpp"
 #include "../string/char_codec/base/win32.hpp"
@@ -22,7 +21,7 @@
 #include "../sys/info/win32.hpp"
 #include "../sys/listen/win32.hpp"
 #include "../sys/stream/win32.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <psapi.h>
 #include <shellapi.h>

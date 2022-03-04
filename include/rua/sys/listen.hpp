@@ -1,7 +1,7 @@
 #ifndef _RUA_SYS_LISTEN_HPP
 #define _RUA_SYS_LISTEN_HPP
 
-#include "../macros.hpp"
+#include "../util/macros.hpp"
 
 #ifdef _WIN32
 

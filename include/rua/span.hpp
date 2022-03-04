@@ -1,8 +1,7 @@
 #ifndef _RUA_SPAN_HPP
 #define _RUA_SPAN_HPP
 
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #if RUA_CPP < RUA_CPP_17
 
@@ -247,7 +246,7 @@ public:
 	}
 
 	template <typename... Args>
-	void reset(Args &&... args) {
+	void reset(Args &&...args) {
 		RUA_SASSERT((std::is_constructible<span<T>, Args...>::value));
 
 		*this = span<T>(std::forward<Args>(args)...);

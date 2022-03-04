@@ -1,9 +1,7 @@
 #ifndef _RUA_OPTIONAL_HPP
 #define _RUA_OPTIONAL_HPP
 
-#include "macros.hpp"
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #ifdef __cpp_lib_optional
 

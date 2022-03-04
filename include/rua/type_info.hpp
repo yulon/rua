@@ -1,18 +1,15 @@
-#ifndef _RUA_TYPES_INFO_HPP
-#define _RUA_TYPES_INFO_HPP
+#ifndef _RUA_TYPE_INFO_HPP
+#define _RUA_TYPE_INFO_HPP
 
-#include "traits.hpp"
+#include "string/join.hpp"
+#include "string/len.hpp"
+#include "string/view.hpp"
 #include "util.hpp"
-
-#include "../macros.hpp"
-#include "../string/join.hpp"
-#include "../string/len.hpp"
-#include "../string/view.hpp"
 
 #include <cassert>
 #include <string>
 
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 #include <typeindex>
 #endif
 
@@ -150,7 +147,7 @@ public:
 		return _tab->to_bool(ptr);
 	}
 
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);
 	}
@@ -180,7 +177,7 @@ private:
 
 		bool (*const to_bool)(void *);
 
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 		const std::type_info &(*const std_id)();
 #endif
 	};
@@ -301,7 +298,7 @@ private:
 		}
 	};
 
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 	template <typename T>
 	static const std::type_info &_std_id() {
 		return typeid(T);
@@ -324,7 +321,7 @@ private:
 			_move_ctor<T>::value,
 			_move_new<T>::value,
 			_to_bool<T>::value
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 			,
 			&_std_id<T>
 #endif
@@ -350,7 +347,7 @@ inline constexpr type_info type_id<void>() {
 	return type_info();
 }
 
-#ifdef RUA_RTTI
+#ifdef RUA_RTTI_SUPPORTED
 
 inline bool operator==(const type_info &a, std::type_index b) {
 	return b == a.std_id();

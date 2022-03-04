@@ -1,7 +1,7 @@
 #ifndef _RUA_HARD_HPP
 #define _RUA_HARD_HPP
 
-#include "macros.hpp"
+#include "util/macros.hpp"
 
 #if defined(_WIN32)
 

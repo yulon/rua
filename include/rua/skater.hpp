@@ -1,9 +1,7 @@
 #ifndef _RUA_SKATER_HPP
 #define _RUA_SKATER_HPP
 
-#include "macros.hpp"
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 namespace rua {
 

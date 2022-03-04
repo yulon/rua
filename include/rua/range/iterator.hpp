@@ -1,7 +1,7 @@
 #ifndef _RUA_RANGE_ITERATOR_HPP
 #define _RUA_RANGE_ITERATOR_HPP
 
-#include "../types/traits.hpp"
+#include "../util.hpp"
 
 #include <iterator>
 

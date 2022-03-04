@@ -215,4 +215,45 @@
 #define RUA_AWAIT_SUPPORTED
 #endif
 
+#if defined(__cpp_rtti) && __cpp_rtti
+#define RUA_RTTI_SUPPORTED __cpp_rtti
+#elif defined(_HAS_STATIC_RTTI) && _HAS_STATIC_RTTI
+#define RUA_RTTI_SUPPORTED _HAS_STATIC_RTTI
+#endif
+
+#define RUA_DI(T, ...)                                                         \
+	([&]() -> T {                                                              \
+		T $;                                                                   \
+		__VA_ARGS__;                                                           \
+		return $;                                                              \
+	}())
+
+#ifdef __cpp_binary_literals
+
+#define RUA_B(n) (0b##n)
+
+#else
+
+namespace rua {
+
+inline constexpr int _b_non_lowest(int n, int off);
+
+inline constexpr int _b_non_zero(int n, int off) {
+	return n ? _b_non_lowest(n, off) : 0;
+}
+
+inline constexpr int _b_non_lowest(int n, int off) {
+	return (n & 1) << off | _b_non_zero(n / 10, off + 1);
+}
+
+inline constexpr int _b(int n) {
+	return (n & 1) | _b_non_lowest(n / 10, 1);
+}
+
+} // namespace rua
+
+#define RUA_B(n) (rua::_b(n))
+
+#endif
+
 #endif

@@ -9,8 +9,7 @@
 #include "../string.hpp"
 #include "../sync/future.hpp"
 #include "../sync/wait.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <limits.h>
 #include <signal.h>

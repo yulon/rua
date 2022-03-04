@@ -4,9 +4,9 @@
 #include "dyfn.h"
 
 #include "../generic_ptr.hpp"
-#include "../macros.hpp"
 #include "../string/char_codec/base/win32.hpp"
 #include "../string/view.hpp"
+#include "../util.hpp"
 
 #include <windows.h>
 

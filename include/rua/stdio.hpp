@@ -3,7 +3,7 @@
 
 #include "stdio/c.hpp"
 
-#include "macros.hpp"
+#include "util/macros.hpp"
 
 #if defined(_WIN32)
 

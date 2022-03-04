@@ -1,8 +1,7 @@
 #ifndef _RUA_SORTED_LIST_HPP
 #define _RUA_SORTED_LIST_HPP
 
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <functional>
 #include <list>
@@ -43,7 +42,7 @@ public:
 	template <
 		typename... Args,
 		typename = enable_if_t<!std::is_same<front_t<Args...>, T>::value>>
-	void emplace(Args &&... args) {
+	void emplace(Args &&...args) {
 		emplace(T{std::forward<Args>(args)...});
 	}
 

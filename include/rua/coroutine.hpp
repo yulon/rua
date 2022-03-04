@@ -1,9 +1,8 @@
 #ifndef _RUA_COROUTINE_HPP
 #define _RUA_COROUTINE_HPP
 
-#include "macros.hpp"
 #include "skater.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <cassert>
 

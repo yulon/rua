@@ -4,9 +4,9 @@
 #include "../dozer/posix.hpp"
 
 #include "../../generic_word.hpp"
-#include "../../macros.hpp"
 #include "../../sync/future.hpp"
 #include "../../sync/wait.hpp"
+#include "../../util.hpp"
 
 #include <pthread.h>
 

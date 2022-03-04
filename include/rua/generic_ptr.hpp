@@ -1,9 +1,8 @@
 #ifndef _RUA_GENERIC_PTR_HPP
 #define _RUA_GENERIC_PTR_HPP
 
-#include "macros.hpp"
 #include "string/conv.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <cstring>
 #include <functional>

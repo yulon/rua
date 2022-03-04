@@ -1,8 +1,7 @@
 #ifndef _RUA_STRING_LEN_HPP
 #define _RUA_STRING_LEN_HPP
 
-#include "../macros.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 namespace rua {
 

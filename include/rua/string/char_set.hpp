@@ -3,8 +3,7 @@
 
 #include "view.hpp"
 
-#include "../macros.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 namespace rua {
 

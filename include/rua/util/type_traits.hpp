@@ -1,7 +1,7 @@
-#ifndef _RUA_TYPES_TRAITS_HPP
-#define _RUA_TYPES_TRAITS_HPP
+#ifndef _RUA_TYPE_TRAITS_HPP
+#define _RUA_TYPE_TRAITS_HPP
 
-#include "def.hpp"
+#include "base.hpp"
 
 #include <functional>
 #include <type_traits>

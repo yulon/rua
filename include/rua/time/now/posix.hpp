@@ -3,8 +3,7 @@
 
 #include "../real.hpp"
 
-#include "../../macros.hpp"
-#include "../../types/util.hpp"
+#include "../../util.hpp"
 
 #include <sys/time.h>
 #include <time.h>

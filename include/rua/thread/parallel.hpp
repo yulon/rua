@@ -6,7 +6,7 @@
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
 #include "../sync/future.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <functional>
 #include <iostream>

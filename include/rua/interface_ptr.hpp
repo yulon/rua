@@ -1,8 +1,8 @@
 #ifndef _RUA_INTERFACE_PTR_HPP
 #define _RUA_INTERFACE_PTR_HPP
 
-#include "macros.hpp"
-#include "types.hpp"
+#include "type_info.hpp"
+#include "util.hpp"
 
 #include <cassert>
 #include <memory>

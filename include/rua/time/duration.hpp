@@ -2,11 +2,9 @@
 #define _RUA_TIME_DURATION_HPP
 
 #include "../binary/bytes.hpp"
-#include "../macros.hpp"
 #include "../string/conv.hpp"
 #include "../string/len.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <cstring>
 #include <ctime>

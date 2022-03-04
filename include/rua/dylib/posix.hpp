@@ -4,8 +4,8 @@
 #include "dyfn.h"
 
 #include "../generic_ptr.hpp"
-#include "../macros.hpp"
 #include "../string/view.hpp"
+#include "../util.hpp"
 
 #include <dlfcn.h>
 

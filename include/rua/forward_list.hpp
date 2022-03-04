@@ -1,8 +1,7 @@
 #ifndef _RUA_FORWARD_LIST_HPP
 #define _RUA_FORWARD_LIST_HPP
 
-#include "macros.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <cassert>
 

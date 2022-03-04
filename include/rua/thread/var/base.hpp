@@ -5,9 +5,8 @@
 
 #include "../../any.hpp"
 #include "../../generic_word.hpp"
-#include "../../macros.hpp"
 #include "../../lockfree_list.hpp"
-#include "../../types/util.hpp"
+#include "../../util.hpp"
 
 #include <atomic>
 #include <cassert>

@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_VIEW_HPP
 #define _RUA_STRING_VIEW_HPP
 
-#include "../macros.hpp"
+#include "../util.hpp"
 
 #ifdef __cpp_lib_string_view
 
@@ -17,8 +17,6 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 #else
 
 #include "len.hpp"
-
-#include "../types/util.hpp"
 
 #include <cstring>
 #include <string>

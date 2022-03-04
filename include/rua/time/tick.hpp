@@ -1,7 +1,7 @@
 #ifndef _RUA_TIME_TICK_HPP
 #define _RUA_TIME_TICK_HPP
 
-#include "../macros.hpp"
+#include "../util/macros.hpp"
 
 #ifdef _WIN32
 

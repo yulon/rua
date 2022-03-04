@@ -3,11 +3,10 @@
 
 #include "./stream.hpp"
 
-#include "../macros.hpp"
 #include "../string/conv.hpp"
 #include "../sync/chan.hpp"
 #include "../thread.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <atomic>
 #include <functional>

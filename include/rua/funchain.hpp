@@ -1,7 +1,7 @@
 #ifndef _RUA_FUNCHAIN_HPP
 #define _RUA_FUNCHAIN_HPP
 
-#include "types/traits.hpp"
+#include "util.hpp"
 
 #include <functional>
 #include <vector>

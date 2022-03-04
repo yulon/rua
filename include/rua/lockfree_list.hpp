@@ -2,9 +2,8 @@
 #define _RUA_LOCKFREE_LIST_HPP
 
 #include "forward_list.hpp"
-#include "macros.hpp"
 #include "optional.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <atomic>
 #include <cassert>

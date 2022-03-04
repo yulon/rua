@@ -2,10 +2,9 @@
 #define _RUA_SYS_LISTEN_WIN32_HPP
 
 #include "../../async/result.hpp"
-#include "../../macros.hpp"
 #include "../../sync/wait.hpp"
 #include "../../time.hpp"
-#include "../../types/util.hpp"
+#include "../../util.hpp"
 
 #include <cassert>
 #include <functional>

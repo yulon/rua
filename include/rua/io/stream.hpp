@@ -3,7 +3,7 @@
 
 #include "../binary/bytes.hpp"
 #include "../interface_ptr.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 namespace rua {
 

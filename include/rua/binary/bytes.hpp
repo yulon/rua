@@ -16,15 +16,13 @@
 
 #include "bits.hpp"
 
-#include "../macros.hpp"
 #include "../optional.hpp"
 #include "../range.hpp"
 #include "../span.hpp"
 #include "../string/conv.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 #include <cstring>

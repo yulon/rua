@@ -2,9 +2,7 @@
 #define _RUA_BINARY_BITS_HPP
 
 #include "../generic_ptr.hpp"
-#include "../macros.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #ifdef __cpp_lib_bitops
 #include <bit>

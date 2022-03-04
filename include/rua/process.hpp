@@ -1,7 +1,7 @@
 #ifndef _RUA_PROCESS_HPP
 #define _RUA_PROCESS_HPP
 
-#include "macros.hpp"
+#include "util/macros.hpp"
 
 #if defined(_WIN32)
 

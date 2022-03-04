@@ -3,7 +3,7 @@
 
 #include "binary/bytes.hpp"
 #include "generic_ptr.hpp"
-#include "macros.hpp"
+#include "util.hpp"
 
 #ifdef _WIN32
 

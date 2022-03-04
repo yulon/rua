@@ -2,7 +2,7 @@
 #define _RUA_FILE_BASE_HPP
 
 #include "../time/real.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 namespace rua {
 

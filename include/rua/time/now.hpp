@@ -1,7 +1,7 @@
 #ifndef _RUA_TIME_NOW_HPP
 #define _RUA_TIME_NOW_HPP
 
-#include "../macros.hpp"
+#include "../util/macros.hpp"
 
 #ifdef _WIN32
 

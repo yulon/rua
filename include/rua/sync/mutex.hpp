@@ -2,7 +2,7 @@
 #define _RUA_SYNC_MUTEX_HPP
 
 #include "../lockfree_list.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <atomic>
 #include <cassert>

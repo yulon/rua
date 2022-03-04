@@ -4,7 +4,7 @@
 #include "duration.hpp"
 
 #include "../interface_ptr.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 #include <functional>

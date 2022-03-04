@@ -2,8 +2,7 @@
 #define _RUA_RANGE_TRAITS_HPP
 
 #include "../span.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <iterator>
 

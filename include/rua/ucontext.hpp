@@ -11,8 +11,7 @@
 #include "binary/bytes.hpp"
 #include "generic_ptr.hpp"
 #include "generic_word.hpp"
-#include "macros.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #ifndef RUA_USING_NATIVE_UCONTEXT
 

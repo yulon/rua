@@ -4,10 +4,8 @@
 #include "char_set.hpp"
 #include "view.hpp"
 
-#include "../macros.hpp"
 #include "../range/traits.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <string>
 

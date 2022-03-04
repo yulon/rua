@@ -2,7 +2,7 @@
 #define _RUA_STDIO_C_HPP
 
 #include "../io/c_stream.hpp"
-#include "../macros.hpp"
+#include "../util.hpp"
 
 #include <cstdio>
 

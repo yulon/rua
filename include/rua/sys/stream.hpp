@@ -3,7 +3,7 @@
 
 #include "../io/c_stream.hpp"
 
-#include "../macros.hpp"
+#include "../util.hpp"
 
 #ifdef _WIN32
 

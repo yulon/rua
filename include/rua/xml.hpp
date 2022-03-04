@@ -3,7 +3,7 @@
 
 #include "range.hpp"
 #include "string.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <list>
 #include <map>

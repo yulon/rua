@@ -8,7 +8,7 @@
 #include "../optional.hpp"
 #include "../skater.hpp"
 #include "../time/tick.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 #include <cstdio>

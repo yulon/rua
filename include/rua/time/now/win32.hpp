@@ -4,8 +4,7 @@
 #include "../real.hpp"
 
 #include "../../dylib/win32.hpp"
-#include "../../macros.hpp"
-#include "../../types/util.hpp"
+#include "../../util.hpp"
 
 #include <windows.h>
 

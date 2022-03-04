@@ -2,22 +2,16 @@
 #define _RUA_ASYNC_AWAIT_HPP
 
 #include "../coroutine.hpp"
-#include "../macros.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 
 namespace rua {
 
 #ifdef RUA_AWAIT_SUPPORTED
-
 #define RUA_OPERATOR_AWAIT operator co_await
-
 #else
-
 #define RUA_OPERATOR_AWAIT operator_co_await
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_DOZER_HPP
 #define _RUA_THREAD_DOZER_HPP
 
-#include "../macros.hpp"
+#include "../util/macros.hpp"
 
 #ifdef _WIN32
 

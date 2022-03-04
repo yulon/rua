@@ -9,8 +9,7 @@
 #include "../string/join.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../time/now/win32.hpp"
-#include "../types/traits.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <windows.h>
 

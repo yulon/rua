@@ -5,7 +5,7 @@
 
 #include "../async/result.hpp"
 #include "../optional.hpp"
-#include "../types/traits.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 

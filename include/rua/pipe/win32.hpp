@@ -4,7 +4,7 @@
 #include "../string.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../time/duration.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 #include <windows.h>
 

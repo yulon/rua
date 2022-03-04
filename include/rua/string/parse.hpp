@@ -5,7 +5,7 @@
 #include "view.hpp"
 
 #include "../span.hpp"
-#include "../types/util.hpp"
+#include "../util.hpp"
 
 namespace rua {
 

@@ -4,7 +4,7 @@
 #include "base.hpp"
 
 #include "../../generic_word.hpp"
-#include "../../macros.hpp"
+#include "../../util.hpp"
 
 #include <pthread.h>
 

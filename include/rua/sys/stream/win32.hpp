@@ -2,7 +2,7 @@
 #define _RUA_SYS_STREAM_WIN32_HPP
 
 #include "../../io/util.hpp"
-#include "../../macros.hpp"
+#include "../../util.hpp"
 
 #include <windows.h>
 

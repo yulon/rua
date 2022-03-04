@@ -2,10 +2,8 @@
 #define _RUA_GENERIC_WORD_HPP
 
 #include "binary/bits.hpp"
-#include "macros.hpp"
 #include "string/conv.hpp"
-#include "types/traits.hpp"
-#include "types/util.hpp"
+#include "util.hpp"
 
 #include <cassert>
 

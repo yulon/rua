@@ -1,9 +1,8 @@
 #ifndef _RUA_THREAD_DOZER_POSIX_HPP
 #define _RUA_THREAD_DOZER_POSIX_HPP
 
-#include "../../macros.hpp"
 #include "../../time/duration.hpp"
-#include "../../types/util.hpp"
+#include "../../util.hpp"
 
 #include <pthread.h>
 #include <sched.h>

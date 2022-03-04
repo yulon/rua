@@ -1,7 +1,8 @@
 #ifndef _RUA_ANY_HPP
 #define _RUA_ANY_HPP
 
-#include "types.hpp"
+#include "type_info.hpp"
+#include "util.hpp"
 
 #include <cassert>
 

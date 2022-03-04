@@ -2,7 +2,6 @@
 #define _RUA_LOG_HPP
 
 #include "io/stream.hpp"
-#include "macros.hpp"
 #include "printer.hpp"
 #include "skater.hpp"
 #include "stdio.hpp"
@@ -13,6 +12,7 @@
 #include "string/view.hpp"
 #include "sync.hpp"
 #include "thread.hpp"
+#include "util.hpp"
 
 namespace rua {
 

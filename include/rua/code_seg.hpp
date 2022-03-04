@@ -12,7 +12,7 @@
 
 #elif defined(_MSC_VER)
 
-#include "macros.hpp"
+#include "util/macros.hpp"
 
 #pragma section(".text")
 
