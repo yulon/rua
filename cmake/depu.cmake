@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-if(DEFINED _DEFAULT_DEPU_CACHE)
+if(DEFINED _DEFAULT_DEPU_DL)
 	return()
 endif()
 
-set(_DEFAULT_DEPU_CACHE "${CMAKE_SOURCE_DIR}/.depu")
+set(_DEFAULT_DEPU_DL "${CMAKE_SOURCE_DIR}/.depu")
 
 if(NOT DEFINED DEPU_DL)
 	if(DEFINED CACHE{DEPU_DL})
@@ -12,7 +12,7 @@ if(NOT DEFINED DEPU_DL)
 	elseif(DEFINED ENV{DEPU_DL})
 		set(DEPU_DL "$ENV{DEPU_DL}")
 	else()
-		set(DEPU_DL "${_DEFAULT_DEPU_CACHE}")
+		set(DEPU_DL "${_DEFAULT_DEPU_DL}")
 	endif()
 endif()
 
