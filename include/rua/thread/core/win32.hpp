@@ -1,8 +1,6 @@
 #ifndef _RUA_THREAD_CORE_WIN32_HPP
 #define _RUA_THREAD_CORE_WIN32_HPP
 
-#include "../dozer/win32.hpp"
-
 #include "../../async/result.hpp"
 #include "../../dylib/win32.hpp"
 #include "../../generic_word.hpp"

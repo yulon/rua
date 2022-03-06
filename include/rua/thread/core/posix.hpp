@@ -1,8 +1,6 @@
 #ifndef _RUA_THREAD_CORE_POSIX_HPP
 #define _RUA_THREAD_CORE_POSIX_HPP
 
-#include "../dozer/posix.hpp"
-
 #include "../../generic_word.hpp"
 #include "../../sync/future.hpp"
 #include "../../sync/wait.hpp"

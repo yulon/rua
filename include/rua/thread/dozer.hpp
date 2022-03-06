@@ -10,6 +10,18 @@
 namespace rua {
 
 using thread_dozer = win32::thread_dozer;
+using thread_waker = win32::thread_waker;
+
+} // namespace rua
+
+#elif defined(RUA_DARWIN)
+
+#include "dozer/darwin.hpp"
+
+namespace rua {
+
+using thread_dozer = darwin::thread_dozer;
+using thread_waker = darwin::thread_waker;
 
 } // namespace rua
 
@@ -20,6 +32,7 @@ using thread_dozer = win32::thread_dozer;
 namespace rua {
 
 using thread_dozer = posix::thread_dozer;
+using thread_waker = posix::thread_waker;
 
 } // namespace rua
 

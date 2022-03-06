@@ -1,16 +1,14 @@
 #ifndef _RUA_THREAD_DOZER_POSIX_HPP
 #define _RUA_THREAD_DOZER_POSIX_HPP
 
-#include "../../time/duration.hpp"
+#include "../../time.hpp"
 #include "../../util.hpp"
 
-#include <pthread.h>
 #include <sched.h>
-#include <signal.h>
+#include <semaphore.h>
 #include <time.h>
 #include <unistd.h>
 
-#include <atomic>
 #include <cassert>
 #include <memory>
 
@@ -18,35 +16,36 @@ namespace rua { namespace posix {
 
 class thread_waker {
 public:
-	thread_waker(pthread_t tid) : _tid(tid), _state(0) {}
+	using native_handle_t = sem_t *;
+
+	thread_waker() {
+		_need_close = !sem_init(&_sem, 0, 0);
+	}
 
 	~thread_waker() {
-		if (!_tid) {
+		if (!_need_close) {
 			return;
 		}
-		_tid = 0;
+		sem_destroy(&_sem);
+		_need_close = false;
+	}
+
+	native_handle_t native_handle() {
+		return &_sem;
 	}
 
 	void wake() {
-		auto state_val = _state.exchange(2);
-		if (!state_val || state_val == 2) {
-			return;
-		}
-		while (!pthread_kill(_tid, SIGCONT) && _state.load())
-			;
+		sem_post(&_sem);
 	}
 
 	void reset() {
-		_state.store(0);
-	}
-
-	std::atomic<uintptr_t> &state() {
-		return _state;
+		while (!sem_trywait(&_sem))
+			;
 	}
 
 private:
-	pthread_t _tid;
-	std::atomic<uintptr_t> _state;
+	sem_t _sem;
+	bool _need_close;
 };
 
 class thread_dozer {
@@ -64,62 +63,20 @@ public:
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
 
-		auto &state = _wkr->state();
-
-		auto state_val = state.load();
-		if (state_val == 2) {
-			_wkr->reset();
-			return true;
+		if (timeout == duration_max()) {
+			return !sem_wait(_wkr->native_handle());
 		}
-		assert(!state_val);
-		while (!state.compare_exchange_weak(state_val, 1)) {
-			assert(state_val != 1);
-			if (state_val == 2) {
-				_wkr->reset();
-				return true;
-			}
-		}
-
-		auto dur = timeout.c_timespec();
-		timespec rem;
-		for (;;) {
-			auto is_time_up = ::nanosleep(&dur, &rem) != -1;
-			auto state_val = state.load();
-			if (state_val == 2) {
-				_wkr->reset();
-				return true;
-			}
-			if (timeout == duration_max()) {
-				continue;
-			}
-			if (is_time_up) {
-				assert(state_val == 1);
-				return state.exchange(0) == 2;
-			}
-			dur = rem;
-		}
-		return false;
+		auto ts = (now().to_unix().elapsed() + timeout).c_timespec();
+		return !sem_timedwait(_wkr->native_handle(), &ts);
 	}
 
 	std::weak_ptr<thread_waker> get_waker() {
-		if (_wkr && _wkr.use_count() == 1) {
+		if (_wkr) {
 			_wkr->reset();
-			return _wkr;
+		} else {
+			_wkr = std::make_shared<thread_waker>();
 		}
-		static auto act_r = ([]() -> int {
-			static struct sigaction new_act, old_act;
-			new_act.sa_handler = [](int sig) {
-				if (old_act.sa_handler) {
-					old_act.sa_handler(sig);
-				}
-			};
-			new_act.sa_flags = 0;
-			sigfillset(&new_act.sa_mask);
-			old_act.sa_handler = nullptr;
-			return sigaction(SIGCONT, &new_act, &old_act);
-		})();
-		assert(act_r == 0);
-		return assign(_wkr, std::make_shared<thread_waker>(pthread_self()));
+		return _wkr;
 	}
 
 private:
