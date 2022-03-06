@@ -1,5 +1,5 @@
-#ifndef _RUA_TYPE_TRAITS_HPP
-#define _RUA_TYPE_TRAITS_HPP
+#ifndef _RUA_UTIL_TYPE_TRAITS_HPP
+#define _RUA_UTIL_TYPE_TRAITS_HPP
 
 #include "base.hpp"
 
@@ -413,6 +413,58 @@ struct index_of : _index_of<sizeof...(Types), T, Types...> {};
 template <typename T, typename... Types>
 inline constexpr auto index_of_v = index_of<T, Types...>::value;
 #endif
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename... Types>
+struct _same;
+
+template <typename T>
+struct _same<T> {
+	using type = void;
+};
+
+template <typename T, typename Cur, typename... Others>
+struct _same<T, Cur, Others...> : std::conditional<
+									  std::is_same<T, decay_t<Cur>>::value,
+									  Cur,
+									  typename _same<T, Others...>::type> {};
+
+template <typename T, typename... Types>
+struct _convertible;
+
+template <typename T>
+struct _convertible<T> {
+	using type = void;
+};
+
+template <typename T, typename Cur, typename... Others>
+struct _convertible<T, Cur, Others...>
+	: std::conditional<
+		  std::is_convertible<T, Cur>::value,
+		  Cur,
+		  typename _convertible<T, Others...>::type> {};
+
+template <typename Samed, typename Convertible>
+struct _same_or_convertible {
+	using type = Samed;
+};
+
+template <typename Convertible>
+struct _same_or_convertible<void, Convertible> {
+	using type = Convertible;
+};
+
+template <>
+struct _same_or_convertible<void, void> {};
+
+template <typename T, typename... Types>
+struct convertible : _same_or_convertible<
+						 typename _same<decay_t<T>, Types...>::type,
+						 typename _convertible<T, Types...>::type> {};
+
+template <typename T, typename... Args>
+using convertible_t = typename convertible<T, Args...>::type;
 
 ////////////////////////////////////////////////////////////////////////////
 

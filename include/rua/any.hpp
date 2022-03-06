@@ -118,6 +118,18 @@ public:
 		return **reinterpret_cast<const T *const *>(&_sto[0]);
 	}
 
+	template <typename T, typename Emplaced = decay_t<T &&>>
+	Emplaced &emplace(T &&val) & {
+		reset();
+		return _emplace<Emplaced>(std::forward<T>(val));
+	}
+
+	template <typename T, typename Emplaced = decay_t<T &&>>
+	Emplaced &&emplace(T &&val) && {
+		reset();
+		return std::move(_emplace<Emplaced>(std::forward<T>(val)));
+	}
+
 	template <typename T, typename... Args>
 	T &emplace(Args &&...args) & {
 		reset();

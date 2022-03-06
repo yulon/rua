@@ -13,12 +13,16 @@ class variant : public enable_type_info {
 public:
 	constexpr variant() : enable_type_info(), _sto() {}
 
-	template <
-		typename T,
-		typename =
-			enable_if_t<index_of<decay_t<T>, Types...>::value != nullpos>>
+	template <typename T, typename Emplaced = convertible_t<T &&, Types...>>
 	variant(T &&val) {
-		_emplace<decay_t<T>>(std::forward<T>(val));
+		_emplace<Emplaced>(std::forward<T>(val));
+	}
+
+	template <
+		typename U,
+		typename Emplaced = convertible_t<std::initializer_list<U>, Types...>>
+	variant(std::initializer_list<U> il) {
+		_emplace<Emplaced>(il);
 	}
 
 	template <typename T, typename... Args>
@@ -123,6 +127,34 @@ public:
 	bool visit(Visitors &&...viss) const & {
 		return has_value() &&
 			   _visitors_visit_types(std::forward<Visitors>(viss)...);
+	}
+
+	template <typename T, typename Emplaced = convertible_t<T &&, Types...>>
+	Emplaced &emplace(T &&val) & {
+		reset();
+		return _emplace<Emplaced>(std::forward<T>(val));
+	}
+
+	template <typename T, typename Emplaced = convertible_t<T &&, Types...>>
+	Emplaced &&emplace(T &&val) && {
+		reset();
+		return std::move(_emplace<Emplaced>(std::forward<T>(val)));
+	}
+
+	template <
+		typename U,
+		typename Emplaced = convertible_t<std::initializer_list<U>, Types...>>
+	Emplaced &emplace(std::initializer_list<U> il) & {
+		reset();
+		return _emplace<Emplaced>(il);
+	}
+
+	template <
+		typename U,
+		typename Emplaced = convertible_t<std::initializer_list<U>, Types...>>
+	Emplaced &&emplace(std::initializer_list<U> il) && {
+		reset();
+		return std::move(_emplace<Emplaced>(il));
 	}
 
 	template <typename T, typename... Args>
