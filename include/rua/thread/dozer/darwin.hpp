@@ -54,6 +54,8 @@ public:
 	constexpr thread_dozer() : _wkr() {}
 
 	void sleep(duration timeout) {
+		assert(timeout >= 0);
+
 		auto dur = timeout.c_timespec();
 		timespec rem;
 		while (::nanosleep(&dur, &rem) == -1) {
@@ -63,15 +65,18 @@ public:
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
+		assert(timeout >= 0);
 
 		if (timeout == duration_max()) {
-			return semaphore_wait(_wkr->native_handle()) == KERN_SUCCESS;
+			return semaphore_wait(_wkr->native_handle()) !=
+				   KERN_OPERATION_TIMED_OUT;
 		}
 		return semaphore_timedwait(
 				   _wkr->native_handle(),
 				   {timeout.seconds<decltype(mach_timespec_t::tv_sec)>(),
 					timeout.remaining_nanoseconds<
-						decltype(mach_timespec_t::tv_nsec)>()}) == KERN_SUCCESS;
+						decltype(mach_timespec_t::tv_nsec)>()}) !=
+			   KERN_OPERATION_TIMED_OUT;
 	}
 
 	std::weak_ptr<thread_waker> get_waker() {

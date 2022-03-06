@@ -53,6 +53,8 @@ public:
 	constexpr thread_dozer() : _wkr() {}
 
 	void sleep(duration timeout) {
+		assert(timeout >= 0);
+
 		auto dur = timeout.c_timespec();
 		timespec rem;
 		while (::nanosleep(&dur, &rem) == -1) {
@@ -62,12 +64,16 @@ public:
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
+		assert(timeout >= 0);
 
 		if (timeout == duration_max()) {
-			return !sem_wait(_wkr->native_handle());
+			return !sem_wait(_wkr->native_handle()) || errno != ETIMEDOUT;
+		}
+		if (!timeout) {
+			return !sem_trywait(_wkr->native_handle()) || errno != ETIMEDOUT;
 		}
 		auto ts = (now().to_unix().elapsed() + timeout).c_timespec();
-		return !sem_timedwait(_wkr->native_handle(), &ts);
+		return !sem_timedwait(_wkr->native_handle(), &ts) || errno != ETIMEDOUT;
 	}
 
 	std::weak_ptr<thread_waker> get_waker() {

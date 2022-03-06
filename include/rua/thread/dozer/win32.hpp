@@ -52,11 +52,14 @@ public:
 	~thread_dozer() = default;
 
 	void sleep(duration timeout) {
+		assert(timeout >= 0);
+
 		Sleep(timeout.milliseconds<DWORD, INFINITE>());
 	}
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
+		assert(timeout >= 0);
 
 		return WaitForSingleObject(
 				   _wkr->native_handle(),
