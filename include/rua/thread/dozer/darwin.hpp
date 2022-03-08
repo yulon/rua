@@ -80,12 +80,11 @@ public:
 	}
 
 	std::weak_ptr<thread_waker> get_waker() {
-		if (_wkr) {
+		if (_wkr && _wkr.use_count() == 1) {
 			_wkr->reset();
-		} else {
-			_wkr = std::make_shared<thread_waker>();
+			return _wkr;
 		}
-		return _wkr;
+		return assign(_wkr, std::make_shared<thread_waker>());
 	}
 
 private:

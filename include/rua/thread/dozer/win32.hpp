@@ -68,7 +68,7 @@ public:
 
 	std::weak_ptr<thread_waker> get_waker() {
 		if (_wkr && _wkr.use_count() == 1) {
-			_wkr.reset();
+			_wkr->reset();
 			return _wkr;
 		}
 		return assign(_wkr, std::make_shared<thread_waker>());
