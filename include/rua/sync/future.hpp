@@ -4,8 +4,8 @@
 #include "wait.hpp"
 
 #include "../async/result.hpp"
-#include "../optional.hpp"
 #include "../util.hpp"
+#include "../variant.hpp"
 
 #include <cassert>
 
@@ -14,7 +14,7 @@ namespace rua {
 template <typename T = void, typename Promised = T>
 class future : public waiter<future<T, Promised>, T> {
 public:
-	constexpr future() : _r(), _ar() {}
+	constexpr future() : _r() {}
 
 	template <
 		typename... Result,
@@ -24,43 +24,43 @@ public:
 			 !std::is_base_of<future, decay_t<front_t<Result &&...>>>::value)>>
 	future(Result &&...result) : _r(std::forward<Result>(result)...) {}
 
-	explicit future(async_result<T> ar) : _ar(std::move(ar)) {}
+	explicit future(async_result<Promised> ar) : _r(std::move(ar)) {}
 
-	explicit future(async_result_context<T> &ctx) : _ar(ctx) {}
+	explicit future(async_result_context<Promised> &arc) :
+		_r(async_result<Promised>(arc)) {}
 
 	template <
 		typename U,
 		typename = enable_if_t<
-			std::is_constructible<T, U &&>::value &&
-			!std::is_constructible<T, future<U, Promised> &&>::value>>
+			!std::is_same<T, U>::value && std::is_convertible<U &&, T>::value &&
+			!std::is_convertible<future<U, Promised> &&, T>::value>>
+	future(future<U, Promised> &&src) : _r(std::move(src._r)) {}
+
+	template <
+		typename U,
+		typename = enable_if_t<!std::is_convertible<U &&, T>::value>,
+		typename =
+			enable_if_t<!std::is_convertible<future<U, Promised> &&, T>::value>>
 	future(future<U, Promised> &&src) :
-		_r(std::move(src._r)), _ar(std::move(src._ar)) {}
+		_r(std::move(src._r).template as<async_result<Promised>>()) {}
 
-	template <
-		typename U,
-		typename = enable_if_t<!std::is_constructible<T, U &&>::value>,
-		typename = enable_if_t<
-			!std::is_constructible<T, future<U, Promised> &&>::value>>
-	future(future<U, Promised> &&src) : _ar(std::move(src._ar)) {
-		assert(!src._r);
-	}
-
-	future(future &&src) : _r(std::move(src._r)), _ar(std::move(src._ar)) {}
+	future(future &&src) : _r(std::move(src._r)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT_R(future);
 
 	bool await_ready() {
-		return _r.has_value();
+		return _r.template type_is<T>();
 	}
 
 	template <typename Resume>
 	bool await_suspend(Resume resume) {
-		assert(_ar);
+		assert(_r.template type_is<async_result<Promised>>());
+		auto &ar = _r.template as<async_result<Promised>>();
 #ifdef NDEBUG
-		return _ar.try_set_on_put(std::move(resume)) ==
+		return ar.try_set_on_put(std::move(resume)) ==
 			   async_result_state::has_on_put;
 #else
-		auto state = _ar.try_set_on_put(std::move(resume));
+		auto state = ar.try_set_on_put(std::move(resume));
 		if (state == async_result_state::has_on_put) {
 			return true;
 		}
@@ -70,17 +70,17 @@ public:
 	}
 
 	T await_resume() {
-		if (!_r) {
-			assert(_ar);
+		if (_r.template type_is<async_result<Promised>>()) {
+			auto &ar = _r.template as<async_result<Promised>>();
 #ifdef NDEBUG
-			return static_cast<T>(*_ar.checkout());
+			return static_cast<T>(*ar.checkout());
 #else
-			auto r = _ar.checkout();
+			auto r = ar.checkout();
 			assert(r);
 			return static_cast<T>(*std::move(r));
 #endif
 		}
-		return *std::move(_r);
+		return std::move(_r).template as<T>();
 	}
 
 	template <typename U>
@@ -90,12 +90,10 @@ public:
 
 	void reset() {
 		_r.reset();
-		_ar.reset();
 	}
 
 private:
-	optional<T> _r;
-	async_result<Promised> _ar;
+	variant<T, async_result<Promised>> _r;
 };
 
 template <>
@@ -105,7 +103,7 @@ public:
 
 	explicit future(async_result<> ar) : _ar(std::move(ar)) {}
 
-	explicit future(async_result_context<> &ctx) : _ar(ctx) {}
+	explicit future(async_result_context<> &arc) : _ar(arc) {}
 
 	future(future &&src) : _ar(std::move(src._ar)) {}
 
@@ -152,7 +150,7 @@ public:
 	explicit promise(async_result_putter<T> ar_put) :
 		_ar_put(std::move(ar_put)) {}
 
-	explicit promise(async_result_context<T> &ctx) : _ar_put(ctx) {}
+	explicit promise(async_result_context<T> &arc) : _ar_put(arc) {}
 
 	explicit operator bool() const {
 		return !!_ar_put;
@@ -189,7 +187,7 @@ public:
 	explicit promise(async_result_putter<> ar_put) :
 		_ar_put(std::move(ar_put)) {}
 
-	explicit promise(async_result_context<> &ctx) : _ar_put(ctx) {}
+	explicit promise(async_result_context<> &arc) : _ar_put(arc) {}
 
 	explicit operator bool() const {
 		return !!_ar_put;
