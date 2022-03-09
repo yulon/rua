@@ -8,6 +8,7 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
+#include <memory>
 
 namespace rua {
 
@@ -38,13 +39,14 @@ struct async_result_context<void> : async_result_context_base<void> {
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
+using default_async_result_deleter =
+	std::default_delete<async_result_context<T>>;
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T, typename Deteler>
 class async_result_putter_base {
 public:
-	constexpr async_result_putter_base() : _ctx(nullptr) {}
-
-	explicit async_result_putter_base(async_result_context<T> &ctx) :
-		_ctx(&ctx) {}
-
 	~async_result_putter_base() {
 		reset();
 	}
@@ -76,7 +78,7 @@ public:
 			break;
 
 		case async_result_state::done:
-			delete _ctx;
+			Deteler{}(_ctx);
 			break;
 
 		default:
@@ -92,15 +94,20 @@ public:
 
 protected:
 	async_result_context<T> *_ctx;
+
+	constexpr async_result_putter_base() : _ctx(nullptr) {}
+
+	explicit async_result_putter_base(async_result_context<T> &ctx) :
+		_ctx(&ctx) {}
 };
 
-template <typename T = void>
-class async_result_putter : public async_result_putter_base<T> {
+template <typename T = void, typename Deteler = default_async_result_deleter<T>>
+class async_result_putter : public async_result_putter_base<T, Deteler> {
 public:
 	constexpr async_result_putter() = default;
 
 	explicit async_result_putter(async_result_context<T> &ctx) :
-		async_result_putter_base<T>(ctx) {}
+		async_result_putter_base<T, Deteler>(ctx) {}
 
 	void operator()(T value, std::function<void(T)> undo = nullptr) {
 		auto &ctx = this->_ctx;
@@ -129,7 +136,7 @@ public:
 			if (ctx->undo) {
 				ctx->undo(*std::move(ctx->value));
 			};
-			delete ctx;
+			Deteler{}(ctx);
 			break;
 
 		default:
@@ -140,13 +147,14 @@ public:
 	}
 };
 
-template <>
-class async_result_putter<void> : public async_result_putter_base<void> {
+template <typename Deteler>
+class async_result_putter<void, Deteler>
+	: public async_result_putter_base<void, Deteler> {
 public:
 	constexpr async_result_putter() = default;
 
 	explicit async_result_putter(async_result_context<void> &ctx) :
-		async_result_putter_base<void>(ctx) {}
+		async_result_putter_base<void, Deteler>(ctx) {}
 
 	void operator()(std::function<void()> undo = nullptr) {
 		auto &ctx = this->_ctx;
@@ -170,7 +178,7 @@ public:
 			if (ctx->undo) {
 				ctx->undo();
 			};
-			delete ctx;
+			Deteler{}(ctx);
 			break;
 
 		default:
@@ -183,13 +191,9 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
+template <typename T, typename Deteler>
 class async_result_base {
 public:
-	~async_result_base() {
-		reset();
-	}
-
 	async_result_base(async_result_base &&src) :
 		_ctx(exchange(src._ctx, nullptr)) {}
 
@@ -225,7 +229,7 @@ public:
 			return async_result_state::has_on_put;
 
 		case async_result_state::done:
-			delete _ctx;
+			Deteler{}(_ctx);
 			_ctx = nullptr;
 			break;
 
@@ -236,7 +240,7 @@ public:
 		return old_state;
 	}
 
-	async_result_putter<T> get_putter(std::function<void()> on_put) {
+	async_result_putter<T, Deteler> get_putter(std::function<void()> on_put) {
 		assert(!_ctx);
 #ifdef NDEBUG
 		try_set_on_put(std::move(on_put));
@@ -245,38 +249,15 @@ public:
 			try_set_on_put(std::move(on_put)) ==
 			async_result_state::has_on_put);
 #endif
-		return async_result_putter<T>(*_ctx);
+		return async_result_putter<T, Deteler>(*_ctx);
 	}
 
-	async_result_putter<T> get_putter() {
+	async_result_putter<T, Deteler> get_putter() {
 		if (!_ctx) {
 			_ctx = new async_result_context<T>;
 			_ctx->state = async_result_state::no_on_put;
 		}
-		return async_result_putter<T>(*_ctx);
-	}
-
-	void reset() {
-		if (!_ctx) {
-			return;
-		}
-
-		auto old_state = _ctx->state.exchange(async_result_state::done);
-
-		switch (old_state) {
-		case async_result_state::has_value:
-			_back_to_putter();
-			RUA_FALLTHROUGH;
-
-		case async_result_state::done:
-			delete _ctx;
-			break;
-
-		default:
-			break;
-		}
-
-		_ctx = nullptr;
+		return async_result_putter<T, Deteler>(*_ctx);
 	}
 
 	async_result_context<T> *release() {
@@ -289,39 +270,25 @@ protected:
 	constexpr async_result_base() : _ctx(nullptr) {}
 
 	explicit async_result_base(async_result_context<T> &ctx) : _ctx(&ctx) {}
-
-	inline void _back_to_putter();
 };
 
-template <typename T>
-inline void async_result_base<T>::_back_to_putter() {
-	assert(_ctx);
-	assert(_ctx->value);
-
-	if (!_ctx->undo) {
-		_ctx->value.reset();
-		return;
-	}
-	_ctx->undo(*std::move(_ctx->value));
-}
-
-template <>
-inline void async_result_base<void>::_back_to_putter() {
-	assert(_ctx);
-
-	if (!_ctx->undo) {
-		return;
-	}
-	_ctx->undo();
-}
-
-template <typename T = void>
-class async_result : public async_result_base<T> {
+template <typename T = void, typename Deteler = default_async_result_deleter<T>>
+class async_result : public async_result_base<T, Deteler> {
 public:
-	constexpr async_result() : async_result_base<T>() {}
+	constexpr async_result() : async_result_base<T, Deteler>() {}
 
 	explicit async_result(async_result_context<T> &ctx) :
-		async_result_base<T>(ctx) {}
+		async_result_base<T, Deteler>(ctx) {}
+
+	~async_result() {
+		reset();
+	}
+
+	async_result(async_result &&src) :
+		async_result_base<T, Deteler>(
+			static_cast<async_result_base<T, Deteler> &&>(std::move(src))) {}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(async_result)
 
 	optional<T> checkout() {
 		optional<T> r;
@@ -341,7 +308,7 @@ public:
 			RUA_FALLTHROUGH;
 
 		case async_result_state::done:
-			delete ctx;
+			Deteler{}(ctx);
 			break;
 
 		default:
@@ -356,32 +323,69 @@ public:
 		if (lose_when_putting) {
 			return checkout();
 		}
-		auto ctx = this->_ctx;
+		auto &ctx = this->_ctx;
 		auto r = checkout();
 		if (!r) {
-			delete ctx;
+			Deteler{}(ctx);
+			ctx = nullptr;
 		}
 		return r;
 	}
+
+	void reset() {
+		auto &ctx = this->_ctx;
+
+		if (!ctx) {
+			return;
+		}
+
+		auto old_state = ctx->state.exchange(async_result_state::done);
+
+		switch (old_state) {
+		case async_result_state::has_value:
+			if (ctx->undo) {
+				ctx->undo(*std::move(ctx->value));
+			}
+			RUA_FALLTHROUGH;
+
+		case async_result_state::done:
+			Deteler{}(ctx);
+			break;
+
+		default:
+			break;
+		}
+
+		ctx = nullptr;
+	}
 };
 
-template <>
-class async_result<void> : public async_result_base<void> {
+template <typename Deteler>
+class async_result<void, Deteler> : public async_result_base<void, Deteler> {
 public:
-	constexpr async_result() : async_result_base<void>() {}
+	constexpr async_result() : async_result_base<void, Deteler>() {}
 
 	explicit async_result(async_result_context<void> &ctx) :
-		async_result_base<void>(ctx) {}
+		async_result_base<void, Deteler>(ctx) {}
+
+	~async_result() {
+		reset();
+	}
+
+	async_result(async_result &&src) :
+		async_result_base<void, Deteler>(
+			static_cast<async_result_base<void, Deteler> &&>(std::move(src))) {}
+
+	RUA_OVERLOAD_ASSIGNMENT_R(async_result)
 
 	bool checkout() {
 		auto &ctx = this->_ctx;
-		assert(ctx);
 
 		if (!ctx) {
 			return false;
 		}
 
-		auto old_state = _ctx->state.exchange(async_result_state::done);
+		auto old_state = ctx->state.exchange(async_result_state::done);
 
 		switch (old_state) {
 
@@ -389,7 +393,7 @@ public:
 			return true;
 
 		case async_result_state::done:
-			delete ctx;
+			Deteler{}(ctx);
 			break;
 
 		default:
@@ -404,12 +408,40 @@ public:
 		if (lose_when_putting) {
 			return checkout();
 		}
-		auto ctx = this->_ctx;
+		auto &ctx = this->_ctx;
 		auto r = checkout();
 		if (!r) {
-			delete ctx;
+			Deteler{}(ctx);
+			ctx = nullptr;
 		}
 		return r;
+	}
+
+	void reset() {
+		auto &ctx = this->_ctx;
+
+		if (!ctx) {
+			return;
+		}
+
+		auto old_state = ctx->state.exchange(async_result_state::done);
+
+		switch (old_state) {
+		case async_result_state::has_value:
+			if (ctx->undo) {
+				ctx->undo();
+			}
+			RUA_FALLTHROUGH;
+
+		case async_result_state::done:
+			Deteler{}(ctx);
+			break;
+
+		default:
+			break;
+		}
+
+		ctx = nullptr;
 	}
 };
 
