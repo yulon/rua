@@ -1,7 +1,8 @@
-#ifndef _RUA_IO_C_STREAM_HPP
-#define _RUA_IO_C_STREAM_HPP
+#ifndef _RUA_SYS_STREAM_C_HPP
+#define _RUA_SYS_STREAM_C_HPP
 
-#include "stream.hpp"
+#include "../../io/util.hpp"
+#include "../../util.hpp"
 
 #include <cstddef>
 #include <cstdio>

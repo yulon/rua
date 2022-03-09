@@ -1,7 +1,7 @@
 #ifndef _RUA_STDIO_C_HPP
 #define _RUA_STDIO_C_HPP
 
-#include "../io/c_stream.hpp"
+#include "../sys/stream/c.hpp"
 #include "../util.hpp"
 
 #include <cstdio>
