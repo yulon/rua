@@ -9,8 +9,8 @@
 
 namespace rua {
 
-using thread_dozer = win32::thread_dozer;
-using thread_waker = win32::thread_waker;
+using dozer = win32::dozer;
+using waker = win32::waker;
 
 } // namespace rua
 
@@ -20,8 +20,8 @@ using thread_waker = win32::thread_waker;
 
 namespace rua {
 
-using thread_dozer = darwin::thread_dozer;
-using thread_waker = darwin::thread_waker;
+using dozer = darwin::dozer;
+using waker = darwin::waker;
 
 } // namespace rua
 
@@ -31,8 +31,8 @@ using thread_waker = darwin::thread_waker;
 
 namespace rua {
 
-using thread_dozer = posix::thread_dozer;
-using thread_waker = posix::thread_waker;
+using dozer = posix::dozer;
+using waker = posix::waker;
 
 } // namespace rua
 

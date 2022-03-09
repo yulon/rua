@@ -11,13 +11,13 @@
 
 namespace rua { namespace win32 {
 
-class thread_waker {
+class waker {
 public:
 	using native_handle_t = HANDLE;
 
-	thread_waker() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
+	waker() : _h(CreateEventW(nullptr, false, false, nullptr)) {}
 
-	~thread_waker() {
+	~waker() {
 		if (!_h) {
 			return;
 		}
@@ -45,17 +45,9 @@ private:
 	HANDLE _h;
 };
 
-class thread_dozer {
+class dozer {
 public:
-	constexpr thread_dozer() : _wkr() {}
-
-	~thread_dozer() = default;
-
-	void sleep(duration timeout) {
-		assert(timeout >= 0);
-
-		Sleep(timeout.milliseconds<DWORD, INFINITE>());
-	}
+	constexpr dozer() : _wkr() {}
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
@@ -66,16 +58,16 @@ public:
 				   timeout.milliseconds<DWORD, INFINITE>()) != WAIT_TIMEOUT;
 	}
 
-	std::weak_ptr<thread_waker> get_waker() {
+	std::weak_ptr<waker> get_waker() {
 		if (_wkr && _wkr.use_count() == 1) {
 			_wkr->reset();
 			return _wkr;
 		}
-		return assign(_wkr, std::make_shared<thread_waker>());
+		return assign(_wkr, std::make_shared<waker>());
 	}
 
 private:
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<waker> _wkr;
 };
 
 }} // namespace rua::win32

@@ -21,6 +21,7 @@
 #include "../sys/info/win32.hpp"
 #include "../sys/listen/win32.hpp"
 #include "../sys/stream/win32.hpp"
+#include "../thread/sleep/win32.hpp"
 #include "../util.hpp"
 
 #include <psapi.h>

@@ -6,25 +6,24 @@
 
 #include <mach/mach.h>
 #include <mach/semaphore.h>
-#include <time.h>
 
 #include <cassert>
 #include <memory>
 
 namespace rua { namespace darwin {
 
-class thread_waker {
+class waker {
 public:
 	using native_handle_t = semaphore_t;
 
-	thread_waker() {
+	waker() {
 		if (semaphore_create(mach_task_self(), &_sem, SYNC_POLICY_FIFO, 0) !=
 			KERN_SUCCESS) {
 			_sem = 0;
 		}
 	}
 
-	~thread_waker() {
+	~waker() {
 		if (!_sem) {
 			return;
 		}
@@ -49,19 +48,9 @@ private:
 	semaphore_t _sem;
 };
 
-class thread_dozer {
+class dozer {
 public:
-	constexpr thread_dozer() : _wkr() {}
-
-	void sleep(duration timeout) {
-		assert(timeout >= 0);
-
-		auto dur = timeout.c_timespec();
-		timespec rem;
-		while (::nanosleep(&dur, &rem) == -1) {
-			dur = rem;
-		}
-	}
+	constexpr dozer() : _wkr() {}
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
@@ -79,16 +68,16 @@ public:
 			   KERN_OPERATION_TIMED_OUT;
 	}
 
-	std::weak_ptr<thread_waker> get_waker() {
+	std::weak_ptr<waker> get_waker() {
 		if (_wkr && _wkr.use_count() == 1) {
 			_wkr->reset();
 			return _wkr;
 		}
-		return assign(_wkr, std::make_shared<thread_waker>());
+		return assign(_wkr, std::make_shared<waker>());
 	}
 
 private:
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<waker> _wkr;
 };
 
 }} // namespace rua::darwin

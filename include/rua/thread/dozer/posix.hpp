@@ -14,15 +14,15 @@
 
 namespace rua { namespace posix {
 
-class thread_waker {
+class waker {
 public:
 	using native_handle_t = sem_t *;
 
-	thread_waker() {
+	waker() {
 		_need_close = !sem_init(&_sem, 0, 0);
 	}
 
-	~thread_waker() {
+	~waker() {
 		if (!_need_close) {
 			return;
 		}
@@ -48,19 +48,9 @@ private:
 	bool _need_close;
 };
 
-class thread_dozer {
+class dozer {
 public:
-	constexpr thread_dozer() : _wkr() {}
-
-	void sleep(duration timeout) {
-		assert(timeout >= 0);
-
-		auto dur = timeout.c_timespec();
-		timespec rem;
-		while (::nanosleep(&dur, &rem) == -1) {
-			dur = rem;
-		}
-	}
+	constexpr dozer() : _wkr() {}
 
 	bool doze(duration timeout = duration_max()) {
 		assert(_wkr);
@@ -76,16 +66,16 @@ public:
 		return !sem_timedwait(_wkr->native_handle(), &ts) || errno != ETIMEDOUT;
 	}
 
-	std::weak_ptr<thread_waker> get_waker() {
+	std::weak_ptr<waker> get_waker() {
 		if (_wkr && _wkr.use_count() == 1) {
 			_wkr->reset();
 			return _wkr;
 		}
-		return assign(_wkr, std::make_shared<thread_waker>());
+		return assign(_wkr, std::make_shared<waker>());
 	}
 
 private:
-	std::shared_ptr<thread_waker> _wkr;
+	std::shared_ptr<waker> _wkr;
 };
 
 }} // namespace rua::posix

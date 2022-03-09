@@ -17,8 +17,8 @@ TEST_CASE("thread") {
 	REQUIRE(r == "ok");
 }
 
-TEST_CASE("reset thread_waker when woke") {
-	rua::thread_dozer dzr;
+TEST_CASE("reset waker when woke") {
+	rua::dozer dzr;
 	auto wkr = dzr.get_waker();
 
 	auto t = rua::tick();

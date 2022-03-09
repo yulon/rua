@@ -16,7 +16,7 @@ inline Result wait(Awaitable &&awaitable) {
 	if (awaiter.await_ready()) {
 		return awaiter.await_resume();
 	}
-	thread_dozer dzr;
+	dozer dzr;
 	auto wkr_wptr = dzr.get_waker();
 	if (await_suspend(awaiter, [wkr_wptr]() {
 			auto wkr_sp = wkr_wptr.lock();
@@ -44,7 +44,7 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 		return nullopt;
 	}
 
-	thread_dozer dzr;
+	dozer dzr;
 	auto wkr_wptr = dzr.get_waker();
 	if (!await_suspend(awaiter, [wkr_wptr]() {
 			auto wkr_sp = wkr_wptr.lock();
@@ -84,7 +84,7 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 		return false;
 	}
 
-	thread_dozer dzr;
+	dozer dzr;
 	auto wkr_wptr = dzr.get_waker();
 	if (!await_suspend(awaiter, [wkr_wptr]() {
 			auto wkr_sp = wkr_wptr.lock();

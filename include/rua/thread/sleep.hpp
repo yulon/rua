@@ -1,15 +1,28 @@
 #ifndef _RUA_THREAD_SLEEP_HPP
 #define _RUA_THREAD_SLEEP_HPP
 
-#include "../thread/dozer.hpp"
+#include "../util/macros.hpp"
+
+#ifdef _WIN32
+
+#include "sleep/win32.hpp"
 
 namespace rua {
 
-template <typename Dozer = thread_dozer>
-inline void sleep(duration timeout) {
-	thread_dozer().sleep(timeout);
-}
+using namespace win32::_sleep;
 
 } // namespace rua
+
+#elif defined(RUA_UNIX) || RUA_HAS_INC(<pthread.h>) || defined(_PTHREAD_H)
+
+#include "sleep/posix.hpp"
+
+namespace rua {
+
+using namespace posix::_sleep;
+
+} // namespace rua
+
+#endif
 
 #endif
