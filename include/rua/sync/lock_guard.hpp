@@ -49,7 +49,7 @@ public:
 
 private:
 	Lock *_lck;
-	future<> _lcking;
+	awaitable<> _lcking;
 };
 
 template <typename Lock>

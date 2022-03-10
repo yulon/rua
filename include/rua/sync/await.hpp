@@ -1,5 +1,5 @@
-#ifndef _RUA_ASYNC_AWAIT_HPP
-#define _RUA_ASYNC_AWAIT_HPP
+#ifndef _RUA_SYNC_AWAIT_HPP
+#define _RUA_SYNC_AWAIT_HPP
 
 #include "../coroutine.hpp"
 #include "../util.hpp"

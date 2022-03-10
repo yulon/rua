@@ -30,22 +30,22 @@ public:
 		}
 	}
 
-	future<> lock() {
-		future<> ftr;
+	awaitable<> lock() {
+		awaitable<> fut;
 
 		auto c = ++_c;
 		if (c == 1) {
-			return ftr;
+			return fut;
 		}
 
-		promise<> prom;
-		ftr = prom.get_future();
+		promise<> prm;
+		fut = prm.get_future();
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
-			[this]() -> bool { return _c.load() == 1; }, std::move(prom));
+			[this]() -> bool { return _c.load() == 1; }, std::move(prm));
 		if (!is_emplaced) {
-			ftr.reset();
+			fut.reset();
 		}
-		return ftr;
+		return fut;
 	}
 
 	void unlock() {
@@ -53,7 +53,7 @@ public:
 		if (!wtr_opt) {
 			return;
 		}
-		wtr_opt->resolve(/*[this]() mutable { unlock(); }*/);
+		wtr_opt->set_value(/*[this]() mutable { unlock(); }*/);
 	}
 
 private:

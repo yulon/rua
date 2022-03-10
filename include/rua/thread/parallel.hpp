@@ -4,8 +4,8 @@
 #include "core.hpp"
 
 #include "../skater.hpp"
+#include "../sync/awaitable.hpp"
 #include "../sync/chan.hpp"
-#include "../sync/future.hpp"
 #include "../util.hpp"
 
 #include <functional>
@@ -30,28 +30,28 @@ template <
 	typename Func,
 	typename... Args,
 	typename Result = invoke_result_t<Func, Args &&...>>
-inline enable_if_t<!std::is_void<Result>::value, future<Result>>
+inline enable_if_t<!std::is_void<Result>::value, awaitable<Result>>
 parallel(Func func, Args &&...args) {
-	skater<promise<Result>> prom;
-	auto ftr = prom->get_future();
+	skater<promise<Result>> prm;
+	auto fut = prm->get_future();
 	auto f = skate(func);
-	_parallel([=]() mutable { prom->resolve(f(args...)); });
-	return ftr;
+	_parallel([=]() mutable { prm->set_value(f(args...)); });
+	return std::move(fut);
 }
 
 template <typename Func, typename... Args>
 inline enable_if_t<
 	std::is_void<invoke_result_t<Func, Args &&...>>::value,
-	future<>>
+	awaitable<>>
 parallel(Func func, Args &&...args) {
-	skater<promise<>> prom;
-	auto ftr = prom->get_future();
+	skater<promise<>> prm;
+	auto fut = prm->get_future();
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		prom->resolve();
+		prm->set_value();
 	});
-	return ftr;
+	return std::move(fut);
 }
 
 } // namespace rua

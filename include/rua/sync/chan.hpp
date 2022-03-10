@@ -1,9 +1,8 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "future.hpp"
+#include "awaitable.hpp"
 
-#include "../async/result.hpp"
 #include "../lockfree_list.hpp"
 #include "../optional.hpp"
 #include "../skater.hpp"
@@ -37,7 +36,7 @@ public:
 			return false;
 		}
 		assert(recv_opt);
-		recv_opt->resolve(
+		recv_opt->set_value(
 			std::move(val), [this](T val) mutable { send(std::move(val)); });
 		return true;
 	}
@@ -53,26 +52,26 @@ public:
 #endif
 	}
 
-	future<T> recv() {
-		future<T> ftr;
+	awaitable<T> recv() {
+		awaitable<T> fut;
 
 		auto val_opt = try_recv();
 		if (val_opt) {
-			ftr = *std::move(val_opt);
-			return ftr;
+			fut = *std::move(val_opt);
+			return fut;
 		}
 
-		promise<T> prom;
-		ftr = prom.get_future();
+		promise<T> prm;
+		fut = prm.get_future();
 		val_opt = _vals.pop_front_or(
-			[this, &prom]() { _recvs.emplace_front(std::move(prom)); });
+			[this, &prm]() { _recvs.emplace_front(std::move(prm)); });
 		if (!val_opt) {
-			return ftr;
+			return fut;
 		}
-		assert(prom);
-		prom.reset();
-		ftr = *std::move(val_opt);
-		return ftr;
+		assert(prm);
+		prm.reset();
+		fut = *std::move(val_opt);
+		return fut;
 	}
 
 private:

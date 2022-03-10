@@ -1,7 +1,8 @@
 #ifndef _RUA_SYNC_WAIT_HPP
 #define _RUA_SYNC_WAIT_HPP
 
-#include "../async/await.hpp"
+#include "await.hpp"
+
 #include "../optional.hpp"
 #include "../thread/dozer.hpp"
 #include "../time/tick.hpp"

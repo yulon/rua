@@ -2,7 +2,7 @@
 #define _RUA_THREAD_CORE_POSIX_HPP
 
 #include "../../generic_word.hpp"
-#include "../../sync/future.hpp"
+#include "../../sync/awaitable.hpp"
 #include "../../sync/wait.hpp"
 #include "../../util.hpp"
 
@@ -108,7 +108,7 @@ public:
 		reset();
 	}
 
-	inline future<generic_word> RUA_OPERATOR_AWAIT() const;
+	inline awaitable<generic_word> RUA_OPERATOR_AWAIT() const;
 
 	void reset() {
 		if (_id) {
