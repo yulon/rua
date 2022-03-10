@@ -61,12 +61,7 @@ public:
 	}
 
 	promise_state try_set_callback(std::function<void()> callback) {
-		if (!_ctx) {
-			_ctx = new promise_context<T>;
-			_ctx->callback = std::move(callback);
-			_ctx->state = promise_state::has_callback;
-			return promise_state::has_callback;
-		}
+		assert(_ctx);
 
 		_ctx->callback = std::move(callback);
 
