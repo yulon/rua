@@ -315,11 +315,10 @@ public:
 	}
 
 	future<T, Deteler> get_future() {
+		reset();
 		auto &ctx = this->_ctx;
-		if (!ctx) {
-			ctx = new promise_context<T>;
-			ctx->state = promise_state::no_callback;
-		}
+		ctx = new promise_context<T>;
+		ctx->state = promise_state::no_callback;
 		return future<T, Deteler>(*ctx);
 	}
 
