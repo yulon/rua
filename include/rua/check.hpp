@@ -3,7 +3,8 @@
 
 #include "log.hpp"
 #include "string.hpp"
-#include "types/info.hpp"
+#include "type_info.hpp"
+#include "util.hpp"
 
 #include <cstdlib>
 
