@@ -46,7 +46,7 @@ using default_promise_deleter = std::default_delete<promise_context<T>>;
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Deteler>
-class future_base {
+class future_base : private enable_wait_operator {
 public:
 	future_base(future_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
 
@@ -121,8 +121,7 @@ protected:
 };
 
 template <typename T = void, typename Deteler = default_promise_deleter<T>>
-class future : public future_base<T, Deteler>,
-			   public waiter<future<T, Deteler>, T> {
+class future : public future_base<T, Deteler> {
 public:
 	constexpr future() : future_base<T, Deteler>() {}
 
@@ -213,8 +212,7 @@ public:
 };
 
 template <typename Deteler>
-class future<void, Deteler> : public future_base<void, Deteler>,
-							  public waiter<future<void, Deteler>> {
+class future<void, Deteler> : public future_base<void, Deteler> {
 public:
 	constexpr future() : future_base<void, Deteler>() {}
 

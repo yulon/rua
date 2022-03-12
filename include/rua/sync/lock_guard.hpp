@@ -6,7 +6,7 @@
 namespace rua {
 
 template <typename Lock>
-class lock_guard : public waiter<lock_guard<Lock>, lock_guard<Lock>> {
+class lock_guard : private enable_wait_operator {
 public:
 	explicit lock_guard(Lock &lck) : _lck(&lck), _lcking(lck.lock()) {}
 

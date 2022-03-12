@@ -9,10 +9,10 @@
 TEST_CASE("thread") {
 	static std::string r;
 
-	rua::thread([]() {
+	*rua::thread([]() {
 		rua::sleep(100);
 		r = "ok";
-	}).wait();
+	});
 
 	REQUIRE(r == "ok");
 }

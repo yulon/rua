@@ -28,7 +28,7 @@ inline tid_t this_tid() {
 
 using namespace _this_tid;
 
-class thread : public waiter<thread, generic_word> {
+class thread : private enable_wait_operator {
 public:
 	using native_handle_t = HANDLE;
 

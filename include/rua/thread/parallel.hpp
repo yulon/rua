@@ -20,7 +20,7 @@ inline void _parallel(std::function<void()> f) {
 	}
 	thread([]() {
 		for (;;) {
-			auto f = que.recv().wait();
+			auto f = *que.recv();
 			f();
 		}
 	});

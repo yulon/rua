@@ -13,7 +13,7 @@
 
 namespace rua { namespace win32 {
 
-class sys_waiter : public waiter<sys_waiter> {
+class sys_waiter : private enable_wait_operator {
 public:
 	using native_handle_t = HANDLE;
 

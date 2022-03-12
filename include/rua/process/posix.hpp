@@ -34,7 +34,7 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
-class process : public waiter<process, int> {
+class process : private enable_wait_operator {
 public:
 	using native_handle_t = pid_t;
 

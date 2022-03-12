@@ -31,6 +31,11 @@ inline Result wait(Awaitable &&awaitable) {
 }
 
 template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
+inline Result operator*(Awaitable &&awaitable) {
+	return wait<Awaitable, Result>(std::forward<Awaitable>(awaitable));
+}
+
+template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
 inline enable_if_t<!std::is_void<Result>::value, optional<Result>>
 try_wait(Awaitable &&awaitable, duration timeout = 0) {
 	if (timeout == duration_max()) {
@@ -110,91 +115,7 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 	return false;
 }
 
-template <typename Awaitable, typename Result = void>
-class waiter {
-public:
-	optional<Result> try_wait(duration timeout = 0) & {
-		return rua::try_wait(*_this(), timeout);
-	}
-
-	optional<Result> try_wait(duration timeout = 0) && {
-		return rua::try_wait(*_this(), timeout);
-	}
-
-	optional<Result> try_wait(duration timeout = 0) const & {
-		return rua::try_wait(*_this(), timeout);
-	}
-
-	Result wait() & {
-		return rua::wait(*_this());
-	}
-
-	Result wait() && {
-		return rua::wait(*_this());
-	}
-
-	Result wait() const & {
-		return rua::wait(*_this());
-	}
-
-	Result operator*() & {
-		return wait();
-	}
-
-	Result operator*() && {
-		return wait();
-	}
-
-	Result operator*() const & {
-		return wait();
-	}
-
-private:
-	const Awaitable *_this() const {
-		return static_cast<const Awaitable *>(this);
-	}
-
-	Awaitable *_this() {
-		return static_cast<Awaitable *>(this);
-	}
-};
-
-template <typename Awaitable>
-class waiter<Awaitable, void> {
-public:
-	bool try_wait(duration timeout = 0) {
-		return rua::try_wait(*_this(), timeout);
-	}
-
-	bool try_wait(duration timeout = 0) const {
-		return rua::try_wait(*_this(), timeout);
-	}
-
-	void wait() {
-		rua::wait(*_this());
-	}
-
-	void wait() const {
-		rua::wait(*_this());
-	}
-
-	void operator*() {
-		wait();
-	}
-
-	void operator*() const {
-		wait();
-	}
-
-private:
-	const Awaitable *_this() const {
-		return static_cast<const Awaitable *>(this);
-	}
-
-	Awaitable *_this() {
-		return static_cast<Awaitable *>(this);
-	}
-};
+class enable_wait_operator {};
 
 } // namespace rua
 

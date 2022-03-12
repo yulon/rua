@@ -14,7 +14,7 @@ template <
 	typename T = void,
 	typename Promised = T,
 	typename PromiseDeteler = default_promise_deleter<T>>
-class awaitable : public waiter<awaitable<T, Promised>, T> {
+class awaitable : private enable_wait_operator {
 public:
 	constexpr awaitable() : _r() {}
 
@@ -88,7 +88,7 @@ private:
 };
 
 template <typename PromiseDeteler>
-class awaitable<void, void, PromiseDeteler> : public waiter<awaitable<>> {
+class awaitable<void, void, PromiseDeteler> : private enable_wait_operator {
 public:
 	constexpr awaitable(std::nullptr_t = nullptr) : _fut() {}
 

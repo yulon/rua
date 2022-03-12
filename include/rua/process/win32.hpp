@@ -85,7 +85,7 @@ inline bool has_full_permissions() {
 
 using namespace _this_process;
 
-class process : public waiter<process, int> {
+class process : private enable_wait_operator {
 public:
 	using native_handle_t = HANDLE;
 
