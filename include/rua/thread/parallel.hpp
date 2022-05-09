@@ -4,8 +4,8 @@
 #include "core.hpp"
 
 #include "../skater.hpp"
-#include "../sync/awaitable.hpp"
 #include "../sync/chan.hpp"
+#include "../sync/late.hpp"
 #include "../util.hpp"
 
 #include <functional>
@@ -30,7 +30,7 @@ template <
 	typename Func,
 	typename... Args,
 	typename Result = invoke_result_t<Func, Args &&...>>
-inline enable_if_t<!std::is_void<Result>::value, awaitable<Result>>
+inline enable_if_t<!std::is_void<Result>::value, late<Result>>
 parallel(Func func, Args &&...args) {
 	skater<promise<Result>> prm;
 	auto fut = prm->get_future();
@@ -42,7 +42,7 @@ parallel(Func func, Args &&...args) {
 template <typename Func, typename... Args>
 inline enable_if_t<
 	std::is_void<invoke_result_t<Func, Args &&...>>::value,
-	awaitable<>>
+	late<>>
 parallel(Func func, Args &&...args) {
 	skater<promise<>> prm;
 	auto fut = prm->get_future();

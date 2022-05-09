@@ -30,8 +30,8 @@ public:
 		}
 	}
 
-	awaitable<> lock() {
-		awaitable<> fut;
+	late<> lock() {
+		late<> fut;
 
 		auto c = ++_c;
 		if (c == 1) {

@@ -2,8 +2,8 @@
 #define _RUA_SYNC_HPP
 
 #include "sync/await.hpp"
-#include "sync/awaitable.hpp"
 #include "sync/chan.hpp"
+#include "sync/late.hpp"
 #include "sync/lock_guard.hpp"
 #include "sync/mutex.hpp"
 #include "sync/promise.hpp"

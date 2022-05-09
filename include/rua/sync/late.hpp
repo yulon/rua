@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_AWAITABLE_HPP
-#define _RUA_SYNC_AWAITABLE_HPP
+#ifndef _RUA_SYNC_LATE_HPP
+#define _RUA_SYNC_LATE_HPP
 
 #include "promise.hpp"
 
@@ -14,9 +14,9 @@ template <
 	typename T = void,
 	typename Promised = T,
 	typename PromiseDeteler = default_promise_deleter<T>>
-class awaitable : private enable_wait_operator {
+class late : private enable_wait_operator {
 public:
-	constexpr awaitable() : _r() {}
+	constexpr late() : _r() {}
 
 	template <
 		typename... Result,
@@ -24,35 +24,34 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, Result &&...>::value &&
 			(sizeof...(Result) > 1 ||
-			 (!std::is_base_of<awaitable, Front>::value &&
+			 (!std::is_base_of<late, Front>::value &&
 			  !std::is_base_of<future<Promised, PromiseDeteler>, Front>::
 				  value))>>
-	awaitable(Result &&...result) : _r(std::forward<Result>(result)...) {}
+	late(Result &&...result) : _r(std::forward<Result>(result)...) {}
 
-	awaitable(future<Promised, PromiseDeteler> fut) : _r(std::move(fut)) {}
+	late(future<Promised, PromiseDeteler> fut) : _r(std::move(fut)) {}
 
-	explicit awaitable(promise_context<Promised> &prm_ctx) :
+	explicit late(promise_context<Promised> &prm_ctx) :
 		_r(future<Promised, PromiseDeteler>(prm_ctx)) {}
 
 	template <
 		typename U,
 		typename = enable_if_t<
 			!std::is_same<T, U>::value && std::is_convertible<U &&, T>::value &&
-			!std::is_convertible<awaitable<U, Promised> &&, T>::value>>
-	awaitable(awaitable<U, Promised, PromiseDeteler> &&src) :
-		_r(std::move(src._r)) {}
+			!std::is_convertible<late<U, Promised> &&, T>::value>>
+	late(late<U, Promised, PromiseDeteler> &&src) : _r(std::move(src._r)) {}
 
 	template <
 		typename U,
 		typename = enable_if_t<!std::is_convertible<U &&, T>::value>,
-		typename = enable_if_t<
-			!std::is_convertible<awaitable<U, Promised> &&, T>::value>>
-	awaitable(awaitable<U, Promised, PromiseDeteler> &&src) :
+		typename =
+			enable_if_t<!std::is_convertible<late<U, Promised> &&, T>::value>>
+	late(late<U, Promised, PromiseDeteler> &&src) :
 		_r(std::move(src._r).template as<future<Promised, PromiseDeteler>>()) {}
 
-	awaitable(awaitable &&src) : _r(std::move(src._r)) {}
+	late(late &&src) : _r(std::move(src._r)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(awaitable);
+	RUA_OVERLOAD_ASSIGNMENT_R(late);
 
 	bool await_ready() const {
 		return _r.template type_is<T>();
@@ -75,7 +74,7 @@ public:
 	}
 
 	template <typename U>
-	awaitable<U, Promised> to() {
+	late<U, Promised> to() {
 		return std::move(*this);
 	}
 
@@ -88,17 +87,17 @@ private:
 };
 
 template <typename PromiseDeteler>
-class awaitable<void, void, PromiseDeteler> : private enable_wait_operator {
+class late<void, void, PromiseDeteler> : private enable_wait_operator {
 public:
-	constexpr awaitable(std::nullptr_t = nullptr) : _fut() {}
+	constexpr late(std::nullptr_t = nullptr) : _fut() {}
 
-	awaitable(future<void, PromiseDeteler> fut) : _fut(std::move(fut)) {}
+	late(future<void, PromiseDeteler> fut) : _fut(std::move(fut)) {}
 
-	explicit awaitable(promise_context<> &prm_ctx) : _fut(prm_ctx) {}
+	explicit late(promise_context<> &prm_ctx) : _fut(prm_ctx) {}
 
-	awaitable(awaitable &&src) : _fut(std::move(src._fut)) {}
+	late(late &&src) : _fut(std::move(src._fut)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(awaitable);
+	RUA_OVERLOAD_ASSIGNMENT_R(late);
 
 	bool await_ready() const {
 		return !_fut;
@@ -122,7 +121,7 @@ private:
 };
 
 template <typename T, typename PromiseDeteler>
-class awaitable<T, void, PromiseDeteler> {};
+class late<T, void, PromiseDeteler> {};
 
 } // namespace rua
 

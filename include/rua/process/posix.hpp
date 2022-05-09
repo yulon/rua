@@ -7,7 +7,7 @@
 #include "../file/posix.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
-#include "../sync/awaitable.hpp"
+#include "../sync/late.hpp"
 #include "../sync/wait.hpp"
 #include "../util.hpp"
 
@@ -79,7 +79,7 @@ public:
 		return _id >= 0;
 	}
 
-	awaitable<int> RUA_OPERATOR_AWAIT() const {
+	late<int> RUA_OPERATOR_AWAIT() const {
 		if (!_id) {
 			return 0;
 		}

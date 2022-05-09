@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "awaitable.hpp"
+#include "late.hpp"
 
 #include "../lockfree_list.hpp"
 #include "../optional.hpp"
@@ -52,8 +52,8 @@ public:
 #endif
 	}
 
-	awaitable<T> recv() {
-		awaitable<T> fut;
+	late<T> recv() {
+		late<T> fut;
 
 		auto val_opt = try_recv();
 		if (val_opt) {
