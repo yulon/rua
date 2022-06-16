@@ -1,7 +1,7 @@
 #ifndef _RUA_HARD_WIN32_HPP
 #define _RUA_HARD_WIN32_HPP
 
-#include <sysinfoapi.h>
+#include <windows.h>
 
 namespace rua { namespace win32 {
 

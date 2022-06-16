@@ -652,8 +652,8 @@ private:
 	struct _process_basic_information {
 		NTSTATUS ExitStatus;
 		PPEB PebBaseAddress;
-		KAFFINITY AffinityMask;
-		KPRIORITY BasePriority;
+		ULONG_PTR AffinityMask;
+		LONG BasePriority;
 		ULONG_PTR UniqueProcessId;
 		ULONG_PTR InheritedFromUniqueProcessId;
 	};
