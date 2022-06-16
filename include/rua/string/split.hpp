@@ -16,6 +16,10 @@ inline std::vector<Part> _basic_split(
 	string_view sep,
 	size_t skip_count = 0,
 	int cut_count = nmax<int>()) {
+	std::vector<Part> r_vec;
+	if (str.empty()) {
+		return r_vec;
+	}
 	std::list<Part> r_li;
 	size_t sc = 0;
 	auto cc = 0;
@@ -69,7 +73,6 @@ inline std::vector<Part> _basic_split(
 			r_li.emplace_front(str.substr(0, end));
 		}
 	}
-	std::vector<Part> r_vec;
 	r_vec.reserve(r_li.size());
 	for (auto &part : r_li) {
 		r_vec.emplace_back(std::move(part));
