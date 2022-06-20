@@ -10,10 +10,10 @@
 
 namespace rua {
 
-template <typename Part>
+template <typename Part, typename StrView>
 inline std::vector<Part> _basic_split(
-	string_view str,
-	string_view sep,
+	StrView str,
+	StrView sep,
 	size_t skip_count = 0,
 	int cut_count = nmax<int>()) {
 	std::vector<Part> r_vec;
@@ -28,7 +28,7 @@ inline std::vector<Part> _basic_split(
 		size_t start = 0;
 		for (;;) {
 			pos = str.find(sep, pos);
-			if (pos == string_view::npos) {
+			if (pos == StrView::npos) {
 				break;
 			}
 			if (sc == skip_count) {
@@ -53,7 +53,7 @@ inline std::vector<Part> _basic_split(
 		auto end = str.length();
 		for (;;) {
 			pos = str.rfind(sep, pos);
-			if (pos == string_view::npos) {
+			if (pos == StrView::npos) {
 				break;
 			}
 			if (sc == skip_count) {
@@ -88,30 +88,43 @@ inline std::vector<string_view> split(
 	return _basic_split<string_view>(str, sep, skip_count, cut_count);
 }
 
+inline std::vector<wstring_view> split(
+	wstring_view str,
+	wstring_view sep,
+	size_t skip_count = 0,
+	int cut_count = nmax<int>()) {
+	return _basic_split<wstring_view>(str, sep, skip_count, cut_count);
+}
+
 template <
 	typename Str,
 	typename RcrStr = remove_cvref_t<Str>,
-	typename Part = conditional_t<
-		std::is_rvalue_reference<Str &&>::value,
-		std::string,
-		string_view>>
+	typename Char = typename RcrStr::value_type,
+	typename StrView = basic_string_view<Char>,
+	typename Part =
+		conditional_t<std::is_rvalue_reference<Str &&>::value, RcrStr, StrView>>
 inline enable_if_t<
-	std::is_convertible<Str &&, string_view>::value &&
-		!std::is_same<RcrStr, string_view>::value,
+	std::is_convertible<Str &&, StrView>::value &&
+		!std::is_same<RcrStr, StrView>::value,
 	std::vector<Part>>
 split(
 	Str &&str,
-	string_view sep,
+	StrView sep,
 	size_t skip_count = 0,
 	int cut_count = nmax<int>()) {
-	return _basic_split<Part>(
-		std::forward<Str>(str), sep, skip_count, cut_count);
+	return _basic_split<Part>(StrView(str), sep, skip_count, cut_count);
 }
 
-template <typename Str>
-inline decltype(split(std::declval<Str &&>(), ""))
-split(Str &&str, char sep, size_t skip_count = 0, int cut_count = nmax<int>()) {
-	return split(std::forward<Str>(str), {&sep, 1}, skip_count, cut_count);
+template <
+	typename Str,
+	typename Char,
+	typename StrView = enable_if_t<
+		std::is_same<Char, char>::value || std::is_same<Char, wchar_t>::value,
+		basic_string_view<Char>>>
+inline decltype(split(std::declval<Str &&>(), std::declval<StrView>()))
+split(Str &&str, Char sep, size_t skip_count = 0, int cut_count = nmax<int>()) {
+	return split(
+		std::forward<Str>(str), StrView(&sep, 1), skip_count, cut_count);
 }
 
 } // namespace rua
