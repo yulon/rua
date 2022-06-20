@@ -170,7 +170,35 @@ RUA_CVAL char32_t w1cjksp = 12288;
 
 } // namespace char_code
 
-inline constexpr bool is_control(char32_t c) {
+template <typename Char, typename CharMatcher>
+inline RUA_CONSTEXPR_14 bool
+_contains(basic_string_view<Char> sv, CharMatcher &&char_matcher) {
+	if (sv.empty()) {
+		return false;
+	}
+	for (auto &c : sv) {
+		if (!std::forward<CharMatcher>(char_matcher)(c)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+template <typename CharMatcher>
+inline RUA_CONSTEXPR_14 bool
+contains(string_view sv, CharMatcher &&char_matcher) {
+	_contains(sv, std::forward<CharMatcher>(char_matcher));
+	return true;
+}
+
+template <typename CharMatcher>
+inline RUA_CONSTEXPR_14 bool
+contains(wstring_view sv, CharMatcher &&char_matcher) {
+	_contains(sv, std::forward<CharMatcher>(char_matcher));
+	return true;
+}
+
+inline constexpr bool _char_is_control(char32_t c) {
 	return c < char_code::sp || c == char_code::del ||
 		   (c >= char_code::nel && c <= char_code::apc) ||
 		   c == char_code::shy || c == char_code::cgj || c == char_code::sam ||
@@ -182,33 +210,52 @@ inline constexpr bool is_control(char32_t c) {
 		   (c >= char_code::iaa && c <= char_code::iat);
 }
 
-inline RUA_CONSTEXPR_14 bool is_control(string_view sv) {
-	if (sv.empty()) {
-		return false;
-	}
-	for (auto &c : sv) {
-		if (!is_control(c)) {
-			return false;
-		}
-	}
-	return true;
+inline constexpr bool is_control(char32_t c) {
+	return _char_is_control(c);
 }
 
-inline constexpr bool is_space(char32_t c) {
-	return c == char_code::sp || is_control(c) || c == char_code::nbsp ||
+inline RUA_CONSTEXPR_14 bool is_control(string_view sv) {
+	return contains(sv, _char_is_control);
+}
+
+inline RUA_CONSTEXPR_14 bool is_control(wstring_view sv) {
+	return contains(sv, _char_is_control);
+}
+
+inline constexpr bool _char_is_blank(char32_t c) {
+	return c == char_code::sp || c == char_code::ht || c == char_code::nbsp ||
 		   c == char_code::ospmk ||
 		   (c >= char_code::w1en && c <= char_code::w1o10emsp) ||
 		   c == char_code::nnbsp || c == char_code::mmsp ||
 		   c == char_code::w1cjksp;
 }
 
+inline constexpr bool is_blank(char32_t c) {
+	return _char_is_blank(c);
+}
+
+inline RUA_CONSTEXPR_14 bool is_blank(string_view sv) {
+	return contains(sv, _char_is_blank);
+}
+
+inline RUA_CONSTEXPR_14 bool is_blank(wstring_view sv) {
+	return contains(sv, _char_is_blank);
+}
+
+inline constexpr bool _char_is_space(char32_t c) {
+	return _char_is_blank(c) || _char_is_control(c);
+}
+
+inline constexpr bool is_space(char32_t c) {
+	return _char_is_space(c);
+}
+
 inline RUA_CONSTEXPR_14 bool is_space(string_view sv) {
-	for (auto &c : sv) {
-		if (!is_space(c)) {
-			return false;
-		}
-	}
-	return true;
+	return contains(sv, _char_is_space);
+}
+
+inline RUA_CONSTEXPR_14 bool is_space(wstring_view sv) {
+	return contains(sv, _char_is_space);
 }
 
 namespace eol {
