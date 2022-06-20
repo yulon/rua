@@ -172,7 +172,7 @@ RUA_CVAL char32_t w1cjksp = 12288;
 
 template <typename Char, typename CharMatcher>
 inline RUA_CONSTEXPR_14 bool
-_contains(basic_string_view<Char> sv, CharMatcher &&char_matcher) {
+_is_chars(basic_string_view<Char> sv, CharMatcher &&char_matcher) {
 	if (sv.empty()) {
 		return false;
 	}
@@ -186,16 +186,14 @@ _contains(basic_string_view<Char> sv, CharMatcher &&char_matcher) {
 
 template <typename CharMatcher>
 inline RUA_CONSTEXPR_14 bool
-contains(string_view sv, CharMatcher &&char_matcher) {
-	_contains(sv, std::forward<CharMatcher>(char_matcher));
-	return true;
+is_chars(string_view sv, CharMatcher &&char_matcher) {
+	return _is_chars(sv, std::forward<CharMatcher>(char_matcher));
 }
 
 template <typename CharMatcher>
 inline RUA_CONSTEXPR_14 bool
-contains(wstring_view sv, CharMatcher &&char_matcher) {
-	_contains(sv, std::forward<CharMatcher>(char_matcher));
-	return true;
+is_chars(wstring_view sv, CharMatcher &&char_matcher) {
+	return _is_chars(sv, std::forward<CharMatcher>(char_matcher));
 }
 
 inline constexpr bool _char_is_control(char32_t c) {
@@ -215,11 +213,11 @@ inline constexpr bool is_control(char32_t c) {
 }
 
 inline RUA_CONSTEXPR_14 bool is_control(string_view sv) {
-	return contains(sv, _char_is_control);
+	return is_chars(sv, _char_is_control);
 }
 
 inline RUA_CONSTEXPR_14 bool is_control(wstring_view sv) {
-	return contains(sv, _char_is_control);
+	return is_chars(sv, _char_is_control);
 }
 
 inline constexpr bool _char_is_blank(char32_t c) {
@@ -235,11 +233,11 @@ inline constexpr bool is_blank(char32_t c) {
 }
 
 inline RUA_CONSTEXPR_14 bool is_blank(string_view sv) {
-	return contains(sv, _char_is_blank);
+	return is_chars(sv, _char_is_blank);
 }
 
 inline RUA_CONSTEXPR_14 bool is_blank(wstring_view sv) {
-	return contains(sv, _char_is_blank);
+	return is_chars(sv, _char_is_blank);
 }
 
 inline constexpr bool _char_is_space(char32_t c) {
@@ -251,11 +249,11 @@ inline constexpr bool is_space(char32_t c) {
 }
 
 inline RUA_CONSTEXPR_14 bool is_space(string_view sv) {
-	return contains(sv, _char_is_space);
+	return is_chars(sv, _char_is_space);
 }
 
 inline RUA_CONSTEXPR_14 bool is_space(wstring_view sv) {
-	return contains(sv, _char_is_space);
+	return is_chars(sv, _char_is_space);
 }
 
 namespace eol {
