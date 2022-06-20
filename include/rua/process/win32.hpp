@@ -627,6 +627,13 @@ public:
 		_reset();
 	}
 
+	void detach() {
+		if (!_h) {
+			return;
+		}
+		_h = nullptr;
+	}
+
 private:
 	HANDLE _h;
 	duration _prev_get_cpu_usage_time, _prev_used_cpu_time;

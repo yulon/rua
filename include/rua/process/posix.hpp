@@ -140,6 +140,10 @@ public:
 		_id = -1;
 	}
 
+	void detach() {
+		reset();
+	}
+
 private:
 	::pid_t _id;
 };
