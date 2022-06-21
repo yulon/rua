@@ -282,8 +282,8 @@ public:
 			std::is_same<typename SpanTraits::value_type, uchar>::value>>
 	constexpr bytes_view(Span &&span) :
 		bytes_view(
-			span_data(std::forward<Span>(span)),
-			span_size(std::forward<Span>(span))) {}
+			rua::data(std::forward<Span>(span)),
+			rua::size(std::forward<Span>(span))) {}
 
 	~bytes_view() {
 		reset();
@@ -404,8 +404,8 @@ public:
 			!std::is_const<typename SpanTraits::element_type>::value>>
 	constexpr bytes_ref(Span &&span) :
 		bytes_ref(
-			span_data(std::forward<Span>(span)),
-			span_size(std::forward<Span>(span))) {}
+			rua::data(std::forward<Span>(span)),
+			rua::size(std::forward<Span>(span))) {}
 
 	~bytes_ref() {
 		reset();
@@ -585,8 +585,8 @@ inline enable_if_t<
 as_bytes(Span &&span) {
 	return {
 		reinterpret_cast<conditional_t<IsConst, const uchar, uchar> *>(
-			span_data(std::forward<Span>(span))),
-		span_size(std::forward<Span>(span)) *
+			rua::data(std::forward<Span>(span))),
+		rua::size(std::forward<Span>(span)) *
 			sizeof(typename SpanTraits::element_type)};
 }
 

@@ -34,8 +34,8 @@ inline constexpr enable_if_t<
 	string_view>
 as_string(StringLike &&str) {
 	return {
-		span_data(std::forward<StringLike>(str)),
-		span_size(std::forward<StringLike>(str))};
+		data(std::forward<StringLike>(str)),
+		size(std::forward<StringLike>(str))};
 }
 
 template <typename NullPtr>
@@ -105,8 +105,8 @@ inline constexpr enable_if_t<
 	std::string>
 to_string(WStringLike &&wstr) {
 	return w2u(
-		{span_data(std::forward<WStringLike>(wstr)),
-		 span_size(std::forward<WStringLike>(wstr))});
+		{data(std::forward<WStringLike>(wstr)),
+		 size(std::forward<WStringLike>(wstr))});
 }
 
 template <typename Num>

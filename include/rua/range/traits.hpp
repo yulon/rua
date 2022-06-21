@@ -61,16 +61,15 @@ inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 #endif
 
 template <typename T>
-inline constexpr decltype(span_size(std::declval<T &&>()))
-range_size(T &&target) {
-	return span_size(std::forward<T>(target));
+inline constexpr decltype(size(std::declval<T &&>())) range_size(T &&target) {
+	return size(std::forward<T>(target));
 }
 
 template <typename, typename = void>
 struct _can_use_span_size : std::false_type {};
 
 template <typename T>
-struct _can_use_span_size<T, void_t<decltype(span_size(std::declval<T>()))>>
+struct _can_use_span_size<T, void_t<decltype(size(std::declval<T>()))>>
 	: std::true_type {};
 
 template <typename T>
