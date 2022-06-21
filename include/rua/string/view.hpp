@@ -9,7 +9,7 @@
 
 namespace rua {
 
-template <typename CharT, typename Traits = std::char_traits<CharT> >
+template <typename CharT, typename Traits = std::char_traits<CharT>>
 using basic_string_view = std::basic_string_view<CharT, Traits>;
 
 }
@@ -23,7 +23,7 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 
 namespace rua {
 
-template <typename CharT, typename Traits = std::char_traits<CharT> >
+template <typename CharT, typename Traits = std::char_traits<CharT>>
 class basic_string_view {
 public:
 	using size_type = size_t;
@@ -207,6 +207,40 @@ namespace rua {
 
 using string_view = basic_string_view<char>;
 using wstring_view = basic_string_view<wchar_t>;
+
+template <typename CharT, typename Traits>
+inline basic_string_view<CharT, Traits>
+view(basic_string_view<CharT, Traits> str_v) {
+	return str_v;
+}
+
+template <typename CharT, typename Traits, typename Allocator>
+inline basic_string_view<CharT, Traits>
+view(const std::basic_string<CharT, Traits, Allocator> &str) {
+	return str;
+}
+
+template <
+	typename Str,
+	typename RmCvrStr = remove_cvref_t<Str>,
+	typename = enable_if_t<
+		std::is_convertible<RmCvrStr, string_view>::value &&
+		!std::is_base_of<string_view, RmCvrStr>::value &&
+		!std::is_base_of<std::string, RmCvrStr>::value>>
+inline string_view view(Str &&str) {
+	return string_view(std::forward<Str>(str));
+}
+
+template <
+	typename Str,
+	typename RmCvrStr = remove_cvref_t<Str>,
+	typename = enable_if_t<
+		std::is_convertible<RmCvrStr, wstring_view>::value &&
+		!std::is_base_of<wstring_view, RmCvrStr>::value &&
+		!std::is_base_of<std::wstring, RmCvrStr>::value>>
+inline wstring_view view(Str &&str) {
+	return wstring_view(std::forward<Str>(str));
+}
 
 } // namespace rua
 

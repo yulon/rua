@@ -98,13 +98,12 @@ public:
 		return _this()->data()[offset];
 	}
 
-	inline bytes_view
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const;
+	inline bytes_view slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
 
 	inline bytes_view slice(ptrdiff_t begin_offset) const;
 
 	inline bytes_view
-	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const;
+	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
 
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
@@ -214,23 +213,20 @@ public:
 		return _this()->data()[offset];
 	}
 
-	inline bytes_view
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const;
+	inline bytes_view slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
 
 	inline bytes_view slice(ptrdiff_t begin_offset) const;
 
-	inline bytes_ref
-	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin);
+	inline bytes_ref slice(ptrdiff_t begin_offset, ptrdiff_t end_offset);
 
 	inline bytes_ref slice(ptrdiff_t begin_offset);
 
 	inline bytes_view
-	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const;
+	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
 
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
-	inline bytes_ref
-	operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin);
+	inline bytes_ref operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset);
 
 	inline bytes_ref operator()(ptrdiff_t begin_offset);
 
@@ -338,15 +334,15 @@ private:
 
 template <typename Span>
 inline bytes_view const_bytes_base<Span>::slice(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	assert(end_offset_from_begin >= begin_offset);
+	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
+	assert(end_offset >= begin_offset);
 
-	if (begin_offset == end_offset_from_begin) {
+	if (begin_offset == end_offset) {
 		return nullptr;
 	}
 	return bytes_view(
 		_this()->data() + begin_offset,
-		static_cast<size_t>(end_offset_from_begin - begin_offset));
+		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
@@ -356,8 +352,8 @@ inline bytes_view const_bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
 
 template <typename Span>
 inline bytes_view const_bytes_base<Span>::operator()(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	return slice(begin_offset, end_offset_from_begin);
+	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
+	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
@@ -463,16 +459,16 @@ private:
 };
 
 template <typename Span>
-inline bytes_view bytes_base<Span>::slice(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	assert(end_offset_from_begin >= begin_offset);
+inline bytes_view
+bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
+	assert(end_offset >= begin_offset);
 
-	if (begin_offset == end_offset_from_begin) {
+	if (begin_offset == end_offset) {
 		return nullptr;
 	}
 	return bytes_view(
 		_this()->data() + begin_offset,
-		static_cast<size_t>(end_offset_from_begin - begin_offset));
+		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
@@ -481,16 +477,16 @@ inline bytes_view bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-inline bytes_ref bytes_base<Span>::slice(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) {
-	assert(end_offset_from_begin >= begin_offset);
+inline bytes_ref
+bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
+	assert(end_offset >= begin_offset);
 
-	if (begin_offset == end_offset_from_begin) {
+	if (begin_offset == end_offset) {
 		return nullptr;
 	}
 	return bytes_ref(
 		_this()->data() + begin_offset,
-		static_cast<size_t>(end_offset_from_begin - begin_offset));
+		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
@@ -500,8 +496,8 @@ inline bytes_ref bytes_base<Span>::slice(ptrdiff_t begin_offset) {
 
 template <typename Span>
 inline bytes_view bytes_base<Span>::operator()(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
-	return slice(begin_offset, end_offset_from_begin);
+	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
+	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
@@ -510,9 +506,9 @@ inline bytes_view bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
 }
 
 template <typename Span>
-inline bytes_ref bytes_base<Span>::operator()(
-	ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) {
-	return slice(begin_offset, end_offset_from_begin);
+inline bytes_ref
+bytes_base<Span>::operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
+	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
