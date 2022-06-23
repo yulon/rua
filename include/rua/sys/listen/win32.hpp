@@ -19,9 +19,9 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr sys_waiter() : _h(nullptr), _wh(nullptr), _fut() {}
+	constexpr sys_waiter() : _h(nullptr), _wh(nullptr), _pms_fut() {}
 
-	explicit sys_waiter(HANDLE h) : _h(h), _wh(nullptr), _fut() {}
+	explicit sys_waiter(HANDLE h) : _h(h), _wh(nullptr), _pms_fut() {}
 
 	~sys_waiter() {
 		reset();
@@ -30,7 +30,7 @@ public:
 	sys_waiter(sys_waiter &&src) :
 		_h(exchange(src._h, nullptr)),
 		_wh(exchange(src._wh, nullptr)),
-		_fut(std::move(src._fut)) {}
+		_pms_fut(std::move(src._pms_fut)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT_R(sys_waiter);
 
@@ -48,15 +48,15 @@ public:
 
 	template <typename Resume>
 	void await_suspend(Resume resume) {
-		promise<> prm;
-		_fut = prm.get_future();
-		_fut.await_suspend(std::move(resume));
-		auto prm_ctx = prm.release();
+		promise<> pms;
+		_pms_fut = pms;
+		_pms_fut.await_suspend(std::move(resume));
+		auto pms_ctx = pms.release();
 		RegisterWaitForSingleObject(
 			&_wh,
 			_h,
 			_rw4so_cb,
-			prm_ctx,
+			pms_ctx,
 			INFINITE,
 			WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
 	}
@@ -67,20 +67,20 @@ public:
 		if (_h) {
 			_h = nullptr;
 		}
-		if (!_fut) {
+		if (!_pms_fut) {
 			return;
 		}
 		assert(_wh);
-		_fut.checkout_or_lose_promise(!UnregisterWaitEx(_wh, nullptr));
+		_pms_fut.checkout_or_lose_promise(!UnregisterWaitEx(_wh, nullptr));
 		_wh = nullptr;
 	}
 
 private:
 	HANDLE _h, _wh;
-	future<> _fut;
+	promising_future<> _pms_fut;
 
-	static VOID CALLBACK _rw4so_cb(PVOID prm_ctx, BOOLEAN /* timeouted */) {
-		promise<>(*reinterpret_cast<promise_context<> *>(prm_ctx)).set_value();
+	static VOID CALLBACK _rw4so_cb(PVOID pms_ctx, BOOLEAN /* timeouted */) {
+		promise<>(*reinterpret_cast<promise_context<> *>(pms_ctx)).set_value();
 	}
 };
 

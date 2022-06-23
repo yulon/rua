@@ -30,18 +30,18 @@ public:
 		}
 	}
 
-	late<> lock() {
-		late<> fut;
+	future<> lock() {
+		future<> fut;
 
 		auto c = ++_c;
 		if (c == 1) {
 			return fut;
 		}
 
-		promise<> prm;
-		fut = prm.get_future();
+		promise<> pms;
+		fut = pms;
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
-			[this]() -> bool { return _c.load() == 1; }, std::move(prm));
+			[this]() -> bool { return _c.load() == 1; }, std::move(pms));
 		if (!is_emplaced) {
 			fut.reset();
 		}

@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "late.hpp"
+#include "future.hpp"
 
 #include "../lockfree_list.hpp"
 #include "../optional.hpp"
@@ -52,8 +52,8 @@ public:
 #endif
 	}
 
-	late<T> recv() {
-		late<T> fut;
+	future<T> recv() {
+		future<T> fut;
 
 		auto val_opt = try_recv();
 		if (val_opt) {
@@ -61,15 +61,15 @@ public:
 			return fut;
 		}
 
-		promise<T> prm;
-		fut = prm.get_future();
+		promise<T> pms;
+		fut = pms;
 		val_opt = _vals.pop_front_or(
-			[this, &prm]() { _recvs.emplace_front(std::move(prm)); });
+			[this, &pms]() { _recvs.emplace_front(std::move(pms)); });
 		if (!val_opt) {
 			return fut;
 		}
-		assert(prm);
-		prm.reset();
+		assert(pms);
+		pms.reset();
 		fut = *std::move(val_opt);
 		return fut;
 	}

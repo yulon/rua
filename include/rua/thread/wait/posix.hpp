@@ -8,7 +8,7 @@
 
 namespace rua { namespace posix {
 
-inline late<generic_word> thread::RUA_OPERATOR_AWAIT() const {
+inline future<generic_word> thread::RUA_OPERATOR_AWAIT() const {
 	if (!_id) {
 		return 0;
 	}

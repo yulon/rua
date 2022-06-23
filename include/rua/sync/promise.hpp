@@ -121,21 +121,22 @@ protected:
 };
 
 template <typename T = void, typename Deteler = default_promise_deleter<T>>
-class future : public future_base<T, Deteler> {
+class promising_future : public future_base<T, Deteler> {
 public:
-	constexpr future() : future_base<T, Deteler>() {}
+	constexpr promising_future() : future_base<T, Deteler>() {}
 
-	explicit future(promise_context<T> &ctx) : future_base<T, Deteler>(ctx) {}
+	explicit promising_future(promise_context<T> &ctx) :
+		future_base<T, Deteler>(ctx) {}
 
-	~future() {
+	~promising_future() {
 		reset();
 	}
 
-	future(future &&src) :
+	promising_future(promising_future &&src) :
 		future_base<T, Deteler>(
 			static_cast<future_base<T, Deteler> &&>(std::move(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(future)
+	RUA_OVERLOAD_ASSIGNMENT_R(promising_future)
 
 	optional<T> checkout() {
 		optional<T> r;
@@ -212,22 +213,22 @@ public:
 };
 
 template <typename Deteler>
-class future<void, Deteler> : public future_base<void, Deteler> {
+class promising_future<void, Deteler> : public future_base<void, Deteler> {
 public:
-	constexpr future() : future_base<void, Deteler>() {}
+	constexpr promising_future() : future_base<void, Deteler>() {}
 
-	explicit future(promise_context<void> &ctx) :
+	explicit promising_future(promise_context<void> &ctx) :
 		future_base<void, Deteler>(ctx) {}
 
-	~future() {
+	~promising_future() {
 		reset();
 	}
 
-	future(future &&src) :
+	promising_future(promising_future &&src) :
 		future_base<void, Deteler>(
 			static_cast<future_base<void, Deteler> &&>(std::move(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(future)
+	RUA_OVERLOAD_ASSIGNMENT_R(promising_future)
 
 	bool checkout() {
 		auto &ctx = this->_ctx;
@@ -312,12 +313,16 @@ public:
 		return _ctx;
 	}
 
-	future<T, Deteler> get_future() {
+	promising_future<T, Deteler> get_promising_future() {
 		reset();
 		auto &ctx = this->_ctx;
 		ctx = new promise_context<T>;
 		ctx->state = promise_state::no_callback;
-		return future<T, Deteler>(*ctx);
+		return promising_future<T, Deteler>(*ctx);
+	}
+
+	operator promising_future<T, Deteler>() {
+		return get_promising_future();
 	}
 
 	void reset() {

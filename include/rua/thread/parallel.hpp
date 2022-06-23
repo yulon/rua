@@ -5,7 +5,7 @@
 
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
-#include "../sync/late.hpp"
+#include "../sync/future.hpp"
 #include "../util.hpp"
 
 #include <functional>
@@ -30,28 +30,28 @@ template <
 	typename Func,
 	typename... Args,
 	typename Result = invoke_result_t<Func, Args &&...>>
-inline enable_if_t<!std::is_void<Result>::value, late<Result>>
+inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
-	skater<promise<Result>> prm;
-	auto fut = prm->get_future();
+	skater<promise<Result>> pms;
+	auto pms_fut = pms->get_promising_future();
 	auto f = skate(func);
-	_parallel([=]() mutable { prm->set_value(f(args...)); });
-	return std::move(fut);
+	_parallel([=]() mutable { pms->set_value(f(args...)); });
+	return std::move(pms_fut);
 }
 
 template <typename Func, typename... Args>
 inline enable_if_t<
 	std::is_void<invoke_result_t<Func, Args &&...>>::value,
-	late<>>
+	future<>>
 parallel(Func func, Args &&...args) {
-	skater<promise<>> prm;
-	auto fut = prm->get_future();
+	skater<promise<>> pms;
+	auto pms_fut = pms->get_promising_future();
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		prm->set_value();
+		pms->set_value();
 	});
-	return std::move(fut);
+	return std::move(pms_fut);
 }
 
 } // namespace rua
