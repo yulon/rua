@@ -40,10 +40,10 @@ join(const StrList &strs, string_view sep = "", bool ignore_empty = false) {
 	size_t len = 0;
 	bool no_add_sep = true;
 	for (auto &str : strs) {
-		if (ignore_empty && (str.empty() || is_space(str))) {
+		if (ignore_empty && (str.empty() || is_spaces(str))) {
 			continue;
 		}
-		if (is_control(str)) {
+		if (is_controls(str)) {
 			no_add_sep = true;
 			len += str.size();
 			continue;
@@ -63,10 +63,10 @@ join(const StrList &strs, string_view sep = "", bool ignore_empty = false) {
 
 	no_add_sep = true;
 	for (auto &str : strs) {
-		if (ignore_empty && (str.empty() || is_space(str))) {
+		if (ignore_empty && (str.empty() || is_spaces(str))) {
 			continue;
 		}
-		if (is_control(str)) {
+		if (is_controls(str)) {
 			no_add_sep = true;
 			r += str;
 			continue;

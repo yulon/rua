@@ -170,33 +170,24 @@ RUA_CVAL char32_t w1cjksp = 12288;
 
 } // namespace char_code
 
-template <typename Char, typename CharMatcher>
-inline RUA_CONSTEXPR_14 bool
-_is_chars(basic_string_view<Char> sv, CharMatcher &&char_matcher) {
-	if (sv.empty()) {
+template <
+	typename StrLike,
+	typename Pred,
+	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool chars_all(StrLike &&str_like, Pred &&pred) {
+	auto str_v = view(std::forward<StrLike>(str_like));
+	if (str_v.empty()) {
 		return false;
 	}
-	for (auto &c : sv) {
-		if (!std::forward<CharMatcher>(char_matcher)(c)) {
+	for (auto &c : str_v) {
+		if (!std::forward<Pred>(pred)(c)) {
 			return false;
 		}
 	}
 	return true;
 }
 
-template <typename CharMatcher>
-inline RUA_CONSTEXPR_14 bool
-is_chars(string_view sv, CharMatcher &&char_matcher) {
-	return _is_chars(sv, std::forward<CharMatcher>(char_matcher));
-}
-
-template <typename CharMatcher>
-inline RUA_CONSTEXPR_14 bool
-is_chars(wstring_view sv, CharMatcher &&char_matcher) {
-	return _is_chars(sv, std::forward<CharMatcher>(char_matcher));
-}
-
-inline constexpr bool _char_is_control(char32_t c) {
+inline constexpr bool is_control(char32_t c) {
 	return c < char_code::sp || c == char_code::del ||
 		   (c >= char_code::nel && c <= char_code::apc) ||
 		   c == char_code::shy || c == char_code::cgj || c == char_code::sam ||
@@ -208,19 +199,14 @@ inline constexpr bool _char_is_control(char32_t c) {
 		   (c >= char_code::iaa && c <= char_code::iat);
 }
 
-inline constexpr bool is_control(char32_t c) {
-	return _char_is_control(c);
+template <
+	typename StrLike,
+	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool is_controls(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_control);
 }
 
-inline RUA_CONSTEXPR_14 bool is_control(string_view sv) {
-	return is_chars(sv, _char_is_control);
-}
-
-inline RUA_CONSTEXPR_14 bool is_control(wstring_view sv) {
-	return is_chars(sv, _char_is_control);
-}
-
-inline constexpr bool _char_is_blank(char32_t c) {
+inline constexpr bool is_blank(char32_t c) {
 	return c == char_code::sp || c == char_code::ht || c == char_code::nbsp ||
 		   c == char_code::ospmk ||
 		   (c >= char_code::w1en && c <= char_code::w1o10emsp) ||
@@ -228,32 +214,22 @@ inline constexpr bool _char_is_blank(char32_t c) {
 		   c == char_code::w1cjksp;
 }
 
-inline constexpr bool is_blank(char32_t c) {
-	return _char_is_blank(c);
-}
-
-inline RUA_CONSTEXPR_14 bool is_blank(string_view sv) {
-	return is_chars(sv, _char_is_blank);
-}
-
-inline RUA_CONSTEXPR_14 bool is_blank(wstring_view sv) {
-	return is_chars(sv, _char_is_blank);
-}
-
-inline constexpr bool _char_is_space(char32_t c) {
-	return _char_is_blank(c) || _char_is_control(c);
+template <
+	typename StrLike,
+	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool is_blanks(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_blank);
 }
 
 inline constexpr bool is_space(char32_t c) {
-	return _char_is_space(c);
+	return is_blank(c) || is_control(c);
 }
 
-inline RUA_CONSTEXPR_14 bool is_space(string_view sv) {
-	return is_chars(sv, _char_is_space);
-}
-
-inline RUA_CONSTEXPR_14 bool is_space(wstring_view sv) {
-	return is_chars(sv, _char_is_space);
+template <
+	typename StrLike,
+	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool is_spaces(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_space);
 }
 
 namespace eol {
@@ -282,16 +258,11 @@ inline constexpr bool is_eol(char32_t c) {
 	return c == char_code::lf || c == char_code::cr;
 }
 
-inline RUA_CONSTEXPR_14 bool is_eol(string_view sv) {
-	if (sv.empty()) {
-		return false;
-	}
-	for (auto &c : sv) {
-		if (!is_eol(c)) {
-			return false;
-		}
-	}
-	return true;
+template <
+	typename StrLike,
+	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool is_eols(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_eol);
 }
 
 } // namespace rua

@@ -207,6 +207,14 @@ namespace rua {
 
 using string_view = basic_string_view<char>;
 using wstring_view = basic_string_view<wchar_t>;
+using u16string_view = basic_string_view<char16_t>;
+using u32string_view = basic_string_view<char32_t>;
+
+#ifdef __cpp_char8_t
+using u8string_view = basic_string_view<char8_t>;
+#else
+using u8string_view = string_view;
+#endif
 
 template <typename CharT, typename Traits>
 inline basic_string_view<CharT, Traits>
@@ -220,27 +228,29 @@ view(const std::basic_string<CharT, Traits, Allocator> &str) {
 	return str;
 }
 
-template <
-	typename Str,
-	typename RmCvrStr = remove_cvref_t<Str>,
-	typename = enable_if_t<
-		std::is_convertible<RmCvrStr, string_view>::value &&
-		!std::is_base_of<string_view, RmCvrStr>::value &&
-		!std::is_base_of<std::string, RmCvrStr>::value>>
-inline string_view view(Str &&str) {
-	return string_view(std::forward<Str>(str));
-}
+#define _RUA_DEFINE_VIEW(CharT)                                                \
+	template <                                                                 \
+		typename StrLike,                                                      \
+		typename RmCvrStrLike = remove_cvref_t<StrLike>,                       \
+		typename = enable_if_t<                                                \
+			std::is_convertible<RmCvrStrLike, basic_string_view<CharT>>::      \
+				value &&                                                       \
+			!std::is_base_of<basic_string_view<CharT>, RmCvrStrLike>::value && \
+			!std::is_base_of<std::basic_string<CharT>, RmCvrStrLike>::value>>  \
+	inline basic_string_view<CharT> view(StrLike &&str_like) {                 \
+		return basic_string_view<CharT>(std::forward<StrLike>(str_like));      \
+	}
 
-template <
-	typename Str,
-	typename RmCvrStr = remove_cvref_t<Str>,
-	typename = enable_if_t<
-		std::is_convertible<RmCvrStr, wstring_view>::value &&
-		!std::is_base_of<wstring_view, RmCvrStr>::value &&
-		!std::is_base_of<std::wstring, RmCvrStr>::value>>
-inline wstring_view view(Str &&str) {
-	return wstring_view(std::forward<Str>(str));
-}
+_RUA_DEFINE_VIEW(char);
+_RUA_DEFINE_VIEW(wchar_t);
+_RUA_DEFINE_VIEW(char16_t);
+_RUA_DEFINE_VIEW(char32_t);
+
+#ifdef __cpp_char8_t
+_RUA_DEFINE_VIEW(char8_t);
+#endif
+
+#undef _RUA_DEFINE_VIEW
 
 } // namespace rua
 

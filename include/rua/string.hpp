@@ -9,6 +9,7 @@
 #include "string/parse.hpp"
 #include "string/slice.hpp"
 #include "string/split.hpp"
+#include "string/trim.hpp"
 #include "string/view.hpp"
 #include "string/with.hpp"
 
