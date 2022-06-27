@@ -2,14 +2,9 @@
 #define _RUA_STRING_TRIM_HPP
 
 #include "char_set.hpp"
-#include "slice.hpp"
 #include "view.hpp"
 
-#include "../optional.hpp"
 #include "../util.hpp"
-
-#include <list>
-#include <vector>
 
 namespace rua {
 

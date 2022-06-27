@@ -232,6 +232,18 @@ inline RUA_CONSTEXPR_14 bool is_spaces(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_space);
 }
 
+inline constexpr bool is_lower_alphabet(char32_t c) {
+	return c >= 'a' && c <= 'z';
+}
+
+inline constexpr bool is_upper_alphabet(char32_t c) {
+	return c >= 'A' && c <= 'Z';
+}
+
+inline constexpr bool is_alphabet(char32_t c) {
+	return is_lower_alphabet(c) || is_upper_alphabet(c);
+}
+
 namespace eol {
 
 RUA_CVAL string_view lf("\n");
