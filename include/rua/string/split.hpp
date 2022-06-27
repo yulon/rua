@@ -13,7 +13,7 @@ namespace rua {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>())),
+	typename StrView = decltype(view_string(std::declval<StrLike &&>())),
 	typename Part = decltype(slice(std::declval<StrLike &&>()))>
 inline std::vector<Part> split(
 	StrLike &&str_like,
@@ -87,7 +87,7 @@ inline std::vector<Part> split(
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>())),
+	typename StrView = decltype(view_string(std::declval<StrLike &&>())),
 	typename Char = typename StrView::value_type,
 	typename Part = decltype(slice(std::declval<StrLike &&>()))>
 inline std::vector<Part> split(

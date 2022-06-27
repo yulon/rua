@@ -173,9 +173,9 @@ RUA_CVAL char32_t w1cjksp = 12288;
 template <
 	typename StrLike,
 	typename Pred,
-	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool chars_all(StrLike &&str_like, Pred &&pred) {
-	auto str_v = view(std::forward<StrLike>(str_like));
+	auto str_v = view_string(std::forward<StrLike>(str_like));
 	if (str_v.empty()) {
 		return false;
 	}
@@ -201,7 +201,7 @@ inline constexpr bool is_control(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool is_controls(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_control);
 }
@@ -216,7 +216,7 @@ inline constexpr bool is_blank(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool is_blanks(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_blank);
 }
@@ -227,7 +227,7 @@ inline constexpr bool is_space(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool is_spaces(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_space);
 }
@@ -272,7 +272,7 @@ inline constexpr bool is_eol(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>()))>
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool is_eols(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_eol);
 }

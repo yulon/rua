@@ -20,11 +20,11 @@ inline constexpr char32_t to_lower(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>())),
+	typename StrView = decltype(view_string(std::declval<StrLike &&>())),
 	typename Char = typename StrView::value_type,
 	typename Str = std::basic_string<Char> >
 inline Str to_lowers(StrLike &&str_like) {
-	auto str_v = view(std::forward<StrLike>(str_like));
+	auto str_v = view_string(std::forward<StrLike>(str_like));
 	if (str_v.empty()) {
 		return {};
 	}
@@ -47,11 +47,11 @@ inline constexpr char32_t to_upper(char32_t c) {
 
 template <
 	typename StrLike,
-	typename StrView = decltype(view(std::declval<StrLike &&>())),
+	typename StrView = decltype(view_string(std::declval<StrLike &&>())),
 	typename Char = typename StrView::value_type,
 	typename Str = std::basic_string<Char> >
 inline Str to_uppers(StrLike &&str_like) {
-	auto str_v = view(std::forward<StrLike>(str_like));
+	auto str_v = view_string(std::forward<StrLike>(str_like));
 	if (str_v.empty()) {
 		return {};
 	}

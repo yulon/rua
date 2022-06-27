@@ -11,7 +11,7 @@ namespace rua {
 template <typename StrLike, typename Pred>
 inline decltype(slice(std::declval<StrLike &&>()))
 trim_if(StrLike &&str_like, Pred &&pred) {
-	auto str_v = view(std::forward<StrLike>(str_like));
+	auto str_v = view_string(std::forward<StrLike>(str_like));
 	size_t fst = 0, lst = str_v.length();
 	for (size_t i = 0; i < str_v.length(); ++i) {
 		if (!std::forward<Pred>(pred)(str_v[i])) {

@@ -218,17 +218,17 @@ using u8string_view = string_view;
 
 template <typename CharT, typename Traits>
 inline basic_string_view<CharT, Traits>
-view(basic_string_view<CharT, Traits> str_v) {
+view_string(basic_string_view<CharT, Traits> str_v) {
 	return str_v;
 }
 
 template <typename CharT, typename Traits, typename Allocator>
 inline basic_string_view<CharT, Traits>
-view(const std::basic_string<CharT, Traits, Allocator> &str) {
+view_string(const std::basic_string<CharT, Traits, Allocator> &str) {
 	return str;
 }
 
-#define _RUA_DEFINE_VIEW(CharT)                                                \
+#define _RUA_DEFINE_VIEW_STRING(CharT)                                         \
 	template <                                                                 \
 		typename StrLike,                                                      \
 		typename RmCvrStrLike = remove_cvref_t<StrLike>,                       \
@@ -237,20 +237,20 @@ view(const std::basic_string<CharT, Traits, Allocator> &str) {
 				value &&                                                       \
 			!std::is_base_of<basic_string_view<CharT>, RmCvrStrLike>::value && \
 			!std::is_base_of<std::basic_string<CharT>, RmCvrStrLike>::value>>  \
-	inline basic_string_view<CharT> view(StrLike &&str_like) {                 \
+	inline basic_string_view<CharT> view_string(StrLike &&str_like) {          \
 		return basic_string_view<CharT>(std::forward<StrLike>(str_like));      \
 	}
 
-_RUA_DEFINE_VIEW(char);
-_RUA_DEFINE_VIEW(wchar_t);
-_RUA_DEFINE_VIEW(char16_t);
-_RUA_DEFINE_VIEW(char32_t);
+_RUA_DEFINE_VIEW_STRING(char);
+_RUA_DEFINE_VIEW_STRING(wchar_t);
+_RUA_DEFINE_VIEW_STRING(char16_t);
+_RUA_DEFINE_VIEW_STRING(char32_t);
 
 #ifdef __cpp_char8_t
-_RUA_DEFINE_VIEW(char8_t);
+_RUA_DEFINE_VIEW_STRING(char8_t);
 #endif
 
-#undef _RUA_DEFINE_VIEW
+#undef _RUA_DEFINE_VIEW_STRING
 
 } // namespace rua
 
