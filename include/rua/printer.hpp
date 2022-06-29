@@ -9,9 +9,7 @@ namespace rua {
 
 class printer {
 public:
-	constexpr printer() : _w(nullptr), _eol(eol::lf) {}
-
-	constexpr printer(std::nullptr_t) : printer() {}
+	constexpr printer(std::nullptr_t = nullptr) : _w(nullptr), _eol(eol::lf) {}
 
 	explicit printer(stream_i w, string_view eol = eol::lf) :
 		_w(std::move(w)), _eol(eol) {}
