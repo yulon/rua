@@ -714,7 +714,7 @@ private:
 	};
 
 	static const _ntdll_t &_ntdll() {
-		static auto ntdll = dylib::from_loaded("ntdll.dll");
+		static auto ntdll = dylib::from_loaded_or_load("ntdll.dll");
 		static const _ntdll_t inst{
 			ntdll["NtSuspendProcess"],
 			ntdll["NtResumeProcess"],
@@ -744,7 +744,8 @@ private:
 	}
 
 	static const _psapi_t &_psapi() {
-		static dylib kernel32 = dylib::from_loaded("kernel32.dll"), psapi;
+		static dylib kernel32 = dylib::from_loaded_or_load("kernel32.dll"),
+					 psapi;
 		static const _psapi_t inst{
 			_load_psapi(kernel32, psapi, "GetModuleFileNameExW"),
 			_load_psapi(kernel32, psapi, "GetModuleBaseNameW"),
@@ -938,7 +939,7 @@ _proc_load_dll_data _make_proc_load_dll_data(
 
 	ctx.names = data.names.data();
 
-	static auto ntdll = dylib::from_loaded("ntdll.dll");
+	static auto ntdll = dylib::from_loaded_or_load("ntdll.dll");
 	static auto rtl_init_unicode_string = ntdll["RtlInitUnicodeString"];
 	static auto ldr_load_dll = ntdll["LdrLoadDll"];
 
@@ -1298,7 +1299,7 @@ inline bool is_x86_on_x64() {
 	static auto r = ([]() -> bool {
 		BOOL(WINAPI * is_wow64_process)
 		(HANDLE hProcess, PBOOL Wow64Process) =
-			dylib::from_loaded("kernel32.dll")["IsWow64Process"];
+			dylib::from_loaded_or_load("kernel32.dll")["IsWow64Process"];
 		if (!is_wow64_process) {
 			return false;
 		}

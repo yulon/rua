@@ -26,6 +26,14 @@ public:
 		return dylib(GetModuleHandleW(u2w(name).c_str()), false);
 	}
 
+	static dylib from_loaded_or_load(string_view name) {
+		auto dl = from_loaded(name);
+		if (!dl) {
+			dl = dylib(name);
+		}
+		return dl;
+	}
+
 	~dylib() {
 		unload();
 	}

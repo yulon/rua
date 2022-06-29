@@ -25,6 +25,14 @@ public:
 		return dylib(dlopen(name.data(), RTLD_NOLOAD | RTLD_GLOBAL), false);
 	}
 
+	static dylib from_loaded_or_load(string_view name) {
+		auto dl = from_loaded(name);
+		if (!dl) {
+			dl = dylib(name);
+		}
+		return dl;
+	}
+
 	~dylib() {
 		unload();
 	}

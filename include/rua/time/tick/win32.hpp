@@ -13,7 +13,7 @@ namespace rua { namespace win32 {
 namespace _tick {
 
 inline duration tick() {
-	static auto kernel32 = dylib::from_loaded("kernel32.dll");
+	static auto kernel32 = dylib::from_loaded_or_load("kernel32.dll");
 	static decltype(&GetTickCount64) GetTickCount64_ptr =
 		kernel32["GetTickCount64"];
 	if (GetTickCount64_ptr) {
