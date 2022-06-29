@@ -15,7 +15,7 @@ inline constexpr char32_t unsafe_to_lower(char32_t c) {
 }
 
 inline constexpr char32_t to_lower(char32_t c) {
-	return is_upper_alphabet(c) ? unsafe_to_lower(c) : c;
+	return is_upper(c) ? unsafe_to_lower(c) : c;
 }
 
 template <
@@ -30,7 +30,7 @@ inline Str to_lowers(StrLike &&str_like) {
 	}
 	Str str(str_v);
 	for (auto &c : str) {
-		if (is_upper_alphabet(c)) {
+		if (is_upper(c)) {
 			c = static_cast<Char>(unsafe_to_lower(c));
 		}
 	}
@@ -42,7 +42,7 @@ inline constexpr char32_t unsafe_to_upper(char32_t c) {
 }
 
 inline constexpr char32_t to_upper(char32_t c) {
-	return is_lower_alphabet(c) ? unsafe_to_upper(c) : c;
+	return is_lower(c) ? unsafe_to_upper(c) : c;
 }
 
 template <
@@ -57,7 +57,7 @@ inline Str to_uppers(StrLike &&str_like) {
 	}
 	Str str(str_v);
 	for (auto &c : str) {
-		if (is_lower_alphabet(c)) {
+		if (is_lower(c)) {
 			c = static_cast<Char>(unsafe_to_upper(c));
 		}
 	}
