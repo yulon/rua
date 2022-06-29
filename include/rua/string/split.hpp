@@ -13,16 +13,22 @@ namespace rua {
 
 template <
 	typename StrLike,
+	typename SepStrLike,
 	typename StrView = decltype(view_string(std::declval<StrLike &&>())),
+	typename SepStrView = decltype(view_string(std::declval<SepStrLike &&>())),
 	typename Part = decltype(slice(std::declval<StrLike &&>()))>
 inline std::vector<Part> split(
 	StrLike &&str_like,
-	type_identity_t<StrView> sep,
+	SepStrLike &&sep_str_like,
 	size_t skip_count = 0,
 	int cut_count = nmax<int>()) {
 	std::vector<Part> r_vec;
 	StrView str_v(std::forward<StrLike>(str_like));
 	if (str_v.empty()) {
+		return r_vec;
+	}
+	SepStrView sep_str_v(std::forward<SepStrLike>(sep_str_like));
+	if (sep_str_v.empty()) {
 		return r_vec;
 	}
 	std::list<Part> r_li;
@@ -32,17 +38,17 @@ inline std::vector<Part> split(
 		size_t pos = 0;
 		size_t start = 0;
 		for (;;) {
-			pos = str_v.find(sep, pos);
+			pos = str_v.find(sep_str_v, pos);
 			if (pos == StrView::npos) {
 				break;
 			}
 			if (sc == skip_count) {
 				r_li.emplace_back(str_v.substr(start, pos - start));
-				pos = pos + sep.length();
+				pos = pos + sep_str_v.length();
 				start = pos;
 				++cc;
 			} else {
-				pos = pos + sep.length();
+				pos = pos + sep_str_v.length();
 				++sc;
 			}
 			if (start >= str_v.length() ||
@@ -54,15 +60,15 @@ inline std::vector<Part> split(
 			r_li.emplace_back(str_v.substr(start));
 		}
 	} else {
-		auto pos = str_v.length() - sep.length();
+		auto pos = str_v.length() - sep_str_v.length();
 		auto end = str_v.length();
 		for (;;) {
-			pos = str_v.rfind(sep, pos);
+			pos = str_v.rfind(sep_str_v, pos);
 			if (pos == StrView::npos) {
 				break;
 			}
 			if (sc == skip_count) {
-				auto start = pos + sep.length();
+				auto start = pos + sep_str_v.length();
 				r_li.emplace_front(str_v.substr(start, end - start));
 				end = pos;
 				--cc;
@@ -92,12 +98,12 @@ template <
 	typename Part = decltype(slice(std::declval<StrLike &&>()))>
 inline std::vector<Part> split(
 	StrLike &&str_like,
-	type_identity_t<Char> sep,
+	type_identity_t<Char> sep_char,
 	size_t skip_count = 0,
 	int cut_count = nmax<int>()) {
-	return split<StrLike, StrView, Part>(
+	return split<StrLike, StrView, StrView, StrView, Part>(
 		std::forward<StrLike>(str_like),
-		StrView(&sep, 1),
+		StrView(&sep_char, 1),
 		skip_count,
 		cut_count);
 }
