@@ -1,7 +1,7 @@
 #ifndef _RUA_STRING_CONV_HPP
 #define _RUA_STRING_CONV_HPP
 
-#include "char_codec/base.hpp"
+#include "codec/base.hpp"
 #include "join.hpp"
 #include "view.hpp"
 

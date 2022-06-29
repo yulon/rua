@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_CODEC_BASE_UNI_HPP
-#define _RUA_STRING_CHAR_CODEC_BASE_UNI_HPP
+#ifndef _RUA_STRING_CODEC_BASE_UNI_HPP
+#define _RUA_STRING_CODEC_BASE_UNI_HPP
 
 #include "../../view.hpp"
 
@@ -7,7 +7,7 @@
 
 namespace rua { namespace uni {
 
-namespace _string_char_codec_base {
+namespace _string_codec_base {
 
 inline std::string l2u(string_view str) {
 	return std::string(str.data(), str.size());
@@ -27,9 +27,9 @@ inline std::string w2u(wstring_view) {
 	return "";
 }
 
-} // namespace _string_char_codec_base
+} // namespace _string_codec_base
 
-using namespace _string_char_codec_base;
+using namespace _string_codec_base;
 
 }} // namespace rua::uni
 

@@ -2,8 +2,8 @@
 #define _RUA_STRING_HPP
 
 #include "string/case.hpp"
-#include "string/char_codec.hpp"
 #include "string/char_set.hpp"
+#include "string/codec.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
 #include "string/len.hpp"

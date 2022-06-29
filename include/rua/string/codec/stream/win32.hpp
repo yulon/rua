@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_CODEC_STREAM_WIN32_HPP
-#define _RUA_STRING_CHAR_CODEC_STREAM_WIN32_HPP
+#ifndef _RUA_STRING_CODEC_STREAM_WIN32_HPP
+#define _RUA_STRING_CODEC_STREAM_WIN32_HPP
 
 #include "../base/win32.hpp"
 
@@ -8,7 +8,7 @@
 
 namespace rua { namespace win32 {
 
-namespace _string_char_codec_stream {
+namespace _string_codec_stream {
 
 class l2u_reader : public stream_base {
 public:
@@ -88,9 +88,9 @@ private:
 	stream_i _lw;
 };
 
-} // namespace _string_char_codec_stream
+} // namespace _string_codec_stream
 
-using namespace _string_char_codec_stream;
+using namespace _string_codec_stream;
 
 }} // namespace rua::win32
 

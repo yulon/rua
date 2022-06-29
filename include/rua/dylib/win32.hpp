@@ -4,7 +4,7 @@
 #include "dyfn.h"
 
 #include "../generic_ptr.hpp"
-#include "../string/char_codec/base/win32.hpp"
+#include "../string/codec/base/win32.hpp"
 #include "../string/view.hpp"
 #include "../util.hpp"
 

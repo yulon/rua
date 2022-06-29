@@ -5,7 +5,7 @@
 
 #include "../path.hpp"
 #include "../range.hpp"
-#include "../string/char_codec/base/win32.hpp"
+#include "../string/codec/base/win32.hpp"
 #include "../string/join.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../time/now/win32.hpp"

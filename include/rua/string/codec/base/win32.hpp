@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_CODEC_BASE_WIN32_HPP
-#define _RUA_STRING_CHAR_CODEC_BASE_WIN32_HPP
+#ifndef _RUA_STRING_CODEC_BASE_WIN32_HPP
+#define _RUA_STRING_CODEC_BASE_WIN32_HPP
 
 #include "../../view.hpp"
 
@@ -13,7 +13,7 @@
 
 namespace rua { namespace win32 {
 
-namespace _string_char_codec_base {
+namespace _string_codec_base {
 
 inline std::wstring b2w(UINT mb_cp, string_view mb_str) {
 	if (mb_str.empty()) {
@@ -99,9 +99,9 @@ inline std::string u2l(string_view u8_str) {
 	return w2l(u2w(u8_str));
 }
 
-} // namespace _string_char_codec_base
+} // namespace _string_codec_base
 
-using namespace _string_char_codec_base;
+using namespace _string_codec_base;
 
 }} // namespace rua::win32
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_CODEC_STREAM_UNI_HPP
-#define _RUA_STRING_CHAR_CODEC_STREAM_UNI_HPP
+#ifndef _RUA_STRING_CODEC_STREAM_UNI_HPP
+#define _RUA_STRING_CODEC_STREAM_UNI_HPP
 
 #include "../base/uni.hpp"
 
@@ -8,7 +8,7 @@
 
 namespace rua { namespace uni {
 
-namespace _string_char_codec_stream {
+namespace _string_codec_stream {
 
 class l2u_reader : public stream_base {
 public:
@@ -60,9 +60,9 @@ private:
 	stream_i _lw;
 };
 
-} // namespace _string_char_codec_stream
+} // namespace _string_codec_stream
 
-using namespace _string_char_codec_stream;
+using namespace _string_codec_stream;
 
 }} // namespace rua::uni
 
