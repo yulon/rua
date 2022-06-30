@@ -7,6 +7,8 @@
 #include "../file/posix.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
+#include "../sync/await.hpp"
+#include "../sync/future.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
 #include "../util.hpp"
@@ -34,7 +36,7 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
-class process : private enable_wait_operator {
+class process : private enable_await_operators {
 public:
 	using native_handle_t = pid_t;
 

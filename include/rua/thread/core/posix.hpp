@@ -2,6 +2,8 @@
 #define _RUA_THREAD_CORE_POSIX_HPP
 
 #include "../../generic_word.hpp"
+#include "../../sync/await.hpp"
+#include "../../sync/future.hpp"
 #include "../../sync/then.hpp"
 #include "../../sync/wait.hpp"
 #include "../../util.hpp"
@@ -25,7 +27,7 @@ inline tid_t this_tid() {
 
 using namespace _this_tid;
 
-class thread : private enable_wait_operator {
+class thread : private enable_await_operators {
 public:
 	using native_handle_t = pthread_t;
 

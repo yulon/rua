@@ -1,7 +1,9 @@
 #ifndef _RUA_SYS_LISTEN_WIN32_HPP
 #define _RUA_SYS_LISTEN_WIN32_HPP
 
+#include "../../sync/await.hpp"
 #include "../../sync/promise.hpp"
+#include "../../sync/then.hpp"
 #include "../../sync/wait.hpp"
 #include "../../time.hpp"
 #include "../../util.hpp"
@@ -13,7 +15,7 @@
 
 namespace rua { namespace win32 {
 
-class sys_waiter : private enable_wait_operator {
+class sys_waiter : private enable_await_operators {
 public:
 	using native_handle_t = HANDLE;
 

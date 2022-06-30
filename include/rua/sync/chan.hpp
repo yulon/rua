@@ -1,7 +1,8 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "then.hpp"
+#include "future.hpp"
+#include "promise.hpp"
 
 #include "../lockfree_list.hpp"
 #include "../optional.hpp"

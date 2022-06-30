@@ -4,6 +4,8 @@
 #include "../../dylib/win32.hpp"
 #include "../../generic_word.hpp"
 #include "../../skater.hpp"
+#include "../../sync/await.hpp"
+#include "../../sync/then.hpp"
 #include "../../sync/wait.hpp"
 #include "../../sys/info/win32.hpp"
 #include "../../sys/listen/win32.hpp"
@@ -28,7 +30,7 @@ inline tid_t this_tid() {
 
 using namespace _this_tid;
 
-class thread : private enable_wait_operator {
+class thread : private enable_await_operators {
 public:
 	using native_handle_t = HANDLE;
 

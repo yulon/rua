@@ -144,6 +144,21 @@ inline future<CallbackResult> then(Awaitable &&awaitable, Callback &&callback) {
 		std::forward<Awaitable>(awaitable), std::forward<Callback>(callback));
 }
 
+namespace await_operators {
+
+template <
+	typename Awaitable,
+	typename Callback,
+	typename AwaitableResult = await_result_t<Awaitable &&>,
+	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>>
+inline future<CallbackResult>
+operator|(Awaitable &&awaitable, Callback &&callback) {
+	return _thener<Awaitable, Callback, AwaitableResult, CallbackResult>::then(
+		std::forward<Awaitable>(awaitable), std::forward<Callback>(callback));
+}
+
+}
+
 } // namespace rua
 
 #endif

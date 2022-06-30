@@ -16,6 +16,7 @@
 #include "../string/join.hpp"
 #include "../string/len.hpp"
 #include "../string/view.hpp"
+#include "../sync/await.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
 #include "../sys/info/win32.hpp"
@@ -85,7 +86,7 @@ inline bool has_full_permissions() {
 
 using namespace _this_process;
 
-class process : private enable_wait_operator {
+class process : private enable_await_operators {
 public:
 	using native_handle_t = HANDLE;
 

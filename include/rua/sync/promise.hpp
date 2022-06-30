@@ -1,7 +1,7 @@
 #ifndef _RUA_SYNC_PROMISE_HPP
 #define _RUA_SYNC_PROMISE_HPP
 
-#include "wait.hpp"
+#include "await.hpp"
 
 #include "../optional.hpp"
 #include "../skater.hpp"
@@ -46,7 +46,7 @@ using default_promise_deleter = std::default_delete<promise_context<T>>;
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename T, typename Deteler>
-class future_base : private enable_wait_operator {
+class future_base : private enable_await_operators {
 public:
 	future_base(future_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
 

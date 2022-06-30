@@ -1,6 +1,7 @@
 #ifndef _RUA_SYNC_FUTURE_HPP
 #define _RUA_SYNC_FUTURE_HPP
 
+#include "await.hpp"
 #include "promise.hpp"
 
 #include "../util.hpp"
@@ -14,7 +15,7 @@ template <
 	typename T = void,
 	typename PromiseResult = T,
 	typename PromiseDeteler = default_promise_deleter<T>>
-class future : private enable_wait_operator {
+class future : private enable_await_operators {
 public:
 	constexpr future() : _r() {}
 
@@ -98,7 +99,7 @@ private:
 };
 
 template <typename PromiseDeteler>
-class future<void, void, PromiseDeteler> : private enable_wait_operator {
+class future<void, void, PromiseDeteler> : private enable_await_operators {
 public:
 	constexpr future(std::nullptr_t = nullptr) : _pms_fut() {}
 

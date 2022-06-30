@@ -1,12 +1,12 @@
 #ifndef _RUA_SYNC_LOCK_GUARD_HPP
 #define _RUA_SYNC_LOCK_GUARD_HPP
 
-#include "wait.hpp"
+#include "await.hpp"
 
 namespace rua {
 
 template <typename Lock>
-class lock_guard : private enable_wait_operator {
+class lock_guard : private enable_await_operators {
 public:
 	explicit lock_guard(Lock &lck) : _lck(&lck), _lcking(lck.lock()) {}
 

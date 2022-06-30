@@ -162,6 +162,16 @@ await_suspend(Awaiter &&awaiter, Resume resume) {
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////
+
+namespace await_operators {
+
+class enable_await_operators {};
+
+}
+
+using namespace await_operators;
+
 } // namespace rua
 
 #endif

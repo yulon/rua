@@ -30,10 +30,14 @@ inline Result wait(Awaitable &&awaitable) {
 	return awaiter.await_resume();
 }
 
+namespace await_operators {
+
 template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
 inline Result operator*(Awaitable &&awaitable) {
 	return wait<Awaitable, Result>(std::forward<Awaitable>(awaitable));
 }
+
+} // namespace await_operators
 
 template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
 inline enable_if_t<!std::is_void<Result>::value, optional<Result>>
@@ -114,8 +118,6 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 	}
 	return false;
 }
-
-class enable_wait_operator {};
 
 } // namespace rua
 
