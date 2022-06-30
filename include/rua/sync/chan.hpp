@@ -1,11 +1,10 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "future.hpp"
+#include "then.hpp"
 
 #include "../lockfree_list.hpp"
 #include "../optional.hpp"
-#include "../skater.hpp"
 #include "../time/tick.hpp"
 #include "../util.hpp"
 

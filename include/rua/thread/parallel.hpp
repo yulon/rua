@@ -5,7 +5,7 @@
 
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
-#include "../sync/future.hpp"
+#include "../sync/then.hpp"
 #include "../util.hpp"
 
 #include <functional>

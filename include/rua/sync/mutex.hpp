@@ -1,6 +1,8 @@
 #ifndef _RUA_SYNC_MUTEX_HPP
 #define _RUA_SYNC_MUTEX_HPP
 
+#include "then.hpp"
+
 #include "../lockfree_list.hpp"
 #include "../util.hpp"
 
