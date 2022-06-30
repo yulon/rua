@@ -14,8 +14,6 @@ namespace rua {
 #define RUA_OPERATOR_AWAIT operator_co_await
 #endif
 
-////////////////////////////////////////////////////////////////////////////
-
 template <typename, typename = void>
 struct is_awaiter : std::false_type {};
 
@@ -41,17 +39,18 @@ template <typename T>
 struct is_awaitable
 	: bool_constant<is_awaiter<T>::value || is_overloaded_await<T>::value> {};
 
-template <typename T>
-inline enable_if_t<is_awaiter<T &&>::value, T &&> make_awaiter(T &&awaiter) {
-	return std::forward<T>(awaiter);
+template <typename Awaiter>
+inline enable_if_t<is_awaiter<Awaiter &&>::value, Awaiter &&>
+make_awaiter(Awaiter &&awaiter) {
+	return std::forward<Awaiter>(awaiter);
 }
 
-template <typename T>
+template <typename Awaitable>
 inline enable_if_t<
-	is_overloaded_await<T>::value,
-	decltype(std::declval<T &&>().RUA_OPERATOR_AWAIT())>
-make_awaiter(T &&awaitable) {
-	return std::forward<T>(awaitable).RUA_OPERATOR_AWAIT();
+	is_overloaded_await<Awaitable>::value,
+	decltype(std::declval<Awaitable &&>().RUA_OPERATOR_AWAIT())>
+make_awaiter(Awaitable &&awaitable) {
+	return std::forward<Awaitable>(awaitable).RUA_OPERATOR_AWAIT();
 }
 
 template <typename T>
@@ -61,13 +60,29 @@ template <typename T>
 using awaiter_t = typename awaiter<T>::type;
 
 template <typename T>
-using await_result =
-	type_identity<decltype(make_awaiter(std::declval<T>()).await_resume())>;
+using await_resume_result =
+	type_identity<decltype(std::declval<T>().await_resume())>;
+
+template <typename T>
+using await_resume_result_t = typename await_resume_result<T>::type;
+
+template <typename T>
+using await_result = await_resume_result<awaiter_t<T>>;
 
 template <typename T>
 using await_result_t = typename await_result<T>::type;
 
-////////////////////////////////////////////////////////////////////////////
+template <typename T, typename = void>
+struct awaitable_result {};
+
+template <typename T>
+struct awaitable_result<
+	T,
+	enable_if_t<is_awaitable<T>::value && !is_awaiter<T>::value>>
+	: await_result<T> {};
+
+template <typename T>
+using awaitable_result_t = typename awaitable_result<T>::type;
 
 template <
 	typename Awaiter,
@@ -162,13 +177,195 @@ await_suspend(Awaiter &&awaiter, Resume resume) {
 	return true;
 }
 
-////////////////////////////////////////////////////////////////////////////
+template <typename Awaitable, typename = void>
+class awaiter_wrapper {};
+
+template <typename Awaiter>
+class awaiter_wrapper<
+	Awaiter,
+	enable_if_t<
+		is_awaiter<Awaiter>::value &&
+		!std::is_lvalue_reference<Awaiter>::value>> {
+public:
+	using storage_t = decay_t<Awaiter>;
+
+	awaiter_wrapper(Awaiter awaiter) : _awaiter(std::move(awaiter)) {}
+
+	storage_t &value() & {
+		return _awaiter;
+	}
+
+	const storage_t &value() const & {
+		return _awaiter;
+	}
+
+	storage_t &&value() && {
+		return std::move(_awaiter);
+	}
+
+	storage_t &operator*() & {
+		return value();
+	}
+
+	const storage_t &operator*() const & {
+		return value();
+	}
+
+	storage_t &&operator*() && {
+		return std::move(value());
+	}
+
+	storage_t *operator->() {
+		return &value();
+	}
+
+	const storage_t *operator->() const {
+		return &value();
+	}
+
+private:
+	storage_t _awaiter;
+};
+
+template <typename Awaiter>
+class awaiter_wrapper<
+	Awaiter,
+	enable_if_t<
+		is_awaiter<Awaiter>::value &&
+		std::is_lvalue_reference<Awaiter>::value>> {
+public:
+	using storage_t = Awaiter;
+
+	awaiter_wrapper(Awaiter awaiter) : _awaiter(awaiter) {}
+
+	storage_t value() const {
+		return _awaiter;
+	}
+
+	storage_t operator*() const {
+		return value();
+	}
+
+	remove_reference_t<storage_t> *operator->() const {
+		return &value();
+	}
+
+private:
+	storage_t _awaiter;
+};
+
+template <typename Awaitable>
+class awaiter_wrapper<
+	Awaitable,
+	enable_if_t<
+		is_overloaded_await<Awaitable>::value &&
+		!std::is_lvalue_reference<Awaitable>::value>> {
+public:
+	using storage_t = awaiter_t<Awaitable>;
+
+	RUA_SASSERT(!std::is_reference<storage_t>::value);
+
+	awaiter_wrapper(Awaitable awaitable) : _awaitable(std::move(awaitable)) {
+		_awaiter = std::move(_awaitable).RUA_OPERATOR_AWAIT();
+	}
+
+	storage_t &value() & {
+		return _awaiter;
+	}
+
+	const storage_t &value() const & {
+		return _awaiter;
+	}
+
+	storage_t &&value() && {
+		return std::move(_awaiter);
+	}
+
+	storage_t &operator*() & {
+		return value();
+	}
+
+	const storage_t &operator*() const & {
+		return value();
+	}
+
+	storage_t &&operator*() && {
+		return std::move(value());
+	}
+
+	storage_t *operator->() {
+		return &value();
+	}
+
+	const storage_t *operator->() const {
+		return &value();
+	}
+
+private:
+	decay_t<Awaitable &&> _awaitable;
+	storage_t _awaiter;
+};
+
+template <typename Awaitable>
+class awaiter_wrapper<
+	Awaitable,
+	enable_if_t<
+		is_overloaded_await<Awaitable>::value &&
+		std::is_lvalue_reference<Awaitable>::value>> {
+public:
+	using storage_t = awaiter_t<Awaitable>;
+
+	RUA_SASSERT(!std::is_reference<storage_t>::value);
+
+	awaiter_wrapper(Awaitable awaitable) :
+		_awaiter(awaitable.RUA_OPERATOR_AWAIT()) {}
+
+	storage_t &value() & {
+		return _awaiter;
+	}
+
+	const storage_t &value() const & {
+		return _awaiter;
+	}
+
+	storage_t &&value() && {
+		return std::move(_awaiter);
+	}
+
+	storage_t &operator*() & {
+		return value();
+	}
+
+	const storage_t &operator*() const & {
+		return value();
+	}
+
+	storage_t &&operator*() && {
+		return std::move(value());
+	}
+
+	storage_t *operator->() {
+		return &value();
+	}
+
+	const storage_t *operator->() const {
+		return &value();
+	}
+
+private:
+	storage_t _awaiter;
+};
+
+template <typename Awaitable>
+inline awaiter_wrapper<Awaitable &&> wrap_awaiter(Awaitable &&awaitable) {
+	return std::forward<Awaitable>(awaitable);
+}
 
 namespace await_operators {
 
 class enable_await_operators {};
 
-}
+} // namespace await_operators
 
 using namespace await_operators;
 
