@@ -95,24 +95,19 @@ inline enable_if_t<
 		!std::is_convertible<CallbackResult, Result>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
-	skater<promise<CallbackResultValue>> pms;
-	future<CallbackResultValue> r(*pms);
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
 	if (awtr->await_ready()) {
-		then(
+		return then(
 			std::forward<Callback>(callback)(awtr->await_resume()),
-			[pms](CallbackResultValue val) mutable {
-				pms->set_value(std::move(val));
-			});
-		return r;
+			[](CallbackResultValue val) { return std::move(val); });
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
 		decltype(awtr) awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
-	auto ctx = new ctx_t{
-		*std::move(pms), std::move(awtr), std::forward<Callback>(callback)};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<CallbackResultValue> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
@@ -253,25 +248,20 @@ inline enable_if_t<
 		!std::is_constructible<CallbackResult, Result>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
-	skater<promise<CallbackResultValue>> pms;
-	future<CallbackResultValue> r(*pms);
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
 	if (awtr->await_ready()) {
 		awtr->await_resume();
-		then(
+		return then(
 			std::forward<Callback>(callback)(),
-			[pms](CallbackResultValue val) mutable {
-				pms->set_value(std::move(val));
-			});
-		return r;
+			[](CallbackResultValue val) { return std::move(val); });
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
 		decltype(awtr) awtr;
 		std::function<CallbackResult()> cb;
 	};
-	auto ctx = new ctx_t{
-		*std::move(pms), std::move(awtr), std::forward<Callback>(callback)};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<CallbackResultValue> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
