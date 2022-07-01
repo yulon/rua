@@ -27,7 +27,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResult> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -63,7 +63,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -103,7 +103,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -143,7 +143,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -186,7 +186,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -223,7 +223,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<void(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -258,7 +258,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResult> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -297,7 +297,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -338,7 +338,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -381,7 +381,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<CallbackResultValue> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -424,7 +424,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
@@ -463,7 +463,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	struct ctx_t {
 		promise<> pms;
-		decltype(awtr) awtr;
+		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<void()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
