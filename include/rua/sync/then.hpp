@@ -52,8 +52,9 @@ template <
 	typename Result = future<CallbackResultValue>>
 inline enable_if_t<
 	!std::is_void<AwaitableResult>::value &&
-		!std::is_void<CallbackResultValue>::value &&
-		std::is_constructible<CallbackResult, Result>::value,
+		!std::is_void<CallbackResult>::value &&
+		std::is_constructible<CallbackResult, Result>::value &&
+		!std::is_void<CallbackResultValue>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
@@ -91,8 +92,47 @@ template <
 	typename Result = future<CallbackResultValue>>
 inline enable_if_t<
 	!std::is_void<AwaitableResult>::value &&
-		!std::is_void<CallbackResultValue>::value &&
-		!std::is_convertible<CallbackResult, Result>::value,
+		!std::is_void<CallbackResult>::value &&
+		std::is_constructible<CallbackResult, Result>::value &&
+		std::is_void<CallbackResultValue>::value,
+	Result>
+then(Awaitable &&awaitable, Callback &&callback) {
+	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
+	if (awtr->await_ready()) {
+		return std::forward<Callback>(callback)(awtr->await_resume());
+	}
+	struct ctx_t {
+		promise<> pms;
+		decltype(awtr) awtr;
+		std::function<CallbackResult(AwaitableResult)> cb;
+	};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<> r(ctx->pms);
+	if (await_suspend(*ctx->awtr, [ctx]() {
+			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
+				ctx->pms.set_value();
+				delete ctx;
+			});
+		})) {
+		return r;
+	}
+	r = ctx->cb(ctx->awtr->await_resume());
+	delete ctx;
+	return r;
+}
+
+template <
+	typename Awaitable,
+	typename Callback,
+	typename AwaitableResult = await_result_t<Awaitable &&>,
+	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>,
+	typename CallbackResultValue = await_result_t<CallbackResult>,
+	typename Result = future<CallbackResultValue>>
+inline enable_if_t<
+	!std::is_void<AwaitableResult>::value &&
+		!std::is_void<CallbackResult>::value &&
+		!std::is_convertible<CallbackResult, Result>::value &&
+		!std::is_void<CallbackResultValue>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
@@ -120,6 +160,47 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	then(ctx->cb(ctx->awtr->await_resume()), [ctx](CallbackResultValue val) {
 		ctx->pms.set_value(std::move(val));
+		delete ctx;
+	});
+	return r;
+}
+
+template <
+	typename Awaitable,
+	typename Callback,
+	typename AwaitableResult = await_result_t<Awaitable &&>,
+	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>,
+	typename CallbackResultValue = await_result_t<CallbackResult>,
+	typename Result = future<CallbackResultValue>>
+inline enable_if_t<
+	!std::is_void<AwaitableResult>::value &&
+		!std::is_void<CallbackResult>::value &&
+		!std::is_convertible<CallbackResult, Result>::value &&
+		std::is_void<CallbackResultValue>::value,
+	Result>
+then(Awaitable &&awaitable, Callback &&callback) {
+	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
+	if (awtr->await_ready()) {
+		return then(
+			std::forward<Callback>(callback)(awtr->await_resume()), []() {});
+	}
+	struct ctx_t {
+		promise<> pms;
+		decltype(awtr) awtr;
+		std::function<CallbackResult(AwaitableResult)> cb;
+	};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<> r(ctx->pms);
+	if (await_suspend(*ctx->awtr, [ctx]() {
+			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
+				ctx->pms.set_value();
+				delete ctx;
+			});
+		})) {
+		return r;
+	}
+	then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
+		ctx->pms.set_value();
 		delete ctx;
 	});
 	return r;
@@ -163,7 +244,7 @@ template <
 	typename Awaitable,
 	typename Callback,
 	typename AwaitableResult = await_result_t<Awaitable &&>,
-	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>>
+	typename CallbackResult = invoke_result_t<Callback &&>>
 inline enable_if_t<
 	std::is_void<AwaitableResult>::value &&
 		!std::is_void<CallbackResult>::value &&
@@ -199,13 +280,14 @@ template <
 	typename Awaitable,
 	typename Callback,
 	typename AwaitableResult = await_result_t<Awaitable &&>,
-	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>,
+	typename CallbackResult = invoke_result_t<Callback &&>,
 	typename CallbackResultValue = await_result_t<CallbackResult>,
 	typename Result = future<CallbackResultValue>>
 inline enable_if_t<
 	std::is_void<AwaitableResult>::value &&
 		!std::is_void<CallbackResult>::value &&
-		std::is_constructible<CallbackResult, Result>::value,
+		std::is_constructible<CallbackResult, Result>::value &&
+		!std::is_void<CallbackResultValue>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
@@ -239,13 +321,55 @@ template <
 	typename Awaitable,
 	typename Callback,
 	typename AwaitableResult = await_result_t<Awaitable &&>,
-	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>,
+	typename CallbackResult = invoke_result_t<Callback &&>,
 	typename CallbackResultValue = await_result_t<CallbackResult>,
 	typename Result = future<CallbackResultValue>>
 inline enable_if_t<
 	std::is_void<AwaitableResult>::value &&
 		!std::is_void<CallbackResult>::value &&
-		!std::is_constructible<CallbackResult, Result>::value,
+		std::is_constructible<CallbackResult, Result>::value &&
+		std::is_void<CallbackResultValue>::value,
+	Result>
+then(Awaitable &&awaitable, Callback &&callback) {
+	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
+	if (awtr->await_ready()) {
+		awtr->await_resume();
+		return std::forward<Callback>(callback)();
+	}
+	struct ctx_t {
+		promise<> pms;
+		decltype(awtr) awtr;
+		std::function<CallbackResult()> cb;
+	};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<> r(ctx->pms);
+	if (await_suspend(*ctx->awtr, [ctx]() {
+			ctx->awtr->await_resume();
+			then(ctx->cb(), [ctx]() {
+				ctx->pms.set_value();
+				delete ctx;
+			});
+		})) {
+		return r;
+	}
+	ctx->awtr->await_resume();
+	r = ctx->cb();
+	delete ctx;
+	return r;
+}
+
+template <
+	typename Awaitable,
+	typename Callback,
+	typename AwaitableResult = await_result_t<Awaitable &&>,
+	typename CallbackResult = invoke_result_t<Callback &&>,
+	typename CallbackResultValue = await_result_t<CallbackResult>,
+	typename Result = future<CallbackResultValue>>
+inline enable_if_t<
+	std::is_void<AwaitableResult>::value &&
+		!std::is_void<CallbackResult>::value &&
+		!std::is_constructible<CallbackResult, Result>::value &&
+		!std::is_void<CallbackResultValue>::value,
 	Result>
 then(Awaitable &&awaitable, Callback &&callback) {
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
@@ -283,7 +407,50 @@ template <
 	typename Awaitable,
 	typename Callback,
 	typename AwaitableResult = await_result_t<Awaitable &&>,
-	typename CallbackResult = invoke_result_t<Callback &&, AwaitableResult>>
+	typename CallbackResult = invoke_result_t<Callback &&>,
+	typename CallbackResultValue = await_result_t<CallbackResult>,
+	typename Result = future<CallbackResultValue>>
+inline enable_if_t<
+	std::is_void<AwaitableResult>::value &&
+		!std::is_void<CallbackResult>::value &&
+		!std::is_constructible<CallbackResult, Result>::value &&
+		std::is_void<CallbackResultValue>::value,
+	Result>
+then(Awaitable &&awaitable, Callback &&callback) {
+	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
+	if (awtr->await_ready()) {
+		awtr->await_resume();
+		return then(std::forward<Callback>(callback)(), []() {});
+	}
+	struct ctx_t {
+		promise<> pms;
+		decltype(awtr) awtr;
+		std::function<CallbackResult()> cb;
+	};
+	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
+	future<> r(ctx->pms);
+	if (await_suspend(*ctx->awtr, [ctx]() {
+			ctx->awtr->await_resume();
+			then(ctx->cb(), [ctx]() {
+				ctx->pms.set_value();
+				delete ctx;
+			});
+		})) {
+		return r;
+	}
+	ctx->awtr->await_resume();
+	then(ctx->cb(), [ctx]() {
+		ctx->pms.set_value();
+		delete ctx;
+	});
+	return r;
+}
+
+template <
+	typename Awaitable,
+	typename Callback,
+	typename AwaitableResult = await_result_t<Awaitable &&>,
+	typename CallbackResult = invoke_result_t<Callback &&>>
 inline enable_if_t<
 	std::is_void<AwaitableResult>::value && std::is_void<CallbackResult>::value,
 	future<CallbackResult>>
