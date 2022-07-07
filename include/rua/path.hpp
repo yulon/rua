@@ -4,6 +4,7 @@
 #include "span.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
+#include "string/trim.hpp"
 #include "string/view.hpp"
 #include "util.hpp"
 
@@ -93,35 +94,45 @@ protected:
 private:
 	std::string _s;
 
-	static std::string &&_fix_seps(std::string &&part) {
+	static bool _is_other_sep(char c) {
 		static constexpr string_view other_seps(
 			Sep == '/' ? "\\" : (Sep == '\\' ? "/" : "/\\"));
 
-		for (auto &c : part) {
-			for (auto &other_sep : other_seps) {
-				if (c == other_sep) {
-					c = Sep;
-					break;
-				}
+		for (auto other_sep : other_seps) {
+			if (c == other_sep) {
+				return true;
 			}
 		}
-		return std::move(part);
+		return false;
+	}
+
+	static bool _is_sep(char c) {
+		return c == Sep || _is_other_sep(c);
+	}
+
+	static std::string &&_fix_seps(std::string &&s) {
+		for (auto &c : s) {
+			if (_is_other_sep(c)) {
+				c = Sep;
+			}
+		}
+		return std::move(s);
 	}
 
 	template <typename PartList>
 	static std::string _join(PartList &&part_list) {
 		std::list<std::string> parts;
 		for (auto &part : std::forward<PartList>(part_list)) {
-			parts.emplace_back(_fix_seps(std::string(part)));
+			parts.emplace_back(trim_right_if(part, _is_sep));
 		}
 		auto sep = Sep;
 		string_view sep_sv(&sep, 1);
 		if (parts.front() == sep_sv) {
 			auto front = std::move(parts.front());
 			parts.pop_front();
-			return front + join(parts, sep_sv, true);
+			return _fix_seps(front + join(parts, sep_sv, true));
 		}
-		return join(parts, sep_sv, true);
+		return _fix_seps(join(parts, sep_sv, true));
 	}
 };
 
