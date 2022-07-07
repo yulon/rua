@@ -7,22 +7,30 @@
 
 namespace rua {
 
+template <
+	typename StrLike,
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool
-starts_with(string_view str, string_view search_str) {
-	if (str.length() < search_str.length()) {
+starts_with(StrLike &&str_like, type_identity_t<StrView> search_str_v) {
+	StrView str_v(std::forward<StrLike>(str_like));
+	if (str_v.length() < search_str_v.length()) {
 		return false;
 	}
-	return str.substr(0, search_str.length()) == search_str;
+	return str_v.substr(0, search_str_v.length()) == search_str_v;
 }
 
+template <
+	typename StrLike,
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
 inline RUA_CONSTEXPR_14 bool
-ends_with(string_view str, string_view search_str) {
-	if (str.length() < search_str.length()) {
+ends_with(StrLike &&str_like, type_identity_t<StrView> search_str_v) {
+	StrView str_v(std::forward<StrLike>(str_like));
+	if (str_like.length() < search_str_v.length()) {
 		return false;
 	}
-	return str.substr(
-			   str.length() - search_str.length(), search_str.length()) ==
-		   search_str;
+	return str_like.substr(
+			   str_like.length() - search_str_v.length(),
+			   search_str_v.length()) == search_str_v;
 }
 
 } // namespace rua
