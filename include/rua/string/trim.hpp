@@ -2,6 +2,7 @@
 #define _RUA_STRING_TRIM_HPP
 
 #include "char_set.hpp"
+#include "slice.hpp"
 #include "view.hpp"
 
 #include "../util.hpp"
