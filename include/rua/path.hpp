@@ -189,6 +189,7 @@ inline std::string &&to_string(path_base<Path, Sep> &&p) {
 	template <                                                                 \
 		typename... Parts,                                                     \
 		typename = enable_if_t<                                                \
+			(sizeof...(Parts) > 1) ||                                          \
 			!std::is_base_of<Path, decay_t<front_t<Parts...>>>::value>>        \
 	Path(Parts &&...parts) : path_base(std::forward<Parts>(parts)...) {}
 
@@ -198,6 +199,7 @@ inline std::string &&to_string(path_base<Path, Sep> &&p) {
 	template <                                                                 \
 		typename... Parts,                                                     \
 		typename = enable_if_t<                                                \
+			(sizeof...(Parts) > 1) ||                                          \
 			!std::is_base_of<Path, decay_t<front_t<Parts...>>>::value>>        \
 	Path(Parts &&...parts) :                                                   \
 		path_base<Path, Sep>(std::forward<Parts>(parts)...) {}
