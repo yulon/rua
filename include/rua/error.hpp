@@ -3,6 +3,7 @@
 
 #include "interface_ptr.hpp"
 #include "string/char_set.hpp"
+#include "string/conv.hpp"
 #include "string/join.hpp"
 #include "variant.hpp"
 
@@ -27,7 +28,7 @@ public:
 		return _ue;
 	}
 
-	std::string full_str(string_view sep = eol::sys) const {
+	std::string full_str(string_view sep = " <- ") const {
 		if (!_ue) {
 			return str();
 		}
@@ -68,6 +69,14 @@ public:
 		return "unexpected";
 	}
 };
+
+inline std::string to_string(const error_base &err) {
+	return err.full_str();
+}
+
+inline std::string to_string(error_i err) {
+	return err ? err->full_str() : "nullerr";
+}
 
 template <typename T>
 class expected {
