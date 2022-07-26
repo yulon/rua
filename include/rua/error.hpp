@@ -75,7 +75,7 @@ inline std::string to_string(const error_base &err) {
 }
 
 inline std::string to_string(error_i err) {
-	return err ? err->full_str() : "nullerr";
+	return err ? err->full_str() : "noerr";
 }
 
 template <typename T>
@@ -86,7 +86,7 @@ public:
 	template <
 		typename... Args,
 		typename = enable_if_t<
-			std::is_constructible<T, Args &&...>::value &&
+			std::is_constructible<variant<T, error_i>, Args &&...>::value &&
 			(sizeof...(Args) > 1 ||
 			 !std::is_base_of<expected, decay_t<front_t<Args...>>>::value)>>
 	constexpr expected(Args &&...args) : _val(std::forward<Args>(args)...) {}
@@ -117,10 +117,31 @@ public:
 		return _val.template as<T>();
 	}
 
+	T &operator*() & {
+		return value();
+	}
+
+	const T &operator*() const & {
+		return value();
+	}
+
+	T &&operator*() && {
+		return std::move(value());
+	}
+
+	T *operator->() {
+		return &value();
+	}
+
+	const T *operator->() const {
+		return &value();
+	}
+
 	error_i error() const {
 		static unexpected_error ue;
-		return _val.template type_is<error_i>() ? _val.template as<error_i>()
-												: (has_value() ? nullptr : ue);
+		return _val.template type_is<error_i>()
+				   ? _val.template as<error_i>()
+				   : (has_value() ? error_i() : ue);
 	}
 
 	void reset() {
