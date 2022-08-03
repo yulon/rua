@@ -8,7 +8,7 @@
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
 #include "../sync/await.hpp"
-#include "../sync/future.hpp"
+#include "../sync/promise.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
 #include "../util.hpp"

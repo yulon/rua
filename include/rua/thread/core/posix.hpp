@@ -3,7 +3,7 @@
 
 #include "../../generic_word.hpp"
 #include "../../sync/await.hpp"
-#include "../../sync/future.hpp"
+#include "../../sync/promise.hpp"
 #include "../../sync/then.hpp"
 #include "../../sync/wait.hpp"
 #include "../../util.hpp"

@@ -5,7 +5,6 @@
 
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
-#include "../sync/future.hpp"
 #include "../sync/promise.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
@@ -38,7 +37,7 @@ parallel(Func func, Args &&...args) {
 	skater<promise<Result>> pms;
 	auto pms_fut = pms->get_promising_future();
 	auto f = skate(func);
-	_parallel([=]() mutable { pms->set_value(f(args...)); });
+	_parallel([=]() mutable { pms->fulfill(f(args...)); });
 	return std::move(pms_fut);
 }
 
@@ -52,7 +51,7 @@ parallel(Func func, Args &&...args) {
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		pms->set_value();
+		pms->fulfill();
 	});
 	return std::move(pms_fut);
 }

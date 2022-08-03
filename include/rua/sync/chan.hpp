@@ -1,7 +1,6 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
-#include "future.hpp"
 #include "promise.hpp"
 
 #include "../lockfree_list.hpp"
@@ -36,7 +35,7 @@ public:
 			return false;
 		}
 		assert(recv_opt);
-		recv_opt->set_value(
+		recv_opt->fulfill(
 			std::move(val), [this](T val) mutable { send(std::move(val)); });
 		return true;
 	}
@@ -62,7 +61,7 @@ public:
 		}
 
 		promise<T> pms;
-		fut = pms;
+		fut = pms.get_future();
 		val_opt = _vals.pop_front_or(
 			[this, &pms]() { _recvs.emplace_front(std::move(pms)); });
 		if (!val_opt) {

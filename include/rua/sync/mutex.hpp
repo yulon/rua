@@ -1,7 +1,6 @@
 #ifndef _RUA_SYNC_MUTEX_HPP
 #define _RUA_SYNC_MUTEX_HPP
 
-#include "future.hpp"
 #include "promise.hpp"
 
 #include "../lockfree_list.hpp"
@@ -42,7 +41,7 @@ public:
 		}
 
 		promise<> pms;
-		fut = pms;
+		fut = pms.get_future();
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
 			[this]() -> bool { return _c.load() == 1; }, std::move(pms));
 		if (!is_emplaced) {
@@ -56,7 +55,7 @@ public:
 		if (!wtr_opt) {
 			return;
 		}
-		wtr_opt->set_value(/*[this]() mutable { unlock(); }*/);
+		wtr_opt->fulfill(/*[this]() mutable { unlock(); }*/);
 	}
 
 private:

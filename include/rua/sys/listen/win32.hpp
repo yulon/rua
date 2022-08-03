@@ -51,7 +51,7 @@ public:
 	template <typename Resume>
 	void await_suspend(Resume resume) {
 		promise<> pms;
-		_pms_fut = pms;
+		_pms_fut = pms.get_promising_future();
 		_pms_fut.await_suspend(std::move(resume));
 		auto pms_ctx = pms.release();
 		RegisterWaitForSingleObject(
@@ -82,7 +82,7 @@ private:
 	promising_future<> _pms_fut;
 
 	static VOID CALLBACK _rw4so_cb(PVOID pms_ctx, BOOLEAN /* timeouted */) {
-		promise<>(*reinterpret_cast<promise_context<> *>(pms_ctx)).set_value();
+		promise<>(*reinterpret_cast<promise_context<> *>(pms_ctx)).fulfill();
 	}
 };
 

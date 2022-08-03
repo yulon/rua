@@ -1,7 +1,6 @@
 #ifndef _RUA_SYNC_ONCE_HPP
 #define _RUA_SYNC_ONCE_HPP
 
-#include "future.hpp"
 #include "mutex.hpp"
 #include "then.hpp"
 
