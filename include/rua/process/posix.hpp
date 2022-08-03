@@ -156,6 +156,30 @@ inline process this_process() {
 	return process(this_pid());
 }
 
+inline file_path working_dir() {
+	auto c_str = get_current_dir_name();
+	file_path r(c_str);
+	::free(c_str);
+	return r;
+}
+
+inline bool work_at(const file_path &path) {
+#ifndef NDEBUG
+	auto r =
+#else
+	return
+#endif
+		!::chdir(path.str().c_str());
+#ifndef NDEBUG
+	assert(r);
+	return r;
+#endif
+}
+
+inline std::string get_env(string_view name) {
+	return ::getenv(std::string(name).c_str());
+}
+
 } // namespace _this_process
 
 using namespace _this_process;

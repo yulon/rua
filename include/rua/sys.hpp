@@ -3,6 +3,7 @@
 
 #include "sys/info.hpp"
 #include "sys/listen.hpp"
+#include "sys/paths.hpp"
 #include "sys/stream.hpp"
 
 #endif

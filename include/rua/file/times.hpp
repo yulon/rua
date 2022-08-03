@@ -1,5 +1,5 @@
-#ifndef _RUA_FILE_BASE_HPP
-#define _RUA_FILE_BASE_HPP
+#ifndef _RUA_FILE_TIMES_HPP
+#define _RUA_FILE_TIMES_HPP
 
 #include "../time/real.hpp"
 #include "../util.hpp"

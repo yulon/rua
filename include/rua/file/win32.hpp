@@ -1,12 +1,14 @@
 #ifndef _RUA_FILE_WIN32_HPP
 #define _RUA_FILE_WIN32_HPP
 
-#include "base.hpp"
+#include "times.hpp"
 
 #include "../path.hpp"
 #include "../range.hpp"
+#include "../span.hpp"
 #include "../string/codec/base/win32.hpp"
 #include "../string/join.hpp"
+#include "../string/with.hpp"
 #include "../sys/stream/win32.hpp"
 #include "../time/now/win32.hpp"
 #include "../util.hpp"
@@ -91,39 +93,38 @@ private:
 	}
 };
 
-namespace _wkdir {
-
-inline file_path working_dir() {
-	auto w_len = GetCurrentDirectoryW(0, nullptr);
-	if (!w_len) {
-		return "";
-	}
-
-	auto buf_sz = w_len + 1;
-	auto c_wstr = new WCHAR[buf_sz];
-	w_len = GetCurrentDirectoryW(buf_sz, c_wstr);
-
-	auto r = w2u(wstring_view(c_wstr, w_len));
-	delete[] c_wstr;
-	return r;
+template <typename GetDirW>
+inline std::wstring _get_dir_w(GetDirW &&get_dir_w) {
+	std::wstring buf;
+	DWORD n;
+	do {
+		n = std::forward<GetDirW>(get_dir_w)(0, nullptr);
+		if (!n) {
+			return L"";
+		}
+		buf.resize(n + 1, L'\0');
+		n = std::forward<GetDirW>(get_dir_w)(buf.length(), data(buf));
+	} while (!n);
+	buf.resize(n);
+	return buf;
 }
 
-inline bool work_at(const file_path &path) {
-#ifndef NDEBUG
-	auto r =
-#else
-	return
-#endif
-		SetCurrentDirectoryW(u2w(path.abs().str()).c_str());
-#ifndef NDEBUG
-	assert(r);
-	return r;
-#endif
+template <typename ConvDirW>
+inline std::wstring _get_dir_w(ConvDirW &&conv_dir_w, std::wstring &&src) {
+	std::wstring buf;
+	DWORD n;
+	do {
+		n = std::forward<ConvDirW>(conv_dir_w)(src.c_str(), nullptr, 0);
+		if (!n) {
+			return L"";
+		}
+		buf.resize(n + 1, L'\0');
+		n = std::forward<ConvDirW>(conv_dir_w)(
+			src.c_str(), data(buf), buf.length());
+	} while (!n);
+	buf.resize(n);
+	return buf;
 }
-
-} // namespace _wkdir
-
-using namespace _wkdir;
 
 template <typename T>
 class basic_file_info {
@@ -534,11 +535,48 @@ inline bool remove_file(const file_path &path) {
 		return DeleteFileW(u2w("\\\\?\\" + path.abs().str()).c_str());
 	}
 	for (auto &ety : view_dir(path)) {
-		if (!remove_file(ety.path())) {
-			return false;
-		}
+		remove_file(ety.path());
 	}
 	return RemoveDirectoryW(u2w("\\\\?\\" + path.abs().str()).c_str());
+}
+
+inline bool copy_file(
+	const file_path &src, const file_path &dest, bool replaceable_dest = true) {
+	auto src_w = u2w("\\\\?\\" + src.abs().str());
+	auto dest_w = u2w("\\\\?\\" + dest.abs().str());
+
+	if (!touch_dir(dest.rm_back())) {
+		return false;
+	}
+	return CopyFileW(src_w.c_str(), dest_w.c_str(), !replaceable_dest);
+}
+
+inline bool move_file(
+	const file_path &src, const file_path &dest, bool replaceable_dest = true) {
+	auto src_w = u2w("\\\\?\\" + src.abs().str());
+	auto dest_w = u2w("\\\\?\\" + dest.abs().str());
+
+	if (!touch_dir(dest.rm_back())) {
+		return false;
+	}
+	DWORD flags = MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH;
+	if (replaceable_dest) {
+		flags |= MOVEFILE_REPLACE_EXISTING;
+	}
+	return MoveFileExW(src_w.c_str(), dest_w.c_str(), flags);
+}
+
+inline bool make_link(const file_path &src, const file_path &link) {
+	auto src_w = u2w("\\\\?\\" + src.abs().str());
+	auto link_w = u2w("\\\\?\\" + link.abs().str());
+
+	if (!touch_dir(link.rm_back())) {
+		return false;
+	}
+	return CreateSymbolicLinkW(
+		link_w.c_str(),
+		src_w.c_str(),
+		src.is_dir() ? SYMBOLIC_LINK_FLAG_DIRECTORY : 0);
 }
 
 } // namespace _make_file

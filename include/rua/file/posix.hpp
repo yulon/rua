@@ -1,7 +1,7 @@
 #ifndef _RUA_FILE_POSIX_HPP
 #define _RUA_FILE_POSIX_HPP
 
-#include "base.hpp"
+#include "times.hpp"
 
 #include "../path.hpp"
 #include "../range.hpp"
@@ -59,32 +59,6 @@ private:
 		return r;
 	}
 };
-
-namespace _wkdir {
-
-inline file_path working_dir() {
-	auto c_str = get_current_dir_name();
-	file_path r(c_str);
-	::free(c_str);
-	return r;
-}
-
-inline bool work_at(const file_path &path) {
-#ifndef NDEBUG
-	auto r =
-#else
-	return
-#endif
-		!::chdir(path.str().c_str());
-#ifndef NDEBUG
-	assert(r);
-	return r;
-#endif
-}
-
-} // namespace _wkdir
-
-using namespace _wkdir;
 
 class file_info {
 public:
@@ -191,44 +165,6 @@ public:
 		return times(zone).access_time;
 	}
 };
-
-namespace _make_file {
-
-inline bool touch_dir(const file_path &path, mode_t mode = 0777) {
-	if (!path || path.is_dir()) {
-		return true;
-	}
-	if (!touch_dir(path.rm_back(), mode)) {
-		return false;
-	}
-	return mkdir(path.str().c_str(), mode) == 0;
-}
-
-inline file make_file(const file_path &path) {
-	if (!touch_dir(path.rm_back())) {
-		return nullptr;
-	}
-	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
-}
-
-inline file touch_file(const file_path &path) {
-	if (!touch_dir(path.rm_back())) {
-		return nullptr;
-	}
-	return open(path.str().c_str(), O_CREAT | O_RDWR);
-}
-
-inline file modify_file(const file_path &path, bool = false) {
-	return open(path.str().c_str(), O_RDWR);
-}
-
-inline file view_file(const file_path &path, bool = false) {
-	return open(path.str().c_str(), O_RDONLY);
-}
-
-} // namespace _make_file
-
-using namespace _make_file;
 
 using dir_entry_info = file_info;
 
@@ -427,6 +363,89 @@ private:
 		return false;
 	}
 };
+
+namespace _make_file {
+
+inline bool touch_dir(const file_path &path, mode_t mode = 0777) {
+	if (!path || path.is_dir()) {
+		return true;
+	}
+	if (!touch_dir(path.rm_back(), mode)) {
+		return false;
+	}
+	return mkdir(path.str().c_str(), mode) == 0;
+}
+
+inline file make_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
+		return nullptr;
+	}
+	return open(path.str().c_str(), O_CREAT | O_TRUNC | O_RDWR);
+}
+
+inline file touch_file(const file_path &path) {
+	if (!touch_dir(path.rm_back())) {
+		return nullptr;
+	}
+	return open(path.str().c_str(), O_CREAT | O_RDWR);
+}
+
+inline file modify_file(const file_path &path, bool = false) {
+	return open(path.str().c_str(), O_RDWR);
+}
+
+inline file view_file(const file_path &path, bool = false) {
+	return open(path.str().c_str(), O_RDONLY);
+}
+
+inline bool remove_file(const file_path &path) {
+	if (!path.is_dir()) {
+		return !unlink(path.str().c_str());
+	}
+	for (auto &ety : view_dir(path)) {
+		remove_file(ety.path());
+	}
+	return !rmdir(path.str().c_str());
+}
+
+inline bool copy_file(
+	const file_path &src, const file_path &dest, bool replaceable_dest = true) {
+	if (!replaceable_dest && dest.is_exist()) {
+		return false;
+	}
+	auto dest_f = make_file(dest);
+	if (!dest_f) {
+		return false;
+	}
+	auto src_f = view_file(src);
+	if (!src_f) {
+		return false;
+	}
+	return dest_f.copy(src_f);
+}
+
+inline bool move_file(
+	const file_path &src, const file_path &dest, bool replaceable_dest = true) {
+	if (dest.is_exist()) {
+		if (!replaceable_dest) {
+			return false;
+		}
+		return remove_file(dest);
+	}
+	auto err = ::rename(src.str().c_str(), dest.str().c_str());
+	if (!err) {
+		return true;
+	}
+	auto ok = copy_file(src, dest, replaceable_dest);
+	if (!ok) {
+		return false;
+	}
+	return remove_file(src);
+}
+
+} // namespace _make_file
+
+using namespace _make_file;
 
 }} // namespace rua::posix
 

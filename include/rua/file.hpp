@@ -1,7 +1,7 @@
 #ifndef _RUA_FILE_HPP
 #define _RUA_FILE_HPP
 
-#include "util.hpp"
+#include "util/macros.hpp"
 
 #if defined(_WIN32)
 
@@ -10,7 +10,6 @@
 namespace rua {
 
 using file_path = win32::file_path;
-using namespace win32::_wkdir;
 using file_info = win32::file_info;
 using file = win32::file;
 using namespace win32::_make_file;
@@ -28,7 +27,6 @@ using view_dir = win32::view_dir;
 namespace rua {
 
 using file_path = posix::file_path;
-using namespace posix::_wkdir;
 using file_info = posix::file_info;
 using file = posix::file;
 using namespace posix::_make_file;

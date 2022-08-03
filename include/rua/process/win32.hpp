@@ -53,39 +53,6 @@ inline pid_t this_pid() {
 
 using namespace _this_pid;
 
-namespace _this_process {
-
-inline bool has_full_permissions() {
-	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
-	PSID admin_group = nullptr;
-	if (!AllocateAndInitializeSid(
-			&sna,
-			2,
-			SECURITY_BUILTIN_DOMAIN_RID,
-			DOMAIN_ALIAS_RID_ADMINS,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			&admin_group) ||
-		!admin_group) {
-		return false;
-	}
-	BOOL is_member = FALSE;
-	auto r = CheckTokenMembership(nullptr, admin_group, &is_member);
-	if (r) {
-		r = is_member;
-	}
-	FreeSid(admin_group);
-	return r;
-}
-
-} // namespace _this_process
-
-using namespace _this_process;
-
 class process : private enable_await_operators {
 public:
 	using native_handle_t = HANDLE;
@@ -619,7 +586,7 @@ public:
 			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
 	}
 
-	thread load_dylib(std::string name);
+	inline thread load_dylib(std::string name);
 
 	void reset() {
 		if (!_h) {
@@ -955,7 +922,7 @@ _proc_load_dll_data _make_proc_load_dll_data(
 	return data;
 }
 
-thread process::load_dylib(std::string name) {
+inline thread process::load_dylib(std::string name) {
 	_proc_load_dll_ctx ctx;
 	ctx.rtl_user_thread_start = nullptr;
 
@@ -973,7 +940,81 @@ inline process this_process() {
 	return process(GetCurrentProcess());
 }
 
+inline file_path working_dir() {
+	return w2u(_get_dir_w(GetCurrentDirectoryW));
+}
+
+inline bool work_at(const file_path &path) {
+#ifndef NDEBUG
+	auto r =
+#else
+	return
+#endif
+		SetCurrentDirectoryW(u2w(path.abs().str()).c_str());
+#ifndef NDEBUG
+	assert(r);
+	return r;
+#endif
+}
+
+inline std::string get_env(string_view name) {
+	return w2u(_get_dir_w(GetEnvironmentVariableW, u2w(name)));
+}
+
+#if defined(RUA_X86) && RUA_X86 == 32
+
+inline bool is_x86_on_x64() {
+	static auto r = ([]() -> bool {
+		BOOL(WINAPI * is_wow64_process)
+		(HANDLE hProcess, PBOOL Wow64Process) =
+			dylib::from_loaded_or_load("kernel32.dll")["IsWow64Process"];
+		if (!is_wow64_process) {
+			return false;
+		}
+		BOOL is_wow64;
+		return is_wow64_process(GetCurrentProcess(), &is_wow64) && is_wow64;
+	})();
+	return r;
+}
+
+#else
+
+inline constexpr bool is_x86_on_x64() {
+	return false;
+}
+
+#endif
+
+inline bool has_full_permissions() {
+	SID_IDENTIFIER_AUTHORITY sna = SECURITY_NT_AUTHORITY;
+	PSID admin_group = nullptr;
+	if (!AllocateAndInitializeSid(
+			&sna,
+			2,
+			SECURITY_BUILTIN_DOMAIN_RID,
+			DOMAIN_ALIAS_RID_ADMINS,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			&admin_group) ||
+		!admin_group) {
+		return false;
+	}
+	BOOL is_member = FALSE;
+	auto r = CheckTokenMembership(nullptr, admin_group, &is_member);
+	if (r) {
+		r = is_member;
+	}
+	FreeSid(admin_group);
+	return r;
+}
+
 } // namespace _this_process
+
+using namespace _this_process;
 
 using _process_make_info =
 	_baisc_process_make_info<process, file_path, sys_stream>;
@@ -1293,30 +1334,6 @@ inline void elevate_permissions() {
 		.start();
 	exit(0);
 }
-
-#if defined(RUA_X86) && RUA_X86 == 32
-
-inline bool is_x86_on_x64() {
-	static auto r = ([]() -> bool {
-		BOOL(WINAPI * is_wow64_process)
-		(HANDLE hProcess, PBOOL Wow64Process) =
-			dylib::from_loaded_or_load("kernel32.dll")["IsWow64Process"];
-		if (!is_wow64_process) {
-			return false;
-		}
-		BOOL is_wow64;
-		return is_wow64_process(GetCurrentProcess(), &is_wow64) && is_wow64;
-	})();
-	return r;
-}
-
-#else
-
-inline constexpr bool is_x86_on_x64() {
-	return false;
-}
-
-#endif
 
 } // namespace _this_process
 
