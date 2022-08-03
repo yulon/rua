@@ -140,11 +140,11 @@ public:
 	}
 
 	bool operator==(const interface_ptr<T> &src) const {
-		return _raw == src._raw;
+		return _type == src._type && src._type.equal(_raw, src._raw);
 	}
 
 	bool operator!=(const interface_ptr<T> &src) const {
-		return _raw != src._raw;
+		return !(*this == src);
 	}
 
 	template <

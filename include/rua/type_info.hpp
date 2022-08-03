@@ -147,6 +147,11 @@ public:
 		return _tab->to_bool(ptr);
 	}
 
+	bool equal(const void *a, const void *b) const {
+		assert(_tab);
+		return a == b || (_tab->eq && _tab->eq(a, b));
+	}
+
 #ifdef RUA_RTTI_SUPPORTED
 	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);
@@ -176,6 +181,8 @@ private:
 		void *(*const move_new)(void *src);
 
 		bool (*const to_bool)(void *);
+
+		bool (*const eq)(const void *a, const void *b);
 
 #ifdef RUA_RTTI_SUPPORTED
 		const std::type_info &(*const std_id)();
@@ -298,6 +305,22 @@ private:
 		}
 	};
 
+	template <typename T, typename = void>
+	struct _eq {
+		static constexpr std::nullptr_t value = nullptr;
+	};
+
+	template <typename T>
+	struct _eq<
+		T,
+		void_t<decltype(std::declval<const T>() == std::declval<const T>())>> {
+		static bool value(const void *a, const void *b) {
+			return static_cast<bool>(
+				*reinterpret_cast<const T *>(a) ==
+				*reinterpret_cast<const T *>(b));
+		}
+	};
+
 #ifdef RUA_RTTI_SUPPORTED
 	template <typename T>
 	static const std::type_info &_std_id() {
@@ -320,7 +343,8 @@ private:
 			_copy_new<T>::value,
 			_move_ctor<T>::value,
 			_move_new<T>::value,
-			_to_bool<T>::value
+			_to_bool<T>::value,
+			_eq<T>::value
 #ifdef RUA_RTTI_SUPPORTED
 			,
 			&_std_id<T>
