@@ -33,7 +33,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
 	future<CallbackResult> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
-			ctx->pms.fulfill(ctx->cb(ctx->awtr->await_resume()));
+			ctx->pms.deliver(ctx->cb(ctx->awtr->await_resume()));
 			delete ctx;
 		})) {
 		return r;
@@ -72,7 +72,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
 				[ctx](CallbackResultValue val) {
-					ctx->pms.fulfill(std::move(val));
+					ctx->pms.deliver(std::move(val));
 					delete ctx;
 				});
 		})) {
@@ -110,7 +110,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	future<> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-				ctx->pms.fulfill();
+				ctx->pms.deliver();
 				delete ctx;
 			});
 		})) {
@@ -152,14 +152,14 @@ then(Awaitable &&awaitable, Callback &&callback) {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
 				[ctx](CallbackResultValue val) {
-					ctx->pms.fulfill(std::move(val));
+					ctx->pms.deliver(std::move(val));
 					delete ctx;
 				});
 		})) {
 		return r;
 	}
 	then(ctx->cb(ctx->awtr->await_resume()), [ctx](CallbackResultValue val) {
-		ctx->pms.fulfill(std::move(val));
+		ctx->pms.deliver(std::move(val));
 		delete ctx;
 	});
 	return r;
@@ -193,14 +193,14 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	future<> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-				ctx->pms.fulfill();
+				ctx->pms.deliver();
 				delete ctx;
 			});
 		})) {
 		return r;
 	}
 	then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-		ctx->pms.fulfill();
+		ctx->pms.deliver();
 		delete ctx;
 	});
 	return r;
@@ -230,7 +230,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	future<> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->cb(ctx->awtr->await_resume());
-			ctx->pms.fulfill();
+			ctx->pms.deliver();
 			delete ctx;
 		})) {
 		return r;
@@ -265,7 +265,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	future<CallbackResult> r(ctx->pms);
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
-			ctx->pms.fulfill(ctx->cb());
+			ctx->pms.deliver(ctx->cb());
 			delete ctx;
 		})) {
 		return r;
@@ -305,7 +305,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
-				ctx->pms.fulfill(std::move(val));
+				ctx->pms.deliver(std::move(val));
 				delete ctx;
 			});
 		})) {
@@ -346,7 +346,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
-				ctx->pms.fulfill();
+				ctx->pms.deliver();
 				delete ctx;
 			});
 		})) {
@@ -389,7 +389,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
-				ctx->pms.fulfill(std::move(val));
+				ctx->pms.deliver(std::move(val));
 				delete ctx;
 			});
 		})) {
@@ -397,7 +397,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	ctx->awtr->await_resume();
 	then(ctx->cb(), [ctx](CallbackResultValue val) {
-		ctx->pms.fulfill(std::move(val));
+		ctx->pms.deliver(std::move(val));
 		delete ctx;
 	});
 	return r;
@@ -432,7 +432,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
-				ctx->pms.fulfill();
+				ctx->pms.deliver();
 				delete ctx;
 			});
 		})) {
@@ -440,7 +440,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	ctx->awtr->await_resume();
 	then(ctx->cb(), [ctx]() {
-		ctx->pms.fulfill();
+		ctx->pms.deliver();
 		delete ctx;
 	});
 	return r;
@@ -471,7 +471,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			ctx->cb();
-			ctx->pms.fulfill();
+			ctx->pms.deliver();
 			delete ctx;
 		})) {
 		return r;

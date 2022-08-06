@@ -493,7 +493,7 @@ public:
 
 	explicit promise(promise_context<T> &ctx) : promise_base<T, Deteler>(ctx) {}
 
-	void fulfill(T value, std::function<void(T)> undo = nullptr) {
+	void deliver(T value, std::function<void(T)> undo = nullptr) {
 		auto &ctx = this->_ctx;
 		assert(ctx);
 
@@ -539,7 +539,7 @@ public:
 	explicit promise(promise_context<void> &ctx) :
 		promise_base<void, Deteler>(ctx) {}
 
-	void fulfill(std::function<void()> undo = nullptr) {
+	void deliver(std::function<void()> undo = nullptr) {
 		auto &ctx = this->_ctx;
 		assert(ctx);
 

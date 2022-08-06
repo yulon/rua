@@ -37,7 +37,7 @@ parallel(Func func, Args &&...args) {
 	skater<promise<Result>> pms;
 	auto pms_fut = pms->get_promising_future();
 	auto f = skate(func);
-	_parallel([=]() mutable { pms->fulfill(f(args...)); });
+	_parallel([=]() mutable { pms->deliver(f(args...)); });
 	return std::move(pms_fut);
 }
 
@@ -51,7 +51,7 @@ parallel(Func func, Args &&...args) {
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		pms->fulfill();
+		pms->deliver();
 	});
 	return std::move(pms_fut);
 }

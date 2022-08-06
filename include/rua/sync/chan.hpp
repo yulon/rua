@@ -35,7 +35,7 @@ public:
 			return false;
 		}
 		assert(recv_opt);
-		recv_opt->fulfill(
+		recv_opt->deliver(
 			std::move(val), [this](T val) mutable { send(std::move(val)); });
 		return true;
 	}

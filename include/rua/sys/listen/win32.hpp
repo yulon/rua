@@ -82,7 +82,7 @@ private:
 	promising_future<> _pms_fut;
 
 	static VOID CALLBACK _rw4so_cb(PVOID pms_ctx, BOOLEAN /* timeouted */) {
-		promise<>(*reinterpret_cast<promise_context<> *>(pms_ctx)).fulfill();
+		promise<>(*reinterpret_cast<promise_context<> *>(pms_ctx)).deliver();
 	}
 };
 

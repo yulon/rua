@@ -55,7 +55,7 @@ public:
 		if (!wtr_opt) {
 			return;
 		}
-		wtr_opt->fulfill(/*[this]() mutable { unlock(); }*/);
+		wtr_opt->deliver(/*[this]() mutable { unlock(); }*/);
 	}
 
 private:
