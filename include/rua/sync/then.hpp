@@ -31,7 +31,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResult> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->pms.deliver(ctx->cb(ctx->awtr->await_resume()));
 			delete ctx;
@@ -67,7 +67,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResultValue> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
@@ -107,7 +107,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
 				ctx->pms.deliver();
@@ -147,7 +147,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResultValue> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
@@ -190,7 +190,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
 				ctx->pms.deliver();
@@ -227,7 +227,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<void(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->cb(ctx->awtr->await_resume());
 			ctx->pms.deliver();
@@ -262,7 +262,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResult> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			ctx->pms.deliver(ctx->cb());
@@ -301,7 +301,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResultValue> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
@@ -342,7 +342,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
@@ -385,7 +385,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<CallbackResultValue> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
@@ -428,7 +428,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
@@ -467,7 +467,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		std::function<void()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	future<> r(ctx->pms);
+	auto r = ctx->pms.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			ctx->cb();
