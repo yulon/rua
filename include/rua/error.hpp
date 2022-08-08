@@ -5,9 +5,11 @@
 #include "string/char_set.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
+#include "util/base.hpp"
 #include "variant.hpp"
 
 #include <cassert>
+#include <functional>
 #include <list>
 
 namespace rua {
@@ -20,23 +22,27 @@ class error_base {
 public:
 	error_base() = default;
 
-	virtual std::string str() const = 0;
-
 	error_base(error_i underlying_error) : _ue(std::move(underlying_error)) {}
+
+	virtual ssize_t code() const {
+		return static_cast<ssize_t>(std::hash<std::string>{}(info()));
+	}
+
+	virtual std::string info() const = 0;
 
 	error_i underlying() const {
 		return _ue;
 	}
 
-	std::string full_str(string_view sep = " <- ") const {
+	std::string full_info(string_view sep = " <- ") const {
 		if (!_ue) {
-			return str();
+			return info();
 		}
 		std::list<std::string> strs;
-		strs.emplace_back(str());
+		strs.emplace_back(info());
 		auto e = _ue;
 		do {
-			strs.emplace_back(e->str());
+			strs.emplace_back(e->info());
 			e = e->underlying();
 		} while (e);
 		return join(strs, sep);
@@ -53,7 +59,11 @@ public:
 	string_error(std::string s, error_i underlying_error = nullptr) :
 		error_base(std::move(underlying_error)), _s(std::move(s)) {}
 
-	std::string str() const override {
+	ssize_t code() const override {
+		return static_cast<ssize_t>(std::hash<std::string>{}(_s));
+	}
+
+	std::string info() const override {
 		return _s;
 	}
 
@@ -61,21 +71,31 @@ private:
 	std::string _s;
 };
 
-class unexpected_error : public error_base {
+class string_view_error : public error_base {
 public:
-	unexpected_error() = default;
+	string_view_error() = default;
 
-	std::string str() const override {
-		return "unexpected";
+	string_view_error(rua::string_view sv, error_i underlying_error = nullptr) :
+		error_base(std::move(underlying_error)), _sv(sv) {}
+
+	ssize_t code() const override {
+		return static_cast<ssize_t>(std::hash<rua::string_view>{}(_sv));
 	}
+
+	std::string info() const override {
+		return std::string(_sv);
+	}
+
+private:
+	rua::string_view _sv;
 };
 
 inline std::string to_string(const error_base &err) {
-	return err.full_str();
+	return err.full_info();
 }
 
 inline std::string to_string(error_i err) {
-	return err ? err->full_str() : "noerr";
+	return err ? err->full_info() : "noerr";
 }
 
 template <typename T>
@@ -138,10 +158,10 @@ public:
 	}
 
 	error_i error() const {
-		static unexpected_error ue;
+		static string_view_error unexpected("unexpected");
 		return _val.template type_is<error_i>()
 				   ? _val.template as<error_i>()
-				   : (has_value() ? error_i() : ue);
+				   : (has_value() ? error_i() : unexpected);
 	}
 
 	void reset() {
@@ -153,5 +173,23 @@ private:
 };
 
 } // namespace rua
+
+namespace std {
+
+class hash<rua::error_i> {
+public:
+	size_t operator()(rua::error_i err) const {
+		return static_cast<size_t>(err->code());
+	}
+};
+
+class less<rua::error_i> {
+public:
+	bool operator()(rua::error_i lhs, rua::error_i rhs) const {
+		return lhs->code() < rhs->code();
+	}
+};
+
+} // namespace std
 
 #endif

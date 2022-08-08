@@ -19,6 +19,7 @@ using basic_string_view = std::basic_string_view<CharT, Traits>;
 #include "len.hpp"
 
 #include <cstring>
+#include <functional>
 #include <string>
 
 namespace rua {
@@ -200,6 +201,31 @@ inline RUA_CONSTEXPR_14 bool operator!=(
 }
 
 } // namespace rua
+
+namespace std {
+
+template <typename CharT, typename Traits>
+class hash<rua::basic_string_view<CharT, Traits>> {
+public:
+	size_t operator()(rua::basic_string_view<CharT, Traits> sv) const {
+		return std::hash<std::basic_string<CharT, Traits>>{}(
+			std::basic_string<CharT, Traits>(sv));
+	}
+};
+
+template <typename CharT, typename Traits>
+class less<rua::basic_string_view<CharT, Traits>> {
+public:
+	bool operator()(
+		rua::basic_string_view<CharT, Traits> lhs,
+		rua::basic_string_view<CharT, Traits> rhs) const {
+		return std::less<std::basic_string<CharT, Traits>>{}(
+			std::basic_string<CharT, Traits>(lhs),
+			std::basic_string<CharT, Traits>(rhs));
+	}
+};
+
+} // namespace std
 
 #endif
 
