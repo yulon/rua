@@ -176,6 +176,7 @@ private:
 
 namespace std {
 
+template <>
 class hash<rua::error_i> {
 public:
 	size_t operator()(rua::error_i err) const {
@@ -183,6 +184,7 @@ public:
 	}
 };
 
+template <>
 class less<rua::error_i> {
 public:
 	bool operator()(rua::error_i lhs, rua::error_i rhs) const {
