@@ -103,7 +103,8 @@ inline std::wstring _get_dir_w(GetDirW &&get_dir_w) {
 			return L"";
 		}
 		buf.resize(n + 1, L'\0');
-		n = std::forward<GetDirW>(get_dir_w)(buf.length(), data(buf));
+		n = std::forward<GetDirW>(get_dir_w)(
+			static_cast<DWORD>(buf.length()), data(buf));
 	} while (!n);
 	buf.resize(n);
 	return buf;
@@ -120,7 +121,7 @@ inline std::wstring _get_dir_w(ConvDirW &&conv_dir_w, std::wstring &&src) {
 		}
 		buf.resize(n + 1, L'\0');
 		n = std::forward<ConvDirW>(conv_dir_w)(
-			src.c_str(), data(buf), buf.length());
+			src.c_str(), data(buf), static_cast<DWORD>(buf.length()));
 	} while (!n);
 	buf.resize(n);
 	return buf;

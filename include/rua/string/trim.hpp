@@ -48,9 +48,9 @@ inline decltype(slice(std::declval<StrLike &&>()))
 trim_right_if(StrLike &&str_like, Pred &&pred) {
 	auto str_v = view_string(std::forward<StrLike>(str_like));
 	size_t lst = str_v.length();
-	for (int i = str_v.length() - 1; i >= 0; --i) {
+	for (auto i = to_signed(str_v.length() - 1); i >= 0; --i) {
 		if (!std::forward<Pred>(pred)(str_v[i])) {
-			lst = i + 1;
+			lst = to_unsigned(i + 1);
 			break;
 		}
 	}
