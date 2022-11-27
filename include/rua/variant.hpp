@@ -37,31 +37,40 @@ public:
 	}
 
 	template <
-		typename... Subset,
+		typename... OtherTypes,
 		typename = enable_if_t<
-			!std::is_same<variant<Subset...>, variant>::value &&
-			conjunction<bool_constant<
-				index_of<Subset, Types...>::value != nullpos>...>::value>>
-	variant(const variant<Subset...> &src) : enable_type_info(src.type()) {
+			!std::is_same<variant<OtherTypes...>, variant>::value &&
+			disjunction<bool_constant<
+				index_of<OtherTypes, Types...>::value != nullpos>...>::value>>
+	variant(const variant<OtherTypes...> &src) : enable_type_info(src.type()) {
 		if (!_type) {
+			return;
+		}
+		if (!or_result(equal(_type, type_id<Types>())...)) {
+			_type.reset();
 			return;
 		}
 		assert(_type.is_copyable());
-		_type.copy_to(&_sto[0], &src.data());
+		_type.copy_to(&_sto[0], src.data());
 	}
 
 	template <
-		typename... Subset,
+		typename... OtherTypes,
 		typename = enable_if_t<
-			!std::is_same<variant<Subset...>, variant>::value &&
-			conjunction<bool_constant<
-				index_of<Subset, Types...>::value != nullpos>...>::value>>
-	variant(variant<Subset...> &&src) : enable_type_info(src.type()) {
+			!std::is_same<variant<OtherTypes...>, variant>::value &&
+			disjunction<bool_constant<
+				index_of<OtherTypes, Types...>::value != nullpos>...>::value>>
+	variant(variant<OtherTypes...> &&src) : enable_type_info(src.type()) {
 		if (!_type) {
 			return;
 		}
+		if (!or_result(equal(_type, type_id<Types>())...)) {
+			_type.reset();
+			return;
+		}
 		assert(_type.is_moveable());
-		_type.move_to(&_sto[0], &src.data());
+		_type.move_to(&_sto[0], src.data());
+		src.reset();
 	}
 
 	~variant() {
@@ -91,7 +100,7 @@ public:
 			bool_constant<index_of<void, Types...>::value == nullpos>{});
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return has_value();
 	}
 
