@@ -5,6 +5,7 @@
 #include "string/char_set.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
+#include "util/assist.hpp"
 #include "util/base.hpp"
 #include "variant.hpp"
 
@@ -99,7 +100,7 @@ inline std::string to_string(error_i err) {
 }
 
 template <typename T>
-class expected {
+class expected : public enable_value_operators<expected<T>, T> {
 public:
 	constexpr expected() = default;
 
@@ -135,46 +136,6 @@ public:
 		assert(_val.template type_is<T>());
 
 		return _val.template as<T>();
-	}
-
-	T &operator*() & {
-		return value();
-	}
-
-	const T &operator*() const & {
-		return value();
-	}
-
-	T &&operator*() && {
-		return std::move(value());
-	}
-
-	T *operator->() {
-		return &value();
-	}
-
-	const T *operator->() const {
-		return &value();
-	}
-
-	template <
-		typename U,
-		typename = enable_if_t<
-			std::is_copy_constructible<T>::value &&
-			std::is_convertible<U &&, T>::value>>
-	T value_or(U &&default_value) const & {
-		return has_value() ? value()
-						   : static_cast<T>(std::forward<U>(default_value));
-	}
-
-	template <
-		typename U,
-		typename = enable_if_t<
-			std::is_move_constructible<T>::value &&
-			std::is_convertible<U &&, T>::value>>
-	T value_or(U &&default_value) && {
-		return has_value() ? std::move(value())
-						   : static_cast<T>(std::forward<U>(default_value));
 	}
 
 	error_i error() const {
