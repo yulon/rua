@@ -143,7 +143,7 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			std::is_convertible<U, T>::value>>
+			std::is_convertible<U &&, T>::value>>
 	T value_or(U &&default_value) const & {
 		return _has_val ? value()
 						: static_cast<T>(std::forward<U>(default_value));
@@ -153,7 +153,7 @@ public:
 		typename U,
 		typename = enable_if_t<
 			std::is_move_constructible<T>::value &&
-			std::is_convertible<U, T>::value>>
+			std::is_convertible<U &&, T>::value>>
 	T value_or(U &&default_value) && {
 		return _has_val ? std::move(value())
 						: static_cast<T>(std::forward<U>(default_value));

@@ -125,7 +125,7 @@ public:
 		return _val.template as<T>();
 	}
 
-	T &value() && {
+	T &&value() && {
 		assert(_val.template type_is<T>());
 
 		return std::move(_val).template as<T>();
@@ -155,6 +155,26 @@ public:
 
 	const T *operator->() const {
 		return &value();
+	}
+
+	template <
+		typename U,
+		typename = enable_if_t<
+			std::is_copy_constructible<T>::value &&
+			std::is_convertible<U &&, T>::value>>
+	T value_or(U &&default_value) const & {
+		return has_value() ? value()
+						   : static_cast<T>(std::forward<U>(default_value));
+	}
+
+	template <
+		typename U,
+		typename = enable_if_t<
+			std::is_move_constructible<T>::value &&
+			std::is_convertible<U &&, T>::value>>
+	T value_or(U &&default_value) && {
+		return has_value() ? std::move(value())
+						   : static_cast<T>(std::forward<U>(default_value));
 	}
 
 	error_i error() const {
