@@ -87,29 +87,35 @@ public:
 	RUA_OVERLOAD_ASSIGNMENT(variant)
 
 	bool has_value() const {
-		return _type;
+		return _has_value(
+			bool_constant<index_of<void, Types...>::value == nullpos>{});
 	}
 
 	operator bool() const {
-		return _type;
+		return has_value();
 	}
 
 	template <typename T>
-	T &as() & {
+	enable_if_t<!std::is_void<T>::value, T &> as() & {
 		assert(type_is<T>());
 		return *reinterpret_cast<T *>(&_sto[0]);
 	}
 
 	template <typename T>
-	T &&as() && {
+	enable_if_t<!std::is_void<T>::value, T &&> as() && {
 		return std::move(as<T>());
 	}
 
 	template <typename T>
-	const T &as() const & {
+	enable_if_t<!std::is_void<T>::value, const T &> as() const & {
 		assert(type_is<T>());
 		return *reinterpret_cast<const T *>(&_sto[0]);
 	}
+
+	template <typename T>
+	constexpr enable_if_t<
+		std::is_void<T>::value && index_of<void, Types...>::value != nullpos>
+	as() const {}
 
 	template <typename... Visitors>
 	bool visit(Visitors &&...viss) & {
@@ -299,6 +305,14 @@ private:
 				   std::forward<FirstVisitor>(first_viss)) ||
 			   _visitors_visit_types(
 				   std::forward<OtherVisitors>(other_viss)...);
+	}
+
+	bool _has_value(std::true_type &&) const {
+		return _type;
+	}
+
+	bool _has_value(std::false_type &&) const {
+		return true;
 	}
 };
 
