@@ -208,7 +208,17 @@ struct conjunction<B1> : B1 {};
 
 template <typename B1, typename... Bn>
 struct conjunction<B1, Bn...>
-	: conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+	: conditional_t<static_cast<bool>(B1::value), conjunction<Bn...>, B1> {};
+
+template <typename...>
+struct disjunction : std::false_type {};
+
+template <typename B1>
+struct disjunction<B1> : B1 {};
+
+template <typename B1, typename... Bn>
+struct disjunction<B1, Bn...>
+	: conditional_t<static_cast<bool>(B1::value), B1, disjunction<Bn...>> {};
 
 #ifdef __cpp_lib_is_invocable
 
