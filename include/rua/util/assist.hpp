@@ -83,6 +83,14 @@ inline constexpr bool is_lowest(T n) {
 
 ////////////////////////////////////////////////////////////////////////////
 
+template <typename L, typename R>
+inline constexpr decltype(std::declval<L &&>() == std::declval<R &&>())
+equal(L &&l, R &&r) {
+	return std::forward<L>(l) == std::forward<R>(r);
+}
+
+////////////////////////////////////////////////////////////////////////////
+
 template <typename T, typename U = T>
 inline constexpr decltype(std::declval<T &&>() = std::declval<U &&>())
 assign(T &&obj, U &&value) {
