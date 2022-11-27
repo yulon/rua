@@ -122,9 +122,9 @@ public:
 	}
 
 	template <typename T>
-	constexpr enable_if_t<
+	RUA_CONSTEXPR_14 enable_if_t<
 		std::is_void<T>::value && index_of<void, Types...>::value != nullpos>
-	as() const {}
+	as() const & {}
 
 	template <typename... Visitors>
 	bool visit(Visitors &&...viss) & {
