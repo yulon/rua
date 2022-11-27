@@ -35,7 +35,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(thread_word_var)
+	RUA_OVERLOAD_ASSIGNMENT(thread_word_var)
 
 	using native_handle_t = pthread_key_t;
 

@@ -119,7 +119,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(process)
+	RUA_OVERLOAD_ASSIGNMENT(process)
 
 	pid_t id() const {
 		return GetProcessId(_h);
@@ -1031,7 +1031,7 @@ public:
 			std::move(static_cast<process_maker_base &&>(pm))),
 		_el_perms(false) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(process_maker)
+	RUA_OVERLOAD_ASSIGNMENT(process_maker)
 
 	~process_maker() {
 		if (!_info.file) {
@@ -1356,7 +1356,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(process_finder)
+	RUA_OVERLOAD_ASSIGNMENT(process_finder)
 
 	operator bool() const {
 		return _snapshot != INVALID_HANDLE_VALUE;

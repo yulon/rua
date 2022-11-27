@@ -143,42 +143,30 @@ inline enable_if_t<!std::is_trivially_destructible<T>::value> destruct(T &ref) {
 
 ////////////////////////////////////////////////////////////////////////////
 
-#define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
-	template <typename Value>                                                  \
-	T &operator=(const Value &val) {                                           \
-		if (reinterpret_cast<uintptr_t>(this) ==                               \
-			reinterpret_cast<uintptr_t>(&val)) {                               \
-			return *this;                                                      \
-		}                                                                      \
-		destruct(*this);                                                       \
-		construct(*this, val);                                                 \
-		return *this;                                                          \
-	}
-
-#define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
-	template <typename Value>                                                  \
-	T &operator=(Value &&val) {                                                \
-		if (reinterpret_cast<uintptr_t>(this) ==                               \
-			reinterpret_cast<uintptr_t>(&val)) {                               \
-			return *this;                                                      \
-		}                                                                      \
-		destruct(*this);                                                       \
-		construct(*this, std::move(val));                                      \
-		return *this;                                                          \
-	}
-
 #define RUA_OVERLOAD_ASSIGNMENT(T)                                             \
-	RUA_OVERLOAD_ASSIGNMENT_L(T)                                               \
-	RUA_OVERLOAD_ASSIGNMENT_R(T)
+	template <typename From>                                                   \
+	T &operator=(From &&from) {                                                \
+		if (reinterpret_cast<uintptr_t>(this) ==                               \
+			reinterpret_cast<uintptr_t>(&from)) {                              \
+			return *this;                                                      \
+		}                                                                      \
+		destruct(*this);                                                       \
+		construct(*this, std::forward<From>(from));                            \
+		return *this;                                                          \
+	}
 
 #define RUA_OVERLOAD_ASSIGNMENT_S(T)                                           \
-	T &operator=(const T &src) {                                               \
-		if (this == &src) {                                                    \
+	template <typename From>                                                   \
+	T &operator=(From &&from) {                                                \
+		if (reinterpret_cast<uintptr_t>(this) ==                               \
+			reinterpret_cast<uintptr_t>(&from)) {                              \
 			return *this;                                                      \
 		}                                                                      \
-		return operator=(T(src));                                              \
-	}                                                                          \
-	RUA_OVERLOAD_ASSIGNMENT_R(T)
+		T new_val(std::forward<From>(from));                                   \
+		destruct(*this);                                                       \
+		construct(*this, std::move(new_val));                                  \
+		return *this;                                                          \
+	}
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -203,7 +191,7 @@ public:
 
 	enable_copy_move(const enable_copy_move &) = default;
 
-	RUA_OVERLOAD_ASSIGNMENT_L(enable_copy_move)
+	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
 };
 
 template <>
@@ -213,7 +201,7 @@ public:
 
 	enable_copy_move(enable_copy_move &&) = default;
 
-	RUA_OVERLOAD_ASSIGNMENT_R(enable_copy_move)
+	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
 };
 
 template <>

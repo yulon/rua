@@ -45,7 +45,7 @@ public:
 		src._h = nullptr;
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(dylib)
+	RUA_OVERLOAD_ASSIGNMENT(dylib)
 
 	explicit operator bool() const {
 		return _h;

@@ -144,7 +144,7 @@ private:
 			}
 		}
 
-		RUA_OVERLOAD_ASSIGNMENT_R(_res_t)
+		RUA_OVERLOAD_ASSIGNMENT(_res_t)
 	};
 
 	std::shared_ptr<_res_t> _res;

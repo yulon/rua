@@ -371,7 +371,7 @@ public:
 
 	view_dir(view_dir &src) : view_dir(std::move(src)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(view_dir)
+	RUA_OVERLOAD_ASSIGNMENT(view_dir)
 
 	view_dir &operator=(view_dir &src) {
 		return *this = std::move(src);

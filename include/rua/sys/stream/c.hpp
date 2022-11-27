@@ -20,7 +20,7 @@ public:
 		src.detach();
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(c_stream)
+	RUA_OVERLOAD_ASSIGNMENT(c_stream)
 
 	virtual ~c_stream() {
 		close();

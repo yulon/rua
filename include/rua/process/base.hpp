@@ -42,7 +42,7 @@ struct _baisc_process_make_info {
 		on_start(std::move(bpmi.on_start)),
 		dylibs(std::move(bpmi.dylibs)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(_baisc_process_make_info);*/
+	RUA_OVERLOAD_ASSIGNMENT(_baisc_process_make_info);*/
 };
 
 template <typename ProcessMaker, typename ProcessMakeInfo>
@@ -57,7 +57,7 @@ public:
 	/*process_maker_base(process_maker_base &&pmb) :
 		_info(std::move(pmb._info)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(process_maker_base);*/
+	RUA_OVERLOAD_ASSIGNMENT(process_maker_base);*/
 
 	template <typename Arg>
 	ProcessMaker &arg(Arg &&a) & {

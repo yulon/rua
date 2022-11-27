@@ -17,7 +17,7 @@ public:
 	lock_guard(lock_guard &&src) :
 		_lck(exchange(src._lck, nullptr)), _lcking(std::move(src._lcking)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(lock_guard)
+	RUA_OVERLOAD_ASSIGNMENT(lock_guard)
 
 	explicit operator bool() const {
 		return _lck;

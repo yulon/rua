@@ -59,7 +59,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(spare_thread_word_var)
+	RUA_OVERLOAD_ASSIGNMENT(spare_thread_word_var)
 
 	using native_handle_t = size_t;
 
@@ -174,7 +174,7 @@ public:
 		}
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(basic_thread_var)
+	RUA_OVERLOAD_ASSIGNMENT(basic_thread_var)
 
 	bool is_storable() const {
 		return _ix != static_cast<size_t>(-1);

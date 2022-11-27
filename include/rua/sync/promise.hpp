@@ -51,7 +51,7 @@ class future_base : private enable_await_operators {
 public:
 	future_base(future_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(future_base)
+	RUA_OVERLOAD_ASSIGNMENT(future_base)
 
 	promise_context<T> *context() const {
 		return _ctx;
@@ -137,7 +137,7 @@ public:
 		future_base<T, Deteler>(
 			static_cast<future_base<T, Deteler> &&>(std::move(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(promising_future)
+	RUA_OVERLOAD_ASSIGNMENT(promising_future)
 
 	optional<T> checkout() {
 		optional<T> r;
@@ -229,7 +229,7 @@ public:
 		future_base<void, Deteler>(
 			static_cast<future_base<void, Deteler> &&>(std::move(src))) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(promising_future)
+	RUA_OVERLOAD_ASSIGNMENT(promising_future)
 
 	bool checkout() {
 		auto &ctx = this->_ctx;
@@ -341,7 +341,7 @@ public:
 
 	future(future &&src) : _r(std::move(src._r)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(future);
+	RUA_OVERLOAD_ASSIGNMENT(future);
 
 	bool await_ready() const {
 		return _r.template type_is<T>();
@@ -391,7 +391,7 @@ public:
 
 	future(future &&src) : _pms_fut(std::move(src._pms_fut)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(future);
+	RUA_OVERLOAD_ASSIGNMENT(future);
 
 	bool await_ready() const {
 		return !_pms_fut;
@@ -428,7 +428,7 @@ public:
 
 	promise_base(promise_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(promise_base)
+	RUA_OVERLOAD_ASSIGNMENT(promise_base)
 
 	promise_context<T> *context() const {
 		return _ctx;

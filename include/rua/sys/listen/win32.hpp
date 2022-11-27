@@ -34,7 +34,7 @@ public:
 		_wh(exchange(src._wh, nullptr)),
 		_pms_fut(std::move(src._pms_fut)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT_R(sys_waiter);
+	RUA_OVERLOAD_ASSIGNMENT(sys_waiter);
 
 	native_handle_t native_handle() const {
 		return _wh;
