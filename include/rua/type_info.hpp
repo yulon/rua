@@ -152,6 +152,10 @@ public:
 		return a == b || (_tab->eq && _tab->eq(a, b));
 	}
 
+	void reset() {
+		_tab = nullptr;
+	}
+
 #ifdef RUA_RTTI_SUPPORTED
 	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);

@@ -190,7 +190,7 @@ public:
 			return;
 		}
 		_type.destruct(reinterpret_cast<void *>(&_sto[0]));
-		_type = type_id<void>();
+		_type.reset();
 	}
 
 	uchar *data() {

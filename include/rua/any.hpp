@@ -76,7 +76,7 @@ public:
 		}
 		*reinterpret_cast<void **>(&_sto[0]) =
 			*reinterpret_cast<void **>(&src._sto);
-		src._type = type_id<void>();
+		src._type.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
@@ -162,7 +162,7 @@ public:
 		} else {
 			_type.dealloc(*reinterpret_cast<void **>(&_sto[0]));
 		}
-		_type = type_id<void>();
+		_type.reset();
 	}
 
 private:
