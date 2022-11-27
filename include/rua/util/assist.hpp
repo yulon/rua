@@ -136,22 +136,26 @@ inline enable_if_t<!std::is_trivially_destructible<T>::value> destruct(T &ref) {
 ////////////////////////////////////////////////////////////////////////////
 
 #define RUA_OVERLOAD_ASSIGNMENT_L(T)                                           \
-	T &operator=(const T &src) {                                               \
-		if (this == &src) {                                                    \
+	template <typename Value>                                                  \
+	T &operator=(const Value &val) {                                           \
+		if (reinterpret_cast<uintptr_t>(this) ==                               \
+			reinterpret_cast<uintptr_t>(&val)) {                               \
 			return *this;                                                      \
 		}                                                                      \
 		destruct(*this);                                                       \
-		construct(*this, src);                                                 \
+		construct(*this, val);                                                 \
 		return *this;                                                          \
 	}
 
 #define RUA_OVERLOAD_ASSIGNMENT_R(T)                                           \
-	T &operator=(T &&src) {                                                    \
-		if (this == &src) {                                                    \
+	template <typename Value>                                                  \
+	T &operator=(Value &&val) {                                                \
+		if (reinterpret_cast<uintptr_t>(this) ==                               \
+			reinterpret_cast<uintptr_t>(&val)) {                               \
 			return *this;                                                      \
 		}                                                                      \
 		destruct(*this);                                                       \
-		construct(*this, std::move(src));                                      \
+		construct(*this, std::move(val));                                      \
 		return *this;                                                          \
 	}
 
