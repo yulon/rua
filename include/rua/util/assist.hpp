@@ -254,13 +254,25 @@ is_valid(T *val) {
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename Unsigned, typename Signed = make_signed_t<Unsigned>>
-Signed to_signed(Unsigned u) {
+inline Signed to_signed(Unsigned u) {
 	return static_cast<Signed>(u);
 }
 
 template <typename Signed, typename Unsigned = make_unsigned_t<Signed>>
-Unsigned to_unsigned(Signed i) {
+inline Unsigned to_unsigned(Signed i) {
 	return static_cast<Unsigned>(i);
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+inline bool or_result() {
+	return false;
+}
+
+template <typename FisrtCond, typename... Cond>
+inline bool or_result(FisrtCond &&fisrt_cond, Cond &&...cond) {
+	return static_cast<bool>(fisrt_cond) ||
+		   or_result(std::forward<Cond>(cond)...);
 }
 
 } // namespace rua
