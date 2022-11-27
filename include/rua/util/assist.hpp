@@ -174,15 +174,7 @@ template <bool IsCopyable, bool IsMovable>
 class enable_copy_move;
 
 template <>
-class enable_copy_move<true, true> {
-public:
-	constexpr enable_copy_move() = default;
-
-	enable_copy_move(const enable_copy_move &) = default;
-	enable_copy_move(enable_copy_move &&) = default;
-
-	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
-};
+class enable_copy_move<true, true> {};
 
 template <>
 class enable_copy_move<true, false> {
@@ -191,7 +183,7 @@ public:
 
 	enable_copy_move(const enable_copy_move &) = default;
 
-	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
+	enable_copy_move &operator=(const enable_copy_move &) = default;
 };
 
 template <>
@@ -201,7 +193,7 @@ public:
 
 	enable_copy_move(enable_copy_move &&) = default;
 
-	RUA_OVERLOAD_ASSIGNMENT(enable_copy_move)
+	enable_copy_move &operator=(enable_copy_move &&) = default;
 };
 
 template <>
