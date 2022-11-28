@@ -99,7 +99,7 @@ inline std::string to_string(error_i err) {
 	return err ? err->full_info() : "noerr";
 }
 
-template <typename T>
+template <typename T = void>
 class expected : public enable_value_operators<expected<T>, T> {
 public:
 	constexpr expected() = default;
@@ -149,8 +149,61 @@ public:
 		_val.reset();
 	}
 
+	template <
+		typename... Args,
+		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
+	void emplace(Args &&...args) {
+		_val.emplace(std::forward<Args>(args)...);
+	}
+
+	template <
+		typename U,
+		typename... Args,
+		typename = enable_if_t<
+			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
+	void emplace(std::initializer_list<U> il, Args &&...args) {
+		_val.emplace(il, std::forward<Args>(args)...);
+	}
+
 private:
 	variant<T, error_i> _val;
+};
+
+template <>
+class expected<void> {
+public:
+	constexpr expected() = default;
+
+	expected(error_i err) : _err(std::move(err)) {}
+
+	bool has_value() const {
+		return !_err;
+	}
+
+	explicit operator bool() const {
+		return has_value();
+	}
+
+	RUA_CONSTEXPR_14 void value() const {}
+
+	error_i error() const {
+		return _err;
+	}
+
+	void reset() {
+		_err.reset();
+	}
+
+	void emplace() {
+		_err.reset();
+	}
+
+	void emplace(error_i err) {
+		_err = std::move(err);
+	}
+
+private:
+	error_i _err;
 };
 
 } // namespace rua
