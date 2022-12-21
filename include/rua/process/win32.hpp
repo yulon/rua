@@ -20,8 +20,8 @@
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
 #include "../sys/info/win32.hpp"
-#include "../sys/listen/win32.hpp"
 #include "../sys/stream/win32.hpp"
+#include "../sys/wait/win32.hpp"
 #include "../thread/sleep/win32.hpp"
 #include "../util.hpp"
 
@@ -141,22 +141,13 @@ public:
 		return _h;
 	}
 
-	class awaiter : public sys_waiter {
-	public:
-		constexpr awaiter() : sys_waiter() {}
-
-		explicit awaiter(const process &proc) :
-			sys_waiter(proc.native_handle()) {}
-
-		generic_word await_resume() {
+	future<generic_word> RUA_OPERATOR_AWAIT() const {
+		auto h = _h;
+		return sys_wait(h) | [h]() -> generic_word {
 			DWORD ec;
-			GetExitCodeProcess(target(), &ec);
-			return ec;
-		}
-	};
-
-	awaiter RUA_OPERATOR_AWAIT() const {
-		return awaiter(*this);
+			GetExitCodeProcess(h, &ec);
+			return generic_word(ec);
+		};
 	}
 
 	bool kill() {

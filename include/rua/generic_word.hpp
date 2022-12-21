@@ -139,31 +139,9 @@ public:
 	template <
 		typename T,
 		typename = enable_if_t<
-			std::is_integral<T>::value || std::is_pointer<T>::value ||
-			!is_dynamic_allocation<T>::value>>
-	operator T() const & {
+			std::is_integral<T>::value || std::is_pointer<T>::value>>
+	operator T() const {
 		return as<T>();
-	}
-
-	template <
-		typename T,
-		typename = enable_if_t<is_dynamic_allocation<T>::value>>
-	operator const T &() const & {
-		return as<T>();
-	}
-
-	template <
-		typename T,
-		typename = enable_if_t<is_dynamic_allocation<T>::value>>
-	operator T &() & {
-		return as<T>();
-	}
-
-	template <
-		typename T,
-		typename = enable_if_t<is_dynamic_allocation<T>::value>>
-	operator T() && {
-		return std::move(*this).as<T>();
 	}
 
 	template <

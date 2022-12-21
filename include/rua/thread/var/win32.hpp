@@ -72,21 +72,20 @@ private:
 	void (*_dtor)(generic_word);
 
 	generic_word &_get(LPVOID val_ptr) const {
-		if (!val_ptr) {
-			auto p = new std::pair<generic_word, sys_waiter>;
-			TlsSetValue(_ix, p);
-			auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
-			assert(h);
-			auto dtor = _dtor;
-			p->second = sys_listen(h, [p, dtor, h]() {
-				dtor(p->first);
-				delete p;
-				CloseHandle(h);
-			});
-			val_ptr = p;
+		if (val_ptr) {
+			return *reinterpret_cast<generic_word *>(val_ptr);
 		}
-		return reinterpret_cast<std::pair<generic_word, sys_waiter> *>(val_ptr)
-			->first;
+		auto p = new generic_word;
+		TlsSetValue(_ix, p);
+		auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
+		assert(h);
+		auto dtor = _dtor;
+		sys_listen(h, [p, dtor, h]() {
+			dtor(*p);
+			delete p;
+			CloseHandle(h);
+		});
+		return *p;
 	}
 };
 

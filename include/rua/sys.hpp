@@ -5,5 +5,6 @@
 #include "sys/listen.hpp"
 #include "sys/paths.hpp"
 #include "sys/stream.hpp"
+#include "sys/wait.hpp"
 
 #endif

@@ -8,7 +8,7 @@
 #include "../../sync/then.hpp"
 #include "../../sync/wait.hpp"
 #include "../../sys/info/win32.hpp"
-#include "../../sys/listen/win32.hpp"
+#include "../../sys/wait/win32.hpp"
 #include "../../util.hpp"
 
 #include <tlhelp32.h>
@@ -121,21 +121,13 @@ public:
 		reset();
 	}
 
-	class awaiter : public sys_waiter {
-	public:
-		constexpr awaiter() : sys_waiter() {}
-
-		explicit awaiter(const thread &td) : sys_waiter(td.native_handle()) {}
-
-		generic_word await_resume() {
+	future<generic_word> RUA_OPERATOR_AWAIT() const {
+		auto h = _h;
+		return sys_wait(h) | [h]() -> generic_word {
 			DWORD ec;
-			GetExitCodeThread(target(), &ec);
-			return ec;
-		}
-	};
-
-	awaiter RUA_OPERATOR_AWAIT() const {
-		return awaiter(*this);
+			GetExitCodeThread(h, &ec);
+			return generic_word(ec);
+		};
 	}
 
 	void reset() {
