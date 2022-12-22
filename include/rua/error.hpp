@@ -65,6 +65,49 @@ public:
 	}
 };
 
+class exception_error : public error_base {
+public:
+	exception_error() = default;
+
+	exception_error(std::exception_ptr ptr, std::string what) :
+		_ptr(std::move(ptr)), _what(std::move(what)) {}
+
+	virtual ~exception_error() = default;
+
+	std::string info() const override {
+		return _what;
+	}
+
+	void rethrow() {
+		if (!_ptr) {
+			return;
+		}
+		std::rethrow_exception(std::move(_ptr));
+		_ptr = nullptr;
+		_what.clear();
+	}
+
+private:
+	std::exception_ptr _ptr;
+	std::string _what;
+};
+
+template <typename Exception>
+inline exception_error make_exception_error(Exception &&e) {
+	std::string what(std::forward<Exception>(e).what());
+	return exception_error(
+		std::make_exception_ptr(std::forward<Exception>(e)), std::move(what));
+}
+
+inline exception_error current_exception_error(std::string what) {
+	return exception_error(std::current_exception(), std::move(what));
+}
+
+inline exception_error current_exception_error(const std::exception &e) {
+	std::string what(e.what());
+	return exception_error(std::current_exception(), std::move(what));
+}
+
 #else
 
 using error_i = interface_ptr<error_base>;
@@ -76,6 +119,8 @@ public:
 	str_error() = default;
 
 	str_error(std::string s) : _s(std::move(s)) {}
+
+	virtual ~str_error() = default;
 
 	std::string info() const override {
 		return _s;
@@ -90,6 +135,8 @@ public:
 	constexpr strv_error() = default;
 
 	constexpr strv_error(string_view sv) : _sv(sv) {}
+
+	virtual ~strv_error() = default;
 
 	std::string info() const override {
 		return std::string(_sv);
@@ -206,13 +253,8 @@ class expected<void> {
 public:
 	expected() = default;
 
-	template <
-		typename Error,
-		typename = enable_if_t<std::is_constructible<error_i, Error &&>::value>>
-	expected(Error &&err) : _err(std::forward<Error>(err)) {}
-
-	expected(variant<error_i> vrt) :
-		_err(vrt.type_is<error_i>() ? vrt.as<error_i>() : nullptr) {}
+	RUA_CONSTRUCTIBLE_CONCEPT(ErrorArgs, error_i, expected)
+	expected(ErrorArgs &&...err) : _err(std::forward<ErrorArgs>(err)...) {}
 
 	expected(const expected &src) : _err(src._err) {}
 
