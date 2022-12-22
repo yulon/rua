@@ -630,13 +630,7 @@ public:
 		_alloc(size);
 	}
 
-	template <
-		typename... Args,
-		typename ArgsFront = decay_t<front_t<Args...>>,
-		typename = enable_if_t<
-			(sizeof...(Args) > 1) ||
-			(!std::is_base_of<bytes, ArgsFront>::value &&
-			 !std::is_integral<ArgsFront>::value)>>
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes_view, bytes)
 	bytes(Args &&...copy_src) {
 		bytes_view bv(std::forward<Args>(copy_src)...);
 		if (!bv.size()) {
@@ -768,13 +762,7 @@ class bytes_pattern {
 public:
 	bytes_pattern() = default;
 
-	template <
-		typename... Args,
-		typename ArgsFront = decay_t<front_t<Args...>>,
-		typename = enable_if_t<
-			(sizeof...(Args) > 1) ||
-			(!std::is_base_of<bytes_pattern, ArgsFront>::value &&
-			 std::is_constructible<bytes, Args &&...>::value)>>
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes, bytes_pattern)
 	bytes_pattern(Args &&...bytes_args) :
 		_mb(std::forward<Args>(bytes_args)...) {}
 

@@ -104,7 +104,7 @@ inline chan<std::function<void()>> &log_chan() {
 	static chan<std::function<void()>> ch;
 	static thread log_td([]() {
 		for (;;) {
-			(*ch.recv())();
+			(**ch.recv())();
 		}
 	});
 	return ch;

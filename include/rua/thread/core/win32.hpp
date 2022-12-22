@@ -1,12 +1,12 @@
 #ifndef _RUA_THREAD_CORE_WIN32_HPP
 #define _RUA_THREAD_CORE_WIN32_HPP
 
+#include "../id/win32.hpp"
+
 #include "../../dylib/win32.hpp"
 #include "../../generic_word.hpp"
-#include "../../skater.hpp"
-#include "../../sync/await.hpp"
+#include "../../sync/promise.hpp"
 #include "../../sync/then.hpp"
-#include "../../sync/wait.hpp"
 #include "../../sys/info/win32.hpp"
 #include "../../sys/wait/win32.hpp"
 #include "../../util.hpp"
@@ -17,18 +17,6 @@
 #include <functional>
 
 namespace rua { namespace win32 {
-
-using tid_t = DWORD;
-
-namespace _this_tid {
-
-inline tid_t this_tid() {
-	return GetCurrentThreadId();
-}
-
-} // namespace _this_tid
-
-using namespace _this_tid;
 
 class thread : private enable_await_operators {
 public:
@@ -123,10 +111,10 @@ public:
 
 	future<generic_word> RUA_OPERATOR_AWAIT() const {
 		auto h = _h;
-		return sys_wait(h) | [h]() -> generic_word {
+		return sys_wait(h) | [h](const expected<> &) -> generic_word {
 			DWORD ec;
 			GetExitCodeThread(h, &ec);
-			return generic_word(ec);
+			return ec;
 		};
 	}
 

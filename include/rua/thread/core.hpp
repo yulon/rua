@@ -9,8 +9,6 @@
 
 namespace rua {
 
-using tid_t = win32::tid_t;
-using namespace win32::_this_tid;
 using thread = win32::thread;
 using namespace win32::_this_thread;
 
@@ -22,8 +20,6 @@ using namespace win32::_this_thread;
 
 namespace rua {
 
-using tid_t = posix::tid_t;
-using namespace posix::_this_tid;
 using thread = posix::thread;
 using namespace posix::_this_thread;
 

@@ -221,6 +221,15 @@
 #define RUA_RTTI_SUPPORTED _HAS_STATIC_RTTI
 #endif
 
+#if defined(__cpp_exceptions) && __cpp_exceptions
+#define RUA_EXCEPTION_SUPPORTED __cpp_exceptions
+#define RUA_NOEXCEPT noexcept
+#define RUA_NOEXCEPT_IF(cond) noexcept(cond)
+#else
+#define RUA_NOEXCEPT
+#define RUA_NOEXCEPT_IF(cond)
+#endif
+
 #define RUA_DI(T, ...)                                                         \
 	([&]() -> T {                                                              \
 		T $;                                                                   \

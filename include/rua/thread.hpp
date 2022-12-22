@@ -3,6 +3,7 @@
 
 #include "thread/core.hpp"
 #include "thread/dozer.hpp"
+#include "thread/id.hpp"
 #include "thread/parallel.hpp"
 #include "thread/sleep.hpp"
 #include "thread/var.hpp"

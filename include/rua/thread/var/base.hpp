@@ -1,7 +1,7 @@
 #ifndef _RUA_THREAD_VAR_BASE_HPP
 #define _RUA_THREAD_VAR_BASE_HPP
 
-#include "../core.hpp"
+#include "../id.hpp"
 
 #include "../../any.hpp"
 #include "../../generic_word.hpp"

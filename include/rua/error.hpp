@@ -5,9 +5,16 @@
 #include "string/char_set.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
-#include "util/assist.hpp"
-#include "util/base.hpp"
+#include "util.hpp"
 #include "variant.hpp"
+
+#ifdef RUA_EXCEPTION_SUPPORTED
+
+#include "thread/var.hpp"
+
+#include <exception>
+
+#endif
 
 #include <cassert>
 #include <functional>
@@ -15,15 +22,9 @@
 
 namespace rua {
 
-class error_base;
-
-using error_i = interface_ptr<error_base>;
-
 class error_base {
 public:
-	error_base() = default;
-
-	error_base(error_i underlying_error) : _ue(std::move(underlying_error)) {}
+	virtual ~error_base() = default;
 
 	virtual ssize_t code() const {
 		return static_cast<ssize_t>(std::hash<std::string>{}(info()));
@@ -31,38 +32,50 @@ public:
 
 	virtual std::string info() const = 0;
 
-	error_i underlying() const {
-		return _ue;
-	}
-
-	std::string full_info(string_view sep = " <- ") const {
-		if (!_ue) {
-			return info();
-		}
-		std::list<std::string> strs;
-		strs.emplace_back(info());
-		auto e = _ue;
-		do {
-			strs.emplace_back(e->info());
-			e = e->underlying();
-		} while (e);
-		return join(strs, sep);
-	}
-
-private:
-	error_i _ue;
+protected:
+	constexpr error_base() = default;
 };
 
-class string_error : public error_base {
+#ifdef RUA_EXCEPTION_SUPPORTED
+
+class error_i : public interface_ptr<error_base>, public std::exception {
 public:
-	string_error() = default;
+	error_i() = default;
 
-	string_error(std::string s, error_i underlying_error = nullptr) :
-		error_base(std::move(underlying_error)), _s(std::move(s)) {}
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, interface_ptr<error_base>, error_i)
+	error_i(Args &&...args) :
+		interface_ptr<error_base>(std::forward<Args>(args)...) {}
 
-	ssize_t code() const override {
-		return static_cast<ssize_t>(std::hash<std::string>{}(_s));
+	error_i(const error_i &src) :
+		interface_ptr<error_base>(
+			static_cast<const interface_ptr<error_base> &>(src)) {}
+
+	error_i(error_i &&src) :
+		interface_ptr<error_base>(
+			static_cast<interface_ptr<error_base> &&>(std::move(src))) {}
+
+	RUA_OVERLOAD_ASSIGNMENT(error_i)
+
+	virtual ~error_i() = default;
+
+	const char *what() const RUA_NOEXCEPT override {
+		// I really don't like std::exception
+		static thread_var<std::string> what_cache;
+		return what_cache.emplace(get()->info()).c_str();
 	}
+};
+
+#else
+
+using error_i = interface_ptr<error_base>;
+
+#endif
+
+class str_error : public error_base {
+public:
+	str_error() = default;
+
+	str_error(std::string s) : _s(std::move(s)) {}
 
 	std::string info() const override {
 		return _s;
@@ -72,45 +85,43 @@ private:
 	std::string _s;
 };
 
-class string_view_error : public error_base {
+class strv_error : public error_base {
 public:
-	string_view_error() = default;
+	constexpr strv_error() = default;
 
-	string_view_error(rua::string_view sv, error_i underlying_error = nullptr) :
-		error_base(std::move(underlying_error)), _sv(sv) {}
-
-	ssize_t code() const override {
-		return static_cast<ssize_t>(std::hash<rua::string_view>{}(_sv));
-	}
+	constexpr strv_error(string_view sv) : _sv(sv) {}
 
 	std::string info() const override {
 		return std::string(_sv);
 	}
 
 private:
-	rua::string_view _sv;
+	string_view _sv;
 };
 
 inline std::string to_string(const error_base &err) {
-	return err.full_info();
+	return err.info();
 }
 
 inline std::string to_string(error_i err) {
-	return err ? err->full_info() : "noerr";
+	return err ? err->info() : "noerr";
 }
+
+RUA_CVAR strv_error unexpected("unexpected");
 
 template <typename T = void>
 class expected : public enable_value_operators<expected<T>, T> {
 public:
 	constexpr expected() = default;
 
-	template <
-		typename... Args,
-		typename = enable_if_t<
-			std::is_constructible<variant<T, error_i>, Args &&...>::value &&
-			(sizeof...(Args) > 1 ||
-			 !std::is_base_of<expected, decay_t<front_t<Args...>>>::value)>>
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<T, error_i>), expected)
 	constexpr expected(Args &&...args) : _val(std::forward<Args>(args)...) {}
+
+	expected(const expected &src) : _val(src._val) {}
+
+	expected(expected &&src) : _val(std::move(src._val)) {}
+
+	RUA_OVERLOAD_ASSIGNMENT(expected)
 
 	bool has_value() const {
 		return _val.template type_is<T>();
@@ -121,28 +132,48 @@ public:
 	}
 
 	T &value() & {
-		assert(_val.template type_is<T>());
+#ifdef RUA_EXCEPTION_SUPPORTED
+		if (!has_value()) {
+			throw error();
+		}
+#endif
+		assert(has_value());
 
 		return _val.template as<T>();
 	}
 
 	T &&value() && {
-		assert(_val.template type_is<T>());
+#ifdef RUA_EXCEPTION_SUPPORTED
+		if (!has_value()) {
+			throw error();
+		}
+#endif
+		assert(has_value());
 
 		return std::move(_val).template as<T>();
 	}
 
 	const T &value() const & {
-		assert(_val.template type_is<T>());
+#ifdef RUA_EXCEPTION_SUPPORTED
+		if (!has_value()) {
+			throw error();
+		}
+#endif
+		assert(has_value());
 
 		return _val.template as<T>();
 	}
 
 	error_i error() const {
-		static string_view_error unexpected("unexpected");
-		return _val.template type_is<error_i>()
-				   ? _val.template as<error_i>()
-				   : (has_value() ? error_i() : unexpected);
+		if (_val.template type_is<error_i>()) {
+			const auto &err = _val.template as<error_i>();
+			if (err) {
+				return err;
+			}
+		} else if (has_value()) {
+			return nullptr;
+		}
+		return unexpected;
 	}
 
 	void reset() {
@@ -151,7 +182,7 @@ public:
 
 	template <
 		typename... Args,
-		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
+		typename = enable_if_t<std::is_constructible<T, Args &&...>::value>>
 	void emplace(Args &&...args) {
 		_val.emplace(std::forward<Args>(args)...);
 	}
@@ -160,7 +191,8 @@ public:
 		typename U,
 		typename... Args,
 		typename = enable_if_t<
-			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
+			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
+				value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
 		_val.emplace(il, std::forward<Args>(args)...);
 	}
@@ -172,9 +204,21 @@ private:
 template <>
 class expected<void> {
 public:
-	constexpr expected() = default;
+	expected() = default;
 
-	expected(error_i err) : _err(std::move(err)) {}
+	template <
+		typename Error,
+		typename = enable_if_t<std::is_constructible<error_i, Error &&>::value>>
+	expected(Error &&err) : _err(std::forward<Error>(err)) {}
+
+	expected(variant<error_i> vrt) :
+		_err(vrt.type_is<error_i>() ? vrt.as<error_i>() : nullptr) {}
+
+	expected(const expected &src) : _err(src._err) {}
+
+	expected(expected &&src) : _err(std::move(src._err)) {}
+
+	RUA_OVERLOAD_ASSIGNMENT(expected)
 
 	bool has_value() const {
 		return !_err;

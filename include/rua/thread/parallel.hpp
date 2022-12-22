@@ -22,7 +22,7 @@ inline void _parallel(std::function<void()> f) {
 	}
 	thread([]() {
 		for (;;) {
-			auto f = *que.recv();
+			auto f = **que.recv();
 			f();
 		}
 	});
@@ -34,11 +34,11 @@ template <
 	typename Result = invoke_result_t<Func, Args &&...>>
 inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
-	skater<promise<Result>> pms;
-	auto pms_fut = pms->get_promising_future();
+	skater<promise<Result>> prm;
+	auto prm_fut = prm->get_promising_future();
 	auto f = skate(func);
-	_parallel([=]() mutable { pms->deliver(f(args...)); });
-	return std::move(pms_fut);
+	_parallel([=]() mutable { prm->deliver(f(args...)); });
+	return std::move(prm_fut);
 }
 
 template <typename Func, typename... Args>
@@ -46,14 +46,14 @@ inline enable_if_t<
 	std::is_void<invoke_result_t<Func, Args &&...>>::value,
 	future<>>
 parallel(Func func, Args &&...args) {
-	skater<promise<>> pms;
-	auto pms_fut = pms->get_promising_future();
+	skater<promise<>> prm;
+	auto prm_fut = prm->get_promising_future();
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		pms->deliver();
+		prm->deliver();
 	});
-	return std::move(pms_fut);
+	return std::move(prm_fut);
 }
 
 } // namespace rua

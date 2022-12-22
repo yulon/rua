@@ -35,8 +35,12 @@ public:
 			return false;
 		}
 		assert(recv_opt);
-		recv_opt->deliver(
-			std::move(val), [this](T val) mutable { send(std::move(val)); });
+		recv_opt->deliver(std::move(val), [this](expected<T> val) mutable {
+			if (!val) {
+				return;
+			}
+			send(std::move(val).value());
+		});
 		return true;
 	}
 
@@ -60,15 +64,15 @@ public:
 			return fut;
 		}
 
-		promise<T> pms;
-		fut = pms.get_future();
+		promise<T> prm;
+		fut = prm.get_future();
 		val_opt = _vals.pop_front_or(
-			[this, &pms]() { _recvs.emplace_front(std::move(pms)); });
+			[this, &prm]() { _recvs.emplace_front(std::move(prm)); });
 		if (!val_opt) {
 			return fut;
 		}
-		assert(pms);
-		pms.reset();
+		assert(prm);
+		prm.reset();
 		fut = *std::move(val_opt);
 		return fut;
 	}

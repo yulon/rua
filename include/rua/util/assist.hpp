@@ -6,9 +6,9 @@
 
 namespace rua {
 
-#define RUA_CONTAINER_OF(member_ptr, type, member)                             \
+#define RUA_CONTAINER_OF(_member_ptr, _type, _member)                          \
 	reinterpret_cast<type *>(                                                  \
-		reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member))
+		reinterpret_cast<uintptr_t>(_member_ptr) - offsetof(_type, _member))
 
 #define RUA_IS_BASE_OF_CONCEPT(_B, _D)                                         \
 	typename _D,                                                               \
@@ -20,6 +20,18 @@ namespace rua {
 		typename = enable_if_t <                                               \
 					   std::is_base_of<_B, remove_reference_t<_D>>::value &&   \
 				   !std::is_same<_B, _D>::value >
+
+#define RUA_CONSTRUCTIBLE_CONCEPT(_Args, _Constructible, _Exclusion)           \
+	template <                                                                 \
+		typename... _Args,                                                     \
+		typename ArgsFront = decay_t<front_t<_Args &&...>>,                    \
+		typename = enable_if_t<                                                \
+			(sizeof...(_Args) > 1 &&                                           \
+			 std::is_constructible<_Constructible, _Args &&...>::value) ||     \
+			(!std::is_base_of<_Exclusion, ArgsFront>::value &&                 \
+			 std::is_convertible<ArgsFront, _Constructible>::value)>>
+
+#define RUA_ARG(...) __VA_ARGS__
 
 ////////////////////////////////////////////////////////////////////////////
 

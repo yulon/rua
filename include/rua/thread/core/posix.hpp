@@ -1,11 +1,11 @@
 #ifndef _RUA_THREAD_CORE_POSIX_HPP
 #define _RUA_THREAD_CORE_POSIX_HPP
 
+#include "../id/posix.hpp"
+
 #include "../../generic_word.hpp"
 #include "../../sync/await.hpp"
 #include "../../sync/promise.hpp"
-#include "../../sync/then.hpp"
-#include "../../sync/wait.hpp"
 #include "../../util.hpp"
 
 #include <pthread.h>
@@ -14,18 +14,6 @@
 #include <memory>
 
 namespace rua { namespace posix {
-
-using tid_t = pthread_t;
-
-namespace _this_tid {
-
-inline tid_t this_tid() {
-	return pthread_self();
-}
-
-} // namespace _this_tid
-
-using namespace _this_tid;
 
 class thread : private enable_await_operators {
 public:

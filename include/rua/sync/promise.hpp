@@ -3,7 +3,7 @@
 
 #include "await.hpp"
 
-#include "../optional.hpp"
+#include "../error.hpp"
 #include "../skater.hpp"
 #include "../util.hpp"
 #include "../variant.hpp"
@@ -16,42 +16,40 @@
 namespace rua {
 
 enum class promise_state : uintptr_t {
-	no_callback,
-	has_callback,
-	has_value,
-	done
-};
-
-template <typename T>
-struct promise_context_base {
-	std::atomic<promise_state> state;
-	std::function<void()> callback;
+	loss_notify,
+	has_notify,
+	delivered,
+	reached
 };
 
 template <typename T = void>
-struct promise_context : promise_context_base<T> {
-	optional<T> value;
-	std::function<void(T)> undo;
-};
-
-template <>
-struct promise_context<void> : promise_context_base<void> {
-	std::function<void()> undo;
+struct promise_context {
+	std::atomic<promise_state> state;
+	expected<T> value;
+	std::function<void()> notify;
+	std::function<void(expected<T>)> rewind;
 };
 
 ////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
+template <typename T = void>
 using default_promise_deleter = std::default_delete<promise_context<T>>;
 
 ////////////////////////////////////////////////////////////////////////////
 
-template <typename T, typename Deteler>
-class future_base : private enable_await_operators {
-public:
-	future_base(future_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
+RUA_CVAR strv_error err_future_not_yet("future not yet");
 
-	RUA_OVERLOAD_ASSIGNMENT(future_base)
+template <typename T = void, typename Deteler = default_promise_deleter<T>>
+class promising_future : private enable_await_operators {
+public:
+	constexpr promising_future() : _ctx(nullptr) {}
+
+	explicit promising_future(promise_context<T> &ctx) : _ctx(&ctx) {}
+
+	promising_future(promising_future &&src) :
+		_ctx(exchange(src._ctx, nullptr)) {}
+
+	RUA_OVERLOAD_ASSIGNMENT(promising_future)
 
 	promise_context<T> *context() const {
 		return _ctx;
@@ -61,239 +59,101 @@ public:
 		return _ctx;
 	}
 
-	promise_state try_set_callback(std::function<void()> callback) {
+	bool await_suspend(std::function<void()> notify) {
 		assert(_ctx);
 
-		_ctx->callback = std::move(callback);
+		_ctx->notify = std::move(notify);
 
 		auto old_state = _ctx->state.load();
-		while (old_state == promise_state::no_callback &&
+		while (old_state == promise_state::loss_notify &&
 			   !_ctx->state.compare_exchange_weak(
-				   old_state, promise_state::has_callback))
+				   old_state, promise_state::has_notify))
 			;
-		assert(old_state != promise_state::has_callback);
 
-		switch (old_state) {
-		case promise_state::no_callback:
-			return promise_state::has_callback;
+		assert(old_state != promise_state::has_notify);
+		assert(old_state != promise_state::reached);
+		assert(
+			old_state == promise_state::loss_notify ||
+			old_state == promise_state::delivered);
 
-		case promise_state::done:
-			Deteler{}(_ctx);
-			_ctx = nullptr;
-			break;
-
-		default:
-			break;
-		}
-
-		return old_state;
-	}
-
-	promise_context<T> *release() {
-		return exchange(_ctx, nullptr);
+		return old_state != promise_state::delivered;
 	}
 
 	constexpr bool await_ready() const {
 		return false;
 	}
 
-	template <typename Resume>
-	bool await_suspend(Resume resume) {
+	expected<T> await_resume() {
 		assert(_ctx);
-#ifdef NDEBUG
-		return try_set_callback(std::move(resume)) ==
-			   promise_state::has_callback;
-#else
-		auto state = try_set_callback(std::move(resume));
-		if (state == promise_state::has_callback) {
-			return true;
+
+		expected<T> r;
+
+		auto old_state = _ctx->state.exchange(promise_state::reached);
+		assert(old_state != promise_state::reached);
+
+		if (old_state == promise_state::delivered) {
+			r = std::move(_ctx->value);
+			Deteler{}(_ctx);
+		} else {
+			r = err_future_not_yet;
 		}
-		assert(state == promise_state::has_value);
-		return false;
-#endif
+		_ctx = nullptr;
+
+		return r;
 	}
 
-protected:
+	void reset() {
+		if (!_ctx) {
+			return;
+		}
+		await_resume();
+	}
+
+	promise_context<T> *release() {
+		return exchange(_ctx, nullptr);
+	}
+
+private:
 	promise_context<T> *_ctx;
-
-	constexpr future_base() : _ctx(nullptr) {}
-
-	explicit future_base(promise_context<T> &ctx) : _ctx(&ctx) {}
-};
-
-template <typename T = void, typename Deteler = default_promise_deleter<T>>
-class promising_future : public future_base<T, Deteler> {
-public:
-	constexpr promising_future() : future_base<T, Deteler>() {}
-
-	explicit promising_future(promise_context<T> &ctx) :
-		future_base<T, Deteler>(ctx) {}
-
-	~promising_future() {
-		reset();
-	}
-
-	promising_future(promising_future &&src) :
-		future_base<T, Deteler>(
-			static_cast<future_base<T, Deteler> &&>(std::move(src))) {}
-
-	RUA_OVERLOAD_ASSIGNMENT(promising_future)
-
-	optional<T> checkout() {
-		optional<T> r;
-
-		auto &ctx = this->_ctx;
-		assert(ctx);
-
-		switch (ctx->state.exchange(promise_state::done)) {
-
-		case promise_state::has_value:
-			r = std::move(ctx->value);
-			RUA_FALLTHROUGH;
-
-		case promise_state::done:
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-		return r;
-	}
-
-	bool checkout_or_lose_promise(bool lose_when_setting_value) {
-		if (lose_when_setting_value) {
-			return checkout();
-		}
-		auto &ctx = this->_ctx;
-		auto r = checkout();
-		if (!r) {
-			Deteler{}(ctx);
-			ctx = nullptr;
-		}
-		return r;
-	}
-
-	T await_resume() {
-		assert(this->_ctx);
-#ifdef NDEBUG
-		return *checkout();
-#else
-		auto r = checkout();
-		assert(r);
-		return *std::move(r);
-#endif
-	}
-
-	void reset() {
-		auto &ctx = this->_ctx;
-		if (!ctx) {
-			return;
-		}
-
-		switch (ctx->state.exchange(promise_state::done)) {
-
-		case promise_state::has_value:
-			if (ctx->undo) {
-				ctx->undo(*std::move(ctx->value));
-			}
-			RUA_FALLTHROUGH;
-
-		case promise_state::done:
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-	}
-};
-
-template <typename Deteler>
-class promising_future<void, Deteler> : public future_base<void, Deteler> {
-public:
-	constexpr promising_future() : future_base<void, Deteler>() {}
-
-	explicit promising_future(promise_context<void> &ctx) :
-		future_base<void, Deteler>(ctx) {}
-
-	~promising_future() {
-		reset();
-	}
-
-	promising_future(promising_future &&src) :
-		future_base<void, Deteler>(
-			static_cast<future_base<void, Deteler> &&>(std::move(src))) {}
-
-	RUA_OVERLOAD_ASSIGNMENT(promising_future)
-
-	bool checkout() {
-		auto &ctx = this->_ctx;
-		assert(ctx);
-
-		switch (ctx->state.exchange(promise_state::done)) {
-
-		case promise_state::has_value:
-			return true;
-
-		case promise_state::done:
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-		return false;
-	}
-
-	bool checkout_or_lose_promise(bool lose_when_setting_value) {
-		if (lose_when_setting_value) {
-			return checkout();
-		}
-		auto &ctx = this->_ctx;
-		auto r = checkout();
-		if (!r) {
-			Deteler{}(ctx);
-			ctx = nullptr;
-		}
-		return r;
-	}
-
-	void await_resume() const {}
-
-	void reset() {
-		auto &ctx = this->_ctx;
-		if (!ctx) {
-			return;
-		}
-
-		switch (ctx->state.exchange(promise_state::done)) {
-
-		case promise_state::has_value:
-			if (ctx->undo) {
-				ctx->undo();
-			}
-			RUA_FALLTHROUGH;
-
-		case promise_state::done:
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-	}
 };
 
 ////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+class _future_await_resume {
+public:
+	template <typename PromisingFuture>
+	static inline expected<T> get(variant<T, error_i, PromisingFuture> &v) {
+		if (v.template type_is<T>()) {
+			return std::move(v).template as<T>();
+		}
+		if (v.template type_is<error_i>()) {
+			return std::move(v).template as<error_i>();
+		}
+		if (v.template type_is<PromisingFuture>()) {
+			auto &fut = v.template as<PromisingFuture>();
+			return fut.await_resume();
+		}
+		return unexpected;
+	}
+};
+
+template <>
+template <typename PromisingFuture>
+inline expected<void>
+_future_await_resume<void>::get(variant<void, error_i, PromisingFuture> &v) {
+	if (v.template type_is<void>()) {
+		return expected<void>();
+	}
+	if (v.template type_is<error_i>()) {
+		return std::move(v).template as<error_i>();
+	}
+	if (v.template type_is<PromisingFuture>()) {
+		auto &fut = v.template as<PromisingFuture>();
+		return fut.await_resume();
+	}
+	return unexpected;
+}
 
 template <
 	typename T = void,
@@ -301,25 +161,19 @@ template <
 	typename PromiseDeteler = default_promise_deleter<T>>
 class future : private enable_await_operators {
 public:
+	using promising_future_t = promising_future<PromiseResult, PromiseDeteler>;
+
 	constexpr future() : _r() {}
 
 	template <
-		typename... Result,
-		typename Front = decay_t<front_t<Result &&...>>,
-		typename = enable_if_t<
-			std::is_constructible<T, Result &&...>::value &&
-			(sizeof...(Result) > 1 ||
-			 (!std::is_base_of<future, Front>::value &&
-			  !std::is_base_of<
-				  promising_future<PromiseResult, PromiseDeteler>,
-				  Front>::value))>>
-	future(Result &&...result) : _r(std::forward<Result>(result)...) {}
+		typename U,
+		typename = enable_if_t<std::is_constructible<
+			variant<T, error_i, promising_future_t>,
+			U &&>::value>>
+	future(U &&val) : _r(std::forward<U>(val)) {}
 
-	future(promising_future<PromiseResult, PromiseDeteler> pms_fut) :
-		_r(std::move(pms_fut)) {}
-
-	explicit future(promise_context<PromiseResult> &pms_ctx) :
-		_r(promising_future<PromiseResult, PromiseDeteler>(pms_ctx)) {}
+	explicit future(promise_context<PromiseResult> &prm_ctx) :
+		_r(promising_future_t(prm_ctx)) {}
 
 	template <
 		typename U,
@@ -335,35 +189,25 @@ public:
 		typename = enable_if_t<
 			!std::is_convertible<future<U, PromiseResult> &&, T>::value>>
 	future(future<U, PromiseResult, PromiseDeteler> &&src) :
-		_r(std::move(src._r)
-			   .template as<
-				   promising_future<PromiseResult, PromiseDeteler>>()) {}
+		_r(std::move(src._r).template as<promising_future_t>()) {}
 
 	future(future &&src) : _r(std::move(src._r)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(future);
 
 	bool await_ready() const {
-		return _r.template type_is<T>();
+		return !_r.template type_is<promising_future_t>();
 	}
 
-	template <typename Resume>
-	bool await_suspend(Resume resume) {
-		assert((_r.template type_is<
-				promising_future<PromiseResult, PromiseDeteler>>()));
+	bool await_suspend(std::function<void()> notify) {
+		assert(!await_ready());
 
-		return _r.template as<promising_future<PromiseResult, PromiseDeteler>>()
-			.await_suspend(std::move(resume));
+		return _r.template as<promising_future_t>().await_suspend(
+			std::move(notify));
 	}
 
-	T await_resume() {
-		if (_r.template type_is<
-				promising_future<PromiseResult, PromiseDeteler>>()) {
-			auto &fut = _r.template as<
-				promising_future<PromiseResult, PromiseDeteler>>();
-			return static_cast<T>(fut.await_resume());
-		}
-		return std::move(_r).template as<T>();
+	expected<T> await_resume() {
+		return _future_await_resume<T>::get(_r);
 	}
 
 	template <typename U>
@@ -376,59 +220,27 @@ public:
 	}
 
 private:
-	variant<T, promising_future<PromiseResult, PromiseDeteler>> _r;
+	variant<T, error_i, promising_future_t> _r;
 };
-
-template <typename PromiseDeteler>
-class future<void, void, PromiseDeteler> : private enable_await_operators {
-public:
-	constexpr future(std::nullptr_t = nullptr) : _pms_fut() {}
-
-	future(promising_future<void, PromiseDeteler> pms_fut) :
-		_pms_fut(std::move(pms_fut)) {}
-
-	explicit future(promise_context<> &pms_ctx) : _pms_fut(pms_ctx) {}
-
-	future(future &&src) : _pms_fut(std::move(src._pms_fut)) {}
-
-	RUA_OVERLOAD_ASSIGNMENT(future);
-
-	bool await_ready() const {
-		return !_pms_fut;
-	}
-
-	template <typename Resume>
-	bool await_suspend(Resume resume) {
-		assert(_pms_fut);
-
-		return _pms_fut.await_suspend(std::move(resume));
-	}
-
-	void await_resume() const {}
-
-	void reset() {
-		_pms_fut.reset();
-	}
-
-private:
-	promising_future<void, PromiseDeteler> _pms_fut;
-};
-
-template <typename T, typename PromiseDeteler>
-class future<T, void, PromiseDeteler> {};
 
 ////////////////////////////////////////////////////////////////////////////
 
-template <typename T, typename Deteler>
-class promise_base {
+RUA_CVAR strv_error err_breaked_promise("breaked promise");
+
+template <typename T = void, typename Deteler = default_promise_deleter<T>>
+class promise {
 public:
-	~promise_base() {
+	constexpr promise() : _ctx(nullptr) {}
+
+	explicit promise(promise_context<T> &ctx) : _ctx(&ctx) {}
+
+	~promise() {
 		reset();
 	}
 
-	promise_base(promise_base &&src) : _ctx(exchange(src._ctx, nullptr)) {}
+	promise(promise &&src) : _ctx(exchange(src._ctx, nullptr)) {}
 
-	RUA_OVERLOAD_ASSIGNMENT(promise_base)
+	RUA_OVERLOAD_ASSIGNMENT(promise)
 
 	promise_context<T> *context() const {
 		return _ctx;
@@ -440,14 +252,53 @@ public:
 
 	promising_future<T, Deteler> get_promising_future() {
 		reset();
-		auto &ctx = this->_ctx;
-		ctx = new promise_context<T>;
-		ctx->state = promise_state::no_callback;
-		return promising_future<T, Deteler>(*ctx);
+		_ctx = new promise_context<T>;
+		_ctx->state = promise_state::loss_notify;
+		return promising_future<T, Deteler>(*_ctx);
 	}
 
 	future<T, T, Deteler> get_future() {
 		return get_promising_future();
+	}
+
+	void deliver(
+		expected<T> value = expected<T>(),
+		std::function<void(expected<T>)> rewind = nullptr) {
+
+		assert(_ctx);
+
+		assert(std::is_void<T>::value ? !!_ctx->value : !_ctx->value);
+		_ctx->value = std::move(value);
+
+		if (rewind) {
+			assert(!_ctx->rewind);
+			_ctx->rewind = std::move(rewind);
+		}
+
+		auto old_state = _ctx->state.exchange(promise_state::delivered);
+		assert(old_state != promise_state::delivered);
+
+		switch (old_state) {
+
+		case promise_state::has_notify: {
+			assert(_ctx->notify);
+			auto notify = std::move(_ctx->notify);
+			notify();
+			break;
+		}
+
+		case promise_state::reached:
+			if (_ctx->rewind) {
+				_ctx->rewind(std::move(_ctx->value));
+			};
+			Deteler{}(_ctx);
+			break;
+
+		default:
+			break;
+		}
+
+		_ctx = nullptr;
 	}
 
 	void reset() {
@@ -455,15 +306,18 @@ public:
 			return;
 		}
 
-		auto old_state = _ctx->state.exchange(promise_state::done);
-		assert(old_state != promise_state::has_value);
+		assert(std::is_void<T>::value ? !!_ctx->value : !_ctx->value);
+		_ctx->value = err_breaked_promise;
+
+		auto old_state = _ctx->state.exchange(promise_state::delivered);
+		assert(old_state != promise_state::delivered);
 
 		switch (old_state) {
-		case promise_state::has_callback:
-			_ctx->callback = nullptr;
+		case promise_state::has_notify:
+			_ctx->notify = nullptr;
 			break;
 
-		case promise_state::done:
+		case promise_state::reached:
 			Deteler{}(_ctx);
 			break;
 
@@ -478,98 +332,8 @@ public:
 		return exchange(_ctx, nullptr);
 	}
 
-protected:
+private:
 	promise_context<T> *_ctx;
-
-	constexpr promise_base() : _ctx(nullptr) {}
-
-	explicit promise_base(promise_context<T> &ctx) : _ctx(&ctx) {}
-};
-
-template <typename T = void, typename Deteler = default_promise_deleter<T>>
-class promise : public promise_base<T, Deteler> {
-public:
-	constexpr promise() = default;
-
-	explicit promise(promise_context<T> &ctx) : promise_base<T, Deteler>(ctx) {}
-
-	void deliver(T value, std::function<void(T)> undo = nullptr) {
-		auto &ctx = this->_ctx;
-		assert(ctx);
-
-		assert(!ctx->value);
-		ctx->value.emplace(std::move(value));
-
-		if (undo) {
-			assert(!ctx->undo);
-			ctx->undo = std::move(undo);
-		}
-
-		auto old_state = ctx->state.exchange(promise_state::has_value);
-		assert(old_state != promise_state::has_value);
-
-		switch (old_state) {
-		case promise_state::has_callback: {
-			assert(ctx->callback);
-			auto callback = std::move(ctx->callback);
-			callback();
-			break;
-		}
-
-		case promise_state::done:
-			if (ctx->undo) {
-				ctx->undo(*std::move(ctx->value));
-			};
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-	}
-};
-
-template <typename Deteler>
-class promise<void, Deteler> : public promise_base<void, Deteler> {
-public:
-	constexpr promise() = default;
-
-	explicit promise(promise_context<void> &ctx) :
-		promise_base<void, Deteler>(ctx) {}
-
-	void deliver(std::function<void()> undo = nullptr) {
-		auto &ctx = this->_ctx;
-		assert(ctx);
-
-		if (undo) {
-			assert(!ctx->undo);
-			ctx->undo = std::move(undo);
-		}
-
-		auto old_state = ctx->state.exchange(promise_state::has_value);
-		assert(old_state != promise_state::has_value);
-
-		switch (old_state) {
-		case promise_state::has_callback:
-			assert(ctx->callback);
-			ctx->callback();
-			break;
-
-		case promise_state::done:
-			if (ctx->undo) {
-				ctx->undo();
-			};
-			Deteler{}(ctx);
-			break;
-
-		default:
-			break;
-		}
-
-		ctx = nullptr;
-	}
 };
 
 } // namespace rua

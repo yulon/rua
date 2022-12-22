@@ -40,10 +40,10 @@ public:
 			return fut;
 		}
 
-		promise<> pms;
-		fut = pms.get_future();
+		promise<> prm;
+		fut = prm.get_promising_future();
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
-			[this]() -> bool { return _c.load() == 1; }, std::move(pms));
+			[this]() -> bool { return _c.load() == 1; }, std::move(prm));
 		if (!is_emplaced) {
 			fut.reset();
 		}

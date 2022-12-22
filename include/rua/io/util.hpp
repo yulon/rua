@@ -288,7 +288,7 @@ public:
 
 	virtual ssize_t read(bytes_ref buf) {
 		while (!_buf) {
-			_buf = *_ch.recv();
+			_buf = **_ch.recv();
 			if (!_buf) {
 				if (--_c) {
 					continue;

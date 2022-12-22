@@ -62,7 +62,7 @@ TEST_CASE("use chan on thread") {
 		ch.send("ok");
 	});
 
-	REQUIRE(*ch.recv() == "ok");
+	REQUIRE(**ch.recv() == "ok");
 }
 
 TEST_CASE("use chan on multi-thread") {
@@ -85,13 +85,13 @@ TEST_CASE("use chan on multi-thread") {
 	static rua::chan<bool> ch2;
 
 	rua::thread([]() {
-		while (*ch.recv()) {
+		while (**ch.recv()) {
 			ch2.send(true);
 		}
 	});
 
 	rua::thread([]() {
-		while (*ch.recv()) {
+		while (**ch.recv()) {
 			ch2.send(false);
 		}
 	});

@@ -20,7 +20,7 @@ inline future<> sys_wait(HANDLE handle) {
 	}
 
 	skater<promise<>> prm;
-	r = prm->get_future();
+	r = prm->get_promising_future();
 
 	_sys_listen_force(handle, [prm]() mutable { prm->deliver(); });
 

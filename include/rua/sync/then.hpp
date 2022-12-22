@@ -26,14 +26,14 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)(awtr->await_resume());
 	}
 	struct ctx_t {
-		promise<CallbackResult> pms;
+		promise<CallbackResult> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
-			ctx->pms.deliver(ctx->cb(ctx->awtr->await_resume()));
+			ctx->prm.deliver(ctx->cb(ctx->awtr->await_resume()));
 			delete ctx;
 		})) {
 		return r;
@@ -62,17 +62,17 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)(awtr->await_resume());
 	}
 	struct ctx_t {
-		promise<CallbackResultValue> pms;
+		promise<CallbackResultValue> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
 				[ctx](CallbackResultValue val) {
-					ctx->pms.deliver(std::move(val));
+					ctx->prm.deliver(std::move(val));
 					delete ctx;
 				});
 		})) {
@@ -102,15 +102,15 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)(awtr->await_resume());
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-				ctx->pms.deliver();
+				ctx->prm.deliver();
 				delete ctx;
 			});
 		})) {
@@ -142,24 +142,24 @@ then(Awaitable &&awaitable, Callback &&callback) {
 			[](CallbackResultValue val) { return std::move(val); });
 	}
 	struct ctx_t {
-		promise<CallbackResultValue> pms;
+		promise<CallbackResultValue> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(
 				ctx->cb(ctx->awtr->await_resume()),
 				[ctx](CallbackResultValue val) {
-					ctx->pms.deliver(std::move(val));
+					ctx->prm.deliver(std::move(val));
 					delete ctx;
 				});
 		})) {
 		return r;
 	}
 	then(ctx->cb(ctx->awtr->await_resume()), [ctx](CallbackResultValue val) {
-		ctx->pms.deliver(std::move(val));
+		ctx->prm.deliver(std::move(val));
 		delete ctx;
 	});
 	return r;
@@ -185,22 +185,22 @@ then(Awaitable &&awaitable, Callback &&callback) {
 			std::forward<Callback>(callback)(awtr->await_resume()), []() {});
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-				ctx->pms.deliver();
+				ctx->prm.deliver();
 				delete ctx;
 			});
 		})) {
 		return r;
 	}
 	then(ctx->cb(ctx->awtr->await_resume()), [ctx]() {
-		ctx->pms.deliver();
+		ctx->prm.deliver();
 		delete ctx;
 	});
 	return r;
@@ -222,15 +222,15 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return {};
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<void(AwaitableResult)> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->cb(ctx->awtr->await_resume());
-			ctx->pms.deliver();
+			ctx->prm.deliver();
 			delete ctx;
 		})) {
 		return r;
@@ -257,15 +257,15 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)();
 	}
 	struct ctx_t {
-		promise<CallbackResult> pms;
+		promise<CallbackResult> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
-			ctx->pms.deliver(ctx->cb());
+			ctx->prm.deliver(ctx->cb());
 			delete ctx;
 		})) {
 		return r;
@@ -296,16 +296,16 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)();
 	}
 	struct ctx_t {
-		promise<CallbackResultValue> pms;
+		promise<CallbackResultValue> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
-				ctx->pms.deliver(std::move(val));
+				ctx->prm.deliver(std::move(val));
 				delete ctx;
 			});
 		})) {
@@ -337,16 +337,16 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return std::forward<Callback>(callback)();
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
-				ctx->pms.deliver();
+				ctx->prm.deliver();
 				delete ctx;
 			});
 		})) {
@@ -380,16 +380,16 @@ then(Awaitable &&awaitable, Callback &&callback) {
 			[](CallbackResultValue val) { return std::move(val); });
 	}
 	struct ctx_t {
-		promise<CallbackResultValue> pms;
+		promise<CallbackResultValue> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx](CallbackResultValue val) {
-				ctx->pms.deliver(std::move(val));
+				ctx->prm.deliver(std::move(val));
 				delete ctx;
 			});
 		})) {
@@ -397,7 +397,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	ctx->awtr->await_resume();
 	then(ctx->cb(), [ctx](CallbackResultValue val) {
-		ctx->pms.deliver(std::move(val));
+		ctx->prm.deliver(std::move(val));
 		delete ctx;
 	});
 	return r;
@@ -423,16 +423,16 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return then(std::forward<Callback>(callback)(), []() {});
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<CallbackResult()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			then(ctx->cb(), [ctx]() {
-				ctx->pms.deliver();
+				ctx->prm.deliver();
 				delete ctx;
 			});
 		})) {
@@ -440,7 +440,7 @@ then(Awaitable &&awaitable, Callback &&callback) {
 	}
 	ctx->awtr->await_resume();
 	then(ctx->cb(), [ctx]() {
-		ctx->pms.deliver();
+		ctx->prm.deliver();
 		delete ctx;
 	});
 	return r;
@@ -462,16 +462,16 @@ then(Awaitable &&awaitable, Callback &&callback) {
 		return {};
 	}
 	struct ctx_t {
-		promise<> pms;
+		promise<> prm;
 		awaiter_wrapper<Awaitable &&> awtr;
 		std::function<void()> cb;
 	};
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
-	auto r = ctx->pms.get_future();
+	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
 			ctx->awtr->await_resume();
 			ctx->cb();
-			ctx->pms.deliver();
+			ctx->prm.deliver();
 			delete ctx;
 		})) {
 		return r;
