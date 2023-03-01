@@ -32,7 +32,7 @@ inline std::wstring b2w(UINT mb_cp, string_view mb_str) {
 		0,
 		mb_str.data(),
 		static_cast<int>(mb_str.size()),
-		static_cast<wchar_t *>(w_str.data()),
+		&w_str[0],
 		w_str_len);
 	w_str.resize(w_str_len);
 	return w_str;
@@ -62,7 +62,7 @@ inline std::string w2b(wstring_view w_str, UINT mb_cp) {
 		0,
 		w_str.data(),
 		static_cast<int>(w_str.size()),
-		static_cast<char *>(u8_str.data()),
+		&u8_str[0],
 		u8_str_len,
 		nullptr,
 		nullptr);
