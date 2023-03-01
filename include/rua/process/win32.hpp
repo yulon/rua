@@ -150,15 +150,12 @@ public:
 		};
 	}
 
-	bool kill() {
+	void kill() {
 		if (!_h) {
-			return true;
+			return;
 		}
-		if (!TerminateProcess(_h, 0)) {
-			return false;
-		}
+		TerminateProcess(_h, 0);
 		_reset();
-		return true;
 	}
 
 	bool is_suspended() const {

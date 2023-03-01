@@ -93,15 +93,12 @@ public:
 		});
 	}
 
-	bool kill() {
+	void kill() {
 		if (_id <= 0) {
-			return true;
+			return;
 		}
-		if (::kill(_id, SIGKILL) != 0) {
-			return false;
-		}
+		::kill(_id, SIGKILL);
 		_id = -1;
-		return true;
 	}
 
 	bool suspend() {
