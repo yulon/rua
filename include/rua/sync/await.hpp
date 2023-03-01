@@ -2,6 +2,7 @@
 #define _RUA_SYNC_AWAIT_HPP
 
 #include "../coroutine.hpp"
+#include "../invocable.hpp"
 #include "../util.hpp"
 
 #include <cassert>

@@ -1,6 +1,7 @@
 #ifndef _RUA_SKATER_HPP
 #define _RUA_SKATER_HPP
 
+#include "invocable.hpp"
 #include "util.hpp"
 
 namespace rua {

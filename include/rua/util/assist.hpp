@@ -4,6 +4,8 @@
 #include "base.hpp"
 #include "type_traits.hpp"
 
+#include "../invocable.hpp"
+
 namespace rua {
 
 #define RUA_CONTAINER_OF(_member_ptr, _type, _member)                          \

@@ -3,6 +3,7 @@
 
 #include "core.hpp"
 
+#include "../invocable.hpp"
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
 #include "../sync/promise.hpp"

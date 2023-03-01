@@ -1,6 +1,7 @@
 #ifndef _RUA_OPTIONAL_HPP
 #define _RUA_OPTIONAL_HPP
 
+#include "invocable.hpp"
 #include "util.hpp"
 
 #ifdef __cpp_lib_optional

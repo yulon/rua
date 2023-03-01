@@ -4,6 +4,7 @@
 #include "await.hpp"
 #include "promise.hpp"
 
+#include "../invocable.hpp"
 #include "../skater.hpp"
 
 #include <functional>
