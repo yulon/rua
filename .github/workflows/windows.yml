@@ -10,12 +10,24 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: build
+    - name: build debug
+      run: |
+        mkdir ./out.d
+        cd ./out.d
+        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        cmake --build . --config Debug
+        ./rua_test_11
+        ./rua_test_14
+        ./rua_test_17
+        ./rua_test_20
+
+    - name: build release
       run: |
         mkdir ./out
         cd ./out
-        cmake .. -DRUA_TEST=all
-        cmake --build .
-        .\Debug\rua_test_11.exe
-        .\Debug\rua_test_14.exe
-        .\Debug\rua_test_17.exe
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release
+        ./rua_test_11
+        ./rua_test_14
+        ./rua_test_17
+        ./rua_test_20

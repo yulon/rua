@@ -1,40 +1,40 @@
 cmake_minimum_required(VERSION 3.0 FATAL_ERROR)
 
-if(DEFINED _DEFAULT_DEPU_DL)
+if(DEFINED _PROJECT_DEPU_PATH)
 	return()
 endif()
 
-set(_DEFAULT_DEPU_DL "${CMAKE_SOURCE_DIR}/.depu")
+set(_PROJECT_DEPU_PATH "${CMAKE_SOURCE_DIR}/.depu")
 
-if(NOT DEFINED DEPU_DL)
-	if(DEFINED CACHE{DEPU_DL})
-		set(DEPU_DL "$CACHE{DEPU_DL}")
-	elseif(DEFINED ENV{DEPU_DL})
-		set(DEPU_DL "$ENV{DEPU_DL}")
+if(NOT DEFINED DEPU_PATH)
+	if(DEFINED CACHE{DEPU_PATH})
+		set(DEPU_PATH "$CACHE{DEPU_PATH}")
+	elseif(DEFINED ENV{DEPU_PATH})
+		set(DEPU_PATH "$ENV{DEPU_PATH}")
 	else()
-		set(DEPU_DL "${_DEFAULT_DEPU_DL}")
+		set(DEPU_PATH "${_PROJECT_DEPU_PATH}")
 	endif()
 endif()
 
-string(TOUPPER "${DEPU_DL}" _DEPU_PATH_TOUPPER)
+string(TOUPPER "${DEPU_PATH}" _DEPU_PATH_TOUPPER)
 
 if("${_DEPU_PATH_TOUPPER}" STREQUAL "IN_HOME")
 	if(WIN32)
-		set(DEPU_DL "$ENV{USERPROFILE}/.depu")
+		set(DEPU_PATH "$ENV{USERPROFILE}/.depu")
 	elseif(UNIX)
-		set(DEPU_DL "$ENV{HOME}/.depu")
+		set(DEPU_PATH "$ENV{HOME}/.depu")
 	endif()
 elseif("${_DEPU_PATH_TOUPPER}" STREQUAL "IN_TEMP")
 	if(WIN32)
-		set(DEPU_DL "$ENV{TEMP}/.depu")
+		set(DEPU_PATH "$ENV{TEMP}/.depu")
 	elseif(UNIX)
-		set(DEPU_DL "/tmp/.depu")
+		set(DEPU_PATH "/tmp/.depu")
 	endif()
 endif()
 
-file(TO_CMAKE_PATH "${DEPU_DL}" DEPU_DL)
+file(TO_CMAKE_PATH "${DEPU_PATH}" DEPU_PATH)
 
-message(STATUS "Depu: DEPU_DL = ${DEPU_DL}")
+message(STATUS "Depu: DEPU_PATH = ${DEPU_PATH}")
 
 if(NOT DEFINED DEPU_DEV)
 	if(DEFINED CACHE{DEPU_DEV})
@@ -55,7 +55,7 @@ function(_depu_mkpaths A_STORAGE_PREFIX A_SRC_FIX)
 	set(ROOT_REL "${A_STORAGE_PREFIX}/src")
 	set(ROOT_REL "${ROOT_REL}" PARENT_SCOPE)
 
-	set(ROOT "${DEPU_DL}/${ROOT_REL}")
+	set(ROOT "${DEPU_PATH}/${ROOT_REL}")
 	set(ROOT "${ROOT}" PARENT_SCOPE)
 
 	file(TO_CMAKE_PATH "${A_SRC_FIX}" SRC_FIX)
@@ -115,7 +115,11 @@ function(depu A_NAME)
 	endif()
 
 	if(NOT FOUND AND A_PKG_URL)
-		string(MAKE_C_IDENTIFIER "${A_PKG_HASH}" PKG_NAME)
+		if(A_PKG_HASH)
+			string(MAKE_C_IDENTIFIER "${A_PKG_HASH}" PKG_NAME)
+		else()
+			string(MAKE_C_IDENTIFIER "${A_PKG_URL}" PKG_NAME)
+		endif()
 		set(STORAGE_PREFIX "${NAME_TOLOWER}/${PKG_NAME}")
 
 		_depu_mkpaths("${STORAGE_PREFIX}" "${A_SRC_FIX}")
@@ -133,12 +137,16 @@ function(depu A_NAME)
 			if(A_PKG_HASH)
 				file(DOWNLOAD "${A_PKG_URL}" "${PKG_PATH}" EXPECTED_HASH ${A_PKG_HASH} STATUS DOWNLOAD_STATUS)
 			else()
-				file(DOWNLOAD "${A_PKG_URL}" "${PKG_PATH}")
+				file(DOWNLOAD "${A_PKG_URL}" "${PKG_PATH}" STATUS DOWNLOAD_STATUS)
 			endif()
 
 			list(POP_FRONT DOWNLOAD_STATUS DOWNLOAD_STATUS_CODE)
 
-			if(${DOWNLOAD_STATUS_CODE} EQUAL 0)
+			if(DOWNLOAD_STATUS_CODE EQUAL "0")
+				if(NOT A_PKG_HASH)
+					file(SHA256 "${PKG_PATH}" PKG_HASH)
+					message(STATUS "Depu: SHA256=${PKG_HASH} of '${A_PKG_URL}'")
+				endif()
 				execute_process(
 					COMMAND "${CMAKE_COMMAND}" -E tar xzf "${PKG_PATH}"
 					RESULT_VARIABLE EXIT_CODE
@@ -179,8 +187,8 @@ function(depu A_NAME)
 				find_package(Git REQUIRED QUIET)
 			endif()
 
-			if(NOT EXISTS "${DEPU_DL}")
-				file(MAKE_DIRECTORY "${DEPU_DL}")
+			if(NOT EXISTS "${DEPU_PATH}")
+				file(MAKE_DIRECTORY "${DEPU_PATH}")
 			endif()
 
 			execute_process(
@@ -243,6 +251,7 @@ function(depu A_NAME)
 	message(STATUS "Depu: Using '${A_NAME}' at ${SRC}")
 
 	set(BUILD "${CMAKE_CURRENT_BINARY_DIR}/depu/${STORAGE_PREFIX}/build")
+
 	if(EXISTS "${BUILD}" AND "${ROOT}.ready" IS_NEWER_THAN "${BUILD}")
 		file(REMOVE_RECURSE "${BUILD}")
 	endif()

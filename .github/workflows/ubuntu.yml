@@ -14,18 +14,20 @@ jobs:
       run: |
         mkdir ./out.d
         cd ./out.d
-        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Debug
-        cmake --build .
+        cmake .. -DCMAKE_BUILD_TYPE=Debug
+        cmake --build . --config Debug
         ./rua_test_11
         ./rua_test_14
         ./rua_test_17
+        ./rua_test_20
 
     - name: build release
       run: |
         mkdir ./out
         cd ./out
-        cmake .. -DRUA_TEST=all -DCMAKE_BUILD_TYPE=Release
-        cmake --build .
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+        cmake --build . --config Release
         ./rua_test_11
         ./rua_test_14
         ./rua_test_17
+        ./rua_test_20
