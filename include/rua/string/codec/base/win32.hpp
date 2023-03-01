@@ -26,17 +26,15 @@ inline std::wstring b2w(UINT mb_cp, string_view mb_str) {
 		return L"";
 	}
 
-	wchar_t *w_c_str = new wchar_t[w_str_len + 1];
-	MultiByteToWideChar(
+	std::wstring w_str(w_str_len + 1, 0);
+	w_str_len = MultiByteToWideChar(
 		mb_cp,
 		0,
 		mb_str.data(),
 		static_cast<int>(mb_str.size()),
-		w_c_str,
+		static_cast<wchar_t *>(w_str.data()),
 		w_str_len);
-
-	std::wstring w_str(w_c_str, w_str_len);
-	delete[] w_c_str;
+	w_str.resize(w_str_len);
 	return w_str;
 }
 
@@ -58,20 +56,17 @@ inline std::string w2b(wstring_view w_str, UINT mb_cp) {
 		return "";
 	}
 
-	char *u8_c_str = new char[u8_str_len + 1];
-	u8_c_str[u8_str_len] = 0;
-	WideCharToMultiByte(
+	std::string u8_str(u8_str_len + 1, 0);
+	u8_str_len = WideCharToMultiByte(
 		mb_cp,
 		0,
 		w_str.data(),
 		static_cast<int>(w_str.size()),
-		u8_c_str,
+		static_cast<char *>(u8_str.data()),
 		u8_str_len,
 		nullptr,
 		nullptr);
-
-	std::string u8_str(u8_c_str, u8_str_len);
-	delete[] u8_c_str;
+	u8_str.resize(u8_str_len);
 	return u8_str;
 }
 
