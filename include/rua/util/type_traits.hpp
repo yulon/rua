@@ -277,7 +277,7 @@ struct size_of<
 	static constexpr size_t value = sizeof(T);
 };
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto size_of_v = size_of<T>::value;
 #endif
@@ -301,7 +301,7 @@ struct align_of<
 	static constexpr size_t value = alignof(T);
 };
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto align_of_v = align_of<T>::value;
 #endif
@@ -324,7 +324,7 @@ struct max_size_of<First, Others...> {
 			: max_size_of<Others...>::value;
 };
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename... Types>
 inline constexpr auto max_size_of_v = max_size_of<Types...>::value;
 #endif
@@ -347,7 +347,7 @@ struct max_align_of<First, Others...> {
 			: max_align_of<Others...>::value;
 };
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename... Types>
 inline constexpr auto max_align_of_v = max_align_of<Types...>::value;
 #endif
@@ -382,7 +382,7 @@ struct _index_of<C, T, Cur, Others...> {
 template <typename T, typename... Types>
 struct index_of : _index_of<sizeof...(Types), T, Types...> {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T, typename... Types>
 inline constexpr auto index_of_v = index_of<T, Types...>::value;
 #endif

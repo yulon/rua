@@ -25,7 +25,7 @@ struct is_range : std::false_type {};
 template <typename T>
 struct is_range<T, void_t<range_traits<T>>> : std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_range_v = is_range<T>::value;
 #endif
@@ -40,7 +40,7 @@ struct is_readonly_range<
 		std::is_const<typename range_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_readonly_range_v = is_readonly_range<T>::value;
 #endif
@@ -55,7 +55,7 @@ struct is_writeable_range<
 		!std::is_const<typename range_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 #endif

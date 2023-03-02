@@ -77,7 +77,8 @@ using invoke_result_t = std::invoke_result_t<F, Args...>;
 #else
 
 template <typename F, typename... Args>
-using invoke_result_t = decltype(invoke(std::declval<F>(), std::declval<Args >()...));
+using invoke_result_t =
+	decltype(invoke(std::declval<F>(), std::declval<Args>()...));
 
 template <typename F, typename... Args>
 struct invoke_result {
@@ -105,7 +106,7 @@ struct is_invocable : _is_invocable<void, F, Args...> {};
 
 #endif
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename F, typename... Args>
 inline constexpr auto is_invocable_v = is_invocable<F, Args...>::value;
 #endif

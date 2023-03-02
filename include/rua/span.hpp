@@ -118,7 +118,7 @@ struct is_span : std::false_type {};
 template <typename T>
 struct is_span<T, void_t<span_traits<T>>> : std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_span_v = is_span<T>::value;
 #endif
@@ -133,7 +133,7 @@ struct is_readonly_span<
 		std::is_const<typename span_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_readonly_span_v = is_readonly_span<T>::value;
 #endif
@@ -148,7 +148,7 @@ struct is_writeable_span<
 		!std::is_const<typename span_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP > RUA_CPP_17 || defined(__cpp_inline_variables)
+#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
 template <typename T>
 inline constexpr auto is_writeable_span_v = is_writeable_span<T>::value;
 #endif
