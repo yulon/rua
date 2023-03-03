@@ -16,10 +16,10 @@ jobs:
         cd ./out.d
         cmake .. -DCMAKE_BUILD_TYPE=Debug
         cmake --build . --config Debug
-        ./rua_test_11
-        ./rua_test_14
-        ./rua_test_17
-        ./rua_test_20
+        ./rua_test_11.exe
+        ./rua_test_14.exe
+        ./rua_test_17.exe
+        ./rua_test_20.exe
 
     - name: build release
       run: |
@@ -27,7 +27,7 @@ jobs:
         cd ./out
         cmake .. -DCMAKE_BUILD_TYPE=Release
         cmake --build . --config Release
-        ./rua_test_11
-        ./rua_test_14
-        ./rua_test_17
-        ./rua_test_20
+        ./rua_test_11.exe
+        ./rua_test_14.exe
+        ./rua_test_17.exe
+        ./rua_test_20.exe
