@@ -111,7 +111,7 @@ public:
 
 	future<generic_word> RUA_OPERATOR_AWAIT() const {
 		auto h = _h;
-		return sys_wait(h) | [h](const expected<> &) -> generic_word {
+		return sys_wait(h) >> [h]() -> generic_word {
 			DWORD ec;
 			GetExitCodeThread(h, &ec);
 			return ec;

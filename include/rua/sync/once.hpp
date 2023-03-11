@@ -29,7 +29,7 @@ public:
 			_mtx.unlock();
 			return {};
 		}
-		return _mtx.lock() | [this]() {
+		return _mtx.lock() >> [this]() {
 			assert(_executed.load());
 			_mtx.unlock();
 		};

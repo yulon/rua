@@ -21,24 +21,26 @@ invoke(F &&f, Args &&...args) {
 #else
 
 template <typename Base, typename Mbr, typename Derived, typename... Args>
-inline typename std::enable_if<
+inline enable_if_t<
 	std::is_function<Mbr>::value &&
-		std::is_base_of<Base, typename std::decay<Derived>::type>::value,
+		std::is_base_of<Base, decay_t<Derived>>::value,
 	decltype((std::declval<Derived &&>().*std::declval<Mbr Base::*>())(
-		std::declval<Args &&>()...))>::type
+		std::declval<Args &&>()...))>
 invoke(Mbr Base::*mbr_ptr, Derived &&ref, Args &&...args) {
 	return (ref.*mbr_ptr)(std::forward<Args>(args)...);
 }
 
 template <typename Base, typename Mbr, typename Derived>
-inline typename std::enable_if<
+inline enable_if_t<
 	!std::is_function<Mbr>::value &&
-		std::is_base_of<Base, typename std::decay<Derived>::type>::value,
-	decltype(std::declval<Derived &&>().*std::declval<Mbr Base::*>())>::type
-invoke(Mbr Base::*mbr_ptr, Derived &&ref) {}
+		std::is_base_of<Base, decay_t<Derived>>::value,
+	decltype(std::declval<Derived &&>().*std::declval<Mbr Base::*>())>
+invoke(Mbr Base::*mbr_ptr, Derived &&ref) {
+	return ref.*mbr_ptr;
+}
 
 template <typename Base, typename Mbr, typename Derived, typename... Args>
-inline decltype(invoke(
+inline decltype(rua::invoke(
 	std::declval<Mbr Base::*>(),
 	std::declval<Derived &>(),
 	std::declval<Args &&>()...))
@@ -46,19 +48,22 @@ invoke(
 	Mbr Base::*mbr_ptr,
 	std::reference_wrapper<Derived> ref_wrap,
 	Args &&...args) {
-	return invoke(mbr_ptr, ref_wrap.get(), std::forward<Args>(args)...);
+	return rua::invoke(mbr_ptr, ref_wrap.get(), std::forward<Args>(args)...);
 }
 
 template <typename Base, typename Mbr, typename Derived, typename... Args>
-inline decltype(invoke(
+inline decltype(rua::invoke(
 	std::declval<Mbr Base::*>(),
 	std::declval<Derived &>(),
 	std::declval<Args &&>()...))
 invoke(Mbr Base::*mbr_ptr, Derived *ptr, Args &&...args) {
-	return invoke(mbr_ptr, *ptr, std::forward<Args>(args)...);
+	return rua::invoke(mbr_ptr, *ptr, std::forward<Args>(args)...);
 }
 
-template <typename F, typename... Args>
+template <
+	typename F,
+	typename... Args,
+	typename = enable_if_t<!std::is_member_pointer<decay_t<F>>::value>>
 inline decltype(std::declval<F &&>()(std::declval<Args &&>()...))
 invoke(F &&f, Args &&...args) {
 	return std::forward<F>(f)(std::forward<Args>(args)...);
@@ -78,7 +83,7 @@ using invoke_result_t = std::invoke_result_t<F, Args...>;
 
 template <typename F, typename... Args>
 using invoke_result_t =
-	decltype(invoke(std::declval<F>(), std::declval<Args>()...));
+	decltype(rua::invoke(std::declval<F>(), std::declval<Args>()...));
 
 template <typename F, typename... Args>
 struct invoke_result {
