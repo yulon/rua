@@ -22,8 +22,9 @@ template <
 inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
 	if (awtr->await_ready()) {
-		return expected_invoke(
-			std::forward<Callback>(callback), &awtr->await_resume, *awtr);
+		return expected_invoke(std::forward<Callback>(callback), [&]() {
+			return awtr->await_resume();
+		});
 	}
 	struct ctx_t {
 		promise<R> prm;
@@ -33,13 +34,13 @@ inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 	auto ctx = new ctx_t{{}, std::move(awtr), std::forward<Callback>(callback)};
 	auto r = ctx->prm.get_future();
 	if (await_suspend(*ctx->awtr, [ctx]() {
-			ctx->prm.deliver(
-				expected_invoke(ctx->cb, &ctx->awtr->await_resume, *ctx->awtr));
+			ctx->prm.deliver(expected_invoke(
+				ctx->cb, [ctx]() { return ctx->awtr->await_resume(); }));
 			delete ctx;
 		})) {
 		return r;
 	}
-	r = expected_invoke(ctx->cb, &ctx->awtr->await_resume, *ctx->awtr);
+	r = expected_invoke(ctx->cb, [ctx]() { return ctx->awtr->await_resume(); });
 	delete ctx;
 	return r;
 }
