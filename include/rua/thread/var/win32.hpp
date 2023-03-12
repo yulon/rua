@@ -4,7 +4,7 @@
 #include "base.hpp"
 
 #include "../../generic_word.hpp"
-// #include "../../sys/listen/win32.hpp"
+#include "../../sys/listen/win32.hpp"
 #include "../../util.hpp"
 
 #include <windows.h>
@@ -77,14 +77,14 @@ private:
 		}
 		auto p = new generic_word;
 		TlsSetValue(_ix, p);
-		/*auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
+		auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 		assert(h);
 		auto dtor = _dtor;
 		sys_listen(h, [p, dtor, h]() {
 			dtor(*p);
 			delete p;
 			CloseHandle(h);
-		});*/
+		});
 		return *p;
 	}
 };
