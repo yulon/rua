@@ -16,12 +16,12 @@ namespace rua {
 enum class promise_state : uintptr_t {
 	loss_notify,
 	has_notify,
-	delivered,
+	fulfilled,
 	received
 };
 
-RUA_CVAR strv_error err_promise_undelivered("promise undelivered");
-RUA_CVAR strv_error err_promise_not_yet_delivered("promise not yet delivered");
+RUA_CVAR strv_error err_promise_breaked("promise breaked");
+RUA_CVAR strv_error err_promise_not_yet_fulfilled("promise not yet fulfilled");
 
 template <typename T = void>
 class promise {
@@ -33,12 +33,12 @@ public:
 	promise &operator=(const promise &) = delete;
 	promise &operator=(promise &&) = delete;
 
-	virtual ~promise() {}
+	virtual ~promise() = default;
 
-	//////////////////// send side ////////////////////
+	/////////////////// fulfill side ///////////////////
 
-	void deliver(
-		expected<T> value = err_promise_undelivered,
+	void fulfill(
+		expected<T> value = err_promise_breaked,
 		std::function<void(expected<T>)> rewind = nullptr) {
 
 		assert(std::is_void<T>::value ? !!_val : !_val);
@@ -49,8 +49,9 @@ public:
 			_rewind = std::move(rewind);
 		}
 
-		auto old_state = _state.exchange(promise_state::delivered);
-		assert(old_state != promise_state::delivered);
+		auto old_state = _state.exchange(promise_state::fulfilled);
+
+		assert(old_state != promise_state::fulfilled);
 
 		switch (old_state) {
 
@@ -88,9 +89,9 @@ public:
 		assert(old_state != promise_state::received);
 		assert(
 			old_state == promise_state::loss_notify ||
-			old_state == promise_state::delivered);
+			old_state == promise_state::fulfilled);
 
-		return old_state != promise_state::delivered;
+		return old_state != promise_state::fulfilled;
 	}
 
 	constexpr bool await_ready() const {
@@ -103,17 +104,21 @@ public:
 		auto old_state = _state.exchange(promise_state::received);
 		assert(old_state != promise_state::received);
 
-		if (old_state == promise_state::delivered) {
+		if (old_state == promise_state::fulfilled) {
 			r = std::move(_val);
 			release();
 		} else {
-			r = err_promise_not_yet_delivered;
+			r = err_promise_not_yet_fulfilled;
 		}
 		return r;
 	}
 
-protected:
-	// called when the promise is done using.
+	/////////////////// release side ///////////////////
+
+	/*
+		1. If fulfilled and received, will release() automatically.
+		2. If unfulfilled and unreceived, need release() manually.
+	*/
 	virtual void release() {}
 
 private:
@@ -128,7 +133,6 @@ class newable_promise : public promise<T> {
 public:
 	virtual ~newable_promise() = default;
 
-protected:
 	void release() override {
 		delete this;
 	}

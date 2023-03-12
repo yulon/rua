@@ -38,7 +38,7 @@ inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
 	auto prm = new newable_promise<Result>;
 	auto f = skate(func);
-	_parallel([=]() mutable { prm->deliver(f(args...)); });
+	_parallel([=]() mutable { prm->fulfill(f(args...)); });
 	return *prm;
 }
 
@@ -51,7 +51,7 @@ parallel(Func func, Args &&...args) {
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
-		prm->deliver();
+		prm->fulfill();
 	});
 	return *prm;
 }

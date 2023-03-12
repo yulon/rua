@@ -22,7 +22,7 @@ inline future<> sys_wait(HANDLE handle) {
 	auto prm = new newable_promise<>;
 	r = *prm;
 
-	_sys_listen_force(handle, [prm]() mutable { prm->deliver(); });
+	_sys_listen_force(handle, [prm]() mutable { prm->fulfill(); });
 
 	return r;
 }

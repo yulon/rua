@@ -47,7 +47,7 @@ public:
 			return future<>(*prm);
 		}
 
-		delete prm;
+		prm->release();
 
 		return future<>();
 	}
@@ -57,7 +57,7 @@ public:
 		if (!wtr_opt) {
 			return;
 		}
-		(*wtr_opt)->deliver(/*[this]() mutable { unlock(); }*/);
+		(*wtr_opt)->fulfill(/*[this]() mutable { unlock(); }*/);
 	}
 
 private:

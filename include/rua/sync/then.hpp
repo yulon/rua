@@ -45,18 +45,18 @@ inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 		new then_promise(std::move(awtr), std::forward<Callback>(callback));
 
 	if (await_suspend(*prm->then_awtr, [prm]() {
-			prm->deliver(expected_invoke(prm->then_cb, [prm]() {
+			prm->fulfill(expected_invoke(prm->then_cb, [prm]() {
 				return prm->then_awtr->await_resume();
 			}));
 		})) {
-		return future<R>(*prm); // automatically delete promise.
+		return future<R>(*prm);
 	}
 
 	auto exp = expected_invoke(prm->then_cb, [prm]() mutable {
 		return prm->then_awtr->await_resume();
 	});
 
-	delete prm; // useless, delete promise manually.
+	prm->release();
 
 	return exp;
 }

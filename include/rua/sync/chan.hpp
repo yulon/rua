@@ -37,7 +37,7 @@ public:
 		}
 		assert(recv_wtr);
 		assert(*recv_wtr);
-		(*recv_wtr)->deliver(std::move(val), [this](expected<T> val) mutable {
+		(*recv_wtr)->fulfill(std::move(val), [this](expected<T> val) mutable {
 			if (!val) {
 				return;
 			}
@@ -71,7 +71,7 @@ public:
 			return future<T>(*prm);
 		}
 
-		delete prm;
+		prm->release();
 
 		return *std::move(val_opt);
 	}
