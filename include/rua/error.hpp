@@ -169,16 +169,16 @@ public:
 	constexpr expected() = default;
 
 	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<T, error_i>), expected)
-	constexpr expected(Args &&...args) : _val(std::forward<Args>(args)...) {}
+	constexpr expected(Args &&...args) : _v(std::forward<Args>(args)...) {}
 
-	expected(const expected &src) : _val(src._val) {}
+	expected(const expected &src) : _v(src._v) {}
 
-	expected(expected &&src) : _val(std::move(src._val)) {}
+	expected(expected &&src) : _v(std::move(src._v)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(expected)
 
 	bool has_value() const {
-		return _val.template type_is<T>();
+		return _v.template type_is<T>();
 	}
 
 	explicit operator bool() const {
@@ -193,7 +193,7 @@ public:
 #endif
 		assert(has_value());
 
-		return _val.template as<T>();
+		return _v.template as<T>();
 	}
 
 	T &&value() && {
@@ -204,7 +204,7 @@ public:
 #endif
 		assert(has_value());
 
-		return std::move(_val).template as<T>();
+		return std::move(_v).template as<T>();
 	}
 
 	const T &value() const & {
@@ -215,12 +215,12 @@ public:
 #endif
 		assert(has_value());
 
-		return _val.template as<T>();
+		return _v.template as<T>();
 	}
 
 	error_i error() const {
-		if (_val.template type_is<error_i>()) {
-			const auto &err = _val.template as<error_i>();
+		if (_v.template type_is<error_i>()) {
+			const auto &err = _v.template as<error_i>();
 			assert(err);
 			return err;
 		}
@@ -230,15 +230,27 @@ public:
 		return unexpected;
 	}
 
+	variant<T, error_i> &data() & {
+		return _v;
+	}
+
+	variant<T, error_i> &&data() && {
+		return std::move(_v);
+	}
+
+	const variant<T, error_i> &data() const & {
+		return _v;
+	}
+
 	void reset() {
-		_val.reset();
+		_v.reset();
 	}
 
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args &&...>::value>>
 	void emplace(Args &&...args) {
-		_val.emplace(std::forward<Args>(args)...);
+		_v.emplace(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -248,11 +260,11 @@ public:
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
-		_val.emplace(il, std::forward<Args>(args)...);
+		_v.emplace(il, std::forward<Args>(args)...);
 	}
 
 private:
-	variant<T, error_i> _val;
+	variant<T, error_i> _v;
 };
 
 template <>

@@ -363,15 +363,23 @@ inline Unsigned to_unsigned(Signed i) {
 
 ////////////////////////////////////////////////////////////////////////////
 
-inline bool or_result() {
-	return false;
+template <typename R = bool>
+inline R or_result() {
+	return R();
 }
 
-template <typename FisrtCond, typename... Cond>
-inline bool or_result(FisrtCond &&fisrt_cond, Cond &&...cond) {
-	return static_cast<bool>(fisrt_cond) ||
-		   or_result(std::forward<Cond>(cond)...);
+template <typename FisrtR, typename... R>
+inline FisrtR or_result(FisrtR &&fisrt_r, R &&...r) {
+	if (static_cast<bool>(fisrt_r)) {
+		return fisrt_r;
+	}
+	return or_result<FisrtR>(std::forward<R>(r)...);
 }
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename... Args>
+inline constexpr void no_effect(Args &&...) {}
 
 } // namespace rua
 

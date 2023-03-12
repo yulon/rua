@@ -5,7 +5,7 @@
 
 #include "../../generic_word.hpp"
 #include "../../sync/await.hpp"
-#include "../../sync/promise.hpp"
+#include "../../sync/future.hpp"
 #include "../../util.hpp"
 
 #include <pthread.h>

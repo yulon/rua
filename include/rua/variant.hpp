@@ -4,6 +4,7 @@
 #include "type_info.hpp"
 #include "util.hpp"
 
+#include <array>
 #include <cassert>
 
 namespace rua {
@@ -37,40 +38,52 @@ public:
 	}
 
 	template <
-		typename... OtherTypes,
+		typename... Others,
 		typename = enable_if_t<
-			!std::is_same<variant<OtherTypes...>, variant>::value &&
-			disjunction<bool_constant<
-				index_of<OtherTypes, Types...>::value != nullpos>...>::value>>
-	variant(const variant<OtherTypes...> &src) : enable_type_info(src.type()) {
-		if (!_type) {
+			!std::is_same<variant<Others...>, variant>::value &&
+			disjunction<or_convertible<Others, Types...>...>::value>>
+	variant(const variant<Others...> &src) {
+		if (!src.type()) {
 			return;
 		}
-		if (!or_result(equal(_type, type_id<Types>())...)) {
-			_type.reset();
+
+		assert(src.type().is_copyable());
+
+		if (has_type(src.type())) {
+			_type = src.type();
+			_type.copy_to(&_sto[0], src.data());
 			return;
 		}
-		assert(_type.is_copyable());
-		_type.copy_to(&_sto[0], src.data());
+
+#ifdef NDEBUG
+		no_effect(_conv_ov<const variant<Others...> &, Others...>(src));
+#else
+		assert(RUA_ARG(_conv_ov<const variant<Others...> &, Others...>(src)));
+#endif
 	}
 
 	template <
-		typename... OtherTypes,
+		typename... Others,
 		typename = enable_if_t<
-			!std::is_same<variant<OtherTypes...>, variant>::value &&
-			disjunction<bool_constant<
-				index_of<OtherTypes, Types...>::value != nullpos>...>::value>>
-	variant(variant<OtherTypes...> &&src) : enable_type_info(src.type()) {
-		if (!_type) {
+			!std::is_same<variant<Others...>, variant>::value &&
+			disjunction<or_convertible<Others, Types...>...>::value>>
+	variant(variant<Others...> &&src) {
+		if (!src.type()) {
 			return;
 		}
-		if (!or_result(equal(_type, type_id<Types>())...)) {
-			_type.reset();
+
+		assert(src.type().is_moveable());
+
+		if (has_type(src.type())) {
+			_type = src.type();
+			_type.move_to(&_sto[0], src.data());
+			src.reset();
 			return;
 		}
-		assert(_type.is_moveable());
-		_type.move_to(&_sto[0], src.data());
-		src.reset();
+
+		if (_conv_ov<variant<Others...> &&, Others...>(std::move(src))) {
+			src.reset();
+		}
 	}
 
 	~variant() {
@@ -194,6 +207,15 @@ public:
 		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
+	bool has_type(const type_info &ti) {
+		return _has_typ<Types...>(ti);
+	}
+
+	template <typename T>
+	constexpr bool has_type() RUA_CONST_14 {
+		return index_of<T, Types...>::value != nullpos;
+	}
+
 	void reset() {
 		if (!_type) {
 			return;
@@ -221,6 +243,46 @@ private:
 		_type = type_id<T>();
 		return construct(
 			*reinterpret_cast<T *>(&_sto[0]), std::forward<Args>(args)...);
+	}
+
+	template <typename Last>
+	bool _has_typ(const type_info &ti) {
+		return ti == type_id<Last>();
+	}
+
+	template <typename First, typename Second, typename... Others>
+	bool _has_typ(const type_info &ti) {
+		return ti == type_id<First>() || _has_typ<Second, Others...>(ti);
+	}
+
+	template <typename OV, typename First>
+	enable_if_t<or_convertible<First, Types...>::value, bool> _conv_ov(OV ov) {
+		if (ov.type() != type_id<First>()) {
+			return false;
+		}
+		_emplace<convertible_t<First, Types...>>(
+			std::forward<OV>(ov).template as<First>());
+		return true;
+	}
+
+	template <typename OV, typename First>
+	enable_if_t<!or_convertible<First, Types...>::value, bool> _conv_ov(OV) {
+		return false;
+	}
+
+	template <typename OV, typename First, typename Second, typename... Others>
+	enable_if_t<or_convertible<First, Types...>::value, bool> _conv_ov(OV ov) {
+		if (ov.type() != type_id<First>()) {
+			return _conv_ov<OV, Second, Others...>(std::forward<OV>(ov));
+		}
+		_emplace<convertible_t<First, Types...>>(
+			std::forward<OV>(ov).template as<First>());
+		return true;
+	}
+
+	template <typename OV, typename First, typename Second, typename... Others>
+	enable_if_t<!or_convertible<First, Types...>::value, bool> _conv_ov(OV ov) {
+		return _conv_ov<OV, Second, Others...>(std::forward<OV>(ov));
 	}
 
 	template <typename T, typename Visitor>
@@ -265,24 +327,24 @@ private:
 		return false;
 	}
 
-	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	template <typename Visitor, typename First, typename... Others>
 	bool _visit_types(Visitor &&vis) & {
-		return _visit_as<FirstType>(std::forward<Visitor>(vis)) ||
-			   _visit_types<Visitor, OtherTypes...>(std::forward<Visitor>(vis));
+		return _visit_as<First>(std::forward<Visitor>(vis)) ||
+			   _visit_types<Visitor, Others...>(std::forward<Visitor>(vis));
 	}
 
-	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	template <typename Visitor, typename First, typename... Others>
 	bool _visit_types(Visitor &&vis) && {
-		return std::move(*this).template _visit_as<FirstType>(
+		return std::move(*this).template _visit_as<First>(
 				   std::forward<Visitor>(vis)) ||
-			   std::move(*this).template _visit_types<Visitor, OtherTypes...>(
+			   std::move(*this).template _visit_types<Visitor, Others...>(
 				   std::forward<Visitor>(vis));
 	}
 
-	template <typename Visitor, typename FirstType, typename... OtherTypes>
+	template <typename Visitor, typename First, typename... Others>
 	bool _visit_types(Visitor &&vis) const & {
-		return _visit_as<FirstType>(std::forward<Visitor>(vis)) ||
-			   _visit_types<Visitor, OtherTypes...>(std::forward<Visitor>(vis));
+		return _visit_as<First>(std::forward<Visitor>(vis)) ||
+			   _visit_types<Visitor, Others...>(std::forward<Visitor>(vis));
 	}
 
 	constexpr bool _visitors_visit_types() const & {

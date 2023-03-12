@@ -6,6 +6,7 @@
 #include "../invocable.hpp"
 #include "../skater.hpp"
 #include "../sync/chan.hpp"
+#include "../sync/future.hpp"
 #include "../sync/promise.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
@@ -35,11 +36,10 @@ template <
 	typename Result = invoke_result_t<Func, Args &&...>>
 inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
-	skater<promise<Result>> prm;
-	auto prm_fut = prm->get_promising_future();
+	auto prm = new newable_promise<Result>;
 	auto f = skate(func);
 	_parallel([=]() mutable { prm->deliver(f(args...)); });
-	return std::move(prm_fut);
+	return *prm;
 }
 
 template <typename Func, typename... Args>
@@ -47,14 +47,13 @@ inline enable_if_t<
 	std::is_void<invoke_result_t<Func, Args &&...>>::value,
 	future<>>
 parallel(Func func, Args &&...args) {
-	skater<promise<>> prm;
-	auto prm_fut = prm->get_promising_future();
+	auto prm = new newable_promise<>;
 	auto f = skate(func);
 	_parallel([=]() mutable {
 		f(args...);
 		prm->deliver();
 	});
-	return std::move(prm_fut);
+	return *prm;
 }
 
 } // namespace rua

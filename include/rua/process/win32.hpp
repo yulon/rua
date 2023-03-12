@@ -17,6 +17,7 @@
 #include "../string/len.hpp"
 #include "../string/view.hpp"
 #include "../sync/await.hpp"
+#include "../sync/future.hpp"
 #include "../sync/then.hpp"
 #include "../sync/wait.hpp"
 #include "../sys/info/win32.hpp"

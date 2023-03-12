@@ -1,6 +1,7 @@
 #ifndef _RUA_SYNC_MUTEX_HPP
 #define _RUA_SYNC_MUTEX_HPP
 
+#include "future.hpp"
 #include "promise.hpp"
 
 #include "../lockfree_list.hpp"
@@ -33,21 +34,22 @@ public:
 	}
 
 	future<> lock() {
-		future<> fut;
-
 		auto c = ++_c;
 		if (c == 1) {
-			return fut;
+			return future<>();
 		}
 
-		promise<> prm;
-		fut = prm.get_promising_future();
+		auto prm = new newable_promise<>;
+
 		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
-			[this]() -> bool { return _c.load() == 1; }, std::move(prm));
+			[this]() -> bool { return _c.load() == 1; }, prm);
 		if (!is_emplaced) {
-			fut.reset();
+			return future<>(*prm);
 		}
-		return fut;
+
+		delete prm;
+
+		return future<>();
 	}
 
 	void unlock() {
@@ -55,12 +57,12 @@ public:
 		if (!wtr_opt) {
 			return;
 		}
-		wtr_opt->deliver(/*[this]() mutable { unlock(); }*/);
+		(*wtr_opt)->deliver(/*[this]() mutable { unlock(); }*/);
 	}
 
 private:
 	std::atomic<uintptr_t> _c;
-	lockfree_list<promise<>> _wtrs;
+	lockfree_list<promise<> *> _wtrs;
 };
 
 } // namespace rua

@@ -1,7 +1,7 @@
 #ifndef _RUA_SYS_WAIT_WIN32_HPP
 #define _RUA_SYS_WAIT_WIN32_HPP
 
-#include "../../skater.hpp"
+#include "../../sync/future.hpp"
 #include "../../sync/promise.hpp"
 
 #include "../listen/win32.hpp"
@@ -19,8 +19,8 @@ inline future<> sys_wait(HANDLE handle) {
 		return r;
 	}
 
-	skater<promise<>> prm;
-	r = prm->get_promising_future();
+	auto prm = new newable_promise<>;
+	r = *prm;
 
 	_sys_listen_force(handle, [prm]() mutable { prm->deliver(); });
 

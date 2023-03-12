@@ -1,6 +1,7 @@
 #ifndef _RUA_SYNC_CHAN_HPP
 #define _RUA_SYNC_CHAN_HPP
 
+#include "future.hpp"
 #include "promise.hpp"
 
 #include "../lockfree_list.hpp"
@@ -18,24 +19,25 @@ namespace rua {
 template <typename T>
 class chan {
 public:
-	constexpr chan() : _vals(), _recvs() {}
+	constexpr chan() : _vals(), _recv_wtrs() {}
 
 	chan(const chan &) = delete;
 
 	chan &operator=(const chan &) = delete;
 
 	bool send(T val) {
-		optional<promise<T>> recv_opt;
+		optional<promise<T> *> recv_wtr;
 		if (_vals.emplace_front_if(
-				[this, &recv_opt]() -> bool {
-					recv_opt = _recvs.pop_back();
-					return !recv_opt;
+				[this, &recv_wtr]() -> bool {
+					recv_wtr = _recv_wtrs.pop_back();
+					return !recv_wtr;
 				},
 				std::move(val))) {
 			return false;
 		}
-		assert(recv_opt);
-		recv_opt->deliver(std::move(val), [this](expected<T> val) mutable {
+		assert(recv_wtr);
+		assert(*recv_wtr);
+		(*recv_wtr)->deliver(std::move(val), [this](expected<T> val) mutable {
 			if (!val) {
 				return;
 			}
@@ -49,37 +51,34 @@ public:
 		return _vals.pop_back();
 #else
 		return _vals.pop_back_if_non_empty_and([this]() -> bool {
-			assert(!_recvs);
-			return !_recvs;
+			assert(!_recv_wtrs);
+			return !_recv_wtrs;
 		});
 #endif
 	}
 
 	future<T> recv() {
-		future<T> fut;
-
 		auto val_opt = try_recv();
 		if (val_opt) {
-			fut = *std::move(val_opt);
-			return fut;
+			return *std::move(val_opt);
 		}
 
-		promise<T> prm;
-		fut = prm.get_future();
+		auto prm = new newable_promise<T>;
+
 		val_opt = _vals.pop_front_or(
-			[this, &prm]() { _recvs.emplace_front(std::move(prm)); });
+			[this, prm]() { _recv_wtrs.emplace_front(prm); });
 		if (!val_opt) {
-			return fut;
+			return future<T>(*prm);
 		}
-		assert(prm);
-		prm.reset();
-		fut = *std::move(val_opt);
-		return fut;
+
+		delete prm;
+
+		return *std::move(val_opt);
 	}
 
 private:
 	lockfree_list<T> _vals;
-	lockfree_list<promise<T>> _recvs;
+	lockfree_list<promise<T> *> _recv_wtrs;
 };
 
 } // namespace rua

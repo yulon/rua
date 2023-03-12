@@ -439,6 +439,11 @@ struct convertible : _same_or_convertible<
 template <typename T, typename... Args>
 using convertible_t = typename convertible<T, Args...>::type;
 
+////////////////////////////////////////////////////////////////////////////
+
+template <typename From, typename... To>
+struct or_convertible : disjunction<std::is_convertible<From, To>...> {};
+
 } // namespace rua
 
 #endif
