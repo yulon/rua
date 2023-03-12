@@ -45,26 +45,6 @@ namespace rua {
 
 ////////////////////////////////////////////////////////////////////////////
 
-#if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
-
-template <typename T>
-using in_place_type_t = std::in_place_type_t<T>;
-
-template <size_t I>
-using in_place_index_t = std::in_place_index_t<I>;
-
-#else
-
-template <typename T>
-struct in_place_type_t {};
-
-template <size_t I>
-struct in_place_index_t {};
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
 inline constexpr T nmax() {
 	return (std::numeric_limits<T>::max)();
@@ -94,6 +74,10 @@ template <typename T>
 inline constexpr bool is_lowest(T n) {
 	return n == nlowest<T>();
 }
+
+RUA_CVAL auto nullpos = nmax<size_t>();
+
+#define RUA_FULLPTR(T) (reinterpret_cast<T *>(nmax<uintptr_t>()))
 
 ////////////////////////////////////////////////////////////////////////////
 

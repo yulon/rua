@@ -19,10 +19,25 @@ using uchar = unsigned char;
 using ssize_t = typename std::make_signed<size_t>::type;
 using max_align_t = std::max_align_t;
 
-RUA_CVAL auto nullpos = (std::numeric_limits<size_t>::max)();
+////////////////////////////////////////////////////////////////////////////
 
-#define RUA_FULLPTR(T)                                                         \
-	(reinterpret_cast<T *>((std::numeric_limits<uintptr_t>::max)()))
+#if defined(__cpp_lib_variant) || defined(__cpp_lib_any)
+
+template <typename T>
+using in_place_type_t = std::in_place_type_t<T>;
+
+template <size_t I>
+using in_place_index_t = std::in_place_index_t<I>;
+
+#else
+
+template <typename T>
+struct in_place_type_t {};
+
+template <size_t I>
+struct in_place_index_t {};
+
+#endif
 
 } // namespace rua
 

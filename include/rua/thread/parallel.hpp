@@ -4,7 +4,7 @@
 #include "core.hpp"
 
 #include "../invocable.hpp"
-#include "../skater.hpp"
+#include "../move_only.hpp"
 #include "../sync/chan.hpp"
 #include "../sync/future.hpp"
 #include "../sync/promise.hpp"
@@ -37,7 +37,7 @@ template <
 inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
 	auto prm = new newable_promise<Result>;
-	auto f = skate(func);
+	auto f = make_move_only(func);
 	_parallel([=]() mutable { prm->fulfill(f(args...)); });
 	return *prm;
 }
@@ -48,7 +48,7 @@ inline enable_if_t<
 	future<>>
 parallel(Func func, Args &&...args) {
 	auto prm = new newable_promise<>;
-	auto f = skate(func);
+	auto f = make_move_only(func);
 	_parallel([=]() mutable {
 		f(args...);
 		prm->fulfill();

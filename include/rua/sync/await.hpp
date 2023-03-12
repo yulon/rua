@@ -3,6 +3,7 @@
 
 #include "../coroutine.hpp"
 #include "../invocable.hpp"
+#include "../move_only.hpp"
 #include "../util.hpp"
 
 #include <cassert>
@@ -141,7 +142,7 @@ _await_suspend(Awaiter &&awaiter, Callback callback) {
 		};
 		coroutine_handle<promise_type> co;
 	};
-	auto cb = skate(callback);
+	auto cb = make_move_only(callback);
 	return std::forward<Awaiter>(awaiter).await_suspend(
 		([cb]() -> callback_coroutine { co_return cb(); })().co);
 }
