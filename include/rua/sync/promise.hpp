@@ -47,6 +47,8 @@ public:
 
 		assert(old_state != promise_state::fulfilled);
 
+		expected<T> r(err_promise_fulfilled);
+
 		switch (old_state) {
 
 		case promise_state::has_notify: {
@@ -56,17 +58,16 @@ public:
 			break;
 		}
 
-		case promise_state::received: {
-			auto r = std::move(_val);
+		case promise_state::received:
+			r = std::move(_val);
 			release();
-			return std::move(r);
-		}
+			break;
 
 		default:
 			break;
 		}
 
-		return err_promise_fulfilled;
+		return r;
 	}
 
 	/////////////////// receive side ///////////////////
