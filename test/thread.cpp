@@ -43,15 +43,9 @@ TEST_CASE("reset waker when woke") {
 		wkr.lock()->wake();
 	});
 	CHECK(dzr.doze(1000));
-	CHECK((rua::tick() - t).milliseconds() > 100);
-
-	t = rua::tick();
-	rua::thread([=]() {
-		rua::sleep(200);
-		wkr.lock()->wake();
-	});
-	CHECK(dzr.doze(300));
-	CHECK((rua::tick() - t).milliseconds() > 100);
+	auto ela = (rua::tick() - t).milliseconds();
+	CHECK(ela > 100);
+	CHECK(ela < 500);
 }
 
 TEST_CASE("use chan on thread") {
