@@ -379,7 +379,7 @@ inline FisrtR or_result(FisrtR &&fisrt_r, R &&...r) {
 ////////////////////////////////////////////////////////////////////////////
 
 template <typename... Args>
-inline constexpr void no_effect(Args &&...) {}
+static inline void no_effect(Args &&...) {}
 
 } // namespace rua
 

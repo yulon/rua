@@ -212,7 +212,7 @@ public:
 	}
 
 	template <typename T>
-	constexpr bool has_type() RUA_CONST_14 {
+	constexpr bool has_type() const {
 		return index_of<T, Types...>::value != nullpos;
 	}
 

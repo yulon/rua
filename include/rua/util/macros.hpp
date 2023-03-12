@@ -51,10 +51,8 @@
 
 #ifdef RUA_CONSTEXPR_14_SUPPORTED
 #define RUA_CONSTEXPR_14 constexpr
-#define RUA_CONST_14 const
 #else
 #define RUA_CONSTEXPR_14
-#define RUA_CONST_14
 #endif
 
 #ifdef RUA_CONSTEXPR_LM_SUPPORTED
