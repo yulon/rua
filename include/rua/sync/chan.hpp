@@ -37,12 +37,10 @@ public:
 		}
 		assert(recv_wtr);
 		assert(*recv_wtr);
-		(*recv_wtr)->fulfill(std::move(val), [this](expected<T> val) mutable {
-			if (!val) {
-				return;
-			}
-			send(std::move(val).value());
-		});
+		auto refunded = (*recv_wtr)->fulfill(std::move(val));
+		if (refunded) {
+			send(std::move(refunded).value());
+		}
 		return true;
 	}
 

@@ -22,6 +22,7 @@ enum class promise_state : uintptr_t {
 
 RUA_CVAR strv_error err_promise_breaked("promise breaked");
 RUA_CVAR strv_error err_promise_not_yet_fulfilled("promise not yet fulfilled");
+RUA_CVAR strv_error err_promise_fulfilled("promise fulfilled");
 
 template <typename T = void>
 class promise {
@@ -37,17 +38,10 @@ public:
 
 	/////////////////// fulfill side ///////////////////
 
-	void fulfill(
-		expected<T> value = err_promise_breaked,
-		std::function<void(expected<T>)> rewind = nullptr) {
-
+	expected<T> fulfill(expected<T> value = err_promise_breaked) {
 		assert(std::is_void<T>::value ? !!_val : !_val);
-		_val = std::move(value);
 
-		if (rewind) {
-			assert(!_rewind);
-			_rewind = std::move(rewind);
-		}
+		_val = std::move(value);
 
 		auto old_state = _state.exchange(promise_state::fulfilled);
 
@@ -62,16 +56,17 @@ public:
 			break;
 		}
 
-		case promise_state::received:
-			if (_rewind) {
-				_rewind(std::move(_val));
-			};
+		case promise_state::received: {
+			auto r = std::move(_val);
 			release();
-			break;
+			return std::move(r);
+		}
 
 		default:
 			break;
 		}
+
+		return err_promise_fulfilled;
 	}
 
 	/////////////////// receive side ///////////////////
@@ -125,7 +120,6 @@ private:
 	std::atomic<promise_state> _state;
 	expected<T> _val;
 	std::function<void()> _notify;
-	std::function<void(expected<T>)> _rewind;
 };
 
 template <typename T = void>
