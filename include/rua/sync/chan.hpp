@@ -19,7 +19,7 @@ namespace rua {
 template <typename T>
 class chan {
 public:
-	constexpr chan() : _vals(), _recv_wtrs() {}
+	constexpr chan() : $vals(), $recv_wtrs() {}
 
 	chan(const chan &) = delete;
 
@@ -27,9 +27,9 @@ public:
 
 	bool send(T val) {
 		optional<promise<T> *> recv_wtr;
-		if (_vals.emplace_front_if(
+		if ($vals.emplace_front_if(
 				[this, &recv_wtr]() -> bool {
-					recv_wtr = _recv_wtrs.pop_back();
+					recv_wtr = $recv_wtrs.pop_back();
 					return !recv_wtr;
 				},
 				std::move(val))) {
@@ -46,11 +46,11 @@ public:
 
 	optional<T> try_recv() {
 #ifdef NDEBUG
-		return _vals.pop_back();
+		return $vals.pop_back();
 #else
-		return _vals.pop_back_if_non_empty_and([this]() -> bool {
-			assert(!_recv_wtrs);
-			return !_recv_wtrs;
+		return $vals.pop_back_if_non_empty_and([this]() -> bool {
+			assert(!$recv_wtrs);
+			return !$recv_wtrs;
 		});
 #endif
 	}
@@ -63,8 +63,8 @@ public:
 
 		auto prm = new newable_promise<T>;
 
-		val_opt = _vals.pop_front_or(
-			[this, prm]() { _recv_wtrs.emplace_front(prm); });
+		val_opt = $vals.pop_front_or(
+			[this, prm]() { $recv_wtrs.emplace_front(prm); });
 		if (!val_opt) {
 			return future<T>(*prm);
 		}
@@ -75,8 +75,8 @@ public:
 	}
 
 private:
-	lockfree_list<T> _vals;
-	lockfree_list<promise<T> *> _recv_wtrs;
+	lockfree_list<T> $vals;
+	lockfree_list<promise<T> *> $recv_wtrs;
 };
 
 } // namespace rua

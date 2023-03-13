@@ -17,32 +17,32 @@ public:
 
 	sys_stream(
 		native_handle_t h = INVALID_HANDLE_VALUE, bool need_close = true) :
-		_h(h ? h : INVALID_HANDLE_VALUE),
-		_nc(h && h != INVALID_HANDLE_VALUE && need_close) {}
+		$h(h ? h : INVALID_HANDLE_VALUE),
+		$nc(h && h != INVALID_HANDLE_VALUE && need_close) {}
 
 	sys_stream(const sys_stream &src) {
 		if (!src) {
-			_h = INVALID_HANDLE_VALUE;
+			$h = INVALID_HANDLE_VALUE;
 			return;
 		}
-		if (!src._nc) {
-			_h = src._h;
-			_nc = false;
+		if (!src.$nc) {
+			$h = src.$h;
+			$nc = false;
 			return;
 		}
 		DuplicateHandle(
 			GetCurrentProcess(),
-			src._h,
+			src.$h,
 			GetCurrentProcess(),
-			&_h,
+			&$h,
 			0,
 			FALSE,
 			DUPLICATE_SAME_ACCESS);
-		assert(_h);
-		_nc = true;
+		assert($h);
+		$nc = true;
 	}
 
-	sys_stream(sys_stream &&src) : sys_stream(src._h, src._nc) {
+	sys_stream(sys_stream &&src) : sys_stream(src.$h, src.$nc) {
 		src.detach();
 	}
 
@@ -53,45 +53,45 @@ public:
 	}
 
 	native_handle_t &native_handle() {
-		return _h;
+		return $h;
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	virtual operator bool() const {
-		return _h != INVALID_HANDLE_VALUE;
+		return $h != INVALID_HANDLE_VALUE;
 	}
 
 	virtual ssize_t read(bytes_ref buf) {
 		assert(*this);
 
-		return _read(_h, buf);
+		return $read($h, buf);
 	}
 
 	virtual ssize_t write(bytes_view data) {
 		assert(*this);
 
-		return _write(_h, data);
+		return $write($h, data);
 	}
 
 	bool is_need_close() const {
-		return _h && _nc;
+		return $h && $nc;
 	}
 
 	virtual void close() {
 		if (!*this) {
 			return;
 		}
-		if (_nc) {
-			CloseHandle(_h);
+		if ($nc) {
+			CloseHandle($h);
 		}
-		_h = INVALID_HANDLE_VALUE;
+		$h = INVALID_HANDLE_VALUE;
 	}
 
 	void detach() {
-		_nc = false;
+		$nc = false;
 	}
 
 	sys_stream dup(bool inherit = false) const {
@@ -101,7 +101,7 @@ public:
 		HANDLE h_cp;
 		DuplicateHandle(
 			GetCurrentProcess(),
-			_h,
+			$h,
 			GetCurrentProcess(),
 			&h_cp,
 			0,
@@ -112,10 +112,10 @@ public:
 	}
 
 private:
-	HANDLE _h;
-	bool _nc;
+	HANDLE $h;
+	bool $nc;
 
-	static ssize_t _read(HANDLE h, bytes_ref p) {
+	static ssize_t $read(HANDLE h, bytes_ref p) {
 		DWORD rsz;
 		return ReadFile(
 				   h, p.data(), static_cast<DWORD>(p.size()), &rsz, nullptr)
@@ -123,7 +123,7 @@ private:
 				   : static_cast<ssize_t>(0);
 	}
 
-	static ssize_t _write(HANDLE h, bytes_view p) {
+	static ssize_t $write(HANDLE h, bytes_view p) {
 		DWORD wsz;
 		return WriteFile(
 				   h, p.data(), static_cast<DWORD>(p.size()), &wsz, nullptr)

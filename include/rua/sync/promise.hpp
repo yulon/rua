@@ -27,7 +27,7 @@ RUA_CVAR strv_error err_promise_fulfilled("promise fulfilled");
 template <typename T = void>
 class promise {
 public:
-	promise() : _state(promise_state::loss_notify) {}
+	promise() : $state(promise_state::loss_notify) {}
 
 	promise(const promise &) = delete;
 	promise(promise &&) = delete;
@@ -39,11 +39,11 @@ public:
 	/////////////////// fulfill side ///////////////////
 
 	expected<T> fulfill(expected<T> value = err_promise_breaked) {
-		assert(std::is_void<T>::value ? !!_val : !_val);
+		assert(std::is_void<T>::value ? !!$val : !$val);
 
-		_val = std::move(value);
+		$val = std::move(value);
 
-		auto old_state = _state.exchange(promise_state::fulfilled);
+		auto old_state = $state.exchange(promise_state::fulfilled);
 
 		assert(old_state != promise_state::fulfilled);
 
@@ -52,14 +52,14 @@ public:
 		switch (old_state) {
 
 		case promise_state::has_notify: {
-			assert(_notify);
-			auto notify = std::move(_notify);
+			assert($notify);
+			auto notify = std::move($notify);
 			notify();
 			break;
 		}
 
 		case promise_state::received:
-			r = std::move(_val);
+			r = std::move($val);
 			release();
 			break;
 
@@ -73,12 +73,12 @@ public:
 	/////////////////// receive side ///////////////////
 
 	bool await_suspend(std::function<void()> notify) {
-		_notify = std::move(notify);
+		$notify = std::move(notify);
 
-		auto old_state = _state.load();
+		auto old_state = $state.load();
 		while (
 			old_state == promise_state::loss_notify &&
-			!_state.compare_exchange_weak(old_state, promise_state::has_notify))
+			!$state.compare_exchange_weak(old_state, promise_state::has_notify))
 			;
 
 		assert(old_state != promise_state::has_notify);
@@ -97,11 +97,11 @@ public:
 	expected<T> await_resume() {
 		expected<T> r;
 
-		auto old_state = _state.exchange(promise_state::received);
+		auto old_state = $state.exchange(promise_state::received);
 		assert(old_state != promise_state::received);
 
 		if (old_state == promise_state::fulfilled) {
-			r = std::move(_val);
+			r = std::move($val);
 			release();
 		} else {
 			r = err_promise_not_yet_fulfilled;
@@ -118,9 +118,9 @@ public:
 	virtual void release() {}
 
 private:
-	std::atomic<promise_state> _state;
-	expected<T> _val;
-	std::function<void()> _notify;
+	std::atomic<promise_state> $state;
+	expected<T> $val;
+	std::function<void()> $notify;
 };
 
 template <typename T = void>

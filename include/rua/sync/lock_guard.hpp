@@ -8,29 +8,29 @@ namespace rua {
 template <typename Lock>
 class lock_guard : private enable_await_operators {
 public:
-	explicit lock_guard(Lock &lck) : _lck(&lck), _lcking(lck.lock()) {}
+	explicit lock_guard(Lock &lck) : $lck(&lck), $lcking(lck.lock()) {}
 
 	~lock_guard() {
 		unlock();
 	}
 
 	lock_guard(lock_guard &&src) :
-		_lck(exchange(src._lck, nullptr)), _lcking(std::move(src._lcking)) {}
+		$lck(exchange(src.$lck, nullptr)), $lcking(std::move(src.$lcking)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(lock_guard)
 
 	explicit operator bool() const {
-		return _lck;
+		return $lck;
 	}
 
 	bool await_ready() {
-		return _lcking.await_ready();
+		return $lcking.await_ready();
 	}
 
 	template <typename Resume>
 	bool await_suspend(Resume resume) {
-		assert(_lck);
-		return _lcking.await_suspend(std::move(resume));
+		assert($lck);
+		return $lcking.await_suspend(std::move(resume));
 	}
 
 	lock_guard await_resume() {
@@ -38,18 +38,18 @@ public:
 	}
 
 	void unlock() {
-		if (!_lck) {
+		if (!$lck) {
 			return;
 		}
-		if (_lcking.await_ready()) {
-			_lck->unlock();
+		if ($lcking.await_ready()) {
+			$lck->unlock();
 		}
-		_lck = nullptr;
+		$lck = nullptr;
 	}
 
 private:
-	Lock *_lck;
-	future<> _lcking;
+	Lock *$lck;
+	future<> $lcking;
 };
 
 template <typename Lock>

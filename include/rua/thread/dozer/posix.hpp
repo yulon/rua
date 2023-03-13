@@ -19,63 +19,63 @@ public:
 	using native_handle_t = sem_t *;
 
 	waker() {
-		_need_close = !sem_init(&_sem, 0, 0);
+		$need_close = !sem_init(&$sem, 0, 0);
 	}
 
 	~waker() {
-		if (!_need_close) {
+		if (!$need_close) {
 			return;
 		}
-		sem_destroy(&_sem);
-		_need_close = false;
+		sem_destroy(&$sem);
+		$need_close = false;
 	}
 
 	native_handle_t native_handle() {
-		return &_sem;
+		return &$sem;
 	}
 
 	void wake() {
-		sem_post(&_sem);
+		sem_post(&$sem);
 	}
 
 	void reset() {
-		while (!sem_trywait(&_sem))
+		while (!sem_trywait(&$sem))
 			;
 	}
 
 private:
-	sem_t _sem;
-	bool _need_close;
+	sem_t $sem;
+	bool $need_close;
 };
 
 class dozer {
 public:
-	constexpr dozer() : _wkr() {}
+	constexpr dozer() : $wkr() {}
 
 	bool doze(duration timeout = duration_max()) {
-		assert(_wkr);
+		assert($wkr);
 		assert(timeout >= 0);
 
 		if (timeout == duration_max()) {
-			return !sem_wait(_wkr->native_handle()) || errno != ETIMEDOUT;
+			return !sem_wait($wkr->native_handle()) || errno != ETIMEDOUT;
 		}
 		if (!timeout) {
-			return !sem_trywait(_wkr->native_handle()) || errno != ETIMEDOUT;
+			return !sem_trywait($wkr->native_handle()) || errno != ETIMEDOUT;
 		}
 		auto ts = (now().to_unix().elapsed() + timeout).c_timespec();
-		return !sem_timedwait(_wkr->native_handle(), &ts) || errno != ETIMEDOUT;
+		return !sem_timedwait($wkr->native_handle(), &ts) || errno != ETIMEDOUT;
 	}
 
 	std::weak_ptr<waker> get_waker() {
-		if (_wkr && _wkr.use_count() == 1) {
-			_wkr->reset();
-			return _wkr;
+		if ($wkr && $wkr.use_count() == 1) {
+			$wkr->reset();
+			return $wkr;
 		}
-		return assign(_wkr, std::make_shared<waker>());
+		return assign($wkr, std::make_shared<waker>());
 	}
 
 private:
-	std::shared_ptr<waker> _wkr;
+	std::shared_ptr<waker> $wkr;
 };
 
 }} // namespace rua::posix

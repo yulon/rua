@@ -94,54 +94,54 @@ template <typename Value>
 class reverse_iterator<Value *> {
 public:
 	constexpr reverse_iterator() = default;
-	constexpr explicit reverse_iterator(Value *ptr) : _ptr(ptr) {}
+	constexpr explicit reverse_iterator(Value *ptr) : $ptr(ptr) {}
 
 	Value &operator*() const {
-		return *_ptr;
+		return *$ptr;
 	}
 
 	Value *operator->() const {
-		return _ptr;
+		return $ptr;
 	}
 
 	reverse_iterator &operator++() {
-		--_ptr;
+		--$ptr;
 		return *this;
 	}
 
 	reverse_iterator operator++(int) {
-		return reverse_iterator(_ptr--);
+		return reverse_iterator($ptr--);
 	}
 
 	reverse_iterator operator+(ptrdiff_t offset) {
-		return reverse_iterator(_ptr - offset);
+		return reverse_iterator($ptr - offset);
 	}
 
 	reverse_iterator &operator+=(ptrdiff_t offset) {
-		_ptr -= offset;
+		$ptr -= offset;
 		return *this;
 	}
 
 	reverse_iterator &operator--() {
-		++_ptr;
+		++$ptr;
 		return *this;
 	}
 
 	reverse_iterator operator--(int) {
-		return reverse_iterator(_ptr++);
+		return reverse_iterator($ptr++);
 	}
 
 	reverse_iterator operator-(ptrdiff_t offset) {
-		return reverse_iterator(_ptr + offset);
+		return reverse_iterator($ptr + offset);
 	}
 
 	reverse_iterator &operator-=(ptrdiff_t offset) {
-		_ptr += offset;
+		$ptr += offset;
 		return *this;
 	}
 
 private:
-	Value *_ptr;
+	Value *$ptr;
 };
 
 } // namespace rua

@@ -12,52 +12,52 @@ namespace _string_codec_stream {
 
 class l2u_reader : public stream_base {
 public:
-	constexpr l2u_reader() : _lr(nullptr) {}
+	constexpr l2u_reader() : $lr(nullptr) {}
 
-	l2u_reader(stream_i loc_reader) : _lr(std::move(loc_reader)) {}
+	l2u_reader(stream_i loc_reader) : $lr(std::move(loc_reader)) {}
 
 	virtual ~l2u_reader() {
-		if (!_lr) {
+		if (!$lr) {
 			return;
 		}
-		_lr = nullptr;
+		$lr = nullptr;
 	}
 
 	virtual operator bool() const {
-		return _lr;
+		return $lr;
 	}
 
 	virtual ssize_t read(bytes_ref p) {
-		return _lr->read(p);
+		return $lr->read(p);
 	}
 
 private:
-	stream_i _lr;
+	stream_i $lr;
 };
 
 class u2l_writer : public stream_base {
 public:
-	constexpr u2l_writer() : _lw(nullptr) {}
+	constexpr u2l_writer() : $lw(nullptr) {}
 
-	u2l_writer(stream_i loc_writer) : _lw(std::move(loc_writer)) {}
+	u2l_writer(stream_i loc_writer) : $lw(std::move(loc_writer)) {}
 
 	virtual ~u2l_writer() {
-		if (!_lw) {
+		if (!$lw) {
 			return;
 		}
-		_lw = nullptr;
+		$lw = nullptr;
 	}
 
 	virtual operator bool() const {
-		return _lw;
+		return $lw;
 	}
 
 	virtual ssize_t write(bytes_view p) {
-		return _lw->write(p);
+		return $lw->write(p);
 	}
 
 private:
-	stream_i _lw;
+	stream_i $lw;
 };
 
 } // namespace _string_codec_stream

@@ -261,20 +261,20 @@ inline void make_ucontext(
 namespace rua {
 
 struct ucontext_t : ::ucontext_t {
-	generic_ptr _sp;
+	generic_ptr $sp;
 
 	generic_ptr &sp() {
-		return _sp;
+		return $sp;
 	}
 
 	const generic_ptr &sp() const {
-		return _sp;
+		return $sp;
 	}
 };
 
 static RUA_NO_INLINE bool get_ucontext(ucontext_t *ucp) {
 	volatile char v;
-	ucp->_sp = &v;
+	ucp->$sp = &v;
 	return ::getcontext(ucp);
 }
 
@@ -283,7 +283,7 @@ static auto set_ucontext = &setcontext;
 static RUA_NO_INLINE void
 swap_ucontext(ucontext_t *oucp, const ucontext_t *ucp) {
 	volatile char v;
-	oucp->_sp = &v;
+	oucp->$sp = &v;
 	::swapcontext(oucp, ucp);
 }
 

@@ -81,58 +81,58 @@ inline constexpr int16_t _yr_days_at_mon(bool is_ly, size_t m) {
 
 class time {
 public:
-	constexpr time() : _ela(), _zon(0), _epo(&nullepo) {}
+	constexpr time() : $ela(), $zon(0), $epo(&nullepo) {}
 
 	constexpr time(duration elapsed, int8_t zone = 0) :
-		_ela(elapsed), _zon(zone), _epo(&unix_epoch) {}
+		$ela(elapsed), $zon(zone), $epo(&unix_epoch) {}
 
 	constexpr time(duration elapsed, const date &epoch) :
-		_ela(elapsed), _zon(0), _epo(&epoch) {}
+		$ela(elapsed), $zon(0), $epo(&epoch) {}
 
 	time(duration elapsed, date &&epoch) = delete;
 
 	constexpr time(duration elapsed, int8_t zone, const date &epoch) :
-		_ela(elapsed), _zon(zone), _epo(&epoch) {}
+		$ela(elapsed), $zon(zone), $epo(&epoch) {}
 
 	time(duration elapsed, int8_t zone, date &&epoch) = delete;
 
 	time(const date &d8, const date &epoch = unix_epoch) :
-		_ela(), _zon(d8.zone), _epo(&epoch) {
+		$ela(), $zon(d8.zone), $epo(&epoch) {
 		if (d8 == epoch) {
 			return;
 		}
-		_ela = days(_days_b4_yr(d8.year) - _days_b4_yr(_epo->year)) +
-			   _d8_wo_yr_to_dur(d8) - _d8_wo_yr_to_dur(*_epo) - hours(d8.zone);
+		$ela = days($days_b4_yr(d8.year) - $days_b4_yr($epo->year)) +
+			   $d8_wo_yr_to_dur(d8) - $d8_wo_yr_to_dur(*$epo) - hours(d8.zone);
 	}
 
 	time(const date &d8, date &&epoch) = delete;
 
 	bool is_monotonic() const {
-		return *_epo == nullepo;
+		return *$epo == nullepo;
 	}
 
 	explicit operator bool() const {
-		return !is_monotonic() || _ela;
+		return !is_monotonic() || $ela;
 	}
 
 	const date &epoch() const {
-		return *_epo;
+		return *$epo;
 	}
 
 	duration &elapsed() {
-		return _ela;
+		return $ela;
 	}
 
 	duration elapsed() const {
-		return _ela;
+		return $ela;
 	}
 
 	int8_t &zone() {
-		return _zon;
+		return $zon;
 	}
 
 	int8_t zone() const {
-		return _zon;
+		return $zon;
 	}
 
 	date point() const {
@@ -141,19 +141,19 @@ public:
 		date nd;
 
 		// zone
-		nd.zone = _zon;
+		nd.zone = $zon;
 
-		auto ela = _ela + _d8_wo_yr_to_dur(*_epo) + hours(_zon);
+		auto ela = $ela + $d8_wo_yr_to_dur(*$epo) + hours($zon);
 
 		// nanosecond
-		nd.nanoseconds = _ela.remaining_nanoseconds();
+		nd.nanoseconds = $ela.remaining_nanoseconds();
 
 		auto ela_days = ela.days();
 
 		// year
 		nd.year = 1;
 
-		ela_days += _days_b4_yr(_epo->year);
+		ela_days += $days_b4_yr($epo->year);
 
 		constexpr int64_t days_per_400_years = 365 * 400 + 97;
 		auto n = ela_days / days_per_400_years;
@@ -208,7 +208,7 @@ public:
 	time to(const date &target_epoch) const {
 		assert(!is_monotonic());
 
-		if (*_epo == target_epoch) {
+		if (*$epo == target_epoch) {
 			return *this;
 		}
 		return time(point(), target_epoch);
@@ -219,91 +219,91 @@ public:
 	}
 
 	void reset() {
-		_ela = 0;
-		_epo = &nullepo;
+		$ela = 0;
+		$epo = &nullepo;
 	}
 
 	bool operator==(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela == target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela == target.elapsed();
 		}
-		return _ela == time(target.point(), *_epo).elapsed();
+		return $ela == time(target.point(), *$epo).elapsed();
 	}
 
 	bool operator>(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela > target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela > target.elapsed();
 		}
-		return _ela > time(target.point(), *_epo).elapsed();
+		return $ela > time(target.point(), *$epo).elapsed();
 	}
 
 	bool operator>=(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela >= target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela >= target.elapsed();
 		}
-		return _ela >= time(target.point(), *_epo).elapsed();
+		return $ela >= time(target.point(), *$epo).elapsed();
 	}
 
 	bool operator<(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela < target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela < target.elapsed();
 		}
-		return _ela < time(target.point(), *_epo).elapsed();
+		return $ela < time(target.point(), *$epo).elapsed();
 	}
 
 	bool operator<=(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela <= target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela <= target.elapsed();
 		}
-		return _ela <= time(target.point(), *_epo).elapsed();
+		return $ela <= time(target.point(), *$epo).elapsed();
 	}
 
 	time operator+(duration dur) const {
-		return time(_ela + dur, *_epo);
+		return time($ela + dur, *$epo);
 	}
 
 	time &operator+=(duration dur) {
-		_ela += dur;
+		$ela += dur;
 		return *this;
 	}
 
 	time operator-(duration dur) const {
-		return time(_ela - dur, *_epo);
+		return time($ela - dur, *$epo);
 	}
 
 	duration operator-(const time &target) const {
 		if (is_monotonic() || target.is_monotonic() ||
-			*_epo == target.epoch()) {
-			return _ela - target.elapsed();
+			*$epo == target.epoch()) {
+			return $ela - target.elapsed();
 		}
-		return _ela - time(target.point(), *_epo).elapsed();
+		return $ela - time(target.point(), *$epo).elapsed();
 	}
 
 	duration operator-(const date &d8) const {
-		return _ela - time(d8, *_epo).elapsed();
+		return $ela - time(d8, *$epo).elapsed();
 	}
 
 	time &operator-=(duration dur) {
-		_ela -= dur;
+		$ela -= dur;
 		return *this;
 	}
 
 private:
-	duration _ela;
-	int8_t _zon;
-	const date *_epo;
+	duration $ela;
+	int8_t $zon;
+	const date *$epo;
 
-	static RUA_CONSTEXPR_14 int64_t _days_b4_yr(uint16_t yr) {
+	static RUA_CONSTEXPR_14 int64_t $days_b4_yr(uint16_t yr) {
 		--yr;
 		return yr * 365 + yr / 4 - yr / 100 + yr / 400;
 	}
 
-	static duration _d8_wo_yr_to_dur(const date &d8) {
+	static duration $d8_wo_yr_to_dur(const date &d8) {
 		duration r;
 		if (d8.month > 1) {
 			r += days(_yr_days_at_mon(is_leap_year(d8.year), d8.month - 1));
@@ -325,13 +325,13 @@ namespace std {
 template <>
 struct hash<rua::time> {
 	size_t operator()(const rua::time &t) const {
-		return _szt(
+		return $szt(
 			t.is_monotonic() ? t.elapsed().milliseconds()
 							 : t.to_unix().elapsed().seconds());
 	}
 
 private:
-	static size_t _szt(int64_t c) {
+	static size_t $szt(int64_t c) {
 		return static_cast<size_t>(c >= 0 ? c : 0);
 	}
 };

@@ -79,53 +79,53 @@ struct nullopt_t {};
 RUA_CVAL nullopt_t nullopt;
 
 template <typename T>
-class _optional_base {
+class $optional_base {
 public:
 	using value_type = T;
 
-	constexpr _optional_base(bool has_val = false) :
-		_sto(), _has_val(has_val) {}
+	constexpr $optional_base(bool has_val = false) :
+		$sto(), $has_val(has_val) {}
 
-	~_optional_base() {
+	~$optional_base() {
 		reset();
 	}
 
-	_optional_base(const _optional_base &src) : _has_val(src._has_val) {
-		if (!src._has_val) {
+	$optional_base(const $optional_base &src) : $has_val(src.$has_val) {
+		if (!src.$has_val) {
 			return;
 		}
-		_emplace(src.value());
+		$emplace(src.value());
 	}
 
-	_optional_base(_optional_base &&src) : _has_val(src._has_val) {
-		if (!src._has_val) {
+	$optional_base($optional_base &&src) : $has_val(src.$has_val) {
+		if (!src.$has_val) {
 			return;
 		}
-		_emplace(std::move(src.value()));
+		$emplace(std::move(src.value()));
 		src.value().~T();
-		src._has_val = false;
+		src.$has_val = false;
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(_optional_base)
+	RUA_OVERLOAD_ASSIGNMENT($optional_base)
 
 	bool has_value() const {
-		return _has_val;
+		return $has_val;
 	}
 
 	explicit operator bool() const {
-		return _has_val;
+		return $has_val;
 	}
 
 	T &value() & {
-		return *reinterpret_cast<T *>(&_sto[0]);
+		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
 	const T &value() const & {
-		return *reinterpret_cast<const T *>(&_sto[0]);
+		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
 	T &&value() && {
-		return std::move(*reinterpret_cast<T *>(&_sto[0]));
+		return std::move(*reinterpret_cast<T *>(&$sto[0]));
 	}
 
 	T &operator*() & {
@@ -146,7 +146,7 @@ public:
 			std::is_copy_constructible<T>::value &&
 			std::is_convertible<U &&, T>::value>>
 	T value_or(U &&default_value) const & {
-		return _has_val ? value()
+		return $has_val ? value()
 						: static_cast<T>(std::forward<U>(default_value));
 	}
 
@@ -156,7 +156,7 @@ public:
 			std::is_move_constructible<T>::value &&
 			std::is_convertible<U &&, T>::value>>
 	T value_or(U &&default_value) && {
-		return _has_val ? std::move(value())
+		return $has_val ? std::move(value())
 						: static_cast<T>(std::forward<U>(default_value));
 	}
 
@@ -184,11 +184,11 @@ public:
 	}
 
 	void reset() {
-		if (!_has_val) {
+		if (!$has_val) {
 			return;
 		}
 		value().~T();
-		_has_val = false;
+		$has_val = false;
 	}
 
 	template <
@@ -196,8 +196,8 @@ public:
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
 	void emplace(Args &&...args) {
 		reset();
-		_emplace(std::forward<Args>(args)...);
-		_has_val = true;
+		$emplace(std::forward<Args>(args)...);
+		$has_val = true;
 	}
 
 	template <
@@ -207,18 +207,18 @@ public:
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
 		reset();
-		_emplace(il, std::forward<Args>(args)...);
-		_has_val = true;
+		$emplace(il, std::forward<Args>(args)...);
+		$has_val = true;
 	}
 
 protected:
-	alignas(alignof(T)) uchar _sto[sizeof(T)];
-	bool _has_val;
+	alignas(alignof(T)) uchar $sto[sizeof(T)];
+	bool $has_val;
 
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args...>::value>>
-	void _emplace(Args &&...args) {
+	void $emplace(Args &&...args) {
 		construct(value(), std::forward<Args>(args)...);
 	}
 
@@ -227,15 +227,15 @@ protected:
 		typename... Args,
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
-	void _emplace(std::initializer_list<U> il, Args &&...args) {
+	void $emplace(std::initializer_list<U> il, Args &&...args) {
 		construct(value(), il, std::forward<Args>(args)...);
 	}
 };
 
 template <typename T>
-class optional : public _optional_base<T>, private enable_copy_move_like<T> {
+class optional : public $optional_base<T>, private enable_copy_move_like<T> {
 public:
-	constexpr optional(nullopt_t = nullopt) : _optional_base<T>(false) {}
+	constexpr optional(nullopt_t = nullopt) : $optional_base<T>(false) {}
 
 	template <
 		typename... Args,
@@ -243,8 +243,8 @@ public:
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
 			 !std::is_base_of<optional, decay_t<front_t<Args...>>>::value)>>
-	optional(Args &&...args) : _optional_base<T>(true) {
-		this->_emplace(std::forward<Args>(args)...);
+	optional(Args &&...args) : $optional_base<T>(true) {
+		this->$emplace(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -253,8 +253,8 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	optional(std::initializer_list<U> il, Args &&...args) :
-		_optional_base<T>(true) {
-		this->_emplace(il, std::forward<Args>(args)...);
+		$optional_base<T>(true) {
+		this->$emplace(il, std::forward<Args>(args)...);
 	}
 
 	template <
@@ -262,11 +262,11 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
 			!std::is_constructible<T, const optional<U> &>::value>>
-	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
+	optional(const optional<U> &src) : $optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}
-		this->_emplace(src.value());
+		this->$emplace(src.value());
 	}
 
 	template <
@@ -274,11 +274,11 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
 			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(optional<U> &&src) : _optional_base<T>(src.has_value()) {
+	optional(optional<U> &&src) : $optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}
-		this->_emplace(std::move(src).value());
+		this->$emplace(std::move(src).value());
 	}
 };
 

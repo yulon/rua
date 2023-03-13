@@ -73,26 +73,26 @@ public:
 	exception_error() = default;
 
 	exception_error(std::exception_ptr ptr, std::string what) :
-		_ptr(std::move(ptr)), _what(std::move(what)) {}
+		$ptr(std::move(ptr)), $what(std::move(what)) {}
 
 	virtual ~exception_error() = default;
 
 	std::string info() const override {
-		return _what;
+		return $what;
 	}
 
 	void rethrow() {
-		if (!_ptr) {
+		if (!$ptr) {
 			return;
 		}
-		std::rethrow_exception(std::move(_ptr));
-		_ptr = nullptr;
-		_what.clear();
+		std::rethrow_exception(std::move($ptr));
+		$ptr = nullptr;
+		$what.clear();
 	}
 
 private:
-	std::exception_ptr _ptr;
-	std::string _what;
+	std::exception_ptr $ptr;
+	std::string $what;
 };
 
 template <typename Exception>
@@ -139,16 +139,16 @@ class strv_error : public error_base {
 public:
 	constexpr strv_error() = default;
 
-	constexpr strv_error(string_view sv) : _sv(sv) {}
+	constexpr strv_error(string_view sv) : $sv(sv) {}
 
 	virtual ~strv_error() = default;
 
 	std::string info() const override {
-		return std::string(_sv);
+		return std::string($sv);
 	}
 
 private:
-	string_view _sv;
+	string_view $sv;
 };
 
 inline std::string to_string(const error_base &err) {
@@ -273,16 +273,16 @@ public:
 	expected() = default;
 
 	RUA_CONSTRUCTIBLE_CONCEPT(ErrorArgs, error_i, expected)
-	expected(ErrorArgs &&...err) : _err(std::forward<ErrorArgs>(err)...) {}
+	expected(ErrorArgs &&...err) : $err(std::forward<ErrorArgs>(err)...) {}
 
-	expected(const expected &src) : _err(src._err) {}
+	expected(const expected &src) : $err(src.$err) {}
 
-	expected(expected &&src) : _err(std::move(src._err)) {}
+	expected(expected &&src) : $err(std::move(src.$err)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(expected)
 
 	bool has_value() const {
-		return !_err;
+		return !$err;
 	}
 
 	explicit operator bool() const {
@@ -292,23 +292,23 @@ public:
 	RUA_CONSTEXPR_14 void value() const {}
 
 	error_i error() const {
-		return _err;
+		return $err;
 	}
 
 	void reset() {
-		_err.reset();
+		$err.reset();
 	}
 
 	void emplace() {
-		_err.reset();
+		$err.reset();
 	}
 
 	void emplace(error_i err) {
-		_err = std::move(err);
+		$err = std::move(err);
 	}
 
 private:
-	error_i _err;
+	error_i $err;
 };
 
 ////////////////////////////////////////////////////////////////////////////

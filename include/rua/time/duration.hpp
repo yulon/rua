@@ -29,38 +29,38 @@ RUA_CVAL int64_t leep_year = 366 * day;
 class duration {
 private:
 	template <int64_t MultipleOfNanosecond>
-	struct _mul_s {};
+	struct $mul_s {};
 
 	template <int64_t MultipleOfNanosecond>
-	struct _ge_s {};
+	struct $ge_s {};
 
 	template <int64_t MultipleOfNanosecond>
-	struct _ovf_ns {};
+	struct $ovf_ns {};
 
 	template <int64_t MultipleOfNanosecond>
-	using _in_attr = conditional_t<
+	using $in_attr = conditional_t<
 		MultipleOfNanosecond >= multiple_of_nanosecond::second,
 		conditional_t<
 			MultipleOfNanosecond % multiple_of_nanosecond::second == 0,
-			_mul_s<MultipleOfNanosecond>,
-			_ge_s<MultipleOfNanosecond>>,
-		_ovf_ns<MultipleOfNanosecond>>;
+			$mul_s<MultipleOfNanosecond>,
+			$ge_s<MultipleOfNanosecond>>,
+		$ovf_ns<MultipleOfNanosecond>>;
 
 	template <int64_t MultipleOfNanosecond>
-	using _out_attr = conditional_t<
+	using $out_attr = conditional_t<
 		MultipleOfNanosecond >= multiple_of_nanosecond::second,
-		_ge_s<MultipleOfNanosecond>,
-		_ovf_ns<MultipleOfNanosecond>>;
+		$ge_s<MultipleOfNanosecond>,
+		$ovf_ns<MultipleOfNanosecond>>;
 
 	template <int64_t MultipleOfNanosecond>
 	static constexpr duration
-	_from(_mul_s<MultipleOfNanosecond> &&, int64_t c) {
+	$from($mul_s<MultipleOfNanosecond> &&, int64_t c) {
 		return duration(
 			c * (MultipleOfNanosecond / multiple_of_nanosecond::second), 0);
 	}
 
 	template <int64_t MultipleOfNanosecond>
-	static constexpr duration _from(_ge_s<MultipleOfNanosecond> &&, int64_t c) {
+	static constexpr duration $from($ge_s<MultipleOfNanosecond> &&, int64_t c) {
 		return duration(
 			c * (MultipleOfNanosecond / multiple_of_nanosecond::second),
 			static_cast<int32_t>(
@@ -68,23 +68,23 @@ private:
 	}
 
 	template <int64_t MultipleOfNanosecond>
-	constexpr int64_t _count(_ge_s<MultipleOfNanosecond> &&) const {
+	constexpr int64_t $count($ge_s<MultipleOfNanosecond> &&) const {
 		return _s / (MultipleOfNanosecond / multiple_of_nanosecond::second) +
-			   _ns / MultipleOfNanosecond;
+			   $ns / MultipleOfNanosecond;
 	}
 
 	template <int64_t MultipleOfNanosecond>
 	static constexpr duration
-	_from(_ovf_ns<MultipleOfNanosecond> &&, int64_t c) {
-		return _from(
-			_ovf_ns<MultipleOfNanosecond>{},
+	$from($ovf_ns<MultipleOfNanosecond> &&, int64_t c) {
+		return $from(
+			$ovf_ns<MultipleOfNanosecond>{},
 			c,
 			c / (multiple_of_nanosecond::second / MultipleOfNanosecond));
 	}
 
 	template <int64_t MultipleOfNanosecond>
 	static constexpr duration
-	_from(_ovf_ns<MultipleOfNanosecond> &&, int64_t c, int64_t s) {
+	$from($ovf_ns<MultipleOfNanosecond> &&, int64_t c, int64_t s) {
 		return duration(
 			s,
 			static_cast<int32_t>(
@@ -94,20 +94,20 @@ private:
 	}
 
 	template <int64_t MultipleOfNanosecond>
-	constexpr int64_t _count(_ovf_ns<MultipleOfNanosecond> &&) const {
+	constexpr int64_t $count($ovf_ns<MultipleOfNanosecond> &&) const {
 		return _s * (multiple_of_nanosecond::second / MultipleOfNanosecond) +
-			   _ns / MultipleOfNanosecond;
+			   $ns / MultipleOfNanosecond;
 	}
 
-	constexpr int64_t _div_ns_count(int64_t ns) const {
+	constexpr int64_t $div_ns_count(int64_t ns) const {
 		return ns >= multiple_of_nanosecond::second
-				   ? _s / (ns / multiple_of_nanosecond::second) + _ns / ns
-				   : _s * (multiple_of_nanosecond::second / ns) + _ns / ns;
+				   ? _s / (ns / multiple_of_nanosecond::second) + $ns / ns
+				   : _s * (multiple_of_nanosecond::second / ns) + $ns / ns;
 	}
 
 	template <typename CountT, CountT Max>
 	constexpr enable_if_t<std::is_unsigned<CountT>::value, CountT>
-	_revise_count(int64_t c) const {
+	$revise_count(int64_t c) const {
 		return is_max() ? Max
 						: (static_cast<uint64_t>(nmax<CountT>()) <
 								   static_cast<uint64_t>(c)
@@ -117,7 +117,7 @@ private:
 
 	template <typename CountT, CountT Max>
 	constexpr enable_if_t<!std::is_unsigned<CountT>::value, CountT>
-	_revise_count(int64_t c) const {
+	$revise_count(int64_t c) const {
 		return is_max() ? Max
 						: (static_cast<int64_t>(nmax<CountT>()) < c
 							   ? nmax<CountT>()
@@ -127,7 +127,7 @@ private:
 #ifndef RUA_HAS_CONSTEXPR_14
 
 	static constexpr duration
-	_from_overflowable__pan(int64_t seconds, int64_t nanoseconds) {
+	$from_overflowable__pan(int64_t seconds, int64_t nanoseconds) {
 		return (seconds < 0 && nanoseconds > 0)
 				   ? duration(
 						 seconds + 1,
@@ -143,19 +143,19 @@ private:
 								seconds, static_cast<int32_t>(nanoseconds)));
 	}
 
-	static constexpr duration _from_overflowable__overflow(
+	static constexpr duration $from_overflowable__overflow(
 		int64_t seconds,
 		int64_t nanoseconds,
 		int64_t carrys,
 		int64_t remainders) {
 		return (carrys != 0)
-				   ? _from_overflowable__pan(seconds + carrys, remainders)
-				   : _from_overflowable__pan(seconds, nanoseconds);
+				   ? $from_overflowable__pan(seconds + carrys, remainders)
+				   : $from_overflowable__pan(seconds, nanoseconds);
 	}
 
 	static constexpr duration
-	_from_overflowable(int64_t seconds, int64_t nanoseconds) {
-		return _from_overflowable__overflow(
+	$from_overflowable(int64_t seconds, int64_t nanoseconds) {
+		return $from_overflowable__overflow(
 			seconds,
 			nanoseconds,
 			nanoseconds / multiple_of_nanosecond::second,
@@ -165,7 +165,7 @@ private:
 #else
 
 	static constexpr duration
-	_from_overflowable(int64_t seconds, int64_t nanoseconds) {
+	$from_overflowable(int64_t seconds, int64_t nanoseconds) {
 		auto carrys = nanoseconds / multiple_of_nanosecond::second;
 		if (carrys != 0) {
 			seconds += carrys;
@@ -192,36 +192,36 @@ public:
 
 	template <int64_t MultipleOfNanosecond>
 	static constexpr duration from(int64_t count) {
-		return _from(_in_attr<MultipleOfNanosecond>{}, count);
+		return $from($in_attr<MultipleOfNanosecond>{}, count);
 	}
 
 public:
-	constexpr duration() : _s(0), _ns(0) {}
+	constexpr duration() : _s(0), $ns(0) {}
 
 	constexpr duration(int64_t milliseconds) :
-		duration(_from(
-			_in_attr<multiple_of_nanosecond::millisecond>{}, milliseconds)) {}
+		duration($from(
+			$in_attr<multiple_of_nanosecond::millisecond>{}, milliseconds)) {}
 
 	constexpr duration(int64_t seconds, int32_t remaining_nanoseconds) :
-		_s(seconds), _ns(remaining_nanoseconds) {}
+		_s(seconds), $ns(remaining_nanoseconds) {}
 
-	constexpr duration(const timespec &ts) : _s(ts.tv_sec), _ns(ts.tv_nsec) {}
+	constexpr duration(const timespec &ts) : _s(ts.tv_sec), $ns(ts.tv_nsec) {}
 
 	constexpr explicit operator bool() const {
-		return _s || _ns;
+		return _s || $ns;
 	}
 
 	constexpr bool is_max() const {
-		return _s == nmax<int64_t>() && _ns == remaining_nanoseconds_max;
+		return _s == nmax<int64_t>() && $ns == remaining_nanoseconds_max;
 	}
 
 	constexpr bool is_min() const {
-		return _s == nmin<int64_t>() && _ns == remaining_nanoseconds_min;
+		return _s == nmin<int64_t>() && $ns == remaining_nanoseconds_min;
 	}
 
 	template <int64_t MultipleOfNanosecond>
 	constexpr int64_t count() const {
-		return _count(_out_attr<MultipleOfNanosecond>{});
+		return $count($out_attr<MultipleOfNanosecond>{});
 	}
 
 	template <
@@ -229,35 +229,35 @@ public:
 		typename CountT,
 		CountT Max = nmax<CountT>()>
 	constexpr int64_t count() const {
-		return _revise_count<CountT, Max>(
-			_count(_out_attr<MultipleOfNanosecond>{}));
+		return $revise_count<CountT, Max>(
+			$count($out_attr<MultipleOfNanosecond>{}));
 	}
 
 	constexpr int64_t nanoseconds() const {
-		return _s * multiple_of_nanosecond::second + _ns;
+		return _s * multiple_of_nanosecond::second + $ns;
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT nanoseconds() const {
-		return _revise_count<CountT, Max>(nanoseconds());
+		return $revise_count<CountT, Max>(nanoseconds());
 	}
 
 	constexpr int64_t microseconds() const {
-		return _count(_out_attr<multiple_of_nanosecond::microsecond>{});
+		return $count($out_attr<multiple_of_nanosecond::microsecond>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT microseconds() const {
-		return _revise_count<CountT, Max>(microseconds());
+		return $revise_count<CountT, Max>(microseconds());
 	}
 
 	constexpr int64_t milliseconds() const {
-		return _count(_out_attr<multiple_of_nanosecond::millisecond>{});
+		return $count($out_attr<multiple_of_nanosecond::millisecond>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT milliseconds() const {
-		return _revise_count<CountT, Max>(milliseconds());
+		return $revise_count<CountT, Max>(milliseconds());
 	}
 
 	constexpr int64_t seconds() const {
@@ -266,70 +266,70 @@ public:
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT seconds() const {
-		return _revise_count<CountT, Max>(_s);
+		return $revise_count<CountT, Max>(_s);
 	}
 
 	constexpr int32_t remaining_nanoseconds() const {
-		return _ns;
+		return $ns;
 	}
 
 	template <typename CountT>
 	constexpr CountT remaining_nanoseconds() const {
-		return static_cast<CountT>(_ns);
+		return static_cast<CountT>($ns);
 	}
 
 	constexpr int64_t minutes() const {
-		return _count(_out_attr<multiple_of_nanosecond::minute>{});
+		return $count($out_attr<multiple_of_nanosecond::minute>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT minutes() const {
-		return _revise_count<CountT, Max>(minutes());
+		return $revise_count<CountT, Max>(minutes());
 	}
 
 	constexpr int64_t hours() const {
-		return _count(_out_attr<multiple_of_nanosecond::hour>{});
+		return $count($out_attr<multiple_of_nanosecond::hour>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT hours() const {
-		return _revise_count<CountT, Max>(hours());
+		return $revise_count<CountT, Max>(hours());
 	}
 
 	constexpr int64_t days() const {
-		return _count(_out_attr<multiple_of_nanosecond::day>{});
+		return $count($out_attr<multiple_of_nanosecond::day>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT days() const {
-		return _revise_count<CountT, Max>(days());
+		return $revise_count<CountT, Max>(days());
 	}
 
 	constexpr int64_t weeks() const {
-		return _count(_out_attr<multiple_of_nanosecond::week>{});
+		return $count($out_attr<multiple_of_nanosecond::week>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT weeks() const {
-		return _revise_count<CountT, Max>(weeks());
+		return $revise_count<CountT, Max>(weeks());
 	}
 
 	constexpr int64_t years() const {
-		return _count(_out_attr<multiple_of_nanosecond::year>{});
+		return $count($out_attr<multiple_of_nanosecond::year>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT years() const {
-		return _revise_count<CountT, Max>(years());
+		return $revise_count<CountT, Max>(years());
 	}
 
 	constexpr int64_t leep_years() const {
-		return _count(_out_attr<multiple_of_nanosecond::leep_year>{});
+		return $count($out_attr<multiple_of_nanosecond::leep_year>{});
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT leep_years() const {
-		return _revise_count<CountT, Max>(leep_years());
+		return $revise_count<CountT, Max>(leep_years());
 	}
 
 	constexpr timespec c_timespec() const {
@@ -339,33 +339,33 @@ public:
 	}
 
 	constexpr bool operator==(duration target) const {
-		return _s == target._s && _ns == target._ns;
+		return _s == target._s && $ns == target.$ns;
 	}
 
 	constexpr bool operator!=(duration target) const {
-		return _s != target._s || _ns != target._ns;
+		return _s != target._s || $ns != target.$ns;
 	}
 
 	constexpr bool operator>(duration target) const {
-		return _s > target._s || (_s == target._s && _ns > target._ns);
+		return _s > target._s || (_s == target._s && $ns > target.$ns);
 	}
 
 	constexpr bool operator<(duration target) const {
-		return _s < target._s || (_s == target._s && _ns < target._ns);
+		return _s < target._s || (_s == target._s && $ns < target.$ns);
 	}
 
 	constexpr bool operator>=(duration target) const {
-		return _s >= target._s || (_s == target._s && _ns >= target._ns);
+		return _s >= target._s || (_s == target._s && $ns >= target.$ns);
 	}
 
 	constexpr bool operator<=(duration target) const {
-		return _s <= target._s || (_s == target._s && _ns <= target._ns);
+		return _s <= target._s || (_s == target._s && $ns <= target.$ns);
 	}
 
 	constexpr duration operator+(duration target) const {
-		return _from_overflowable(
+		return $from_overflowable(
 			_s + target._s,
-			static_cast<int64_t>(_ns) + static_cast<int64_t>(target._ns));
+			static_cast<int64_t>($ns) + static_cast<int64_t>(target.$ns));
 	}
 
 	duration &operator+=(duration target) {
@@ -373,13 +373,13 @@ public:
 	}
 
 	constexpr duration operator-(duration target) const {
-		return _from_overflowable(
+		return $from_overflowable(
 			_s - target._s,
-			static_cast<int64_t>(_ns) - static_cast<int64_t>(target._ns));
+			static_cast<int64_t>($ns) - static_cast<int64_t>(target.$ns));
 	}
 
 	constexpr duration operator-() const {
-		return duration(-_s, -_ns);
+		return duration(-_s, -$ns);
 	}
 
 	duration &operator-=(duration target) {
@@ -387,8 +387,8 @@ public:
 	}
 
 	constexpr duration operator*(int64_t target) const {
-		return _from_overflowable(
-			_s * target, static_cast<int64_t>(_ns) * target);
+		return $from_overflowable(
+			_s * target, static_cast<int64_t>($ns) * target);
 	}
 
 	duration &operator*=(int64_t target) {
@@ -396,13 +396,13 @@ public:
 	}
 
 	int64_t operator/(duration target) const {
-		return *this >= target ? _div_ns_count(target.nanoseconds()) : 0;
+		return *this >= target ? $div_ns_count(target.nanoseconds()) : 0;
 	}
 
 	constexpr duration operator/(int64_t target) const {
-		return _from_overflowable(
+		return $from_overflowable(
 			_s / target,
-			(static_cast<int64_t>(_ns) +
+			(static_cast<int64_t>($ns) +
 			 _s % target * multiple_of_nanosecond::second) /
 				target);
 	}
@@ -412,21 +412,21 @@ public:
 	}
 
 	constexpr duration operator%(duration target) const {
-		return _from_overflowable(
+		return $from_overflowable(
 			0,
-			target._ns ? (static_cast<int64_t>(_ns) +
-						  ((target._s || !target._ns) ? _s % target._s : 0) *
+			target.$ns ? (static_cast<int64_t>($ns) +
+						  ((target._s || !target.$ns) ? _s % target._s : 0) *
 							  multiple_of_nanosecond::second) %
-							 target._ns
-					   : (static_cast<int64_t>(_ns) +
-						  ((target._s || !target._ns) ? _s % target._s : 0) *
+							 target.$ns
+					   : (static_cast<int64_t>($ns) +
+						  ((target._s || !target.$ns) ? _s % target._s : 0) *
 							  multiple_of_nanosecond::second));
 	}
 
 	constexpr duration operator%(int64_t target) const {
-		return _from_overflowable(
+		return $from_overflowable(
 			0,
-			(static_cast<int64_t>(_ns) +
+			(static_cast<int64_t>($ns) +
 			 _s % target * multiple_of_nanosecond::second) %
 				target);
 	}
@@ -441,7 +441,7 @@ public:
 
 private:
 	int64_t _s;
-	int32_t _ns;
+	int32_t $ns;
 };
 
 inline constexpr duration operator*(int64_t a, duration b) {

@@ -17,45 +17,45 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr lockfree_list() : _front(nullptr) {}
+	constexpr lockfree_list() : $front(nullptr) {}
 
-	constexpr explicit lockfree_list(node_t *front) : _front(front) {}
+	constexpr explicit lockfree_list(node_t *front) : $front(front) {}
 
 	constexpr explicit lockfree_list(forward_list<T> li) :
-		_front(li.release()) {}
+		$front(li.release()) {}
 
-	lockfree_list(lockfree_list &&src) : _front(src.release()) {}
+	lockfree_list(lockfree_list &&src) : $front(src.release()) {}
 
 	lockfree_list &operator=(lockfree_list &&src) {
 		if (this == &src) {
 			return *this;
 		}
-		_reset(src.release());
+		$reset(src.release());
 		return *this;
 	}
 
 	~lockfree_list() {
-		_reset();
+		$reset();
 	}
 
 	operator bool() const {
-		return _front.load();
+		return $front.load();
 	}
 
 	bool empty() const {
-		return !_front.load();
+		return !$front.load();
 	}
 
 	template <typename... Args>
 	bool emplace_front(Args &&...args) {
 		auto new_front = new node_t(std::forward<Args>(args)...);
-		auto old_front = _front.load();
+		auto old_front = $front.load();
 		do {
-			while (old_front == reinterpret_cast<node_t *>(_locked)) {
-				old_front = _front.load();
+			while (old_front == reinterpret_cast<node_t *>($locked)) {
+				old_front = $front.load();
 			}
 			new_front->after = old_front;
-		} while (!_front.compare_exchange_weak(old_front, new_front));
+		} while (!$front.compare_exchange_weak(old_front, new_front));
 		return !old_front;
 	}
 
@@ -85,19 +85,19 @@ public:
 	void emplace_back(Args &&...args) {
 		auto new_back = new node_t(std::forward<Args>(args)...);
 		new_back->after = nullptr;
-		auto old_front = _front.load();
+		auto old_front = $front.load();
 		for (;;) {
-			while (old_front == reinterpret_cast<node_t *>(_locked)) {
-				old_front = _front.load();
+			while (old_front == reinterpret_cast<node_t *>($locked)) {
+				old_front = $front.load();
 			}
 			if (!old_front) {
-				if (_front.compare_exchange_weak(old_front, new_back)) {
+				if ($front.compare_exchange_weak(old_front, new_back)) {
 					return;
 				}
 				continue;
 			}
-			if (_front.compare_exchange_weak(
-					old_front, reinterpret_cast<node_t *>(_locked))) {
+			if ($front.compare_exchange_weak(
+					old_front, reinterpret_cast<node_t *>($locked))) {
 				break;
 			}
 		}
@@ -139,13 +139,13 @@ public:
 			pp_back = pp_back->after;
 		}
 
-		auto old_front = _front.load();
+		auto old_front = $front.load();
 		do {
-			while (old_front == reinterpret_cast<node_t *>(_locked)) {
-				old_front = _front.load();
+			while (old_front == reinterpret_cast<node_t *>($locked)) {
+				old_front = $front.load();
 			}
 			pp_back->after = old_front;
-		} while (!_front.compare_exchange_weak(old_front, pp_front));
+		} while (!$front.compare_exchange_weak(old_front, pp_front));
 		return !old_front;
 	}
 
@@ -236,59 +236,59 @@ public:
 	}
 
 	forward_list<T> pop_all() {
-		auto front = _front.load();
+		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>(_locked)) {
-				front = _front.load();
+			while (front == reinterpret_cast<node_t *>($locked)) {
+				front = $front.load();
 			}
-		} while (!_front.compare_exchange_weak(front, nullptr));
+		} while (!$front.compare_exchange_weak(front, nullptr));
 		return forward_list<T>(front);
 	}
 
 	void reset() {
-		_reset();
+		$reset();
 	}
 
 	node_t *release() {
 #ifdef NDEBUG
-		return _front.exchange(nullptr);
+		return $front.exchange(nullptr);
 #else
-		auto front = _front.exchange(nullptr);
-		assert(front == reinterpret_cast<node_t *>(_locked));
+		auto front = $front.exchange(nullptr);
+		assert(front == reinterpret_cast<node_t *>($locked));
 		return front;
 #endif
 	}
 
 	forward_list<T> lock() {
-		auto front = _front.load();
+		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>(_locked)) {
-				front = _front.load();
+			while (front == reinterpret_cast<node_t *>($locked)) {
+				front = $front.load();
 			}
-		} while (!_front.compare_exchange_weak(
-			front, reinterpret_cast<node_t *>(_locked)));
+		} while (!$front.compare_exchange_weak(
+			front, reinterpret_cast<node_t *>($locked)));
 		return forward_list<T>(front);
 	}
 
 	forward_list<T> lock_if_non_empty() {
-		auto front = _front.load();
+		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>(_locked)) {
-				front = _front.load();
+			while (front == reinterpret_cast<node_t *>($locked)) {
+				front = $front.load();
 			}
 			if (!front) {
 				return forward_list<T>();
 			}
-		} while (!_front.compare_exchange_weak(
-			front, reinterpret_cast<node_t *>(_locked)));
+		} while (!$front.compare_exchange_weak(
+			front, reinterpret_cast<node_t *>($locked)));
 		return forward_list<T>(front);
 	}
 
 	void unlock() {
 #ifdef NDEBUG
-		_front.store(nullptr);
+		$front.store(nullptr);
 #else
-		assert(_front.exchange(nullptr) == reinterpret_cast<node_t *>(_locked));
+		assert($front.exchange(nullptr) == reinterpret_cast<node_t *>($locked));
 #endif
 	}
 
@@ -298,33 +298,33 @@ public:
 			return;
 		}
 #ifdef NDEBUG
-		_front.store(pp.release());
+		$front.store(pp.release());
 #else
 		assert(
-			_front.exchange(pp.release()) ==
-			reinterpret_cast<node_t *>(_locked));
+			$front.exchange(pp.release()) ==
+			reinterpret_cast<node_t *>($locked));
 #endif
 	}
 
 	template <typename... Args>
 	void unlock_and_emplace(Args &&...args) {
 #ifdef NDEBUG
-		_front.store(new node_t(std::forward<Args>(args)...));
+		$front.store(new node_t(std::forward<Args>(args)...));
 #else
 		assert(
-			_front.exchange(new node_t(std::forward<Args>(args)...)) ==
-			reinterpret_cast<node_t *>(_locked));
+			$front.exchange(new node_t(std::forward<Args>(args)...)) ==
+			reinterpret_cast<node_t *>($locked));
 #endif
 	}
 
 private:
-	std::atomic<node_t *> _front;
+	std::atomic<node_t *> $front;
 
-	static constexpr auto _locked = nmax<uintptr_t>();
+	static constexpr auto $locked = nmax<uintptr_t>();
 
-	void _reset(node_t *new_front = nullptr) {
-		auto node = _front.exchange(new_front);
-		assert(node != reinterpret_cast<node_t *>(_locked));
+	void $reset(node_t *new_front = nullptr) {
+		auto node = $front.exchange(new_front);
+		assert(node != reinterpret_cast<node_t *>($locked));
 		while (node) {
 			auto n = node;
 			node = node->after;

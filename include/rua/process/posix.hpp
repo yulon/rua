@@ -45,24 +45,24 @@ public:
 	template <
 		typename Pid,
 		typename = enable_if_t<std::is_integral<Pid>::value>>
-	constexpr explicit process(Pid id) : _id(static_cast<pid_t>(id)) {}
+	constexpr explicit process(Pid id) : $id(static_cast<pid_t>(id)) {}
 
-	constexpr process(std::nullptr_t = nullptr) : _id(-1) {}
+	constexpr process(std::nullptr_t = nullptr) : $id(-1) {}
 
 	~process() {
 		reset();
 	}
 
-	process(process &&src) : _id(src._id) {
+	process(process &&src) : $id(src.$id) {
 		if (src) {
-			src._id = -1;
+			src.$id = -1;
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(process)
 
 	pid_t id() const {
-		return _id;
+		return $id;
 	}
 
 	bool operator==(const process &target) const {
@@ -74,18 +74,18 @@ public:
 	}
 
 	native_handle_t native_handle() const {
-		return _id;
+		return $id;
 	}
 
 	operator bool() const {
-		return _id >= 0;
+		return $id >= 0;
 	}
 
 	future<int> RUA_OPERATOR_AWAIT() const {
-		if (!_id) {
+		if (!$id) {
 			return 0;
 		}
-		auto id = _id;
+		auto id = $id;
 		return parallel([id]() -> generic_word {
 			int status;
 			waitpid(id, &status, 0);
@@ -94,28 +94,28 @@ public:
 	}
 
 	void kill() {
-		if (_id <= 0) {
+		if ($id <= 0) {
 			return;
 		}
-		::kill(_id, SIGKILL);
-		_id = -1;
+		::kill($id, SIGKILL);
+		$id = -1;
 	}
 
 	bool suspend() {
-		return ::kill(_id, SIGSTOP) == 0;
+		return ::kill($id, SIGSTOP) == 0;
 	}
 
 	bool resume() {
-		return ::kill(_id, SIGCONT) == 0;
+		return ::kill($id, SIGCONT) == 0;
 	}
 
 	file_path path() const {
-		if (_id < 0) {
+		if ($id < 0) {
 			return "";
 		}
 		char buf[PATH_MAX];
 		auto n = readlink(
-			("/proc/" + std::to_string(_id) + "/exe").c_str(),
+			("/proc/" + std::to_string($id) + "/exe").c_str(),
 			&buf[0],
 			PATH_MAX);
 		if (n < 0) {
@@ -133,10 +133,10 @@ public:
 	}
 
 	void reset() {
-		if (_id < 0) {
+		if ($id < 0) {
 			return;
 		}
-		_id = -1;
+		$id = -1;
 	}
 
 	void detach() {
@@ -144,7 +144,7 @@ public:
 	}
 
 private:
-	::pid_t _id;
+	::pid_t $id;
 };
 
 namespace _this_process {
@@ -197,81 +197,81 @@ public:
 	RUA_OVERLOAD_ASSIGNMENT(process_maker)
 
 	~process_maker() {
-		if (!_info.file) {
+		if (!$info.file) {
 			return;
 		}
 		start();
 	}
 
 	process start() {
-		if (!_info.file) {
+		if (!$info.file) {
 			return nullptr;
 		}
 
-		if (!_info.stderr_w && _info.stdout_w) {
-			_info.stderr_w = _info.stdout_w;
+		if (!$info.stderr_w && $info.stdout_w) {
+			$info.stderr_w = $info.stdout_w;
 		}
 
 		auto id = ::fork();
 		if (id) {
-			_info.file = "";
+			$info.file = "";
 
 			if (id < 0) {
 				return nullptr;
 			}
 
-			if (_info.stdout_w) {
-				_info.stdout_w->detach();
-				_info.stdout_w.reset();
+			if ($info.stdout_w) {
+				$info.stdout_w->detach();
+				$info.stdout_w.reset();
 			}
-			if (_info.stderr_w) {
-				_info.stderr_w->detach();
-				_info.stderr_w.reset();
+			if ($info.stderr_w) {
+				$info.stderr_w->detach();
+				$info.stderr_w.reset();
 			}
-			if (_info.stdin_r) {
-				_info.stdin_r->detach();
-				_info.stdin_r.reset();
+			if ($info.stdin_r) {
+				$info.stdin_r->detach();
+				$info.stdin_r.reset();
 			}
 
 			return process(id);
 		}
 
 		std::vector<char *> argv;
-		argv.emplace_back(&_info.file.str()[0]);
-		for (auto &arg : _info.args) {
+		argv.emplace_back(&$info.file.str()[0]);
+		for (auto &arg : $info.args) {
 			argv.emplace_back(&arg[0]);
 		}
 		argv.emplace_back(nullptr);
 
-		if (_info.stdout_w) {
-			out() = std::move(*_info.stdout_w);
+		if ($info.stdout_w) {
+			out() = std::move(*$info.stdout_w);
 		}
-		if (_info.stderr_w) {
-			err() = std::move(*_info.stderr_w);
+		if ($info.stderr_w) {
+			err() = std::move(*$info.stderr_w);
 		}
-		if (_info.stdin_r) {
-			in() = std::move(*_info.stdin_r);
-		}
-
-		if (_info.work_dir.str().size()) {
-			::setenv("PWD", _info.work_dir.str().c_str(), 1);
+		if ($info.stdin_r) {
+			in() = std::move(*$info.stdin_r);
 		}
 
-		for (auto &env : _info.envs) {
+		if ($info.work_dir.str().size()) {
+			::setenv("PWD", $info.work_dir.str().c_str(), 1);
+		}
+
+		for (auto &env : $info.envs) {
 			::setenv(env.first.c_str(), env.second.c_str(), 1);
 		}
 
-		for (auto &name : _info.dylibs) {
+		for (auto &name : $info.dylibs) {
 			dylib(name, false);
 		}
 
 		process proc;
-		if (_info.on_start) {
+		if ($info.on_start) {
 			proc = this_process();
-			_info.on_start(proc);
+			$info.on_start(proc);
 		}
 
-		::exit(::execvp(_info.file.str().data(), argv.data()));
+		::exit(::execvp($info.file.str().data(), argv.data()));
 		return nullptr;
 	}
 

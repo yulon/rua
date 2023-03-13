@@ -14,7 +14,7 @@ namespace rua {
 
 class mutex {
 public:
-	constexpr mutex() : _c(0), _wtrs() {}
+	constexpr mutex() : _c(0), $wtrs() {}
 
 	mutex(const mutex &) = delete;
 
@@ -41,7 +41,7 @@ public:
 
 		auto prm = new newable_promise<>;
 
-		auto is_emplaced = _wtrs.emplace_front_if_non_empty_or(
+		auto is_emplaced = $wtrs.emplace_front_if_non_empty_or(
 			[this]() -> bool { return _c.load() == 1; }, prm);
 		if (!is_emplaced) {
 			return future<>(*prm);
@@ -53,7 +53,7 @@ public:
 	}
 
 	void unlock() {
-		auto wtr_opt = _wtrs.pop_back_if([this]() -> bool { return --_c > 0; });
+		auto wtr_opt = $wtrs.pop_back_if([this]() -> bool { return --_c > 0; });
 		if (!wtr_opt) {
 			return;
 		}
@@ -62,7 +62,7 @@ public:
 
 private:
 	std::atomic<uintptr_t> _c;
-	lockfree_list<promise<> *> _wtrs;
+	lockfree_list<promise<> *> $wtrs;
 };
 
 } // namespace rua

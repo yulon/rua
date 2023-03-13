@@ -56,7 +56,7 @@ public:
 		if (!abs_w_len) {
 			return *this;
 		}
-		return _abs(rel_w.c_str(), abs_w_len);
+		return $abs(rel_w.c_str(), abs_w_len);
 	}
 
 	file_path abs() && {
@@ -76,11 +76,11 @@ public:
 		if (!abs_w_len) {
 			return std::move(*this);
 		}
-		return _abs(rel_w.c_str(), abs_w_len);
+		return $abs(rel_w.c_str(), abs_w_len);
 	}
 
 private:
-	static std::string _abs(const WCHAR *rel_c_wstr, size_t abs_w_len) {
+	static std::string $abs(const WCHAR *rel_c_wstr, size_t abs_w_len) {
 		auto buf_sz = abs_w_len + 1;
 		auto abs_c_wstr = new WCHAR[buf_sz];
 
@@ -137,20 +137,20 @@ public:
 	basic_file_info() = default;
 
 	native_data_t &native_data() {
-		return _data;
+		return $data;
 	}
 
 	const native_data_t &native_data() const {
-		return _data;
+		return $data;
 	}
 
 	bool is_dir() const {
-		return _data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+		return $data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
 	}
 
 	uint64_t size() const {
-		return static_cast<uint64_t>(_data.nFileSizeHigh) << 32 |
-			   static_cast<uint64_t>(_data.nFileSizeLow);
+		return static_cast<uint64_t>($data.nFileSizeHigh) << 32 |
+			   static_cast<uint64_t>($data.nFileSizeLow);
 	}
 
 	file_times times(int8_t zone = local_time_zone()) const {
@@ -158,19 +158,19 @@ public:
 	}
 
 	time modified_time(int8_t zone = local_time_zone()) const {
-		return from_sys_time(_data.ftLastWriteTime, zone);
+		return from_sys_time($data.ftLastWriteTime, zone);
 	}
 
 	time creation_time(int8_t zone = local_time_zone()) const {
-		return from_sys_time(_data.ftCreationTime, zone);
+		return from_sys_time($data.ftCreationTime, zone);
 	}
 
 	time access_time(int8_t zone = local_time_zone()) const {
-		return from_sys_time(_data.ftLastAccessTime, zone);
+		return from_sys_time($data.ftLastAccessTime, zone);
 	}
 
 private:
-	T _data;
+	T $data;
 };
 
 using file_info = basic_file_info<BY_HANDLE_FILE_INFORMATION>;
@@ -302,11 +302,11 @@ public:
 	}
 
 	file_path path() const {
-		return {_dir_path, name()};
+		return {$dir_path, name()};
 	}
 
 	file_path relative_path() const {
-		return {_dir_rel_path, name()};
+		return {$dir_rel_path, name()};
 	}
 
 	const dir_entry_info &info() const {
@@ -314,7 +314,7 @@ public:
 	}
 
 private:
-	std::string _dir_path, _dir_rel_path;
+	std::string $dir_path, $dir_rel_path;
 
 	friend class view_dir;
 };
@@ -325,24 +325,24 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	view_dir() : _h(INVALID_HANDLE_VALUE) {}
+	view_dir() : $h(INVALID_HANDLE_VALUE) {}
 
 	view_dir(const file_path &path, size_t depth = 1) :
-		_entry(), _dep(depth), _parent(nullptr) {
+		$entry(), $dep(depth), $parent(nullptr) {
 
-		_entry._dir_path = path.abs().str();
+		$entry.$dir_path = path.abs().str();
 
-		auto find_path = u2w("\\\\?\\" + _entry._dir_path + "\\*");
+		auto find_path = u2w("\\\\?\\" + $entry.$dir_path + "\\*");
 
-		_h = FindFirstFileW(find_path.c_str(), &_entry.native_data());
+		$h = FindFirstFileW(find_path.c_str(), &$entry.native_data());
 		if (!*this) {
 			return;
 		}
 
-		while (_is_dots(_entry.native_data().cFileName)) {
-			if (!FindNextFileW(_h, &_entry.native_data())) {
-				FindClose(_h);
-				_h = INVALID_HANDLE_VALUE;
+		while ($is_dots($entry.native_data().cFileName)) {
+			if (!FindNextFileW($h, &$entry.native_data())) {
+				FindClose($h);
+				$h = INVALID_HANDLE_VALUE;
 				return;
 			}
 		}
@@ -352,20 +352,20 @@ public:
 		if (!*this) {
 			return;
 		}
-		FindClose(_h);
-		_h = INVALID_HANDLE_VALUE;
-		if (_parent) {
-			delete _parent;
+		FindClose($h);
+		$h = INVALID_HANDLE_VALUE;
+		if ($parent) {
+			delete $parent;
 		}
 	}
 
 	view_dir(view_dir &&src) :
-		_h(src._h),
-		_entry(std::move(src._entry)),
-		_dep(src._dep),
-		_parent(src._parent) {
+		$h(src.$h),
+		$entry(std::move(src.$entry)),
+		$dep(src.$dep),
+		$parent(src.$parent) {
 		if (src) {
-			src._h = INVALID_HANDLE_VALUE;
+			src.$h = INVALID_HANDLE_VALUE;
 		}
 	}
 
@@ -378,60 +378,60 @@ public:
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	operator bool() const {
-		return _h != INVALID_HANDLE_VALUE;
+		return $h != INVALID_HANDLE_VALUE;
 	}
 
 	const dir_entry &operator*() const {
-		return _entry;
+		return $entry;
 	}
 
 	const dir_entry *operator->() const {
-		return &_entry;
+		return &$entry;
 	}
 
 	view_dir &operator++() {
 		assert(*this);
 
-		if ((_dep > 1 || !_dep) && _entry.is_dir()) {
-			view_dir sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
+		if (($dep > 1 || !$dep) && $entry.is_dir()) {
+			view_dir sub($entry.path(), $dep > 1 ? $dep - 1 : 0);
 			if (sub) {
-				sub._entry._dir_rel_path = _entry.relative_path().str();
-				sub._parent = new view_dir(std::move(*this));
+				sub.$entry.$dir_rel_path = $entry.relative_path().str();
+				sub.$parent = new view_dir(std::move(*this));
 				return *this = std::move(sub);
 			}
 		}
 
-		if (_next()) {
+		if ($next()) {
 			return *this;
 		}
 
-		while (_parent) {
-			auto parent = _parent;
-			_parent = nullptr;
+		while ($parent) {
+			auto parent = $parent;
+			$parent = nullptr;
 			*this = std::move(*parent);
 			delete parent;
 
-			if (_next()) {
+			if ($next()) {
 				return *this;
 			}
 		}
 
-		FindClose(_h);
-		_h = INVALID_HANDLE_VALUE;
+		FindClose($h);
+		$h = INVALID_HANDLE_VALUE;
 		return *this;
 	}
 
 private:
-	HANDLE _h;
-	dir_entry _entry;
-	size_t _dep;
-	view_dir *_parent;
+	HANDLE $h;
+	dir_entry $entry;
+	size_t $dep;
+	view_dir *$parent;
 
-	static bool _is_dots(const WCHAR *c_wstr) {
+	static bool $is_dots(const WCHAR *c_wstr) {
 		for (; *c_wstr; ++c_wstr) {
 			if (*c_wstr != L'.') {
 				return false;
@@ -440,9 +440,9 @@ private:
 		return true;
 	}
 
-	bool _next() {
-		while (FindNextFileW(_h, &_entry.native_data())) {
-			if (_is_dots(_entry.native_data().cFileName)) {
+	bool $next() {
+		while (FindNextFileW($h, &$entry.native_data())) {
+			if ($is_dots($entry.native_data().cFileName)) {
 				continue;
 			}
 			return true;

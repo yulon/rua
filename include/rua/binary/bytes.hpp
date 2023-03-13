@@ -49,53 +49,53 @@ template <typename Span>
 class const_bytes_base : private disable_as_to_string {
 public:
 	generic_ptr data_generic() const {
-		return _this()->data();
+		return $this()->data();
 	}
 
 	constexpr explicit operator bool() const {
-		return _this()->size();
+		return $this()->size();
 	}
 
 	const uchar *begin() const {
-		return _this()->data();
+		return $this()->data();
 	}
 
 	const uchar *end() const {
-		return _this()->data() + _this()->size();
+		return $this()->data() + $this()->size();
 	}
 
 	template <typename T>
 	T get() const {
-		return bit_get<T>(_this()->data());
+		return bit_get<T>($this()->data());
 	}
 
 	template <typename T>
 	T get(ptrdiff_t offset) const {
-		return bit_get<T>(_this()->data(), offset);
+		return bit_get<T>($this()->data(), offset);
 	}
 
 	template <typename T>
 	T aligned_get(ptrdiff_t ix) const {
-		return bit_aligned_get<T>(_this()->data(), ix);
+		return bit_aligned_get<T>($this()->data(), ix);
 	}
 
 	template <typename T>
 	const T &as() const {
-		return bit_as<const T>(_this()->data());
+		return bit_as<const T>($this()->data());
 	}
 
 	template <typename T>
 	const T &as(ptrdiff_t offset) const {
-		return bit_as<const T>(_this()->data(), offset);
+		return bit_as<const T>($this()->data(), offset);
 	}
 
 	template <typename T>
 	const T &aligned_as(ptrdiff_t ix) const {
-		return bit_aligned_as<const T>(_this()->data(), ix);
+		return bit_aligned_as<const T>($this()->data(), ix);
 	}
 
 	const uchar &operator[](ptrdiff_t offset) const {
-		return _this()->data()[offset];
+		return $this()->data()[offset];
 	}
 
 	inline bytes_view slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
@@ -109,7 +109,7 @@ public:
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	generic_ptr derel(ptrdiff_t pos = 0) const {
-		return _this()->data() + pos + SlotSize + get<RelPtr>(pos);
+		return $this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
 	inline bytes reverse() const;
@@ -136,7 +136,7 @@ protected:
 	const_bytes_base() = default;
 
 private:
-	const Span *_this() const {
+	const Span *$this() const {
 		return static_cast<const Span *>(this);
 	}
 };
@@ -145,72 +145,72 @@ template <typename Span>
 class bytes_base : public const_bytes_base<Span> {
 public:
 	uchar *begin() {
-		return _this()->data();
+		return $this()->data();
 	}
 
 	const uchar *begin() const {
-		return _this()->data();
+		return $this()->data();
 	}
 
 	uchar *end() {
-		return _this()->data() + _this()->size();
+		return $this()->data() + $this()->size();
 	}
 
 	const uchar *end() const {
-		return _this()->data() + _this()->size();
+		return $this()->data() + $this()->size();
 	}
 
 	template <typename T>
 	void set(const T &val) {
-		return bit_set<T>(_this()->data(), val);
+		return bit_set<T>($this()->data(), val);
 	}
 
 	template <typename T>
 	void set(const T &val, ptrdiff_t offset) {
-		return bit_set<T>(_this()->data(), offset, val);
+		return bit_set<T>($this()->data(), offset, val);
 	}
 
 	template <typename T>
 	void aligned_set(const T &val, ptrdiff_t ix) {
-		return bit_aligned_set<T>(_this()->data(), val, ix);
+		return bit_aligned_set<T>($this()->data(), val, ix);
 	}
 
 	template <typename T>
 	const T &as() const {
-		return bit_as<const T>(_this()->data());
+		return bit_as<const T>($this()->data());
 	}
 
 	template <typename T>
 	T &as() {
-		return bit_as<T>(_this()->data());
+		return bit_as<T>($this()->data());
 	}
 
 	template <typename T>
 	const T &as(ptrdiff_t offset) const {
-		return bit_as<const T>(_this()->data(), offset);
+		return bit_as<const T>($this()->data(), offset);
 	}
 
 	template <typename T>
 	T &as(ptrdiff_t offset) {
-		return bit_as<T>(_this()->data(), offset);
+		return bit_as<T>($this()->data(), offset);
 	}
 
 	template <typename T>
 	const T &aligned_as(ptrdiff_t ix) const {
-		return bit_aligned_as<const T>(_this()->data(), ix);
+		return bit_aligned_as<const T>($this()->data(), ix);
 	}
 
 	template <typename T>
 	T &aligned_as(ptrdiff_t ix) {
-		return bit_aligned_as<T>(_this()->data(), ix);
+		return bit_aligned_as<T>($this()->data(), ix);
 	}
 
 	const uchar &operator[](ptrdiff_t offset) const {
-		return _this()->data()[offset];
+		return $this()->data()[offset];
 	}
 
 	uchar &operator[](ptrdiff_t offset) {
-		return _this()->data()[offset];
+		return $this()->data()[offset];
 	}
 
 	inline bytes_view slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const;
@@ -236,7 +236,7 @@ public:
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
 	RelPtr enrel(generic_ptr abs_ptr, ptrdiff_t pos = 0) {
 		auto rel_ptr =
-			static_cast<RelPtr>(abs_ptr - (_this()->data() + pos + SlotSize));
+			static_cast<RelPtr>(abs_ptr - ($this()->data() + pos + SlotSize));
 		this->template set<RelPtr>(pos, rel_ptr);
 		return rel_ptr;
 	}
@@ -251,21 +251,21 @@ public:
 	rfind(bytes_pattern, size_t start_pos = nullpos) const;
 
 private:
-	Span *_this() {
+	Span *$this() {
 		return static_cast<Span *>(this);
 	}
 
-	const Span *_this() const {
+	const Span *$this() const {
 		return static_cast<const Span *>(this);
 	}
 };
 
 class bytes_view : public const_bytes_base<bytes_view> {
 public:
-	constexpr bytes_view(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
+	constexpr bytes_view(std::nullptr_t = nullptr) : $p(nullptr), $n(0) {}
 
 	constexpr bytes_view(const uchar *ptr, size_t size) :
-		_p(ptr), _n(ptr ? size : 0) {}
+		$p(ptr), $n(ptr ? size : 0) {}
 
 	RUA_CONSTEXPR_14 bytes_view(std::initializer_list<uchar> il) :
 		bytes_view(il.begin(), il.size()) {}
@@ -285,20 +285,20 @@ public:
 		reset();
 	}
 
-	bytes_view(const bytes_view &src) : _p(src._p), _n(src._n) {}
+	bytes_view(const bytes_view &src) : $p(src.$p), $n(src.$n) {}
 
-	bytes_view(bytes_view &&src) : _p(src._p), _n(src._n) {
+	bytes_view(bytes_view &&src) : $p(src.$p), $n(src.$n) {
 		src.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(bytes_view)
 
 	const uchar *data() const {
-		return _p;
+		return $p;
 	}
 
 	constexpr size_t size() const {
-		return _n;
+		return $n;
 	}
 
 	void resize(size_t size) {
@@ -306,18 +306,18 @@ public:
 			reset();
 			return;
 		}
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_n = size;
+		$n = size;
 	}
 
 	void reset() {
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_p = nullptr;
-		_n = 0;
+		$p = nullptr;
+		$n = 0;
 	}
 
 	template <typename... Args>
@@ -328,8 +328,8 @@ public:
 	}
 
 private:
-	const uchar *_p;
-	size_t _n;
+	const uchar *$p;
+	size_t $n;
 };
 
 template <typename Span>
@@ -341,13 +341,13 @@ inline bytes_view const_bytes_base<Span>::slice(
 		return nullptr;
 	}
 	return bytes_view(
-		_this()->data() + begin_offset,
+		$this()->data() + begin_offset,
 		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
 inline bytes_view const_bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
-	return slice(begin_offset, _this()->size());
+	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
@@ -364,11 +364,11 @@ const_bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
 
 template <typename Span>
 inline bool const_bytes_base<Span>::equal(bytes_view target) const {
-	auto sz = _this()->size();
+	auto sz = $this()->size();
 	if (sz != target.size()) {
 		return false;
 	}
-	auto a = _this()->data();
+	auto a = $this()->data();
 	auto b = target.data();
 	if (a == b) {
 		return true;
@@ -386,10 +386,10 @@ inline bool const_bytes_base<Span>::operator==(bytes_view target) const {
 
 class bytes_ref : public bytes_base<bytes_ref> {
 public:
-	constexpr bytes_ref(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
+	constexpr bytes_ref(std::nullptr_t = nullptr) : $p(nullptr), $n(0) {}
 
 	constexpr bytes_ref(uchar *ptr, size_t size) :
-		_p(ptr), _n(ptr ? size : 0) {}
+		$p(ptr), $n(ptr ? size : 0) {}
 
 	template <
 		typename Span,
@@ -407,24 +407,24 @@ public:
 		reset();
 	}
 
-	bytes_ref(const bytes_ref &src) : _p(src._p), _n(src._n) {}
+	bytes_ref(const bytes_ref &src) : $p(src.$p), $n(src.$n) {}
 
-	bytes_ref(bytes_ref &&src) : _p(src._p), _n(src._n) {
+	bytes_ref(bytes_ref &&src) : $p(src.$p), $n(src.$n) {
 		src.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(bytes_ref)
 
 	uchar *data() {
-		return _p;
+		return $p;
 	}
 
 	const uchar *data() const {
-		return _p;
+		return $p;
 	}
 
 	constexpr size_t size() const {
-		return _n;
+		return $n;
 	}
 
 	void resize(size_t size) {
@@ -432,18 +432,18 @@ public:
 			reset();
 			return;
 		}
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_n = size;
+		$n = size;
 	}
 
 	void reset() {
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_p = nullptr;
-		_n = 0;
+		$p = nullptr;
+		$n = 0;
 	}
 
 	template <typename... Args>
@@ -454,8 +454,8 @@ public:
 	}
 
 private:
-	uchar *_p;
-	size_t _n;
+	uchar *$p;
+	size_t $n;
 };
 
 template <typename Span>
@@ -467,13 +467,13 @@ bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 		return nullptr;
 	}
 	return bytes_view(
-		_this()->data() + begin_offset,
+		$this()->data() + begin_offset,
 		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
 inline bytes_view bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
-	return slice(begin_offset, _this()->size());
+	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
@@ -485,13 +485,13 @@ bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
 		return nullptr;
 	}
 	return bytes_ref(
-		_this()->data() + begin_offset,
+		$this()->data() + begin_offset,
 		static_cast<size_t>(end_offset - begin_offset));
 }
 
 template <typename Span>
 inline bytes_ref bytes_base<Span>::slice(ptrdiff_t begin_offset) {
-	return slice(begin_offset, _this()->size());
+	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
@@ -521,11 +521,11 @@ template <typename... SrcArgs>
 inline size_t bytes_base<Span>::copy(SrcArgs &&...src) {
 	bytes_view src_b(std::forward<SrcArgs>(src)...);
 	auto cp_sz =
-		src_b.size() < _this()->size() ? src_b.size() : _this()->size();
+		src_b.size() < $this()->size() ? src_b.size() : $this()->size();
 	if (!cp_sz) {
 		return 0;
 	}
-	memcpy(_this()->data(), src_b.data(), cp_sz);
+	memcpy($this()->data(), src_b.data(), cp_sz);
 	return cp_sz;
 }
 
@@ -627,7 +627,7 @@ public:
 		if (!size) {
 			return;
 		}
-		_alloc(size);
+		$alloc(size);
 	}
 
 	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes_view, bytes)
@@ -636,7 +636,7 @@ public:
 		if (!bv.size()) {
 			return;
 		}
-		_alloc(bv.size());
+		$alloc(bv.size());
 		copy(bv);
 	}
 
@@ -669,7 +669,7 @@ public:
 			reset(size);
 			return;
 		}
-		if (_capacity() > size) {
+		if ($capacity() > size) {
 			bytes_ref::resize(size);
 			return;
 		}
@@ -679,7 +679,7 @@ public:
 	}
 
 	size_t capacity() const {
-		return data() ? _capacity() : 0;
+		return data() ? $capacity() : 0;
 	}
 
 	void reserve(size_t cap) {
@@ -706,26 +706,26 @@ public:
 			return;
 		}
 		reset();
-		_alloc(size);
+		$alloc(size);
 	}
 
 private:
-	void _alloc(size_t size) {
+	void $alloc(size_t size) {
 		bytes_ref::reset(
 			new uchar[sizeof(size_t) + size] + sizeof(size_t), size);
 		bit_set<size_t>(data() - sizeof(size_t), size);
 	}
 
-	size_t _capacity() const {
+	size_t $capacity() const {
 		return bit_get<size_t>(data() - sizeof(size_t));
 	}
 };
 
 template <typename Span>
 inline bytes const_bytes_base<Span>::reverse() const {
-	auto n = _this()->size();
+	auto n = $this()->size();
 	bytes r(n);
-	auto p = _this()->data();
+	auto p = $this()->data();
 	auto r_p = r.data();
 	for (size_t i = 0; i < n; ++i) {
 		r_p[i] = p[n - 1 - i];
@@ -736,9 +736,9 @@ inline bytes const_bytes_base<Span>::reverse() const {
 template <typename Span>
 template <size_t Unit>
 inline bytes const_bytes_base<Span>::reverse() const {
-	auto n = _this()->size();
+	auto n = $this()->size();
 	bytes r(n);
-	auto p = _this()->data();
+	auto p = $this()->data();
 	auto r_p = r.data();
 	for (size_t i = 0; i < n; i += Unit) {
 		memcpy(&r_p[i], &p[n - Unit - i], Unit);
@@ -764,10 +764,10 @@ public:
 
 	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes, bytes_pattern)
 	bytes_pattern(Args &&...bytes_args) :
-		_mb(std::forward<Args>(bytes_args)...) {}
+		$mb(std::forward<Args>(bytes_args)...) {}
 
 	bytes_pattern(rua::bytes masked, rua::bytes mask) :
-		_mb(std::move(masked)), _m(std::move(mask)) {}
+		$mb(std::move(masked)), _m(std::move(mask)) {}
 
 	template <
 		typename IntList,
@@ -776,19 +776,19 @@ public:
 		typename = enable_if_t<
 			std::is_integral<Int>::value && (sizeof(Int) > sizeof(uchar))>>
 	bytes_pattern(IntList &&li) {
-		_input(li);
+		$input(li);
 	}
 
 	bytes_pattern(std::initializer_list<uint16_t> il) {
-		_input(il);
+		$input(il);
 	}
 
 	size_t size() const {
-		return _mb.size();
+		return $mb.size();
 	}
 
 	bytes_view masked() const {
-		return _mb;
+		return $mb;
 	}
 
 	bytes_view mask() const {
@@ -801,27 +801,27 @@ public:
 			return false;
 		}
 		if (!_m) {
-			return bit_equal(_mb.data(), byts.data(), sz);
+			return bit_equal($mb.data(), byts.data(), sz);
 		}
-		return bit_contains(_mb.data(), byts.data(), _m.data(), sz);
+		return bit_contains($mb.data(), byts.data(), _m.data(), sz);
 	}
 
 private:
-	bytes _mb, _m;
+	bytes $mb, _m;
 
 	template <typename IntList>
-	void _input(IntList &&li) {
-		_mb.reset(li.size());
+	void $input(IntList &&li) {
+		$mb.reset(li.size());
 		auto begin = li.begin();
 		size_t i;
-		for (i = 0; i < _mb.size(); ++i) {
+		for (i = 0; i < $mb.size(); ++i) {
 			auto val = begin[i];
 			if (val < 256) {
-				_mb[i] = static_cast<uchar>(val);
+				$mb[i] = static_cast<uchar>(val);
 			} else {
-				_mb[i] = 0;
+				$mb[i] = 0;
 				if (!_m) {
-					_m.reset(_mb.size());
+					_m.reset($mb.size());
 					memset(_m.data(), 255, _m.size());
 				}
 				_m[i] = 0;
@@ -834,14 +834,14 @@ template <typename Span>
 inline optional<size_t> const_bytes_base<Span>::index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
-	auto sz = _this()->size();
+	auto sz = $this()->size();
 	auto mb_sz = pat.size();
 	if (sz < mb_sz) {
 		return nullopt;
 	}
 
-	auto begin = _this()->data() + start_pos;
-	auto end = begin + _this()->size() - mb_sz;
+	auto begin = $this()->data() + start_pos;
+	auto end = begin + $this()->size() - mb_sz;
 	auto mb_begin = pat.masked().data();
 
 	auto m_begin = pat.mask().data();
@@ -891,7 +891,7 @@ template <typename Span>
 inline optional<size_t> const_bytes_base<Span>::last_index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
-	auto sz = _this()->size();
+	auto sz = $this()->size();
 	auto mb_sz = pat.size();
 	if (sz < mb_sz) {
 		return nullopt;
@@ -901,9 +901,9 @@ inline optional<size_t> const_bytes_base<Span>::last_index_of(
 		start_pos = sz;
 	}
 
-	auto begin = _this()->data();
+	auto begin = $this()->data();
 	auto begin_before = begin - 1;
-	auto end = _this()->data() + start_pos - mb_sz;
+	auto end = $this()->data() + start_pos - mb_sz;
 	auto mb_begin = pat.masked().data();
 
 	auto m_begin = pat.mask().data();
@@ -982,38 +982,38 @@ public:
 	basic_bytes_finder() = default;
 
 	operator bool() const {
-		return _found.size();
+		return $found.size();
 	}
 
 	Bytes &operator*() {
-		return _found;
+		return $found;
 	}
 
 	const Bytes &operator*() const {
-		return _found;
+		return $found;
 	}
 
 	Bytes *operator->() {
-		return &_found;
+		return &$found;
 	}
 
 	const Bytes *operator->() const {
-		return &_found;
+		return &$found;
 	}
 
 	Bytes operator[](size_t ix) {
-		auto &sub = _vas[ix];
-		return _found(sub.offset, sub.offset + sub.size);
+		auto &sub = $vas[ix];
+		return $found(sub.offset, sub.offset + sub.size);
 	}
 
 	bytes_view operator[](size_t ix) const {
-		auto &sub = _vas[ix];
-		return _found(sub.offset, sub.offset + sub.size);
+		auto &sub = $vas[ix];
+		return $found(sub.offset, sub.offset + sub.size);
 	}
 
 	basic_bytes_finder &operator++() {
 		return *this = basic_bytes_finder::find(
-				   _place, std::move(_pat), std::move(_vas), pos());
+				   $place, std::move($pat), std::move($vas), pos());
 	}
 
 	basic_bytes_finder operator++(int) {
@@ -1024,7 +1024,7 @@ public:
 
 	basic_bytes_finder &operator--() {
 		return *this = basic_bytes_finder::rfind(
-				   _place, std::move(_pat), std::move(_vas), pos());
+				   $place, std::move($pat), std::move($vas), pos());
 	}
 
 	basic_bytes_finder operator--(int) {
@@ -1034,43 +1034,43 @@ public:
 	}
 
 	size_t pos() const {
-		assert(_found);
-		return _found.data() - _place.data();
+		assert($found);
+		return $found.data() - $place.data();
 	}
 
 	Bytes befores() {
-		return _place(0, pos());
+		return $place(0, pos());
 	}
 
 	bytes_view befores() const {
-		return _place(0, pos());
+		return $place(0, pos());
 	}
 
 	Bytes afters() {
-		return _place(pos() + _found.size());
+		return $place(pos() + $found.size());
 	}
 
 	bytes_view afters() const {
-		return _place(pos() + _found.size());
+		return $place(pos() + $found.size());
 	}
 
 private:
-	Bytes _place, _found;
-	bytes_pattern _pat;
-	std::vector<sub_area_t> _vas;
+	Bytes $place, $found;
+	bytes_pattern $pat;
+	std::vector<sub_area_t> $vas;
 
 	basic_bytes_finder(
 		Bytes place,
 		bytes_pattern pat,
 		std::vector<sub_area_t> vas,
 		size_t found_pos) :
-		_place(place),
-		_found(place(found_pos, found_pos + pat.size())),
-		_pat(std::move(pat)),
-		_vas(std::move(vas)) {
+		$place(place),
+		$found(place(found_pos, found_pos + pat.size())),
+		$pat(std::move(pat)),
+		$vas(std::move(vas)) {
 
-		auto mask = _pat.mask();
-		if (!mask || _vas.size()) {
+		auto mask = $pat.mask();
+		if (!mask || $vas.size()) {
 			return;
 		}
 
@@ -1081,15 +1081,15 @@ private:
 			if (val) {
 				if (in_va) {
 					in_va = false;
-					_vas.back().size = i - _vas.back().offset;
+					$vas.back().size = i - $vas.back().offset;
 				}
 			} else if (!in_va) {
 				in_va = true;
-				_vas.emplace_back(sub_area_t{i, 0});
+				$vas.emplace_back(sub_area_t{i, 0});
 			}
 		}
 		if (in_va) {
-			_vas.back().size = i - _vas.back().offset;
+			$vas.back().size = i - $vas.back().offset;
 		}
 	}
 };
@@ -1097,40 +1097,40 @@ private:
 template <typename Span>
 inline const_bytes_finder
 const_bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) const {
-	return const_bytes_finder::find(*_this(), std::move(pat), {}, start_pos);
+	return const_bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline const_bytes_rfinder
 const_bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_rfinder(
-		const_bytes_finder::rfind(*_this(), std::move(pat), {}, start_pos));
+		const_bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
 template <typename Span>
 inline bytes_finder
 bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) {
-	return bytes_finder::find(*_this(), std::move(pat), {}, start_pos);
+	return bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline const_bytes_finder
 bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) const {
-	return const_bytes_finder::find(*_this(), std::move(pat), {}, start_pos);
+	return const_bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline bytes_rfinder
 bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) {
 	return bytes_rfinder(
-		bytes_finder::rfind(*_this(), std::move(pat), {}, start_pos));
+		bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
 template <typename Span>
 inline const_bytes_rfinder
 bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_rfinder(
-		const_bytes_finder::rfind(*_this(), std::move(pat), {}, start_pos));
+		const_bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
 template <typename Derived, size_t Size = size_of<Derived>::value>
@@ -1158,14 +1158,14 @@ template <size_t Size, size_t Align = Size + Size % 2>
 class bytes_block : public bytes_base<bytes_block<Size, Align>> {
 public:
 	template <typename... Bytes>
-	constexpr bytes_block(Bytes... byts) : _raw{static_cast<uchar>(byts)...} {}
+	constexpr bytes_block(Bytes... byts) : $raw{static_cast<uchar>(byts)...} {}
 
 	uchar *data() {
-		return &_raw[0];
+		return &$raw[0];
 	}
 
 	const uchar *data() const {
-		return &_raw[0];
+		return &$raw[0];
 	}
 
 	static constexpr size_t size() {
@@ -1173,7 +1173,7 @@ public:
 	}
 
 private:
-	alignas(Align) uchar _raw[Size];
+	alignas(Align) uchar $raw[Size];
 };
 
 } // namespace rua

@@ -9,10 +9,10 @@ namespace rua {
 
 class printer {
 public:
-	constexpr printer(std::nullptr_t = nullptr) : _w(nullptr), _eol(eol::lf) {}
+	constexpr printer(std::nullptr_t = nullptr) : _w(nullptr), $eol(eol::lf) {}
 
 	explicit printer(stream_i w, string_view eol = eol::lf) :
-		_w(std::move(w)), _eol(eol) {}
+		_w(std::move(w)), $eol(eol) {}
 
 	~printer() {
 		if (!_w) {
@@ -32,7 +32,7 @@ public:
 
 	template <typename... Args>
 	void println(Args &&...args) {
-		print(std::forward<Args>(args)..., _eol);
+		print(std::forward<Args>(args)..., $eol);
 	}
 
 	stream_i get() {
@@ -45,12 +45,12 @@ public:
 
 	void reset(stream_i w, const char *eol) {
 		_w = std::move(w);
-		_eol = eol;
+		$eol = eol;
 	}
 
 private:
 	stream_i _w;
-	string_view _eol;
+	string_view $eol;
 };
 
 } // namespace rua

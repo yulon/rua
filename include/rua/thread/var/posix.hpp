@@ -12,9 +12,9 @@ namespace rua { namespace posix {
 
 class thread_word_var {
 public:
-	thread_word_var(void (*dtor)(generic_word)) : _dtor(dtor) {
-		_invalid = pthread_key_create(
-			&_key,
+	thread_word_var(void (*dtor)(generic_word)) : $dtor(dtor) {
+		$invalid = pthread_key_create(
+			&$key,
 			reinterpret_cast<void (*)(void *)>(reinterpret_cast<void *>(dtor)));
 	}
 
@@ -22,16 +22,16 @@ public:
 		if (!is_storable()) {
 			return;
 		}
-		if (pthread_key_delete(_key) != 0) {
+		if (pthread_key_delete($key) != 0) {
 			return;
 		}
-		_invalid = true;
+		$invalid = true;
 	}
 
 	thread_word_var(thread_word_var &&src) :
-		_key(src._key), _invalid(src._invalid) {
+		$key(src.$key), $invalid(src.$invalid) {
 		if (src.is_storable()) {
-			src._invalid = true;
+			src.$invalid = true;
 		}
 	}
 
@@ -40,19 +40,19 @@ public:
 	using native_handle_t = pthread_key_t;
 
 	native_handle_t native_handle() const {
-		return _key;
+		return $key;
 	}
 
 	bool is_storable() const {
-		return !_invalid;
+		return !$invalid;
 	}
 
 	void set(generic_word value) {
-		pthread_setspecific(_key, value);
+		pthread_setspecific($key, value);
 	}
 
 	generic_word get() const {
-		return pthread_getspecific(_key);
+		return pthread_getspecific($key);
 	}
 
 	void reset() {
@@ -60,14 +60,14 @@ public:
 		if (!val) {
 			return;
 		}
-		_dtor(val);
+		$dtor(val);
 		set(0);
 	}
 
 private:
-	pthread_key_t _key;
-	bool _invalid;
-	void (*_dtor)(generic_word);
+	pthread_key_t $key;
+	bool $invalid;
+	void (*$dtor)(generic_word);
 };
 
 template <typename T>

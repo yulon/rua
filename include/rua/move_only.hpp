@@ -47,19 +47,19 @@ public:
 	RUA_OVERLOAD_ASSIGNMENT(move_only)
 
 	T &value() & {
-		return *reinterpret_cast<T *>(&_sto[0]);
+		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
 	const T &value() const & {
-		return *reinterpret_cast<const T *>(&_sto[0]);
+		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
 	T &&value() && {
-		return std::move(*reinterpret_cast<T *>(&_sto[0]));
+		return std::move(*reinterpret_cast<T *>(&$sto[0]));
 	}
 
 private:
-	alignas(alignof(T)) uchar _sto[sizeof(T)];
+	alignas(alignof(T)) uchar $sto[sizeof(T)];
 };
 
 template <typename T>

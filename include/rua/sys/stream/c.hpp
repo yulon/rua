@@ -14,9 +14,9 @@ public:
 	using native_handle_t = FILE *;
 
 	constexpr c_stream(native_handle_t f = nullptr, bool need_close = true) :
-		_f(f), _nc(need_close) {}
+		_f(f), $nc(need_close) {}
 
-	c_stream(c_stream &&src) : c_stream(src._f, src._nc) {
+	c_stream(c_stream &&src) : c_stream(src._f, src.$nc) {
 		src.detach();
 	}
 
@@ -47,26 +47,26 @@ public:
 	}
 
 	bool is_need_close() const {
-		return _f && _nc;
+		return _f && $nc;
 	}
 
 	virtual void close() {
 		if (!_f) {
 			return;
 		}
-		if (_nc) {
+		if ($nc) {
 			fclose(_f);
 		}
 		_f = nullptr;
 	}
 
 	void detach() {
-		_nc = false;
+		$nc = false;
 	}
 
 private:
 	native_handle_t _f;
-	bool _nc;
+	bool $nc;
 };
 
 } // namespace rua

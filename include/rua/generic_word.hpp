@@ -22,13 +22,13 @@ public:
 
 	generic_word() = default;
 
-	constexpr generic_word(std::nullptr_t) : _val(0) {}
+	constexpr generic_word(std::nullptr_t) : $val(0) {}
 
 	template <typename T, typename = enable_if_t<std::is_integral<T>::value>>
-	constexpr generic_word(T val) : _val(static_cast<uintptr_t>(val)) {}
+	constexpr generic_word(T val) : $val(static_cast<uintptr_t>(val)) {}
 
 	template <typename T>
-	generic_word(T *ptr) : _val(reinterpret_cast<uintptr_t>(ptr)) {}
+	generic_word(T *ptr) : $val(reinterpret_cast<uintptr_t>(ptr)) {}
 
 	template <
 		typename T,
@@ -46,7 +46,7 @@ public:
 			!is_dynamic_allocation<DecayT>::value &&
 			!std::is_base_of<generic_word, DecayT>::value>>
 	generic_word(const T &src) {
-		bit_set<DecayT>(&_val, src);
+		bit_set<DecayT>(&$val, src);
 	}
 
 	template <
@@ -54,14 +54,14 @@ public:
 		typename DecayT = decay_t<T>,
 		typename = enable_if_t<is_dynamic_allocation<DecayT>::value>>
 	generic_word(T &&src) :
-		_val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
+		$val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
 
 	template <
 		typename T,
 		typename... Args,
 		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	explicit generic_word(in_place_type_t<T>, Args &&...args) :
-		_val(reinterpret_cast<uintptr_t>(new T(std::forward<Args>(args)...))) {}
+		$val(reinterpret_cast<uintptr_t>(new T(std::forward<Args>(args)...))) {}
 
 	template <
 		typename T,
@@ -70,7 +70,7 @@ public:
 		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	explicit generic_word(
 		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) :
-		_val(reinterpret_cast<uintptr_t>(
+		$val(reinterpret_cast<uintptr_t>(
 			new T(il, std::forward<Args>(args)...))) {}
 
 	template <
@@ -79,34 +79,34 @@ public:
 		typename = enable_if_t<!std::is_void<T>::value>,
 		typename = enable_if_t<!is_dynamic_allocation<T>::value>>
 	explicit generic_word(in_place_type_t<T>, Args &&...args) :
-		_val(T(std::forward<Args>(args)...)) {}
+		$val(T(std::forward<Args>(args)...)) {}
 
-	explicit constexpr generic_word(in_place_type_t<void>) : _val(0) {}
+	explicit constexpr generic_word(in_place_type_t<void>) : $val(0) {}
 
 	constexpr operator bool() const {
-		return _val;
+		return $val;
 	}
 
 	constexpr bool operator!() const {
-		return !_val;
+		return !$val;
 	}
 
 	RUA_CONSTEXPR_14 uintptr_t &value() {
-		return _val;
+		return $val;
 	}
 
 	constexpr uintptr_t value() const {
-		return _val;
+		return $val;
 	}
 
 	template <typename T>
 	enable_if_t<std::is_integral<T>::value, T> as() const & {
-		return static_cast<T>(_val);
+		return static_cast<T>($val);
 	}
 
 	template <typename T>
 	enable_if_t<std::is_pointer<T>::value, T> as() const & {
-		return reinterpret_cast<T>(_val);
+		return reinterpret_cast<T>($val);
 	}
 
 	template <typename T>
@@ -115,22 +115,22 @@ public:
 			!is_dynamic_allocation<T>::value,
 		T>
 	as() const & {
-		return bit_get<T>(&_val);
+		return bit_get<T>(&$val);
 	}
 
 	template <typename T>
 	enable_if_t<is_dynamic_allocation<T>::value, const T &> as() const & {
-		return *reinterpret_cast<const T *>(_val);
+		return *reinterpret_cast<const T *>($val);
 	}
 
 	template <typename T>
 	enable_if_t<is_dynamic_allocation<T>::value, T &> as() & {
-		return *reinterpret_cast<T *>(_val);
+		return *reinterpret_cast<T *>($val);
 	}
 
 	template <typename T>
 	enable_if_t<is_dynamic_allocation<T>::value, T> as() && {
-		auto ptr = reinterpret_cast<T *>(_val);
+		auto ptr = reinterpret_cast<T *>($val);
 		T r(std::move(*ptr));
 		delete ptr;
 		return r;
@@ -148,11 +148,11 @@ public:
 		typename T,
 		typename = enable_if_t<is_dynamic_allocation<T>::value>>
 	void destruct() {
-		delete reinterpret_cast<T *>(_val);
+		delete reinterpret_cast<T *>($val);
 	}
 
 private:
-	uintptr_t _val;
+	uintptr_t $val;
 };
 
 inline std::string to_string(const generic_word w) {

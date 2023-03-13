@@ -16,21 +16,21 @@ namespace rua { namespace win32 {
 class thread_word_var {
 public:
 	thread_word_var(void (*dtor)(generic_word)) :
-		_ix(TlsAlloc()), _dtor(dtor) {}
+		$ix(TlsAlloc()), $dtor(dtor) {}
 
 	~thread_word_var() {
 		if (!is_storable()) {
 			return;
 		}
-		if (!TlsFree(_ix)) {
+		if (!TlsFree($ix)) {
 			return;
 		}
-		_ix = TLS_OUT_OF_INDEXES;
+		$ix = TLS_OUT_OF_INDEXES;
 	}
 
-	thread_word_var(thread_word_var &&src) : _ix(src._ix) {
+	thread_word_var(thread_word_var &&src) : $ix(src.$ix) {
 		if (src.is_storable()) {
-			src._ix = TLS_OUT_OF_INDEXES;
+			src.$ix = TLS_OUT_OF_INDEXES;
 		}
 	}
 
@@ -39,23 +39,23 @@ public:
 	using native_handle_t = DWORD;
 
 	native_handle_t native_handle() const {
-		return _ix;
+		return $ix;
 	}
 
 	bool is_storable() const {
-		return _ix != TLS_OUT_OF_INDEXES;
+		return $ix != TLS_OUT_OF_INDEXES;
 	}
 
 	void set(generic_word value) {
-		_get(TlsGetValue(_ix)) = value;
+		$get(TlsGetValue($ix)) = value;
 	}
 
 	generic_word get() const {
-		auto val_ptr = TlsGetValue(_ix);
+		auto val_ptr = TlsGetValue($ix);
 		if (!val_ptr) {
 			return 0;
 		}
-		return _get(val_ptr);
+		return $get(val_ptr);
 	}
 
 	void reset() {
@@ -63,23 +63,23 @@ public:
 		if (!val) {
 			return;
 		}
-		_dtor(val);
+		$dtor(val);
 		set(0);
 	}
 
 private:
-	DWORD _ix;
-	void (*_dtor)(generic_word);
+	DWORD $ix;
+	void (*$dtor)(generic_word);
 
-	generic_word &_get(LPVOID val_ptr) const {
+	generic_word &$get(LPVOID val_ptr) const {
 		if (val_ptr) {
 			return *reinterpret_cast<generic_word *>(val_ptr);
 		}
 		auto p = new generic_word;
-		TlsSetValue(_ix, p);
+		TlsSetValue($ix, p);
 		auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 		assert(h);
-		auto dtor = _dtor;
+		auto dtor = $dtor;
 		sys_listen(h, [p, dtor, h]() {
 			dtor(*p);
 			delete p;

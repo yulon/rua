@@ -63,12 +63,12 @@ public:
 		typename = enable_if_t<std::is_integral<Pid>::value>>
 	explicit process(Pid id) {
 		if (!id) {
-			_h = nullptr;
+			$h = nullptr;
 			return;
 		}
 
-		_h = OpenProcess(_all_access(), false, static_cast<pid_t>(id));
-		if (_h) {
+		$h = OpenProcess($all_access(), false, static_cast<pid_t>(id));
+		if ($h) {
 			return;
 		}
 
@@ -94,36 +94,36 @@ public:
 			return r;
 		})();
 		if (has_dbg_priv) {
-			_h = OpenProcess(_all_access(), false, static_cast<pid_t>(id));
-			if (_h) {
+			$h = OpenProcess($all_access(), false, static_cast<pid_t>(id));
+			if ($h) {
 				return;
 			}
 		}
 
-		_h = OpenProcess(_read_access(), false, static_cast<pid_t>(id));
+		$h = OpenProcess($read_access(), false, static_cast<pid_t>(id));
 	}
 
-	constexpr process(std::nullptr_t = nullptr) : _h(nullptr) {}
+	constexpr process(std::nullptr_t = nullptr) : $h(nullptr) {}
 
-	explicit process(native_handle_t h) : _h(h) {}
+	explicit process(native_handle_t h) : $h(h) {}
 
 	~process() {
 		reset();
 	}
 
 	process(process &&src) :
-		_h(src._h),
-		_prev_get_cpu_usage_time(src._prev_get_cpu_usage_time),
-		_prev_used_cpu_time(src._prev_used_cpu_time) {
+		$h(src.$h),
+		$prev_get_cpu_usage_time(src.$prev_get_cpu_usage_time),
+		$prev_used_cpu_time(src.$prev_used_cpu_time) {
 		if (src) {
-			src._h = nullptr;
+			src.$h = nullptr;
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(process)
 
 	pid_t id() const {
-		return GetProcessId(_h);
+		return GetProcessId($h);
 	}
 
 	bool operator==(const process &target) const {
@@ -135,15 +135,15 @@ public:
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	operator bool() const {
-		return _h;
+		return $h;
 	}
 
 	future<generic_word> RUA_OPERATOR_AWAIT() const {
-		auto h = _h;
+		auto h = $h;
 		return sys_wait(h) >> [h]() -> generic_word {
 			DWORD ec;
 			GetExitCodeProcess(h, &ec);
@@ -152,15 +152,15 @@ public:
 	}
 
 	void kill() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		TerminateProcess(_h, 0);
-		_reset();
+		TerminateProcess($h, 0);
+		$reset();
 	}
 
 	bool is_suspended() const {
-		auto nt_query_system_information = _ntdll().nt_query_system_information;
+		auto nt_query_system_information = $ntdll().nt_query_system_information;
 		if (!nt_query_system_information) {
 			return false;
 		}
@@ -255,30 +255,30 @@ public:
 		if (is_suspended()) {
 			return true;
 		}
-		auto nt_suspend_process = _ntdll().nt_suspend_process;
+		auto nt_suspend_process = $ntdll().nt_suspend_process;
 		if (!nt_suspend_process) {
 			return false;
 		}
-		return nt_suspend_process(_h) >= 0;
+		return nt_suspend_process($h) >= 0;
 	}
 
 	bool resume() {
-		auto nt_resume_process = _ntdll().nt_resume_process;
+		auto nt_resume_process = $ntdll().nt_resume_process;
 		if (!nt_resume_process) {
 			return false;
 		}
-		return nt_resume_process(_h) >= 0;
+		return nt_resume_process($h) >= 0;
 	}
 
 	using native_module_handle_t = HMODULE;
 
 	file_path path(native_module_handle_t mdu = nullptr) const {
-		auto get_module_file_name_ex_w = _psapi().get_module_file_name_ex_w;
+		auto get_module_file_name_ex_w = $psapi().get_module_file_name_ex_w;
 		if (!get_module_file_name_ex_w) {
 			return "";
 		}
 		WCHAR pth[MAX_PATH];
-		auto pth_sz = get_module_file_name_ex_w(_h, mdu, pth, MAX_PATH);
+		auto pth_sz = get_module_file_name_ex_w($h, mdu, pth, MAX_PATH);
 		if (!pth_sz) {
 			return "";
 		}
@@ -286,12 +286,12 @@ public:
 	}
 
 	std::string name(native_module_handle_t mdu = nullptr) const {
-		auto get_module_base_name_w = _psapi().get_module_base_name_w;
+		auto get_module_base_name_w = $psapi().get_module_base_name_w;
 		if (!get_module_base_name_w) {
 			return path().back();
 		}
 		WCHAR n[MAX_PATH];
-		auto n_sz = get_module_base_name_w(_h, mdu, n, MAX_PATH);
+		auto n_sz = get_module_base_name_w($h, mdu, n, MAX_PATH);
 		if (!n_sz) {
 			return path().back();
 		}
@@ -308,14 +308,14 @@ public:
 			argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 		} else {
 			auto nt_query_information_process =
-				_ntdll().nt_query_information_process;
+				$ntdll().nt_query_information_process;
 			if (!nt_query_information_process) {
 				return params;
 			}
 
-			_process_basic_information pbi;
+			$process_basic_information pbi;
 			if (nt_query_information_process(
-					_h, 0, &pbi, sizeof(pbi), nullptr) < 0) {
+					$h, 0, &pbi, sizeof(pbi), nullptr) < 0) {
 				return params;
 			}
 
@@ -356,12 +356,12 @@ public:
 
 	pid_t parent_id() const {
 		auto nt_query_information_process =
-			_ntdll().nt_query_information_process;
+			$ntdll().nt_query_information_process;
 		if (!nt_query_information_process) {
 			return 0;
 		}
-		_process_basic_information pbi;
-		if (nt_query_information_process(_h, 0, &pbi, sizeof(pbi), nullptr) <
+		$process_basic_information pbi;
+		if (nt_query_information_process($h, 0, &pbi, sizeof(pbi), nullptr) <
 			0) {
 			return 0;
 		}
@@ -376,7 +376,7 @@ public:
 	cpu_usage(duration &prev_get_time, duration &prev_used_cpu_time) const {
 		FILETIME CreateTime, ExitTime, KernelTime, UserTime;
 		if (!GetProcessTimes(
-				_h, &CreateTime, &ExitTime, &KernelTime, &UserTime)) {
+				$h, &CreateTime, &ExitTime, &KernelTime, &UserTime)) {
 			return 0.f;
 		}
 
@@ -406,23 +406,23 @@ public:
 	}
 
 	float cpu_usage() {
-		return cpu_usage(_prev_get_cpu_usage_time, _prev_used_cpu_time);
+		return cpu_usage($prev_get_cpu_usage_time, $prev_used_cpu_time);
 	}
 
 	size_t memory_usage() const {
-		auto get_process_memoryinfo = _psapi().get_process_memoryinfo;
+		auto get_process_memoryinfo = $psapi().get_process_memoryinfo;
 		if (!get_process_memoryinfo) {
 			return 0;
 		}
 		PROCESS_MEMORY_COUNTERS pmc;
-		return get_process_memoryinfo(_h, &pmc, sizeof(pmc))
+		return get_process_memoryinfo($h, &pmc, sizeof(pmc))
 				   ? pmc.WorkingSetSize
 				   : 0;
 	}
 
 	ptrdiff_t memory_read(generic_ptr ptr, bytes_ref data) const {
 		SIZE_T sz;
-		if (!ReadProcessMemory(_h, ptr, data.data(), data.size(), &sz)) {
+		if (!ReadProcessMemory($h, ptr, data.data(), data.size(), &sz)) {
 			return -1;
 		}
 		return static_cast<ptrdiff_t>(sz);
@@ -430,7 +430,7 @@ public:
 
 	ptrdiff_t memory_write(generic_ptr ptr, bytes_view data) {
 		SIZE_T sz;
-		if (!WriteProcessMemory(_h, ptr, data.data(), data.size(), &sz)) {
+		if (!WriteProcessMemory($h, ptr, data.data(), data.size(), &sz)) {
 			return -1;
 		}
 		return static_cast<ptrdiff_t>(sz);
@@ -439,28 +439,28 @@ public:
 	class memory_block {
 	public:
 		constexpr memory_block() :
-			_h(nullptr), _p(nullptr), _sz(0), _need_free(false) {}
+			$h(nullptr), $p(nullptr), $sz(0), $need_free(false) {}
 
 		~memory_block() {
 			reset();
 		}
 
 		operator bool() const {
-			return _p;
+			return $p;
 		}
 
 		generic_ptr data() const {
-			return _p;
+			return $p;
 		}
 
 		size_t size() const {
-			return _sz;
+			return $sz;
 		}
 
 		ptrdiff_t read_at(ptrdiff_t pos, bytes_ref data) {
 			SIZE_T sz;
 			if (!ReadProcessMemory(
-					_h, _p + pos, data.data(), data.size(), &sz)) {
+					$h, $p + pos, data.data(), data.size(), &sz)) {
 				return -1;
 			}
 			return static_cast<ptrdiff_t>(sz);
@@ -469,59 +469,59 @@ public:
 		ptrdiff_t write_at(ptrdiff_t pos, bytes_view data) {
 			SIZE_T sz;
 			if (!WriteProcessMemory(
-					_h, _p + pos, data.data(), data.size(), &sz)) {
+					$h, $p + pos, data.data(), data.size(), &sz)) {
 				return -1;
 			}
 			return static_cast<ptrdiff_t>(sz);
 		}
 
 		void detach() {
-			_need_free = false;
+			$need_free = false;
 		}
 
 		void reset() {
-			if (_need_free) {
-				VirtualFreeEx(_h, _p, _sz, MEM_RELEASE);
-				_need_free = false;
+			if ($need_free) {
+				VirtualFreeEx($h, $p, $sz, MEM_RELEASE);
+				$need_free = false;
 			}
-			_h = nullptr;
-			_p = nullptr;
-			_sz = 0;
+			$h = nullptr;
+			$p = nullptr;
+			$sz = 0;
 		}
 
 	private:
-		native_handle_t _h;
-		generic_ptr _p;
-		size_t _sz;
-		bool _need_free;
+		native_handle_t $h;
+		generic_ptr $p;
+		size_t $sz;
+		bool $need_free;
 
 		memory_block(
 			native_handle_t h, generic_ptr data, size_t n, bool need_free) :
-			_h(h), _p(data), _sz(n), _need_free(need_free) {}
+			$h(h), $p(data), $sz(n), $need_free(need_free) {}
 
 		friend process;
 	};
 
 	memory_block memory_ref(generic_ptr data, size_t size) const {
-		return memory_block(_h, data, size, false);
+		return memory_block($h, data, size, false);
 	}
 
 	memory_block memory_image(native_module_handle_t mdu = nullptr) const {
-		auto get_module_information = _psapi().get_module_information;
+		auto get_module_information = $psapi().get_module_information;
 		if (!get_module_information) {
 			return {};
 		}
 		MODULEINFO mi;
 		get_module_information(
-			_h, mdu ? mdu : GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
+			$h, mdu ? mdu : GetModuleHandleW(nullptr), &mi, sizeof(MODULEINFO));
 		return memory_ref(mi.lpBaseOfDll, mi.SizeOfImage);
 	}
 
 	memory_block memory_alloc(size_t size, bool is_executable = true) {
 		return memory_block(
-			_h,
+			$h,
 			VirtualAllocEx(
-				_h,
+				$h,
 				nullptr,
 				size,
 				MEM_COMMIT,
@@ -552,14 +552,14 @@ public:
 
 	thread make_thread(generic_ptr func, generic_ptr param = nullptr) {
 		if (sys_version() >= 6) {
-			auto nt_create_thread_ex = _ntdll().nt_create_thread_ex;
+			auto nt_create_thread_ex = $ntdll().nt_create_thread_ex;
 			if (nt_create_thread_ex) {
 				HANDLE td;
 				if (SUCCEEDED(nt_create_thread_ex(
 						&td,
 						0x1FFFFF,
 						nullptr,
-						_h,
+						$h,
 						func,
 						param,
 						0,
@@ -572,48 +572,48 @@ public:
 			}
 		}
 		return thread(
-			CreateRemoteThread(_h, nullptr, 0, func, param, 0, nullptr));
+			CreateRemoteThread($h, nullptr, 0, func, param, 0, nullptr));
 	}
 
 	inline thread load_dylib(std::string name);
 
 	void reset() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		_reset();
+		$reset();
 	}
 
 	void detach() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		_h = nullptr;
+		$h = nullptr;
 	}
 
 private:
-	HANDLE _h;
-	duration _prev_get_cpu_usage_time, _prev_used_cpu_time;
+	HANDLE $h;
+	duration $prev_get_cpu_usage_time, $prev_used_cpu_time;
 
-	void _reset() {
-		assert(_h);
+	void $reset() {
+		assert($h);
 
-		CloseHandle(_h);
-		_h = nullptr;
+		CloseHandle($h);
+		$h = nullptr;
 	}
 
-	static DWORD _all_access() {
+	static DWORD $all_access() {
 		if (sys_version() >= 6) {
 			return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
 		}
 		return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFF;
 	}
 
-	static constexpr DWORD _read_access() {
+	static constexpr DWORD $read_access() {
 		return PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | SYNCHRONIZE;
 	}
 
-	struct _process_basic_information {
+	struct $process_basic_information {
 		NTSTATUS ExitStatus;
 		PPEB PebBaseAddress;
 		ULONG_PTR AffinityMask;
@@ -622,9 +622,9 @@ private:
 		ULONG_PTR InheritedFromUniqueProcessId;
 	};
 
-	struct _process_extended_basic_information {
+	struct $process_extended_basic_information {
 		SIZE_T Size;
-		_process_basic_information BasicInfo;
+		$process_basic_information BasicInfo;
 		union {
 			ULONG Flags;
 			struct {
@@ -642,7 +642,7 @@ private:
 		};
 	};
 
-	struct _ntdll_t {
+	struct $ntdll_t {
 		NTSTATUS(WINAPI *nt_suspend_process)(HANDLE);
 		NTSTATUS(WINAPI *nt_resume_process)(HANDLE);
 		NTSTATUS(WINAPI *nt_query_system_information)
@@ -670,9 +670,9 @@ private:
 		 PVOID AttributeList);
 	};
 
-	static const _ntdll_t &_ntdll() {
+	static const $ntdll_t &$ntdll() {
 		static auto ntdll = dylib::from_loaded_or_load("ntdll.dll");
-		static const _ntdll_t inst{
+		static const $ntdll_t inst{
 			ntdll["NtSuspendProcess"],
 			ntdll["NtResumeProcess"],
 			ntdll["NtQuerySystemInformation"],
@@ -681,7 +681,7 @@ private:
 		return inst;
 	}
 
-	struct _psapi_t {
+	struct $psapi_t {
 		decltype(&GetModuleFileNameExW) get_module_file_name_ex_w;
 		decltype(&GetModuleBaseNameW) get_module_base_name_w;
 		decltype(&GetModuleInformation) get_module_information;
@@ -689,7 +689,7 @@ private:
 	};
 
 	static generic_ptr
-	_load_psapi(dylib &kernel32, dylib &psapi, string_view name) {
+	$load_psapi(dylib &kernel32, dylib &psapi, string_view name) {
 		auto fp = kernel32[join("K32", name)];
 		if (fp) {
 			return fp;
@@ -700,14 +700,14 @@ private:
 		return psapi[name];
 	}
 
-	static const _psapi_t &_psapi() {
+	static const $psapi_t &$psapi() {
 		static dylib kernel32 = dylib::from_loaded_or_load("kernel32.dll"),
 					 psapi;
-		static const _psapi_t inst{
-			_load_psapi(kernel32, psapi, "GetModuleFileNameExW"),
-			_load_psapi(kernel32, psapi, "GetModuleBaseNameW"),
-			_load_psapi(kernel32, psapi, "GetModuleInformation"),
-			_load_psapi(kernel32, psapi, "GetProcessMemoryInfo")};
+		static const $psapi_t inst{
+			$load_psapi(kernel32, psapi, "GetModuleFileNameExW"),
+			$load_psapi(kernel32, psapi, "GetModuleBaseNameW"),
+			$load_psapi(kernel32, psapi, "GetModuleInformation"),
+			$load_psapi(kernel32, psapi, "GetProcessMemoryInfo")};
 		return inst;
 	}
 };
@@ -1018,31 +1018,31 @@ public:
 	process_maker(process_maker &&pm) :
 		process_maker_base<process_maker, _process_make_info>(
 			std::move(static_cast<process_maker_base &&>(pm))),
-		_el_perms(false) {}
+		$el_perms(false) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(process_maker)
 
 	~process_maker() {
-		if (!_info.file) {
+		if (!$info.file) {
 			return;
 		}
 		start();
 	}
 
 	process start() {
-		if (!_info.file) {
+		if (!$info.file) {
 			return nullptr;
 		}
 
-		if (_el_perms && sys_version() >= 6 && !has_full_permissions()) {
-			if (_info.stdout_w) {
-				_info.stdout_w.reset();
+		if ($el_perms && sys_version() >= 6 && !has_full_permissions()) {
+			if ($info.stdout_w) {
+				$info.stdout_w.reset();
 			}
-			if (_info.stderr_w) {
-				_info.stderr_w.reset();
+			if ($info.stderr_w) {
+				$info.stderr_w.reset();
 			}
-			if (_info.stdin_r) {
-				_info.stdin_r.reset();
+			if ($info.stdin_r) {
+				$info.stdin_r.reset();
 			}
 
 			SHELLEXECUTEINFOW sei;
@@ -1050,15 +1050,15 @@ public:
 			sei.cbSize = sizeof(sei);
 			sei.lpVerb = L"runas";
 			sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-			sei.nShow = _info.hide ? SW_HIDE : SW_SHOW;
+			sei.nShow = $info.hide ? SW_HIDE : SW_SHOW;
 
-			auto path_w = u2w(_info.file.str());
+			auto path_w = u2w($info.file.str());
 			sei.lpFile = path_w.c_str();
 
-			_info.file = "";
+			$info.file = "";
 
 			std::wstringstream args_ss_w;
-			for (auto &arg : _info.args) {
+			for (auto &arg : $info.args) {
 				if (arg.find(' ') == string_view::npos) {
 					args_ss_w << L" " << u2w(arg);
 				} else {
@@ -1070,7 +1070,7 @@ public:
 				sei.lpParameters = args_w.c_str();
 			}
 
-			auto wd_w = u2w(_info.work_dir.str());
+			auto wd_w = u2w($info.work_dir.str());
 			sei.lpDirectory = wd_w.c_str();
 
 			if (!ShellExecuteExW(&sei)) {
@@ -1080,12 +1080,12 @@ public:
 		}
 
 		std::wstringstream cmd_ss_w;
-		if (_info.file.str().find(' ') == std::string::npos) {
-			cmd_ss_w << u2w(_info.file.str());
+		if ($info.file.str().find(' ') == std::string::npos) {
+			cmd_ss_w << u2w($info.file.str());
 		} else {
-			cmd_ss_w << L"\"" << u2w(_info.file.str()) << L"\"";
+			cmd_ss_w << L"\"" << u2w($info.file.str()) << L"\"";
 		}
-		for (auto &arg : _info.args) {
+		for (auto &arg : $info.args) {
 			if (arg.find(' ') == string_view::npos) {
 				cmd_ss_w << L" " << u2w(arg);
 			} else {
@@ -1093,65 +1093,65 @@ public:
 			}
 		}
 
-		_info.file = "";
+		$info.file = "";
 
 		STARTUPINFOW si;
 		memset(&si, 0, sizeof(si));
 		si.cb = sizeof(si);
 
-		if (_info.stdout_w || _info.stderr_w || _info.stdin_r) {
+		if ($info.stdout_w || $info.stderr_w || $info.stdin_r) {
 			si.dwFlags |= STARTF_USESTDHANDLES;
 
-			if (_info.stdout_w) {
-				if (*_info.stdout_w && !SetHandleInformation(
-										   _info.stdout_w->native_handle(),
+			if ($info.stdout_w) {
+				if (*$info.stdout_w && !SetHandleInformation(
+										   $info.stdout_w->native_handle(),
 										   HANDLE_FLAG_INHERIT,
 										   HANDLE_FLAG_INHERIT)) {
-					_info.stdout_w->close();
+					$info.stdout_w->close();
 				}
-				si.hStdOutput = _info.stdout_w->native_handle();
+				si.hStdOutput = $info.stdout_w->native_handle();
 			} else {
 				si.hStdOutput = out().native_handle();
 			}
 
-			if (_info.stderr_w) {
-				if (*_info.stderr_w && !SetHandleInformation(
-										   _info.stderr_w->native_handle(),
+			if ($info.stderr_w) {
+				if (*$info.stderr_w && !SetHandleInformation(
+										   $info.stderr_w->native_handle(),
 										   HANDLE_FLAG_INHERIT,
 										   HANDLE_FLAG_INHERIT)) {
-					_info.stderr_w->close();
+					$info.stderr_w->close();
 				}
-				si.hStdError = _info.stderr_w->native_handle();
-			} else if (_info.stdout_w) {
+				si.hStdError = $info.stderr_w->native_handle();
+			} else if ($info.stdout_w) {
 				si.hStdError = si.hStdOutput;
 			} else {
 				si.hStdError = err().native_handle();
 			}
 
-			if (_info.stdin_r) {
-				if (*_info.stdin_r && !SetHandleInformation(
-										  _info.stdin_r->native_handle(),
+			if ($info.stdin_r) {
+				if (*$info.stdin_r && !SetHandleInformation(
+										  $info.stdin_r->native_handle(),
 										  HANDLE_FLAG_INHERIT,
 										  HANDLE_FLAG_INHERIT)) {
-					_info.stdin_r->close();
+					$info.stdin_r->close();
 				}
-				si.hStdInput = _info.stdin_r->native_handle();
+				si.hStdInput = $info.stdin_r->native_handle();
 			} else {
 				si.hStdInput = in().native_handle();
 			}
 		}
 
-		if (_info.hide) {
+		if ($info.hide) {
 			si.dwFlags |= STARTF_USESHOWWINDOW;
 			si.wShowWindow = SW_HIDE;
 		}
 
-		auto is_suspended = _info.on_start || _info.dylibs.size();
+		auto is_suspended = $info.on_start || $info.dylibs.size();
 
 		DWORD creation_flags = is_suspended ? CREATE_SUSPENDED : 0;
 
 		std::wstring envs;
-		if (_info.envs.size()) {
+		if ($info.envs.size()) {
 			creation_flags |= CREATE_UNICODE_ENVIRONMENT;
 
 			auto begin = GetEnvironmentStringsW();
@@ -1168,9 +1168,9 @@ public:
 				}
 				if (eq_begin) {
 					if (eq_begin < p - 1) {
-						if (_info.envs.find(
+						if ($info.envs.find(
 								w2u(wstring_view(begin, eq_begin - begin))) ==
-							_info.envs.end()) {
+							$info.envs.end()) {
 							envs += wstring_view(begin, p - begin + 1);
 						}
 					}
@@ -1179,7 +1179,7 @@ public:
 				begin = p + 1;
 			}
 
-			for (auto &env : _info.envs) {
+			for (auto &env : $info.envs) {
 				envs += u2w(join(
 					env.first, "=", env.second, rua::string_view("\0", 1)));
 			}
@@ -1196,18 +1196,18 @@ public:
 			true,
 			creation_flags,
 			envs.size() ? &envs[0] : nullptr,
-			_info.work_dir ? rua::u2w(_info.work_dir.str()).c_str() : nullptr,
+			$info.work_dir ? rua::u2w($info.work_dir.str()).c_str() : nullptr,
 			&si,
 			&pi);
 
-		if (_info.stdout_w) {
-			_info.stdout_w.reset();
+		if ($info.stdout_w) {
+			$info.stdout_w.reset();
 		}
-		if (_info.stderr_w) {
-			_info.stderr_w.reset();
+		if ($info.stderr_w) {
+			$info.stderr_w.reset();
 		}
-		if (_info.stdin_r) {
-			_info.stdin_r.reset();
+		if ($info.stdin_r) {
+			$info.stdin_r.reset();
 		}
 
 		if (!ok) {
@@ -1223,10 +1223,10 @@ public:
 			return proc;
 		}
 
-		_start_with_load_dlls(proc, pi.hThread);
+		$start_with_load_dlls(proc, pi.hThread);
 
-		if (_info.on_start) {
-			_info.on_start(proc);
+		if ($info.on_start) {
+			$info.on_start(proc);
 		}
 
 		ResumeThread(pi.hThread);
@@ -1235,18 +1235,18 @@ public:
 	}
 
 	process_maker &elevate_permissions() {
-		_el_perms = true;
+		$el_perms = true;
 		return *this;
 	}
 
 private:
-	bool _el_perms;
+	bool $el_perms;
 
 	process_maker(_process_make_info info) :
-		process_maker_base(std::move(info)), _el_perms(false) {}
+		process_maker_base(std::move(info)), $el_perms(false) {}
 
-	bool _start_with_load_dlls(process &proc, HANDLE main_td_h) {
-		if (!_info.dylibs.size()) {
+	bool $start_with_load_dlls(process &proc, HANDLE main_td_h) {
+		if (!$info.dylibs.size()) {
 			return false;
 		}
 
@@ -1268,7 +1268,7 @@ private:
 		ctx.td_param = generic_ptr(main_td_ctx.Edx);
 #endif
 
-		auto data = _make_proc_load_dll_data(proc, _info.dylibs, ctx);
+		auto data = _make_proc_load_dll_data(proc, $info.dylibs, ctx);
 		if (!data) {
 			return false;
 		}
@@ -1330,77 +1330,77 @@ namespace _find_process {
 
 class process_finder : private wandering_iterator {
 public:
-	process_finder() : _snapshot(INVALID_HANDLE_VALUE) {}
+	process_finder() : $snapshot(INVALID_HANDLE_VALUE) {}
 
 	~process_finder() {
 		if (*this) {
-			_reset();
+			$reset();
 		}
 	}
 
 	process_finder(process_finder &&src) :
-		_snapshot(src._snapshot), _entry(src._entry) {
+		$snapshot(src.$snapshot), $entry(src.$entry) {
 		if (src) {
-			src._snapshot = INVALID_HANDLE_VALUE;
+			src.$snapshot = INVALID_HANDLE_VALUE;
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(process_finder)
 
 	operator bool() const {
-		return _snapshot != INVALID_HANDLE_VALUE;
+		return $snapshot != INVALID_HANDLE_VALUE;
 	}
 
 	process operator*() const {
-		return *this ? process(_entry.th32ProcessID) : process();
+		return *this ? process($entry.th32ProcessID) : process();
 	}
 
 	process_finder &operator++() {
 		assert(*this);
 
-		while (Process32NextW(_snapshot, &_entry)) {
-			if (!_name.size() || _entry.szExeFile == _name) {
-				if (_entry.th32ProcessID) {
+		while (Process32NextW($snapshot, &$entry)) {
+			if (!$name.size() || $entry.szExeFile == $name) {
+				if ($entry.th32ProcessID) {
 					return *this;
 				}
 			}
 		}
-		_reset();
+		$reset();
 		return *this;
 	}
 
 private:
-	std::wstring _name;
-	HANDLE _snapshot;
-	PROCESSENTRY32W _entry;
+	std::wstring $name;
+	HANDLE $snapshot;
+	PROCESSENTRY32W $entry;
 
 	process_finder(string_view name) {
-		_name = u2w(name);
+		$name = u2w(name);
 
-		_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if (_snapshot == INVALID_HANDLE_VALUE) {
+		$snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if ($snapshot == INVALID_HANDLE_VALUE) {
 			return;
 		}
 
-		_entry.dwSize = sizeof(PROCESSENTRY32W);
+		$entry.dwSize = sizeof(PROCESSENTRY32W);
 
-		if (!Process32FirstW(_snapshot, &_entry)) {
-			_reset();
+		if (!Process32FirstW($snapshot, &$entry)) {
+			$reset();
 			return;
 		}
 		do {
-			if (!_name.size() || _entry.szExeFile == _name) {
-				if (_entry.th32ProcessID) {
+			if (!$name.size() || $entry.szExeFile == $name) {
+				if ($entry.th32ProcessID) {
 					return;
 				}
 			}
-		} while (Process32NextW(_snapshot, &_entry));
-		_reset();
+		} while (Process32NextW($snapshot, &$entry));
+		$reset();
 	}
 
-	void _reset() {
-		CloseHandle(_snapshot);
-		_snapshot = INVALID_HANDLE_VALUE;
+	void $reset() {
+		CloseHandle($snapshot);
+		$snapshot = INVALID_HANDLE_VALUE;
 	}
 
 	friend process_finder find_process(string_view);

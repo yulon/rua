@@ -19,7 +19,7 @@ public:
 		dylib(dlopen(name.data(), RTLD_GLOBAL), need_unload) {}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
-		_h(h), _need_unload(need_unload && h) {}
+		$h(h), $need_unload(need_unload && h) {}
 
 	static dylib from_loaded(string_view name) {
 		return dylib(dlopen(name.data(), RTLD_NOLOAD | RTLD_GLOBAL), false);
@@ -37,29 +37,29 @@ public:
 		unload();
 	}
 
-	dylib(dylib &&src) : _h(src._h), _need_unload(src._need_unload) {
-		if (!src._h) {
+	dylib(dylib &&src) : $h(src.$h), $need_unload(src.$need_unload) {
+		if (!src.$h) {
 			return;
 		}
-		src._h = nullptr;
+		src.$h = nullptr;
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(dylib)
 
 	explicit operator bool() const {
-		return _h;
+		return $h;
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	bool has_ownership() const {
-		return _h && _need_unload;
+		return $h && $need_unload;
 	}
 
 	generic_ptr find(string_view name) const {
-		return _h ? dlsym(_h, name.data()) : nullptr;
+		return $h ? dlsym($h, name.data()) : nullptr;
 	}
 
 	generic_ptr operator[](string_view name) const {
@@ -67,51 +67,51 @@ public:
 	}
 
 	void unload() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		if (_need_unload) {
-			dlclose(_h);
+		if ($need_unload) {
+			dlclose($h);
 		}
-		_h = nullptr;
+		$h = nullptr;
 	}
 
 private:
-	void *_h;
-	bool _need_unload;
+	void *$h;
+	bool $need_unload;
 };
 
 class unique_dylib {
 public:
 	using native_handle_t = void *;
 
-	constexpr unique_dylib() : _h(nullptr) {}
+	constexpr unique_dylib() : $h(nullptr) {}
 
-	unique_dylib(string_view name) : _h(dlopen(name.data(), RTLD_LOCAL)) {}
+	unique_dylib(string_view name) : $h(dlopen(name.data(), RTLD_LOCAL)) {}
 
 	~unique_dylib() {
 		unload();
 	}
 
-	unique_dylib(unique_dylib &&src) : _h(src._h) {
-		if (!src._h) {
+	unique_dylib(unique_dylib &&src) : $h(src.$h) {
+		if (!src.$h) {
 			return;
 		}
-		src._h = nullptr;
+		src.$h = nullptr;
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(unique_dylib)
 
 	explicit operator bool() const {
-		return _h;
+		return $h;
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	generic_ptr find(string_view name) const {
-		return _h ? dlsym(_h, name.data()) : nullptr;
+		return $h ? dlsym($h, name.data()) : nullptr;
 	}
 
 	generic_ptr operator[](string_view name) const {
@@ -119,15 +119,15 @@ public:
 	}
 
 	void unload() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		dlclose(_h);
-		_h = nullptr;
+		dlclose($h);
+		$h = nullptr;
 	}
 
 private:
-	void *_h;
+	void *$h;
 };
 
 }} // namespace rua::posix

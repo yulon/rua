@@ -21,22 +21,22 @@ public:
 	sorted_list() = default;
 
 	bool empty() const {
-		return _li.empty();
+		return $li.empty();
 	}
 
 	size_type size() const {
-		return _li.size();
+		return $li.size();
 	}
 
 	void emplace(T &&rval) {
 		constexpr std::less<T> less{};
-		for (auto it = _li.begin(); it != _li.end(); ++it) {
+		for (auto it = $li.begin(); it != $li.end(); ++it) {
 			if (less(rval, *it)) {
-				_li.emplace(it, std::move(rval));
+				$li.emplace(it, std::move(rval));
 				return;
 			}
 		}
-		_li.emplace_back(std::move(rval));
+		$li.emplace_back(std::move(rval));
 	}
 
 	template <
@@ -47,63 +47,63 @@ public:
 	}
 
 	iterator erase(const_iterator pos) {
-		return _li.erase(std::move(pos));
+		return $li.erase(std::move(pos));
 	}
 
 	iterator erase(const_iterator first, const_iterator last) {
-		return _li.erase(std::move(first), std::move(last));
+		return $li.erase(std::move(first), std::move(last));
 	}
 
 	iterator begin() {
-		return _li.begin();
+		return $li.begin();
 	}
 
 	const_iterator begin() const {
-		return _li.begin();
+		return $li.begin();
 	}
 
 	iterator end() {
-		return _li.end();
+		return $li.end();
 	}
 
 	const_iterator end() const {
-		return _li.end();
+		return $li.end();
 	}
 
 	reverse_iterator rbegin() {
-		return _li.rbegin();
+		return $li.rbegin();
 	}
 
 	const_reverse_iterator rbegin() const {
-		return _li.rbegin();
+		return $li.rbegin();
 	}
 
 	reverse_iterator rend() {
-		return _li.rend();
+		return $li.rend();
 	}
 
 	const_reverse_iterator rend() const {
-		return _li.rend();
+		return $li.rend();
 	}
 
 	T &front() {
-		return _li.front();
+		return $li.front();
 	}
 
 	const T &front() const {
-		return _li.front();
+		return $li.front();
 	}
 
 	T &back() {
-		return _li.back();
+		return $li.back();
 	}
 
 	const T &back() const {
-		return _li.back();
+		return $li.back();
 	}
 
 private:
-	std::list<T> _li;
+	std::list<T> $li;
 };
 
 } // namespace rua

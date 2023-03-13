@@ -13,31 +13,31 @@ namespace rua {
 
 class once {
 public:
-	constexpr once() : _executed(false) {}
+	constexpr once() : $executed(false) {}
 
 	template <typename Callable, typename... Args>
 	future<> call(Callable &&callable, Args &&...args) {
-		if (_executed.load()) {
+		if ($executed.load()) {
 			return {};
 		}
-		if (_mtx.try_lock()) {
-			if (_executed.load()) {
+		if ($mtx.try_lock()) {
+			if ($executed.load()) {
 				return {};
 			}
 			std::forward<Callable>(callable)(std::forward<Args>(args)...);
-			_executed.store(true);
-			_mtx.unlock();
+			$executed.store(true);
+			$mtx.unlock();
 			return {};
 		}
-		return _mtx.lock() >> [this]() {
-			assert(_executed.load());
-			_mtx.unlock();
+		return $mtx.lock() >> [this]() {
+			assert($executed.load());
+			$mtx.unlock();
 		};
 	}
 
 private:
-	std::atomic<bool> _executed;
-	mutex _mtx;
+	std::atomic<bool> $executed;
+	mutex $mtx;
 };
 
 } // namespace rua

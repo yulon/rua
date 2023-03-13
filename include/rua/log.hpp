@@ -23,7 +23,7 @@ namespace win32 {
 class msgbox_writer : public stream_base {
 public:
 	msgbox_writer(string_view default_title, UINT icon) :
-		_tit(u2w(default_title)), _ico(icon) {}
+		$tit(u2w(default_title)), $ico(icon) {}
 
 	virtual ~msgbox_writer() = default;
 
@@ -35,16 +35,16 @@ public:
 				0,
 				u2w(as_string(p(fr.pos() + eol_b.size()))).c_str(),
 				u2w(as_string(p(0, fr.pos()))).c_str(),
-				_ico);
+				$ico);
 		} else {
-			MessageBoxW(0, u2w(as_string(p)).c_str(), _tit.c_str(), _ico);
+			MessageBoxW(0, u2w(as_string(p)).c_str(), $tit.c_str(), $ico);
 		}
 		return to_signed(p.size());
 	}
 
 private:
-	std::wstring _tit;
-	UINT _ico;
+	std::wstring $tit;
+	UINT $ico;
 };
 
 } // namespace win32

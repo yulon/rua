@@ -20,36 +20,36 @@ public:
 
 	class const_iterator {
 	public:
-		constexpr const_iterator() : _n(nullptr) {}
+		constexpr const_iterator() : $n(nullptr) {}
 
-		constexpr explicit const_iterator(node_t *n) : _n(n) {}
+		constexpr explicit const_iterator(node_t *n) : $n(n) {}
 
 		bool operator==(const_iterator target) const {
-			return _n == target._n;
+			return $n == target.$n;
 		}
 
 		bool operator!=(const_iterator target) const {
-			return _n != target._n;
+			return $n != target.$n;
 		}
 
 		operator bool() const {
-			return _n;
+			return $n;
 		}
 
 		const_iterator operator++() const {
-			return const_iterator(_n->after);
+			return const_iterator($n->after);
 		}
 
 		const T &operator*() const {
-			return _n->value;
+			return $n->value;
 		}
 
 		node_t *node() const {
-			return _n;
+			return $n;
 		}
 
 	protected:
-		node_t *_n;
+		node_t *$n;
 	};
 
 	class iterator : public const_iterator {
@@ -59,38 +59,38 @@ public:
 		constexpr explicit iterator(node_t *n) : const_iterator(n) {}
 
 		iterator &operator++() {
-			this->_n = this->_n->after;
+			this->$n = this->$n->after;
 			return *this;
 		}
 
 		iterator operator++() const {
-			return iterator(this->_n->after);
+			return iterator(this->$n->after);
 		}
 
 		iterator operator++(int) {
 			auto old = *this;
-			this->_n = this->_n->after;
+			this->$n = this->$n->after;
 			return old;
 		}
 
 		T &operator*() {
-			return this->_n->value;
+			return this->$n->value;
 		}
 
 		const T &operator*() const {
-			return this->_n->value;
+			return this->$n->value;
 		}
 	};
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr forward_list() : _front(nullptr) {}
+	constexpr forward_list() : $front(nullptr) {}
 
-	constexpr explicit forward_list(node_t *front) : _front(front) {}
+	constexpr explicit forward_list(node_t *front) : $front(front) {}
 
-	forward_list(const forward_list &src) : _front(nullptr) {
-		if (!src._front) {
-			_front = nullptr;
+	forward_list(const forward_list &src) : $front(nullptr) {
+		if (!src.$front) {
+			$front = nullptr;
 			return;
 		}
 		auto src_it = src.begin();
@@ -100,9 +100,9 @@ public:
 		}
 	}
 
-	forward_list(forward_list &&src) : _front(src._front) {
-		if (src._front) {
-			src._front = nullptr;
+	forward_list(forward_list &&src) : $front(src.$front) {
+		if (src.$front) {
+			src.$front = nullptr;
 		}
 	}
 
@@ -113,11 +113,11 @@ public:
 	}
 
 	operator bool() const {
-		return _front;
+		return $front;
 	}
 
 	bool empty() const {
-		return !_front;
+		return !$front;
 	}
 
 	template <typename... Args>
@@ -128,8 +128,8 @@ public:
 	}
 
 	void push_front_node(node_t *new_front_node) {
-		new_front_node->after = _front;
-		_front = new_front_node;
+		new_front_node->after = $front;
+		$front = new_front_node;
 	}
 
 	template <typename... Args>
@@ -140,7 +140,7 @@ public:
 	}
 
 	void push_back_node(node_t *new_back_node) {
-		auto slot = &_front;
+		auto slot = &$front;
 		while (*slot) {
 			slot = &(*slot)->after;
 		}
@@ -162,57 +162,57 @@ public:
 	}
 
 	T pop_front() {
-		return _pop(_front);
+		return $pop($front);
 	}
 
 	T pop_back() {
-		return _pop(_back());
+		return $pop($back());
 	}
 
 	T pop_after(const_iterator before) {
-		assert(_front);
+		assert($front);
 		assert(before.node());
 
-		return _pop(before.node()->after);
+		return $pop(before.node()->after);
 	}
 
 	iterator erase_front() {
-		return _erase(_front);
+		return $erase($front);
 	}
 
 	void erase_back() {
-		assert(_front);
+		assert($front);
 
-		auto &back = _back();
+		auto &back = $back();
 		delete back;
 		back = nullptr;
 	}
 
 	iterator erase_after(const_iterator before) {
-		assert(_front);
+		assert($front);
 		assert(before.node());
 
-		return _erase(before.node()->after);
+		return $erase(before.node()->after);
 	}
 
 	T &front() {
-		assert(_front);
+		assert($front);
 
-		return _front->value;
+		return $front->value;
 	}
 
 	const T &front() const {
-		assert(_front);
+		assert($front);
 
-		return _front->value;
+		return $front->value;
 	}
 
 	iterator begin() {
-		return iterator(_front);
+		return iterator($front);
 	}
 
 	const_iterator begin() const {
-		return const_iterator(_front);
+		return const_iterator($front);
 	}
 
 	RUA_CONSTEXPR_14 iterator end() {
@@ -224,7 +224,7 @@ public:
 	}
 
 	void reset() {
-		auto n = _front;
+		auto n = $front;
 		while (n) {
 			auto after = n->after;
 			delete n;
@@ -233,15 +233,15 @@ public:
 	}
 
 	node_t *release() {
-		auto front = _front;
-		_front = nullptr;
+		auto front = $front;
+		$front = nullptr;
 		return front;
 	}
 
 private:
-	node_t *_front;
+	node_t *$front;
 
-	T _pop(node_t *&n) {
+	T $pop(node_t *&n) {
 		assert(n);
 
 		auto after = n->after;
@@ -251,7 +251,7 @@ private:
 		return r;
 	}
 
-	iterator _erase(node_t *&n) {
+	iterator $erase(node_t *&n) {
 		assert(n);
 
 		iterator it(n->after);
@@ -260,10 +260,10 @@ private:
 		return it;
 	}
 
-	node_t *&_back() {
-		assert(_front);
+	node_t *&$back() {
+		assert($front);
 
-		auto slot = &_front;
+		auto slot = &$front;
 		while ((*slot)->after) {
 			slot = &(*slot)->after;
 		}

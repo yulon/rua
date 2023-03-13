@@ -25,64 +25,64 @@ public:
 	////////////////////////////////////////////////////////////////
 
 	explicit thread(std::function<void()> fn, size_t stack_size = 0) {
-		_h = CreateThread(
+		$h = CreateThread(
 			nullptr,
 			stack_size,
-			&_call,
+			&$call,
 			reinterpret_cast<LPVOID>(new std::function<void()>(std::move(fn))),
 			0,
-			&_id);
+			&$id);
 	}
 
 	explicit thread(tid_t id) :
-		_h(id ? OpenThread(_all_access(), false, id) : nullptr), _id(id) {}
+		$h(id ? OpenThread($all_access(), false, id) : nullptr), $id(id) {}
 
-	constexpr thread(std::nullptr_t = nullptr) : _h(nullptr), _id(0) {}
+	constexpr thread(std::nullptr_t = nullptr) : $h(nullptr), $id(0) {}
 
 	template <
 		typename NativeHandle,
 		typename = enable_if_t<
 			std::is_same<NativeHandle, native_handle_t>::value &&
 			!is_null_pointer<NativeHandle>::value>>
-	explicit thread(NativeHandle h) : _h(h), _id(0) {}
+	explicit thread(NativeHandle h) : $h(h), $id(0) {}
 
 	~thread() {
 		reset();
 	}
 
-	thread(const thread &src) : _id(src._id) {
+	thread(const thread &src) : $id(src.$id) {
 		if (!src) {
-			_h = nullptr;
+			$h = nullptr;
 			return;
 		}
 		DuplicateHandle(
 			GetCurrentProcess(),
-			src._h,
+			src.$h,
 			GetCurrentProcess(),
-			&_h,
+			&$h,
 			0,
 			FALSE,
 			DUPLICATE_SAME_ACCESS);
 	}
 
-	thread(thread &&src) : _h(src._h), _id(src._id) {
+	thread(thread &&src) : $h(src.$h), $id(src.$id) {
 		if (src) {
-			src._h = nullptr;
-			src._id = 0;
+			src.$h = nullptr;
+			src.$id = 0;
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(thread)
 
 	tid_t id() {
-		if (!_id) {
-			_id = _get_id(_h);
+		if (!$id) {
+			$id = $get_id($h);
 		}
-		return _id;
+		return $id;
 	}
 
 	tid_t id() const {
-		return _id ? _id : _get_id(_h);
+		return $id ? $id : $get_id($h);
 	}
 
 	bool operator==(const thread &target) const {
@@ -94,23 +94,23 @@ public:
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	explicit operator bool() const {
-		return _h;
+		return $h;
 	}
 
 	void exit(generic_word code = 0) {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		TerminateThread(_h, code);
+		TerminateThread($h, code);
 		reset();
 	}
 
 	future<generic_word> RUA_OPERATOR_AWAIT() const {
-		auto h = _h;
+		auto h = $h;
 		return sys_wait(h) >> [h]() -> generic_word {
 			DWORD ec;
 			GetExitCodeThread(h, &ec);
@@ -119,27 +119,27 @@ public:
 	}
 
 	void reset() {
-		if (_h) {
-			CloseHandle(_h);
-			_h = nullptr;
+		if ($h) {
+			CloseHandle($h);
+			$h = nullptr;
 		}
-		if (_id) {
-			_id = 0;
+		if ($id) {
+			$id = 0;
 		}
 	}
 
 private:
-	HANDLE _h;
-	DWORD _id;
+	HANDLE $h;
+	DWORD $id;
 
-	static DWORD __stdcall _call(LPVOID param) {
+	static DWORD __stdcall $call(LPVOID param) {
 		auto fn_ptr = reinterpret_cast<std::function<void()> *>(param);
 		(*fn_ptr)();
 		delete fn_ptr;
 		return 0;
 	}
 
-	static DWORD _get_id(HANDLE h) {
+	static DWORD $get_id(HANDLE h) {
 		static dylib kernel32("kernel32.dll");
 		static decltype(&GetThreadId) GetThreadId_ptr = kernel32["GetThreadId"];
 
@@ -170,7 +170,7 @@ private:
 		return 0;
 	}
 
-	static DWORD _all_access() {
+	static DWORD $all_access() {
 		if (sys_version() >= 6) {
 			return STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | 0xFFFF;
 		}

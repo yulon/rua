@@ -217,39 +217,39 @@ template <typename Valuer, typename Value>
 class enable_value_operators {
 public:
 	Value &operator*() & {
-		return _this()->value();
+		return $this()->value();
 	}
 
 	const Value &operator*() const & {
-		return _this()->value();
+		return $this()->value();
 	}
 
 	Value &&operator*() && {
-		return std::move(_this()->value());
+		return std::move($this()->value());
 	}
 
 	Value *operator->() {
-		return &_this()->value();
+		return &$this()->value();
 	}
 
 	const Value *operator->() const {
-		return &_this()->value();
+		return &$this()->value();
 	}
 
 	template <class... Args>
 	invoke_result_t<Value &, Args &&...> operator()(Args &&...args) & {
-		return _this()->value()(std::forward<Args>(args)...);
+		return $this()->value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
 	invoke_result_t<const Value &, Args &&...>
 	operator()(Args &&...args) const & {
-		return _this()->value()(std::forward<Args>(args)...);
+		return $this()->value()(std::forward<Args>(args)...);
 	}
 
 	template <class... Args>
 	invoke_result_t<Value &&, Args &&...> operator()(Args &&...args) && {
-		return std::move(_this()->value())(std::forward<Args>(args)...);
+		return std::move($this()->value())(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -258,8 +258,8 @@ public:
 			std::is_copy_constructible<Value>::value &&
 			std::is_convertible<DefaultValue &&, Value>::value>>
 	Value value_or(DefaultValue &&default_value) const & {
-		return _this()->has_value()
-				   ? _this()->value()
+		return $this()->has_value()
+				   ? $this()->value()
 				   : static_cast<Value>(
 						 std::forward<DefaultValue>(default_value));
 	}
@@ -270,8 +270,8 @@ public:
 			std::is_move_constructible<Value>::value &&
 			std::is_convertible<DefaultValue &&, Value>::value>>
 	Value value_or(DefaultValue &&default_value) && {
-		return _this()->has_value()
-				   ? std::move(_this()->value())
+		return $this()->has_value()
+				   ? std::move($this()->value())
 				   : static_cast<Value>(
 						 std::forward<DefaultValue>(default_value));
 	}
@@ -280,11 +280,11 @@ protected:
 	enable_value_operators() = default;
 
 private:
-	Valuer *_this() {
+	Valuer *$this() {
 		return static_cast<Valuer *>(this);
 	}
 
-	const Valuer *_this() const {
+	const Valuer *$this() const {
 		return static_cast<const Valuer *>(this);
 	}
 };
@@ -298,11 +298,11 @@ protected:
 	enable_value_operators() = default;
 
 private:
-	Valuer *_this() {
+	Valuer *$this() {
 		return static_cast<Valuer *>(this);
 	}
 
-	const Valuer *_this() const {
+	const Valuer *$this() const {
 		return static_cast<const Valuer *>(this);
 	}
 };

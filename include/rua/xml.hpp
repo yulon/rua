@@ -53,7 +53,7 @@ public:
 		}
 
 	private:
-		xml_node_list::const_iterator _end;
+		xml_node_list::const_iterator $end;
 
 		iterator(
 			xml_node_list::const_iterator it,
@@ -64,20 +64,20 @@ public:
 
 	xml_collection() = default;
 
-	xml_collection(const xml_node_list &nodes) : _nodes(&nodes) {}
+	xml_collection(const xml_node_list &nodes) : $nodes(&nodes) {}
 
 	iterator begin() const {
-		if (!_nodes) {
+		if (!$nodes) {
 			return iterator();
 		}
-		return iterator(_nodes->begin(), _nodes->end());
+		return iterator($nodes->begin(), $nodes->end());
 	}
 
 	iterator end() const {
-		if (!_nodes) {
+		if (!$nodes) {
 			return iterator();
 		}
-		return iterator(_nodes->end(), _nodes->end());
+		return iterator($nodes->end(), $nodes->end());
 	}
 
 	size_t size() const {
@@ -85,7 +85,7 @@ public:
 	}
 
 private:
-	const xml_node_list *_nodes;
+	const xml_node_list *$nodes;
 };
 
 class xml_node : public std::enable_shared_from_this<xml_node> {
@@ -151,11 +151,11 @@ public:
 	}
 
 	bool is_contain(const xml_node_ptr &node) const {
-		return _is_contain(node.get());
+		return $is_contain(node.get());
 	}
 
 	bool is_adoptable(const xml_node_ptr &node) const {
-		if (!node || node.get() == this || node->_is_contain(this)) {
+		if (!node || node.get() == this || node->$is_contain(this)) {
 			return false;
 		}
 		auto p = parent();
@@ -355,12 +355,12 @@ public:
 	}
 
 private:
-	bool _is_contain(const xml_node *node) const {
+	bool $is_contain(const xml_node *node) const {
 		if (!node) {
 			return false;
 		}
 		for (auto &cn : child_nodes()) {
-			if (cn.get() == node || cn->_is_contain(node)) {
+			if (cn.get() == node || cn->$is_contain(node)) {
 				return true;
 			}
 		}
@@ -373,8 +373,8 @@ protected:
 
 inline xml_collection::iterator::iterator(
 	xml_node_list::const_iterator it, xml_node_list::const_iterator end) :
-	xml_node_list::const_iterator(std::move(it)), _end(std::move(end)) {
-	while (*this != _end && (*(*this))->node_type() != xml_node_type::element) {
+	xml_node_list::const_iterator(std::move(it)), $end(std::move(end)) {
+	while (*this != $end && (*(*this))->node_type() != xml_node_type::element) {
 		xml_node_list::const_iterator::operator++();
 	}
 }
@@ -382,17 +382,17 @@ inline xml_collection::iterator::iterator(
 inline xml_collection::iterator &xml_collection::iterator::operator++() {
 	do {
 		xml_node_list::const_iterator::operator++();
-	} while (*this != _end && (**this)->node_type() != xml_node_type::element);
+	} while (*this != $end && (**this)->node_type() != xml_node_type::element);
 	return *this;
 }
 
 inline xml_collection::iterator &xml_collection::iterator::operator--() {
 	do {
 		xml_node_list::const_iterator::operator--();
-		if (*this == _end) {
+		if (*this == $end) {
 			break;
 		}
-	} while (*this != _end && (**this)->node_type() != xml_node_type::element);
+	} while (*this != $end && (**this)->node_type() != xml_node_type::element);
 	return *this;
 }
 
@@ -403,14 +403,14 @@ public:
 	virtual ~xml_child_base() {}
 
 	virtual xml_node_ptr parent() const {
-		return _parent.lock();
+		return $parent.lock();
 	}
 
 	inline virtual bool remove();
 
 private:
-	std::weak_ptr<xml_node> _parent;
-	xml_node_list::iterator _iterator;
+	std::weak_ptr<xml_node> $parent;
+	xml_node_list::iterator $iterator;
 
 	friend xml_parent_base;
 
@@ -423,7 +423,7 @@ public:
 	virtual ~xml_parent_base() {}
 
 	virtual const xml_node_list &child_nodes() const {
-		return _child_nodes;
+		return $child_nodes;
 	}
 
 	virtual bool
@@ -432,12 +432,12 @@ public:
 			return false;
 		}
 		auto detailed = std::static_pointer_cast<xml_child_base>(node);
-		if (detailed->_parent.use_count() && !node->remove()) {
+		if (detailed->$parent.use_count() && !node->remove()) {
 			return false;
 		}
-		_child_nodes.emplace_back(std::move(node));
-		detailed->_parent = RUA_WEAK_FROM_THIS;
-		detailed->_iterator = --_child_nodes.end();
+		$child_nodes.emplace_back(std::move(node));
+		detailed->$parent = RUA_WEAK_FROM_THIS;
+		detailed->$iterator = --$child_nodes.end();
 		return true;
 	}
 
@@ -446,8 +446,8 @@ public:
 			return false;
 		}
 		auto detailed = std::static_pointer_cast<xml_child_base>(child);
-		_child_nodes.erase(detailed->_iterator);
-		detailed->_parent.reset();
+		$child_nodes.erase(detailed->$iterator);
+		detailed->$parent.reset();
 		return true;
 	}
 
@@ -466,24 +466,24 @@ public:
 		}
 
 		auto detailed_old = std::static_pointer_cast<xml_child_base>(old_child);
-		auto wk_this = std::move(detailed_old->_parent);
-		auto it = std::move(detailed_old->_iterator);
+		auto wk_this = std::move(detailed_old->$parent);
+		auto it = std::move(detailed_old->$iterator);
 
 		auto detailed_new = std::static_pointer_cast<xml_child_base>(new_child);
-		if (detailed_new->_parent.use_count() && !new_child->remove()) {
-			detailed_old->_parent = std::move(wk_this);
+		if (detailed_new->$parent.use_count() && !new_child->remove()) {
+			detailed_old->$parent = std::move(wk_this);
 			return false;
 		}
 
 		*it = std::move(new_child);
-		detailed_new->_parent = std::move(wk_this);
-		detailed_new->_iterator = std::move(it);
+		detailed_new->$parent = std::move(wk_this);
+		detailed_new->$iterator = std::move(it);
 		return true;
 	}
 
 	virtual std::string text_content() const {
 		std::string text;
-		for (auto &cn : _child_nodes) {
+		for (auto &cn : $child_nodes) {
 			text += cn->text_content();
 		}
 		return text;
@@ -498,7 +498,7 @@ public:
 
 	virtual std::string get_inner_xml(bool xml_style) const {
 		std::string xml;
-		for (auto &cn : _child_nodes) {
+		for (auto &cn : $child_nodes) {
 			xml += cn->get_outer_xml(xml_style);
 		}
 		return xml;
@@ -514,7 +514,7 @@ public:
 	}
 
 private:
-	xml_node_list _child_nodes;
+	xml_node_list $child_nodes;
 
 	friend xml_child_base;
 
@@ -523,13 +523,13 @@ protected:
 };
 
 inline bool xml_child_base::remove() {
-	if (_parent.expired()) {
+	if ($parent.expired()) {
 		return false;
 	}
 	auto detailed_parent =
-		std::static_pointer_cast<xml_parent_base>(_parent.lock());
-	detailed_parent->_child_nodes.erase(_iterator);
-	_parent.reset();
+		std::static_pointer_cast<xml_parent_base>($parent.lock());
+	detailed_parent->$child_nodes.erase($iterator);
+	$parent.reset();
 	return true;
 }
 
@@ -554,7 +554,7 @@ public:
 
 class xml_element : public xml_parent_base {
 public:
-	xml_element(std::string name) : _name(std::move(name)) {}
+	xml_element(std::string name) : $name(std::move(name)) {}
 
 	virtual ~xml_element() {}
 
@@ -563,31 +563,31 @@ public:
 	}
 
 	virtual string_view node_name() const {
-		return _name;
+		return $name;
 	}
 
 	virtual xml_attr_map &attrs() {
-		return _attrs;
+		return $attrs;
 	}
 
 	virtual const xml_attr_map &attrs() const {
-		return _attrs;
+		return $attrs;
 	}
 
 	virtual std::string get_outer_xml(bool xml_style) const {
 		std::string attrs_str;
-		for (auto &attr : _attrs) {
+		for (auto &attr : $attrs) {
 			attrs_str += join({" ", attr.first});
 			if (attr.second.length() || xml_style) {
 				attrs_str += join({"=\"", attr.second, "\""});
 			}
 		}
 		if (child_nodes().empty() && xml_style) {
-			return join({"<", _name, attrs_str, " />"});
+			return join({"<", $name, attrs_str, " />"});
 		}
 		return join(
 			{"<",
-			 _name,
+			 $name,
 			 attrs_str,
 			 ">",
 			 get_inner_xml(xml_style),
@@ -597,13 +597,13 @@ public:
 	}
 
 private:
-	std::string _name;
-	xml_attr_map _attrs;
+	std::string $name;
+	xml_attr_map $attrs;
 };
 
 class xml_text : public xml_child_base {
 public:
-	xml_text(std::string content) : _cont(std::move(content)) {}
+	xml_text(std::string content) : $cont(std::move(content)) {}
 
 	virtual ~xml_text() {}
 
@@ -616,16 +616,16 @@ public:
 	}
 
 	virtual std::string get_node_value() const {
-		return _cont;
+		return $cont;
 	}
 
 	virtual bool set_node_value(std::string content) {
-		_cont = std::move(content);
+		$cont = std::move(content);
 		return true;
 	}
 
 	virtual std::string get_inner_xml(bool) const {
-		return _cont;
+		return $cont;
 	}
 
 	virtual bool set_inner_xml(string_view) {
@@ -634,11 +634,11 @@ public:
 	}
 
 	virtual std::string get_outer_xml(bool) const {
-		return _cont;
+		return $cont;
 	}
 
 private:
-	std::string _cont;
+	std::string $cont;
 };
 
 inline xml_node_ptr make_xml_element(std::string name) {

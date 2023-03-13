@@ -57,113 +57,113 @@ inline constexpr string_view type_name() {
 
 class type_info {
 public:
-	constexpr type_info(std::nullptr_t = nullptr) : _tab(nullptr) {}
+	constexpr type_info(std::nullptr_t = nullptr) : $tab(nullptr) {}
 
 	operator bool() const {
-		return _tab;
+		return $tab;
 	}
 
 	bool operator==(const type_info &target) const {
-		return _tab == target._tab;
+		return $tab == target.$tab;
 	}
 
 	bool operator!=(const type_info &target) const {
-		return _tab != target._tab;
+		return $tab != target.$tab;
 	}
 
 	size_t size() const {
-		return _tab ? _tab->size : 0;
+		return $tab ? $tab->size : 0;
 	}
 
 	size_t align() const {
-		return _tab ? _tab->size : 0;
+		return $tab ? $tab->size : 0;
 	}
 
 	bool is_trivial() const {
-		return _tab ? _tab->is_trivial : false;
+		return $tab ? $tab->is_trivial : false;
 	}
 
 	string_view name() const {
-		return _tab ? _tab->name() : type_name<void>();
+		return $tab ? $tab->name() : type_name<void>();
 	}
 
 	size_t hash_code() const {
-		return static_cast<size_t>(reinterpret_cast<uintptr_t>(_tab));
+		return static_cast<size_t>(reinterpret_cast<uintptr_t>($tab));
 	}
 
 	void destruct(void *ptr) const {
-		assert(_tab);
-		if (!_tab->dtor) {
+		assert($tab);
+		if (!$tab->dtor) {
 			return;
 		}
-		_tab->dtor(ptr);
+		$tab->dtor(ptr);
 	}
 
 	void dealloc(void *ptr) const {
-		assert(_tab);
-		assert(_tab->del);
-		_tab->del(ptr);
+		assert($tab);
+		assert($tab->del);
+		$tab->del(ptr);
 	}
 
 	bool is_copyable() const {
-		return _tab && _tab->copy_ctor;
+		return $tab && $tab->copy_ctor;
 	}
 
 	void copy_to(void *ptr, const void *src) const {
-		assert(_tab);
-		assert(_tab->copy_ctor);
-		_tab->copy_ctor(ptr, src);
+		assert($tab);
+		assert($tab->copy_ctor);
+		$tab->copy_ctor(ptr, src);
 	}
 
 	void *copy_to_new(const void *src) const {
-		assert(_tab);
-		assert(_tab->copy_new);
-		return _tab->copy_new(src);
+		assert($tab);
+		assert($tab->copy_new);
+		return $tab->copy_new(src);
 	}
 
 	bool is_moveable() const {
-		return _tab && _tab->move_ctor;
+		return $tab && $tab->move_ctor;
 	}
 
 	void move_to(void *ptr, void *src) const {
-		assert(_tab);
-		assert(_tab->move_ctor);
-		_tab->move_ctor(ptr, src);
+		assert($tab);
+		assert($tab->move_ctor);
+		$tab->move_ctor(ptr, src);
 	}
 
 	void *move_to_new(void *src) const {
-		assert(_tab);
-		assert(_tab->move_new);
-		return _tab->move_new(src);
+		assert($tab);
+		assert($tab->move_new);
+		return $tab->move_new(src);
 	}
 
 	bool is_convertable_to_bool() const {
-		return _tab && _tab->to_bool;
+		return $tab && $tab->to_bool;
 	}
 
 	bool convert_to_bool(void *ptr) const {
-		assert(_tab);
-		assert(_tab->to_bool);
-		return _tab->to_bool(ptr);
+		assert($tab);
+		assert($tab->to_bool);
+		return $tab->to_bool(ptr);
 	}
 
 	bool equal(const void *a, const void *b) const {
-		assert(_tab);
-		return a == b || (_tab->eq && _tab->eq(a, b));
+		assert($tab);
+		return a == b || ($tab->eq && $tab->eq(a, b));
 	}
 
 	void reset() {
-		_tab = nullptr;
+		$tab = nullptr;
 	}
 
 #ifdef RUA_HAS_RTTI
 	const std::type_info &std_id() const {
-		return _tab ? _tab->std_id() : typeid(void);
+		return $tab ? $tab->std_id() : typeid(void);
 	}
 #endif
 
 private:
-	struct _table_t {
+	struct $table_t {
 		const size_t size;
 
 		const size_t align;
@@ -194,12 +194,12 @@ private:
 	};
 
 	template <typename T, typename = void>
-	struct _dtor {
+	struct $dtor {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _dtor<
+	struct $dtor<
 		T,
 		enable_if_t<
 			size_of<T>::value && !std::is_trivial<T>::value &&
@@ -210,12 +210,12 @@ private:
 	};
 
 	template <typename T, typename = void>
-	struct _del {
+	struct $del {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _del<
+	struct $del<
 		T,
 		enable_if_t<(size_of<T>::value > 0) && !std::is_reference<T>::value>> {
 		static void value(void *ptr) {
@@ -224,22 +224,22 @@ private:
 	};
 
 	template <typename T>
-	struct _is_initializer_list : std::false_type {};
+	struct $is_initializer_list : std::false_type {};
 
 	template <typename E>
-	struct _is_initializer_list<std::initializer_list<E>> : std::true_type {};
+	struct $is_initializer_list<std::initializer_list<E>> : std::true_type {};
 
 	template <typename T, typename = void>
-	struct _copy_ctor {
+	struct $copy_ctor {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _copy_ctor<
+	struct $copy_ctor<
 		T,
 		enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
+			!$is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, const void *src) {
 			construct(
 				*reinterpret_cast<remove_cv_t<T> *>(ptr),
@@ -248,32 +248,32 @@ private:
 	};
 
 	template <typename T, typename = void>
-	struct _copy_new {
+	struct $copy_new {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _copy_new<
+	struct $copy_new<
 		T,
 		enable_if_t<
 			std::is_copy_constructible<T>::value &&
-			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
+			!$is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void *value(const void *src) {
 			return new remove_cv_t<T>(*reinterpret_cast<const T *>(src));
 		}
 	};
 
 	template <typename T, typename = void>
-	struct _move_ctor {
+	struct $move_ctor {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _move_ctor<
+	struct $move_ctor<
 		T,
 		enable_if_t<
 			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
-			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
+			!$is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void value(void *ptr, void *src) {
 			construct(
 				*reinterpret_cast<remove_cv_t<T> *>(ptr),
@@ -282,40 +282,40 @@ private:
 	};
 
 	template <typename T, typename = void>
-	struct _move_new {
+	struct $move_new {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _move_new<
+	struct $move_new<
 		T,
 		enable_if_t<
 			std::is_move_constructible<T>::value && !std::is_const<T>::value &&
-			!_is_initializer_list<T>::value && !std::is_reference<T>::value>> {
+			!$is_initializer_list<T>::value && !std::is_reference<T>::value>> {
 		static void *value(void *src) {
 			return new remove_cv_t<T>(std::move(*reinterpret_cast<T *>(src)));
 		}
 	};
 
 	template <typename T, typename = void>
-	struct _to_bool {
+	struct $to_bool {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _to_bool<T, enable_if_t<std::is_convertible<T, bool>::value>> {
+	struct $to_bool<T, enable_if_t<std::is_convertible<T, bool>::value>> {
 		static bool value(void *ptr) {
 			return static_cast<bool>(*reinterpret_cast<T *>(ptr));
 		}
 	};
 
 	template <typename T, typename = void>
-	struct _eq {
+	struct $eq {
 		static constexpr std::nullptr_t value = nullptr;
 	};
 
 	template <typename T>
-	struct _eq<
+	struct $eq<
 		T,
 		void_t<decltype(std::declval<const T>() == std::declval<const T>())>> {
 		static bool value(const void *a, const void *b) {
@@ -327,39 +327,39 @@ private:
 
 #ifdef RUA_HAS_RTTI
 	template <typename T>
-	static const std::type_info &_std_id() {
+	static const std::type_info &$std_id() {
 		return typeid(T);
 	}
 #endif
 
 	template <typename T>
-	static const _table_t &_table() {
+	static const $table_t &$table() {
 		RUA_SASSERT((!std::is_same<T, void>::value));
 
-		static const _table_t tab{
+		static const $table_t tab{
 			size_of<T>::value,
 			align_of<T>::value,
 			std::is_trivial<T>::value,
 			type_name<T>,
-			_dtor<T>::value,
-			_del<T>::value,
-			_copy_ctor<T>::value,
-			_copy_new<T>::value,
-			_move_ctor<T>::value,
-			_move_new<T>::value,
-			_to_bool<T>::value,
-			_eq<T>::value
+			$dtor<T>::value,
+			$del<T>::value,
+			$copy_ctor<T>::value,
+			$copy_new<T>::value,
+			$move_ctor<T>::value,
+			$move_new<T>::value,
+			$to_bool<T>::value,
+			$eq<T>::value
 #ifdef RUA_HAS_RTTI
 			,
-			&_std_id<T>
+			&$std_id<T>
 #endif
 		};
 		return tab;
 	}
 
-	const _table_t *_tab;
+	const $table_t *$tab;
 
-	type_info(const _table_t &tab) : _tab(&tab) {}
+	type_info(const $table_t &tab) : $tab(&tab) {}
 
 	template <typename T>
 	friend inline constexpr type_info type_id();
@@ -367,7 +367,7 @@ private:
 
 template <typename T>
 inline constexpr type_info type_id() {
-	return type_info(type_info::_table<T>());
+	return type_info(type_info::$table<T>());
 }
 
 template <>
@@ -398,20 +398,20 @@ inline bool operator!=(std::type_index a, const type_info &b) {
 class enable_type_info {
 public:
 	type_info type() const {
-		return _type;
+		return $type;
 	}
 
 	template <typename T>
 	bool type_is() const {
-		return _type == type_id<T>();
+		return $type == type_id<T>();
 	}
 
 protected:
-	constexpr enable_type_info() : _type() {}
+	constexpr enable_type_info() : $type() {}
 
-	constexpr enable_type_info(type_info ti) : _type(ti) {}
+	constexpr enable_type_info(type_info ti) : $type(ti) {}
 
-	type_info _type;
+	type_info $type;
 };
 
 } // namespace rua

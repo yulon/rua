@@ -9,10 +9,10 @@
 namespace rua { namespace posix {
 
 inline future<generic_word> thread::RUA_OPERATOR_AWAIT() const {
-	if (!_id) {
+	if (!$id) {
 		return 0;
 	}
-	auto id = _id;
+	auto id = $id;
 	return parallel([id]() -> generic_word {
 		void *retval;
 		pthread_join(id, &retval);

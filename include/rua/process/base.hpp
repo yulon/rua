@@ -55,14 +55,14 @@ public:
 	process_maker_base() = default;
 
 	/*process_maker_base(process_maker_base &&pmb) :
-		_info(std::move(pmb._info)) {}
+		$info(std::move(pmb.$info)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(process_maker_base);*/
 
 	template <typename Arg>
 	ProcessMaker &arg(Arg &&a) & {
-		_info.args.emplace_back(to_string(std::forward<Arg>(a)));
-		return *_this();
+		$info.args.emplace_back(to_string(std::forward<Arg>(a)));
+		return *$this();
 	}
 
 	template <typename Arg>
@@ -72,14 +72,14 @@ public:
 
 	ProcessMaker &args(std::list<std::string> a_str_li) & {
 		if (!a_str_li.size()) {
-			return *_this();
+			return *$this();
 		}
-		if (_info.args.size()) {
-			_info.args.splice(_info.args.end(), std::move(a_str_li));
-			return *_this();
+		if ($info.args.size()) {
+			$info.args.splice($info.args.end(), std::move(a_str_li));
+			return *$this();
 		}
-		_info.args = std::move(a_str_li);
-		return *_this();
+		$info.args = std::move(a_str_li);
+		return *$this();
 	}
 
 	ProcessMaker &&args(std::list<std::string> a_str_li) && {
@@ -107,7 +107,7 @@ public:
 	}
 
 	ProcessMaker &args() & {
-		return *_this();
+		return *$this();
 	}
 
 	template <typename OneArgs>
@@ -134,8 +134,8 @@ public:
 	}
 
 	ProcessMaker &work_at(file_path_t work_dir) & {
-		_info.work_dir = std::move(work_dir);
-		return *_this();
+		$info.work_dir = std::move(work_dir);
+		return *$this();
 	}
 
 	ProcessMaker &&work_at(file_path_t work_dir) && {
@@ -143,8 +143,8 @@ public:
 	}
 
 	ProcessMaker &env(std::string name, std::string val) & {
-		_info.envs[std::move(name)] = std::move(val);
-		return *_this();
+		$info.envs[std::move(name)] = std::move(val);
+		return *$this();
 	}
 
 	ProcessMaker &&env(std::string name, std::string val) && {
@@ -152,8 +152,8 @@ public:
 	}
 
 	ProcessMaker &envs(std::map<std::string, std::string> env_map) & {
-		_info.envs = std::move(env_map);
-		return *_this();
+		$info.envs = std::move(env_map);
+		return *$this();
 	}
 
 	ProcessMaker &&envs(std::map<std::string, std::string> env_map) && {
@@ -161,8 +161,8 @@ public:
 	}
 
 	ProcessMaker &hide() & {
-		_info.hide = true;
-		return *_this();
+		$info.hide = true;
+		return *$this();
 	}
 
 	ProcessMaker &&hide() && {
@@ -170,8 +170,8 @@ public:
 	}
 
 	ProcessMaker &stdout_to(stdio_stream_t stdout_w) & {
-		_info.stdout_w = std::move(stdout_w);
-		return *_this();
+		$info.stdout_w = std::move(stdout_w);
+		return *$this();
 	}
 
 	ProcessMaker &&stdout_to(stdio_stream_t stdout_w) && {
@@ -179,8 +179,8 @@ public:
 	}
 
 	ProcessMaker &stderr_to(stdio_stream_t stderr_w) & {
-		_info.stderr_w = std::move(stderr_w);
-		return *_this();
+		$info.stderr_w = std::move(stderr_w);
+		return *$this();
 	}
 
 	ProcessMaker &&stderr_to(stdio_stream_t stderr_w) && {
@@ -188,8 +188,8 @@ public:
 	}
 
 	ProcessMaker &stdin_from(stdio_stream_t stdin_r) & {
-		_info.stdin_r = std::move(stdin_r);
-		return *_this();
+		$info.stdin_r = std::move(stdin_r);
+		return *$this();
 	}
 
 	ProcessMaker &&stdin_from(stdio_stream_t stdin_r) && {
@@ -197,8 +197,8 @@ public:
 	}
 
 	ProcessMaker &on_start(std::function<void(process_t &)> cb) & {
-		_info.on_start = std::move(cb);
-		return *_this();
+		$info.on_start = std::move(cb);
+		return *$this();
 	}
 
 	ProcessMaker &&on_start(std::function<void(process_t &)> cb) && {
@@ -206,8 +206,8 @@ public:
 	}
 
 	ProcessMaker &load_dylib(std::string name) & {
-		_info.dylibs.push_back(std::move(name));
-		return *_this();
+		$info.dylibs.push_back(std::move(name));
+		return *$this();
 	}
 
 	ProcessMaker &&load_dylib(std::string name) && {
@@ -215,12 +215,12 @@ public:
 	}
 
 protected:
-	ProcessMakeInfo _info;
+	ProcessMakeInfo $info;
 
-	process_maker_base(ProcessMakeInfo info) : _info(std::move(info)) {}
+	process_maker_base(ProcessMakeInfo info) : $info(std::move(info)) {}
 
 private:
-	ProcessMaker *_this() {
+	ProcessMaker *$this() {
 		return static_cast<ProcessMaker *>(this);
 	}
 };

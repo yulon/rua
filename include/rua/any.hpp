@@ -22,83 +22,83 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr basic_any() : enable_type_info(), _sto() {}
+	constexpr basic_any() : enable_type_info(), $sto() {}
 
 	template <
 		typename T,
 		typename = enable_if_t<!std::is_base_of<basic_any, decay_t<T>>::value>>
 	basic_any(T &&val) {
-		_emplace<decay_t<T>>(std::forward<T>(val));
+		$emplace<decay_t<T>>(std::forward<T>(val));
 	}
 
 	template <typename T, typename... Args>
 	explicit basic_any(in_place_type_t<T>, Args &&...args) {
-		_emplace<T>(std::forward<Args>(args)...);
+		$emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
 	explicit basic_any(
 		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) {
-		_emplace<T>(il, std::forward<Args>(args)...);
+		$emplace<T>(il, std::forward<Args>(args)...);
 	}
 
 	~basic_any() {
 		reset();
 	}
 
-	basic_any(const basic_any &src) : enable_type_info(src._type) {
-		if (!_type) {
+	basic_any(const basic_any &src) : enable_type_info(src.$type) {
+		if (!$type) {
 			return;
 		}
 
-		assert(_type.is_copyable());
+		assert($type.is_copyable());
 
 		if (RUA_IS_CONTAINABLE(
-				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			_type.copy_to(&_sto[0], &src._sto);
+				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+			$type.copy_to(&$sto[0], &src.$sto);
 			return;
 		}
-		*reinterpret_cast<void **>(&_sto[0]) = _type.copy_to_new(
-			*reinterpret_cast<const void *const *>(&src._sto));
+		*reinterpret_cast<void **>(&$sto[0]) = $type.copy_to_new(
+			*reinterpret_cast<const void *const *>(&src.$sto));
 	}
 
-	basic_any(basic_any &&src) : enable_type_info(src._type) {
-		if (!_type) {
+	basic_any(basic_any &&src) : enable_type_info(src.$type) {
+		if (!$type) {
 			return;
 		}
 
-		assert(_type.is_moveable());
+		assert($type.is_moveable());
 
 		if (RUA_IS_CONTAINABLE(
-				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			_type.move_to(&_sto[0], &src._sto);
+				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+			$type.move_to(&$sto[0], &src.$sto);
 			return;
 		}
-		*reinterpret_cast<void **>(&_sto[0]) =
-			*reinterpret_cast<void **>(&src._sto);
-		src._type.reset();
+		*reinterpret_cast<void **>(&$sto[0]) =
+			*reinterpret_cast<void **>(&src.$sto);
+		src.$type.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
 
 	bool has_value() const {
-		return _type;
+		return $type;
 	}
 
 	operator bool() const {
-		return _type;
+		return $type;
 	}
 
 	template <typename T>
 	enable_if_t<is_containable<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
-		return *reinterpret_cast<T *>(&_sto[0]);
+		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
 	template <typename T>
 	enable_if_t<!is_containable<decay_t<T>>::value, T &> as() & {
 		assert(type_is<T>());
-		return **reinterpret_cast<T **>(&_sto[0]);
+		return **reinterpret_cast<T **>(&$sto[0]);
 	}
 
 	template <typename T>
@@ -109,31 +109,31 @@ public:
 	template <typename T>
 	enable_if_t<is_containable<decay_t<T>>::value, const T &> as() const & {
 		assert(type_is<T>());
-		return *reinterpret_cast<const T *>(&_sto[0]);
+		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
 	template <typename T>
 	enable_if_t<!is_containable<decay_t<T>>::value, const T &> as() const & {
 		assert(type_is<T>());
-		return **reinterpret_cast<const T *const *>(&_sto[0]);
+		return **reinterpret_cast<const T *const *>(&$sto[0]);
 	}
 
 	template <typename T, typename Emplaced = decay_t<T &&>>
 	Emplaced &emplace(T &&val) & {
 		reset();
-		return _emplace<Emplaced>(std::forward<T>(val));
+		return $emplace<Emplaced>(std::forward<T>(val));
 	}
 
 	template <typename T, typename Emplaced = decay_t<T &&>>
 	Emplaced &&emplace(T &&val) && {
 		reset();
-		return std::move(_emplace<Emplaced>(std::forward<T>(val)));
+		return std::move($emplace<Emplaced>(std::forward<T>(val)));
 	}
 
 	template <typename T, typename... Args>
 	T &emplace(Args &&...args) & {
 		reset();
-		return _emplace<T>(std::forward<Args>(args)...);
+		return $emplace<T>(std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
@@ -144,7 +144,7 @@ public:
 	template <typename T, typename U, typename... Args>
 	T &emplace(std::initializer_list<U> il, Args &&...args) & {
 		reset();
-		return _emplace<T>(il, std::forward<Args>(args)...);
+		return $emplace<T>(il, std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename U, typename... Args>
@@ -153,33 +153,33 @@ public:
 	}
 
 	void reset() {
-		if (!_type) {
+		if (!$type) {
 			return;
 		}
 		if (RUA_IS_CONTAINABLE(
-				_type.size(), _type.align(), StorageLen, StorageAlign)) {
-			_type.destruct(reinterpret_cast<void *>(&_sto[0]));
+				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+			$type.destruct(reinterpret_cast<void *>(&$sto[0]));
 		} else {
-			_type.dealloc(*reinterpret_cast<void **>(&_sto[0]));
+			$type.dealloc(*reinterpret_cast<void **>(&$sto[0]));
 		}
-		_type.reset();
+		$type.reset();
 	}
 
 private:
-	alignas(StorageAlign) char _sto[StorageLen];
+	alignas(StorageAlign) char $sto[StorageLen];
 
 	template <typename T, typename... Args>
-	enable_if_t<is_containable<T>::value, T &> _emplace(Args &&...args) {
-		_type = type_id<T>();
+	enable_if_t<is_containable<T>::value, T &> $emplace(Args &&...args) {
+		$type = type_id<T>();
 		return construct(
-			*reinterpret_cast<T *>(&_sto[0]), std::forward<Args>(args)...);
+			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
-	enable_if_t<!is_containable<T>::value, T &> _emplace(Args &&...args) {
-		_type = type_id<T>();
+	enable_if_t<!is_containable<T>::value, T &> $emplace(Args &&...args) {
+		$type = type_id<T>();
 		return *(
-			*reinterpret_cast<T **>(&_sto[0]) =
+			*reinterpret_cast<T **>(&$sto[0]) =
 				new T(std::forward<Args>(args)...));
 	}
 };

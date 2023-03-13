@@ -21,79 +21,79 @@ public:
 
 	////////////////////////////////////////////////////////////////
 
-	constexpr thread() : _id(0), _res() {}
+	constexpr thread() : $id(0), $res() {}
 
 	explicit thread(std::function<void()> fn, size_t stack_size = 0) {
-		_res = std::make_shared<_res_t>();
-		if (pthread_attr_init(&_res->attr)) {
-			_res->id = 0;
-			_res.reset();
-			_id = 0;
+		$res = std::make_shared<$res_t>();
+		if (pthread_attr_init(&$res->attr)) {
+			$res->id = 0;
+			$res.reset();
+			$id = 0;
 			return;
 		}
-		if (stack_size && pthread_attr_setstacksize(&_res->attr, stack_size)) {
-			pthread_attr_destroy(&_res->attr);
-			_res->id = 0;
-			_res.reset();
-			_id = 0;
+		if (stack_size && pthread_attr_setstacksize(&$res->attr, stack_size)) {
+			pthread_attr_destroy(&$res->attr);
+			$res->id = 0;
+			$res.reset();
+			$id = 0;
 			return;
 		}
-		_res->fn = std::move(fn);
+		$res->fn = std::move(fn);
 		if (pthread_create(
-				&_res->id,
-				&_res->attr,
+				&$res->id,
+				&$res->attr,
 				[](void *p) -> void * {
-					std::unique_ptr<std::shared_ptr<_res_t>> res_ptr(
-						reinterpret_cast<std::shared_ptr<_res_t> *>(p));
+					std::unique_ptr<std::shared_ptr<$res_t>> res_ptr(
+						reinterpret_cast<std::shared_ptr<$res_t> *>(p));
 					(*res_ptr)->fn();
 					return nullptr;
 				},
-				reinterpret_cast<void *>(new std::shared_ptr<_res_t>(_res)))) {
-			pthread_attr_destroy(&_res->attr);
-			_res->id = 0;
-			_res.reset();
-			_id = 0;
+				reinterpret_cast<void *>(new std::shared_ptr<$res_t>($res)))) {
+			pthread_attr_destroy(&$res->attr);
+			$res->id = 0;
+			$res.reset();
+			$id = 0;
 			return;
 		}
-		_id = _res->id;
+		$id = $res->id;
 	}
 
 	constexpr thread(std::nullptr_t) : thread() {}
 
-	constexpr explicit thread(tid_t id) : _id(id), _res() {}
+	constexpr explicit thread(tid_t id) : $id(id), $res() {}
 
 	~thread() {
 		reset();
 	}
 
 	tid_t id() const {
-		return _id;
+		return $id;
 	}
 
 	native_handle_t native_handle() const {
-		return _id;
+		return $id;
 	}
 
 	explicit operator bool() const {
-		return _id;
+		return $id;
 	}
 
 	bool operator==(const thread &target) const {
-		return _id == target._id;
+		return $id == target.$id;
 	}
 
 	bool operator!=(const thread &target) const {
-		return _id != target._id;
+		return $id != target.$id;
 	}
 
 	void exit(generic_word retval = nullptr) {
-		if (!_id) {
+		if (!$id) {
 			return;
 		}
-		if (_id == this_tid()) {
+		if ($id == this_tid()) {
 			pthread_exit(retval);
 		} else {
-			pthread_cancel(_id);
+			pthread_cancel($id);
 		}
 		reset();
 	}
@@ -101,23 +101,23 @@ public:
 	inline future<generic_word> RUA_OPERATOR_AWAIT() const;
 
 	void reset() {
-		if (_id) {
-			_id = 0;
+		if ($id) {
+			$id = 0;
 		}
-		_res.reset();
+		$res.reset();
 	}
 
 private:
-	pthread_t _id;
+	pthread_t $id;
 
-	struct _res_t {
+	struct $res_t {
 		pthread_t id;
 		pthread_attr_t attr;
 		std::function<void()> fn;
 
-		_res_t() = default;
+		$res_t() = default;
 
-		~_res_t() {
+		~$res_t() {
 			if (!id) {
 				return;
 			}
@@ -125,17 +125,17 @@ private:
 			pthread_attr_destroy(&attr);
 		}
 
-		_res_t(_res_t &&src) :
+		$res_t($res_t &&src) :
 			id(src.id), attr(src.attr), fn(std::move(src.fn)) {
 			if (src.id) {
 				src.id = 0;
 			}
 		}
 
-		RUA_OVERLOAD_ASSIGNMENT(_res_t)
+		RUA_OVERLOAD_ASSIGNMENT($res_t)
 	};
 
-	std::shared_ptr<_res_t> _res;
+	std::shared_ptr<$res_t> $res;
 };
 
 namespace _this_thread {

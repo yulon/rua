@@ -191,18 +191,18 @@ class awaiter_wrapper<
 public:
 	using storage_t = decay_t<Awaiter>;
 
-	awaiter_wrapper(Awaiter awaiter) : _awaiter(std::move(awaiter)) {}
+	awaiter_wrapper(Awaiter awaiter) : $awaiter(std::move(awaiter)) {}
 
 	storage_t &value() & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	const storage_t &value() const & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	storage_t &&value() && {
-		return std::move(_awaiter);
+		return std::move($awaiter);
 	}
 
 	storage_t &operator*() & {
@@ -226,7 +226,7 @@ public:
 	}
 
 private:
-	storage_t _awaiter;
+	storage_t $awaiter;
 };
 
 template <typename Awaiter>
@@ -238,10 +238,10 @@ class awaiter_wrapper<
 public:
 	using storage_t = Awaiter;
 
-	awaiter_wrapper(Awaiter awaiter) : _awaiter(awaiter) {}
+	awaiter_wrapper(Awaiter awaiter) : $awaiter(awaiter) {}
 
 	storage_t value() const {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	storage_t operator*() const {
@@ -253,7 +253,7 @@ public:
 	}
 
 private:
-	storage_t _awaiter;
+	storage_t $awaiter;
 };
 
 template <typename Awaitable>
@@ -267,20 +267,20 @@ public:
 
 	RUA_SASSERT(!std::is_reference<storage_t>::value);
 
-	awaiter_wrapper(Awaitable awaitable) : _awaitable(std::move(awaitable)) {
-		_awaiter = std::move(_awaitable).RUA_OPERATOR_AWAIT();
+	awaiter_wrapper(Awaitable awaitable) : $awaitable(std::move(awaitable)) {
+		$awaiter = std::move($awaitable).RUA_OPERATOR_AWAIT();
 	}
 
 	storage_t &value() & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	const storage_t &value() const & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	storage_t &&value() && {
-		return std::move(_awaiter);
+		return std::move($awaiter);
 	}
 
 	storage_t &operator*() & {
@@ -304,8 +304,8 @@ public:
 	}
 
 private:
-	decay_t<Awaitable &&> _awaitable;
-	storage_t _awaiter;
+	decay_t<Awaitable &&> $awaitable;
+	storage_t $awaiter;
 };
 
 template <typename Awaitable>
@@ -320,18 +320,18 @@ public:
 	RUA_SASSERT(!std::is_reference<storage_t>::value);
 
 	awaiter_wrapper(Awaitable awaitable) :
-		_awaiter(awaitable.RUA_OPERATOR_AWAIT()) {}
+		$awaiter(awaitable.RUA_OPERATOR_AWAIT()) {}
 
 	storage_t &value() & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	const storage_t &value() const & {
-		return _awaiter;
+		return $awaiter;
 	}
 
 	storage_t &&value() && {
-		return std::move(_awaiter);
+		return std::move($awaiter);
 	}
 
 	storage_t &operator*() & {
@@ -355,7 +355,7 @@ public:
 	}
 
 private:
-	storage_t _awaiter;
+	storage_t $awaiter;
 };
 
 template <typename Awaitable>

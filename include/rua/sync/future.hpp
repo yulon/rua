@@ -56,30 +56,30 @@ _future_detail<void>::get_val(variant<void, error_i, PromisePtr> &v) {
 template <typename T = void, typename PromiseValue = T>
 class future : private enable_await_operators {
 public:
-	constexpr future() : _r() {}
+	constexpr future() : $v() {}
 
 	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<T, error_i>), future)
-	future(Args &&...args) : _r(std::forward<Args>(args)...) {}
+	future(Args &&...args) : $v(std::forward<Args>(args)...) {}
 
 	template <
 		typename U = T,
 		typename = enable_if_t<
 			(std::is_void<T>::value && std::is_void<U>::value) ||
 			std::is_convertible<U, T>::value>>
-	future(expected<U> exp) : _r(std::move(exp).data()) {}
+	future(expected<U> exp) : $v(std::move(exp).data()) {}
 
 	template <
 		typename Promise,
 		typename = enable_if_t<
 			std::is_convertible<Promise &, promise<PromiseValue> &>::value>>
-	future(Promise &prm) : _r(&static_cast<promise<PromiseValue> &>(prm)) {}
+	future(Promise &prm) : $v(&static_cast<promise<PromiseValue> &>(prm)) {}
 
 	template <
 		typename U,
 		typename = enable_if_t<
 			!std::is_same<T, U>::value && std::is_convertible<U &&, T>::value &&
 			!std::is_convertible<future<U, PromiseValue> &&, T>::value>>
-	future(future<U, PromiseValue> &&src) : _r(std::move(src._r)) {}
+	future(future<U, PromiseValue> &&src) : $v(std::move(src.$v)) {}
 
 	template <
 		typename U,
@@ -87,25 +87,25 @@ public:
 		typename = enable_if_t<
 			!std::is_convertible<future<U, PromiseValue> &&, T>::value>>
 	future(future<U, PromiseValue> &&src) :
-		_r(*std::move(src._r).template as<promise<PromiseValue> *>()) {}
+		$v(*std::move(src.$v).template as<promise<PromiseValue> *>()) {}
 
-	future(future &&src) : _r(std::move(src._r)) {}
+	future(future &&src) : $v(std::move(src.$v)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(future);
 
 	bool await_ready() const {
-		return !_r.template type_is<promise<PromiseValue> *>();
+		return !$v.template type_is<promise<PromiseValue> *>();
 	}
 
 	bool await_suspend(std::function<void()> notify) {
 		assert(!await_ready());
 
-		return _r.template as<promise<PromiseValue> *>()->await_suspend(
+		return $v.template as<promise<PromiseValue> *>()->await_suspend(
 			std::move(notify));
 	}
 
 	expected<T> await_resume() {
-		return _future_detail<T>::get_val(_r);
+		return _future_detail<T>::get_val($v);
 	}
 
 	template <typename U>
@@ -114,14 +114,14 @@ public:
 	}
 
 	void reset() {
-		if (_r.template type_is<promise<PromiseValue> *>()) {
-			_r.template as<promise<PromiseValue> *>()->await_resume();
+		if ($v.template type_is<promise<PromiseValue> *>()) {
+			$v.template as<promise<PromiseValue> *>()->await_resume();
 		}
-		_r.reset();
+		$v.reset();
 	}
 
 private:
-	variant<T, error_i, promise<PromiseValue> *> _r;
+	variant<T, error_i, promise<PromiseValue> *> $v;
 };
 
 } // namespace rua

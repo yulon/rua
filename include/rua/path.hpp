@@ -35,7 +35,7 @@ public:
 		typename = decltype(to_temp_string(
 			std::declval<typename span_traits<PartList>::element_type>()))>
 	path_base(PartList &&part_list) :
-		_s(_join(std::forward<PartList>(part_list))) {}
+		_s($join(std::forward<PartList>(part_list))) {}
 
 	explicit operator bool() const {
 		return _s.length();
@@ -94,7 +94,7 @@ protected:
 private:
 	std::string _s;
 
-	static bool _is_other_sep(char c) {
+	static bool $is_other_sep(char c) {
 		static constexpr string_view other_seps(
 			Sep == '/' ? "\\" : (Sep == '\\' ? "/" : "/\\"));
 
@@ -106,13 +106,13 @@ private:
 		return false;
 	}
 
-	static bool _is_sep(char c) {
-		return c == Sep || _is_other_sep(c);
+	static bool $is_sep(char c) {
+		return c == Sep || $is_other_sep(c);
 	}
 
-	static std::string &&_fix_seps(std::string &&s) {
+	static std::string &&$fix_seps(std::string &&s) {
 		for (auto &c : s) {
-			if (_is_other_sep(c)) {
+			if ($is_other_sep(c)) {
 				c = Sep;
 			}
 		}
@@ -120,19 +120,19 @@ private:
 	}
 
 	template <typename PartList>
-	static std::string _join(PartList &&part_list) {
+	static std::string $join(PartList &&part_list) {
 		std::list<std::string> parts;
 		for (auto &part : std::forward<PartList>(part_list)) {
-			parts.emplace_back(trim_right_if(part, _is_sep));
+			parts.emplace_back(trim_right_if(part, $is_sep));
 		}
 		auto sep = Sep;
 		string_view sep_sv(&sep, 1);
 		if (parts.front() == sep_sv) {
 			auto front = std::move(parts.front());
 			parts.pop_front();
-			return _fix_seps(front + join(parts, sep_sv, true));
+			return $fix_seps(front + join(parts, sep_sv, true));
 		}
-		return _fix_seps(join(parts, sep_sv, true));
+		return $fix_seps(join(parts, sep_sv, true));
 	}
 };
 

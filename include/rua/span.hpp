@@ -158,13 +158,13 @@ inline constexpr auto is_writeable_span_v = is_writeable_span<T>::value;
 template <typename T>
 class span {
 public:
-	constexpr span(std::nullptr_t = nullptr) : _p(nullptr), _n(0) {}
+	constexpr span(std::nullptr_t = nullptr) : $p(nullptr), $n(0) {}
 
-	constexpr span(T *ptr, size_t size) : _p(ptr), _n(ptr ? size : 0) {}
+	constexpr span(T *ptr, size_t size) : $p(ptr), $n(ptr ? size : 0) {}
 
-	constexpr span(T &val, size_t size = 1) : _p(&val), _n(size) {}
+	constexpr span(T &val, size_t size = 1) : $p(&val), $n(size) {}
 
-	constexpr span(T &&val, size_t size = 1) : _p(&val), _n(size) {}
+	constexpr span(T &&val, size_t size = 1) : $p(&val), $n(size) {}
 
 	template <
 		typename Span,
@@ -179,30 +179,30 @@ public:
 		span(data(std::forward<Span>(src)), size(std::forward<Span>(src))) {}
 
 	constexpr explicit operator bool() const {
-		return _n;
+		return $n;
 	}
 
 	constexpr size_t size() const {
-		return _n;
+		return $n;
 	}
 
 	constexpr T *begin() const {
-		return _p;
+		return $p;
 	}
 
 	constexpr T *end() const {
-		return _p + _n;
+		return $p + $n;
 	}
 
 	constexpr T &operator[](ptrdiff_t offset) const {
-		return _p[offset];
+		return $p[offset];
 	}
 
 	constexpr span<T>
 	slice(ptrdiff_t begin_offset, ptrdiff_t end_offset_from_begin) const {
 		return begin_offset != end_offset_from_begin
 				   ? span<T>(
-						 _p + begin_offset,
+						 $p + begin_offset,
 						 static_cast<size_t>(
 							 end_offset_from_begin - begin_offset))
 				   : nullptr;
@@ -228,18 +228,18 @@ public:
 			reset();
 			return;
 		}
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_n = size;
+		$n = size;
 	}
 
 	void reset() {
-		if (!_p) {
+		if (!$p) {
 			return;
 		}
-		_p = nullptr;
-		_n = 0;
+		$p = nullptr;
+		$n = 0;
 	}
 
 	template <typename... Args>
@@ -250,8 +250,8 @@ public:
 	}
 
 private:
-	T *_p;
-	size_t _n;
+	T *$p;
+	size_t $n;
 };
 
 template <typename E>

@@ -40,7 +40,7 @@ public:
 		if (s.size() > 0 && s[0] == '/') {
 			return *this;
 		}
-		return _abs(s);
+		return $abs(s);
 	}
 
 	file_path abs() && {
@@ -48,11 +48,11 @@ public:
 		if (s.size() > 0 && s[0] == '/') {
 			return std::move(*this);
 		}
-		return _abs(s);
+		return $abs(s);
 	}
 
 private:
-	static file_path _abs(const std::string &str) {
+	static file_path $abs(const std::string &str) {
 		auto c_str = realpath(str.c_str(), nullptr);
 		file_path r(c_str);
 		::free(c_str);
@@ -69,19 +69,19 @@ public:
 	file_info() = default;
 
 	native_data_t &native_data() {
-		return _data;
+		return $data;
 	}
 
 	const native_data_t &native_data() const {
-		return _data;
+		return $data;
 	}
 
 	bool is_dir() const {
-		return S_ISDIR(_data.st_mode);
+		return S_ISDIR($data.st_mode);
 	}
 
 	uint64_t size() const {
-		return static_cast<uint64_t>(_data.st_size);
+		return static_cast<uint64_t>($data.st_size);
 	}
 
 	file_times times(int8_t zone = local_time_zone()) const {
@@ -89,19 +89,19 @@ public:
 	}
 
 	time modified_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_mtime, zone, unix_epoch);
+		return time($data.st_mtime, zone, unix_epoch);
 	}
 
 	time creation_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_ctime, zone, unix_epoch);
+		return time($data.st_ctime, zone, unix_epoch);
 	}
 
 	time access_time(int8_t zone = local_time_zone()) const {
-		return time(_data.st_atime, zone, unix_epoch);
+		return time($data.st_atime, zone, unix_epoch);
 	}
 
 private:
-	struct stat _data;
+	struct stat $data;
 };
 
 class file : public sys_stream {
@@ -177,27 +177,27 @@ public:
 	dir_entry() = default;
 
 	native_data_t &native_data() {
-		return *_data;
+		return *$data;
 	}
 
 	const native_data_t &native_data() const {
-		return *_data;
+		return *$data;
 	}
 
 	std::string name() const {
-		return _data->d_name;
+		return $data->d_name;
 	}
 
 	file_path path() const {
-		return {_dir_path, name()};
+		return {$dir_path, name()};
 	}
 
 	file_path relative_path() const {
-		return {_dir_rel_path, name()};
+		return {$dir_rel_path, name()};
 	}
 
 	bool is_dir() const {
-		return _data->d_type == DT_DIR;
+		return $data->d_type == DT_DIR;
 	}
 
 	dir_entry_info info() const {
@@ -230,8 +230,8 @@ public:
 	}
 
 private:
-	struct dirent *_data;
-	std::string _dir_path, _dir_rel_path;
+	struct dirent *$data;
+	std::string $dir_path, $dir_rel_path;
 
 	friend class view_dir;
 };
@@ -242,43 +242,43 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	view_dir() : _dir(nullptr) {}
+	view_dir() : $dir(nullptr) {}
 
 	view_dir(const file_path &path, size_t depth = 1) :
-		_dir(opendir(path.str().c_str())), _dep(depth), _parent(nullptr) {
+		$dir(opendir(path.str().c_str())), $dep(depth), $parent(nullptr) {
 
-		if (!_dir) {
+		if (!$dir) {
 			return;
 		}
 
-		_entry._dir_path = std::move(path).abs().str();
+		$entry.$dir_path = std::move(path).abs().str();
 
-		if (_next()) {
+		if ($next()) {
 			return;
 		}
 
-		closedir(_dir);
-		_dir = nullptr;
+		closedir($dir);
+		$dir = nullptr;
 	}
 
 	~view_dir() {
-		if (!_dir) {
+		if (!$dir) {
 			return;
 		}
-		closedir(_dir);
-		_dir = nullptr;
-		if (_parent) {
-			delete _parent;
+		closedir($dir);
+		$dir = nullptr;
+		if ($parent) {
+			delete $parent;
 		}
 	}
 
 	view_dir(view_dir &&src) :
-		_dir(src._dir),
-		_entry(std::move(src._entry)),
-		_dep(src._dep),
-		_parent(src._parent) {
+		$dir(src.$dir),
+		$entry(std::move(src.$entry)),
+		$dep(src.$dep),
+		$parent(src.$parent) {
 		if (src) {
-			src._dir = nullptr;
+			src.$dir = nullptr;
 		}
 	}
 
@@ -291,60 +291,60 @@ public:
 	}
 
 	native_handle_t native_handle() const {
-		return _dir;
+		return $dir;
 	}
 
 	operator bool() const {
-		return _dir;
+		return $dir;
 	}
 
 	const dir_entry &operator*() const {
-		return _entry;
+		return $entry;
 	}
 
 	const dir_entry *operator->() const {
-		return &_entry;
+		return &$entry;
 	}
 
 	view_dir &operator++() {
-		assert(_dir);
+		assert($dir);
 
-		if ((_dep > 1 || !_dep) && _entry.is_dir()) {
-			view_dir sub(_entry.path(), _dep > 1 ? _dep - 1 : 0);
+		if (($dep > 1 || !$dep) && $entry.is_dir()) {
+			view_dir sub($entry.path(), $dep > 1 ? $dep - 1 : 0);
 			if (sub) {
-				sub._entry._dir_rel_path = _entry.relative_path().str();
-				sub._parent = new view_dir(std::move(*this));
+				sub.$entry.$dir_rel_path = $entry.relative_path().str();
+				sub.$parent = new view_dir(std::move(*this));
 				return *this = std::move(sub);
 			}
 		}
 
-		if (_next()) {
+		if ($next()) {
 			return *this;
 		}
 
-		while (_parent) {
-			auto parent = _parent;
-			_parent = nullptr;
+		while ($parent) {
+			auto parent = $parent;
+			$parent = nullptr;
 			*this = std::move(*parent);
 			delete parent;
 
-			if (_next()) {
+			if ($next()) {
 				return *this;
 			}
 		}
 
-		closedir(_dir);
-		_dir = nullptr;
+		closedir($dir);
+		$dir = nullptr;
 		return *this;
 	}
 
 private:
-	DIR *_dir;
-	dir_entry _entry;
-	size_t _dep;
-	view_dir *_parent;
+	DIR *$dir;
+	dir_entry $entry;
+	size_t $dep;
+	view_dir *$parent;
 
-	static bool _is_dots(const char *c_str) {
+	static bool $is_dots(const char *c_str) {
 		for (; *c_str; ++c_str) {
 			if (*c_str != '.') {
 				return false;
@@ -353,9 +353,9 @@ private:
 		return true;
 	}
 
-	bool _next() {
-		while (assign(_entry._data, readdir(_dir))) {
-			if (_is_dots(_entry._data->d_name)) {
+	bool $next() {
+		while (assign($entry.$data, readdir($dir))) {
+			if ($is_dots($entry.$data->d_name)) {
 				continue;
 			}
 			return true;

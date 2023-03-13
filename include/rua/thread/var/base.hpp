@@ -20,42 +20,42 @@ namespace rua {
 
 class _thread_var_indexer {
 public:
-	constexpr _thread_var_indexer() : _ix_c(0), _idle_ixs() {}
+	constexpr _thread_var_indexer() : $ix_c(0), $idle_ixs() {}
 
 	size_t alloc() {
-		auto idle_ix_opt = _idle_ixs.pop_front();
+		auto idle_ix_opt = $idle_ixs.pop_front();
 		if (idle_ix_opt) {
 			return idle_ix_opt.value();
 		}
-		return _ix_c++;
+		return $ix_c++;
 	}
 
 	void dealloc(size_t ix) {
-		_idle_ixs.emplace_front(ix);
+		$idle_ixs.emplace_front(ix);
 	}
 
 private:
-	std::atomic<size_t> _ix_c;
-	lockfree_list<size_t> _idle_ixs;
+	std::atomic<size_t> $ix_c;
+	lockfree_list<size_t> $idle_ixs;
 };
 
 class spare_thread_word_var {
 public:
 	spare_thread_word_var(void (*dtor)(generic_word)) :
-		_ix(_ctx().ixer.alloc()), _dtor(dtor) {}
+		$ix($ctx().ixer.alloc()), $dtor(dtor) {}
 
 	~spare_thread_word_var() {
 		if (is_storable()) {
 			return;
 		}
-		_ctx().ixer.dealloc(_ix);
-		_ix = static_cast<size_t>(-1);
+		$ctx().ixer.dealloc($ix);
+		$ix = static_cast<size_t>(-1);
 		return;
 	}
 
-	spare_thread_word_var(spare_thread_word_var &&src) : _ix(src._ix) {
+	spare_thread_word_var(spare_thread_word_var &&src) : $ix(src.$ix) {
 		if (src.is_storable()) {
-			src._ix = static_cast<size_t>(-1);
+			src.$ix = static_cast<size_t>(-1);
 		}
 	}
 
@@ -64,15 +64,15 @@ public:
 	using native_handle_t = size_t;
 
 	native_handle_t native_handle() const {
-		return _ix;
+		return $ix;
 	}
 
 	bool is_storable() const {
-		return _ix != static_cast<size_t>(-1);
+		return $ix != static_cast<size_t>(-1);
 	}
 
 	void set(generic_word value) {
-		auto &ctx = _ctx();
+		auto &ctx = $ctx();
 		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
@@ -84,25 +84,25 @@ public:
 			it = ctx.map.find(this_tid());
 		}
 		auto &li = it->second.second;
-		if (li.size() <= _ix) {
+		if (li.size() <= $ix) {
 			if (!value) {
 				return;
 			}
 			++it->second.first;
-			li.resize(_ix + 1);
-		} else if (!li[_ix]) {
+			li.resize($ix + 1);
+		} else if (!li[$ix]) {
 			if (!value) {
 				return;
 			}
 			++it->second.first;
-		} else if (li[_ix] && !value) {
+		} else if (li[$ix] && !value) {
 			--it->second.first;
 		}
-		li[_ix] = value;
+		li[$ix] = value;
 	}
 
 	generic_word get() const {
-		auto &ctx = _ctx();
+		auto &ctx = $ctx();
 		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
@@ -110,14 +110,14 @@ public:
 			return 0;
 		}
 		auto &li = it->second.second;
-		if (li.size() <= _ix) {
+		if (li.size() <= $ix) {
 			return 0;
 		}
-		return li[_ix];
+		return li[$ix];
 	}
 
 	void reset() {
-		auto &ctx = _ctx();
+		auto &ctx = $ctx();
 		std::lock_guard<std::mutex> lg(ctx.mtx);
 
 		auto it = ctx.map.find(this_tid());
@@ -125,33 +125,33 @@ public:
 			return;
 		}
 		auto &li = it->second.second;
-		if (li.size() <= _ix) {
+		if (li.size() <= $ix) {
 			return;
 		}
-		if (!li[_ix]) {
+		if (!li[$ix]) {
 			return;
 		}
-		_dtor(li[_ix]);
+		$dtor(li[$ix]);
 		if (--it->second.first) {
 			ctx.map.erase(it);
 		}
 	}
 
 private:
-	size_t _ix;
-	void (*_dtor)(generic_word);
+	size_t $ix;
+	void (*$dtor)(generic_word);
 
-	using _map_t =
+	using $map_t =
 		std::unordered_map<tid_t, std::pair<size_t, std::vector<uintptr_t>>>;
 
-	struct _ctx_t {
+	struct $ctx_t {
 		_thread_var_indexer ixer;
 		std::mutex mtx;
-		_map_t map;
+		$map_t map;
 	};
 
-	static _ctx_t &_ctx() {
-		static _ctx_t inst;
+	static $ctx_t &$ctx() {
+		static $ctx_t inst;
 		return inst;
 	}
 };
@@ -162,22 +162,22 @@ template <
 	typename SpareThreadWordVar = spare_thread_word_var>
 class basic_thread_var {
 public:
-	basic_thread_var() : _ix(_ixer().alloc()) {}
+	basic_thread_var() : $ix($ixer().alloc()) {}
 
 	~basic_thread_var() {
-		_ixer().dealloc(_ix);
+		$ixer().dealloc($ix);
 	}
 
-	basic_thread_var(basic_thread_var &&src) : _ix(src._ix) {
+	basic_thread_var(basic_thread_var &&src) : $ix(src.$ix) {
 		if (src.is_storable()) {
-			src._ix = static_cast<size_t>(-1);
+			src.$ix = static_cast<size_t>(-1);
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_thread_var)
 
 	bool is_storable() const {
-		return _ix != static_cast<size_t>(-1);
+		return $ix != static_cast<size_t>(-1);
 	}
 
 	bool has_value() const {
@@ -187,25 +187,25 @@ public:
 			return false;
 		}
 		auto &li = w.template as<std::vector<any>>();
-		if (li.size() <= _ix) {
+		if (li.size() <= $ix) {
 			return false;
 		}
-		return li[_ix].template type_is<T>();
+		return li[$ix].template type_is<T>();
 	}
 
 	template <typename... Args>
 	T &emplace(Args &&...args) {
 		RUA_SPASSERT((std::is_constructible<T, Args...>::value));
 
-		auto &li = _li();
-		if (li.size() <= _ix) {
-			li.resize(_ix + 1);
+		auto &li = $li();
+		if (li.size() <= $ix) {
+			li.resize($ix + 1);
 		}
-		return li[_ix].template emplace<T>(std::forward<Args>(args)...);
+		return li[$ix].template emplace<T>(std::forward<Args>(args)...);
 	}
 
 	T &value() const {
-		return _li()[_ix].template as<T>();
+		return $li()[$ix].template as<T>();
 	}
 
 	void reset() {
@@ -215,68 +215,68 @@ public:
 			return;
 		}
 		auto &li = w.template as<std::vector<any>>();
-		if (li.size() <= _ix) {
+		if (li.size() <= $ix) {
 			return;
 		}
-		li[_ix].reset();
+		li[$ix].reset();
 	}
 
 	class word_var_wrapper {
 	public:
 		word_var_wrapper() {
-			auto &wv = _word_var<ThreadWordVar>();
+			auto &wv = $word_var<ThreadWordVar>();
 			if (wv.is_storable()) {
-				_owner = &wv;
-				_bind<ThreadWordVar>();
+				$owner = &wv;
+				$bind<ThreadWordVar>();
 				return;
 			}
-			auto &spare_wv = _word_var<SpareThreadWordVar>();
+			auto &spare_wv = $word_var<SpareThreadWordVar>();
 			assert(spare_wv.is_storable());
-			_owner = &spare_wv;
-			_bind<SpareThreadWordVar>();
+			$owner = &spare_wv;
+			$bind<SpareThreadWordVar>();
 		}
 
 		generic_word native_handle() const {
-			return _nh(_owner);
+			return $nh($owner);
 		}
 
 		void set(generic_word val) {
-			this->_set(_owner, val);
+			this->$set($owner, val);
 			/*
 				G++ 11.2.0 may have bug:
-				_set(_owner, val) - no
-				_set(_owner, val.value()) - yes
-				this->_set(_owner, val) - yes
+				$set($owner, val) - no
+				$set($owner, val.value()) - yes
+				this->$set($owner, val) - yes
 			*/
 		}
 
 		generic_word get() const {
-			return _get(_owner);
+			return $get($owner);
 		}
 
 		void reset() {
-			_reset(_owner);
+			$reset($owner);
 		}
 
 	private:
-		void *_owner;
-		generic_word (*_nh)(void *owner);
-		void (*_set)(void *owner, generic_word);
-		generic_word (*_get)(void *owner);
-		void (*_reset)(void *owner);
+		void *$owner;
+		generic_word (*$nh)(void *owner);
+		void (*$set)(void *owner, generic_word);
+		generic_word (*$get)(void *owner);
+		void (*$reset)(void *owner);
 
 		template <typename TWV>
-		void _bind() {
-			_nh = [](void *owner) -> generic_word {
+		void $bind() {
+			$nh = [](void *owner) -> generic_word {
 				return reinterpret_cast<TWV *>(owner)->native_handle();
 			};
-			_set = [](void *owner, generic_word val) {
+			$set = [](void *owner, generic_word val) {
 				reinterpret_cast<TWV *>(owner)->set(val);
 			};
-			_get = [](void *owner) -> generic_word {
+			$get = [](void *owner) -> generic_word {
 				return reinterpret_cast<TWV *>(owner)->get();
 			};
-			_reset = [](void *owner) {
+			$reset = [](void *owner) {
 				reinterpret_cast<TWV *>(owner)->reset();
 			};
 		}
@@ -288,10 +288,10 @@ public:
 	}
 
 private:
-	size_t _ix;
+	size_t $ix;
 
 	template <typename TWV>
-	static TWV &_word_var() {
+	static TWV &$word_var() {
 		static TWV inst([](generic_word val) {
 			if (!val) {
 				return;
@@ -301,12 +301,12 @@ private:
 		return inst;
 	}
 
-	static _thread_var_indexer &_ixer() {
+	static _thread_var_indexer &$ixer() {
 		static _thread_var_indexer inst;
 		return inst;
 	}
 
-	static std::vector<any> &_li() {
+	static std::vector<any> &$li() {
 		auto &wv = using_word_var();
 		auto w = wv.get();
 		if (!w) {

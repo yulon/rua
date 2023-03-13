@@ -20,7 +20,7 @@ public:
 		dylib(LoadLibraryW(u2w(name).c_str()), need_unload) {}
 
 	constexpr dylib(native_handle_t h = nullptr, bool need_unload = true) :
-		_h(h), _need_unload(need_unload && h) {}
+		$h(h), $need_unload(need_unload && h) {}
 
 	static dylib from_loaded(string_view name) {
 		return dylib(GetModuleHandleW(u2w(name).c_str()), false);
@@ -38,29 +38,29 @@ public:
 		unload();
 	}
 
-	dylib(dylib &&src) : _h(src._h), _need_unload(src._need_unload) {
-		if (!src._h) {
+	dylib(dylib &&src) : $h(src.$h), $need_unload(src.$need_unload) {
+		if (!src.$h) {
 			return;
 		}
-		src._h = nullptr;
+		src.$h = nullptr;
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(dylib)
 
 	explicit operator bool() const {
-		return _h;
+		return $h;
 	}
 
 	native_handle_t native_handle() const {
-		return _h;
+		return $h;
 	}
 
 	bool has_ownership() const {
-		return _h && _need_unload;
+		return $h && $need_unload;
 	}
 
 	generic_ptr find(string_view name) const {
-		return _h ? GetProcAddress(_h, name.data()) : nullptr;
+		return $h ? GetProcAddress($h, name.data()) : nullptr;
 	}
 
 	generic_ptr operator[](string_view name) const {
@@ -68,18 +68,18 @@ public:
 	}
 
 	void unload() {
-		if (!_h) {
+		if (!$h) {
 			return;
 		}
-		if (_need_unload) {
-			FreeLibrary(_h);
+		if ($need_unload) {
+			FreeLibrary($h);
 		}
-		_h = nullptr;
+		$h = nullptr;
 	}
 
 private:
-	HMODULE _h;
-	bool _need_unload;
+	HMODULE $h;
+	bool $need_unload;
 };
 
 // TODO: unique_dylib

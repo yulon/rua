@@ -12,33 +12,33 @@ public:
 		const std::function<T(const T &)> &on_set,
 		const std::function<T(const T &)> &on_get,
 		const std::function<void(const T &)> &on_change) :
-		_data(std::move(init_val)),
-		_set(on_set),
-		_get(on_get),
-		_chg(on_change) {}
+		$data(std::move(init_val)),
+		$set(on_set),
+		$get(on_get),
+		$chg(on_change) {}
 
 	observer(
 		T init_val,
 		const std::function<T(const T &)> &on_set,
 		const std::function<T(const T &)> &on_get) :
-		_data(std::move(init_val)), _set(on_set), _get(on_get), _chg(nullptr) {}
+		$data(std::move(init_val)), $set(on_set), $get(on_get), $chg(nullptr) {}
 
 	observer(
 		const std::function<T(const T &)> &on_set,
 		const std::function<T(const T &)> &on_get,
 		const std::function<void(const T &)> &on_change) :
-		_data(), _set(on_set), _get(on_get), _chg(on_change) {}
+		$data(), $set(on_set), $get(on_get), $chg(on_change) {}
 
 	observer(
 		const std::function<T(const T &)> &on_set,
 		const std::function<T(const T &)> &on_get) :
-		_data(), _set(on_set), _get(on_get), _chg(nullptr) {}
+		$data(), $set(on_set), $get(on_get), $chg(nullptr) {}
 
 	T get() {
-		if (_get) {
-			return _get(_data);
+		if ($get) {
+			return $get($data);
 		}
-		return _data;
+		return $data;
 	}
 
 	operator T() {
@@ -48,16 +48,16 @@ public:
 	void set(const T &value) {
 		T cache;
 
-		if (_set) {
-			cache = _set(value);
+		if ($set) {
+			cache = $set(value);
 		} else {
 			cache = value;
 		}
 
-		if (_data != cache) {
-			_data = cache;
-			if (_chg) {
-				_chg(_data);
+		if ($data != cache) {
+			$data = cache;
+			if ($chg) {
+				$chg($data);
 			}
 		}
 	}
@@ -68,10 +68,10 @@ public:
 	}
 
 private:
-	T _data;
-	std::function<T(const T &)> _set;
-	std::function<T(const T &)> _get;
-	std::function<void(const T &)> _chg;
+	T $data;
+	std::function<T(const T &)> $set;
+	std::function<T(const T &)> $get;
+	std::function<void(const T &)> $chg;
 };
 
 template <typename R, typename V>
