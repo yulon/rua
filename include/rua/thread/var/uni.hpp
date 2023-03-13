@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_VAR_UNI_HPP
-#define _RUA_THREAD_VAR_UNI_HPP
+#ifndef _rua_thread_var_uni_hpp
+#define _rua_thread_var_uni_hpp
 
 #include "base.hpp"
 

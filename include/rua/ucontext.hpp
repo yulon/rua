@@ -5,8 +5,8 @@
 		https://github.com/boostorg/context/tree/develop/src/asm
 */
 
-#ifndef _RUA_UCONTEXT_HPP
-#define _RUA_UCONTEXT_HPP
+#ifndef _rua_ucontext_hpp
+#define _rua_ucontext_hpp
 
 #include "binary/bytes.hpp"
 #include "generic_ptr.hpp"

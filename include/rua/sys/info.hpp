@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_INFO_HPP
-#define _RUA_SYS_INFO_HPP
+#ifndef _rua_sys_info_hpp
+#define _rua_sys_info_hpp
 
 #include "../util/macros.hpp"
 

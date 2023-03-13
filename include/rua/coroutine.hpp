@@ -1,5 +1,5 @@
-#ifndef _RUA_COROUTINE_HPP
-#define _RUA_COROUTINE_HPP
+#ifndef _rua_coroutine_hpp
+#define _rua_coroutine_hpp
 
 #include "util.hpp"
 

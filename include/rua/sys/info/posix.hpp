@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_INFO_POSIX_HPP
-#define _RUA_SYS_INFO_POSIX_HPP
+#ifndef _rua_sys_info_posix_hpp
+#define _rua_sys_info_posix_hpp
 
 #include "../../string/conv.hpp"
 #include "../../string/view.hpp"

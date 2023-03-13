@@ -1,5 +1,5 @@
-#ifndef _RUA_PROCESS_POSIX_HPP
-#define _RUA_PROCESS_POSIX_HPP
+#ifndef _rua_process_posix_hpp
+#define _rua_process_posix_hpp
 
 #include "base.hpp"
 

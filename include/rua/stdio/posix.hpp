@@ -1,5 +1,5 @@
-#ifndef _RUA_STDIO_POSIX_HPP
-#define _RUA_STDIO_POSIX_HPP
+#ifndef _rua_stdio_posix_hpp
+#define _rua_stdio_posix_hpp
 
 #include "../sys/stream/posix.hpp"
 #include "../util.hpp"

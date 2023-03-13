@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CODEC_BASE_UNI_HPP
-#define _RUA_STRING_CODEC_BASE_UNI_HPP
+#ifndef _rua_string_codec_base_uni_hpp
+#define _rua_string_codec_base_uni_hpp
 
 #include "../../view.hpp"
 

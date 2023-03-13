@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_DOZER_POSIX_HPP
-#define _RUA_THREAD_DOZER_POSIX_HPP
+#ifndef _rua_thread_dozer_posix_hpp
+#define _rua_thread_dozer_posix_hpp
 
 #include "../../time.hpp"
 #include "../../util.hpp"

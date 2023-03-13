@@ -1,5 +1,5 @@
-#ifndef _RUA_STDIO_HPP
-#define _RUA_STDIO_HPP
+#ifndef _rua_stdio_hpp
+#define _rua_stdio_hpp
 
 #include "stdio/c.hpp"
 

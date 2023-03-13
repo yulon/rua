@@ -1,5 +1,5 @@
-#ifndef _RUA_LOCKFREE_LIST_HPP
-#define _RUA_LOCKFREE_LIST_HPP
+#ifndef _rua_lockfree_list_hpp
+#define _rua_lockfree_list_hpp
 
 #include "forward_list.hpp"
 #include "optional.hpp"

@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_SPLIT_HPP
-#define _RUA_STRING_SPLIT_HPP
+#ifndef _rua_string_split_hpp
+#define _rua_string_split_hpp
 
 #include "slice.hpp"
 #include "view.hpp"

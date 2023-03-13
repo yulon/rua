@@ -1,5 +1,5 @@
-#ifndef _RUA_IO_UTIL_HPP
-#define _RUA_IO_UTIL_HPP
+#ifndef _rua_io_util_hpp
+#define _rua_io_util_hpp
 
 #include "./stream.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_STREAM_HPP
-#define _RUA_SYS_STREAM_HPP
+#ifndef _rua_sys_stream_hpp
+#define _rua_sys_stream_hpp
 
 #include "stream/c.hpp"
 

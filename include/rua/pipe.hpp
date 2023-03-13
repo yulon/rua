@@ -1,5 +1,5 @@
-#ifndef _RUA_PIPE_HPP
-#define _RUA_PIPE_HPP
+#ifndef _rua_pipe_hpp
+#define _rua_pipe_hpp
 
 #include "util/macros.hpp"
 

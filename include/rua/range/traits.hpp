@@ -1,5 +1,5 @@
-#ifndef _RUA_RANGE_TRAITS_HPP
-#define _RUA_RANGE_TRAITS_HPP
+#ifndef _rua_range_traits_hpp
+#define _rua_range_traits_hpp
 
 #include "../span.hpp"
 #include "../util.hpp"
@@ -25,7 +25,7 @@ struct is_range : std::false_type {};
 template <typename T>
 struct is_range<T, void_t<range_traits<T>>> : std::true_type {};
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
+#ifdef RUA_HAS_INLINE_VAR
 template <typename T>
 inline constexpr auto is_range_v = is_range<T>::value;
 #endif
@@ -40,7 +40,7 @@ struct is_readonly_range<
 		std::is_const<typename range_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
+#ifdef RUA_HAS_INLINE_VAR
 template <typename T>
 inline constexpr auto is_readonly_range_v = is_readonly_range<T>::value;
 #endif
@@ -55,7 +55,7 @@ struct is_writeable_range<
 		!std::is_const<typename range_traits<T>::element_type>::value>>>
 	: std::true_type {};
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
+#ifdef RUA_HAS_INLINE_VAR
 template <typename T>
 inline constexpr auto is_writeable_range_v = is_writeable_range<T>::value;
 #endif

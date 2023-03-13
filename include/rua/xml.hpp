@@ -1,5 +1,5 @@
-#ifndef _RUA_XML_HPP
-#define _RUA_XML_HPP
+#ifndef _rua_xml_hpp
+#define _rua_xml_hpp
 
 #include "range.hpp"
 #include "string.hpp"

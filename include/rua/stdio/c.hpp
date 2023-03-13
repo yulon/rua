@@ -1,5 +1,5 @@
-#ifndef _RUA_STDIO_C_HPP
-#define _RUA_STDIO_C_HPP
+#ifndef _rua_stdio_c_hpp
+#define _rua_stdio_c_hpp
 
 #include "../sys/stream/c.hpp"
 #include "../util.hpp"

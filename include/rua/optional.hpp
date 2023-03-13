@@ -1,5 +1,5 @@
-#ifndef _RUA_OPTIONAL_HPP
-#define _RUA_OPTIONAL_HPP
+#ifndef _rua_optional_hpp
+#define _rua_optional_hpp
 
 #include "invocable.hpp"
 #include "util.hpp"

@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_HPP
-#define _RUA_THREAD_HPP
+#ifndef _rua_thread_hpp
+#define _rua_thread_hpp
 
 #include "thread/core.hpp"
 #include "thread/dozer.hpp"

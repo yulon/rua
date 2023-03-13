@@ -1,5 +1,5 @@
-#ifndef _RUA_INVOCABLE_HPP
-#define _RUA_INVOCABLE_HPP
+#ifndef _rua_invocable_hpp
+#define _rua_invocable_hpp
 
 #include "util/base.hpp"
 #include "util/macros.hpp"
@@ -111,7 +111,7 @@ struct is_invocable : _is_invocable<void, F, Args...> {};
 
 #endif
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
+#ifdef RUA_HAS_INLINE_VAR
 template <typename F, typename... Args>
 inline constexpr auto is_invocable_v = is_invocable<F, Args...>::value;
 #endif

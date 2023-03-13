@@ -1,5 +1,5 @@
-#ifndef _RUA_GENERIC_PTR_HPP
-#define _RUA_GENERIC_PTR_HPP
+#ifndef _rua_generic_ptr_hpp
+#define _rua_generic_ptr_hpp
 
 #include "string/conv.hpp"
 #include "util.hpp"

@@ -1,5 +1,5 @@
-#ifndef _RUA_HARD_WIN32_HPP
-#define _RUA_HARD_WIN32_HPP
+#ifndef _rua_hard_win32_hpp
+#define _rua_hard_win32_hpp
 
 #include <windows.h>
 

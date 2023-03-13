@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_TICK_HPP
-#define _RUA_TIME_TICK_HPP
+#ifndef _rua_time_tick_hpp
+#define _rua_time_tick_hpp
 
 #include "../util/macros.hpp"
 

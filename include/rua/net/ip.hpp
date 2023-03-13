@@ -1,5 +1,5 @@
-#ifndef _RUA_NET_IP_HPP
-#define _RUA_NET_IP_HPP
+#ifndef _rua_net_ip_hpp
+#define _rua_net_ip_hpp
 
 #include "../binary/bytes.hpp"
 

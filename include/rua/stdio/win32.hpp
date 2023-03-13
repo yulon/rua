@@ -1,5 +1,5 @@
-#ifndef _RUA_STDIO_WIN32_HPP
-#define _RUA_STDIO_WIN32_HPP
+#ifndef _rua_stdio_win32_hpp
+#define _rua_stdio_win32_hpp
 
 #include "../string/codec/stream/win32.hpp"
 #include "../sys/stream/win32.hpp"

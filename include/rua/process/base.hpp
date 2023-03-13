@@ -1,5 +1,5 @@
-#ifndef _RUA_PROCESS_BASE_HPP
-#define _RUA_PROCESS_BASE_HPP
+#ifndef _rua_process_base_hpp
+#define _rua_process_base_hpp
 
 #include "../optional.hpp"
 #include "../range/traits.hpp"

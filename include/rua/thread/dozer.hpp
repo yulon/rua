@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_DOZER_HPP
-#define _RUA_THREAD_DOZER_HPP
+#ifndef _rua_thread_dozer_hpp
+#define _rua_thread_dozer_hpp
 
 #include "../util/macros.hpp"
 

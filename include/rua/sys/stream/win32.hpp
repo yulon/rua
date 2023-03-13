@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_STREAM_WIN32_HPP
-#define _RUA_SYS_STREAM_WIN32_HPP
+#ifndef _rua_sys_stream_win32_hpp
+#define _rua_sys_stream_win32_hpp
 
 #include "../../io/util.hpp"
 #include "../../util.hpp"

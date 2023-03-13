@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_PATHS_WIN32_HPP
-#define _RUA_SYS_PATHS_WIN32_HPP
+#ifndef _rua_sys_paths_win32_hpp
+#define _rua_sys_paths_win32_hpp
 
 #include "../../file/win32.hpp"
 #include "../../process/win32.hpp"

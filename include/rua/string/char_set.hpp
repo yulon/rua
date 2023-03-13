@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CHAR_SET_HPP
-#define _RUA_STRING_CHAR_SET_HPP
+#ifndef _rua_string_char_set_hpp
+#define _rua_string_char_set_hpp
 
 #include "view.hpp"
 

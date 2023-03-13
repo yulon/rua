@@ -1,5 +1,5 @@
-#ifndef _RUA_DYLIB_WIN32_HPP
-#define _RUA_DYLIB_WIN32_HPP
+#ifndef _rua_dylib_win32_hpp
+#define _rua_dylib_win32_hpp
 
 #include "dyfn.h"
 

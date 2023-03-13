@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_SLEEP_HPP
-#define _RUA_THREAD_SLEEP_HPP
+#ifndef _rua_thread_sleep_hpp
+#define _rua_thread_sleep_hpp
 
 #include "../util/macros.hpp"
 

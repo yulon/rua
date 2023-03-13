@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_AWAIT_HPP
-#define _RUA_SYNC_AWAIT_HPP
+#ifndef _rua_sync_await_hpp
+#define _rua_sync_await_hpp
 
 #include "../coroutine.hpp"
 #include "../invocable.hpp"
@@ -10,7 +10,7 @@
 
 namespace rua {
 
-#ifdef RUA_AWAIT_SUPPORTED
+#ifdef RUA_HAS_AWAIT
 #define RUA_OPERATOR_AWAIT operator co_await
 #else
 #define RUA_OPERATOR_AWAIT operator_co_await

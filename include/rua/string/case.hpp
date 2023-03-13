@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CASE_HPP
-#define _RUA_STRING_CASE_HPP
+#ifndef _rua_string_case_hpp
+#define _rua_string_case_hpp
 
 #include "char_set.hpp"
 #include "view.hpp"

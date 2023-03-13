@@ -1,5 +1,5 @@
-#ifndef _RUA_PRINTER_HPP
-#define _RUA_PRINTER_HPP
+#ifndef _rua_printer_hpp
+#define _rua_printer_hpp
 
 #include "io.hpp"
 #include "string/join.hpp"

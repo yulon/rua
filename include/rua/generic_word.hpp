@@ -1,5 +1,5 @@
-#ifndef _RUA_GENERIC_WORD_HPP
-#define _RUA_GENERIC_WORD_HPP
+#ifndef _rua_generic_word_hpp
+#define _rua_generic_word_hpp
 
 #include "binary/bits.hpp"
 #include "string/conv.hpp"

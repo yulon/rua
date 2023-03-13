@@ -1,5 +1,5 @@
-#ifndef _RUA_ERROR_HPP
-#define _RUA_ERROR_HPP
+#ifndef _rua_error_hpp
+#define _rua_error_hpp
 
 #include "interface_ptr.hpp"
 #include "invocable.hpp"
@@ -9,7 +9,7 @@
 #include "util.hpp"
 #include "variant.hpp"
 
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 
 #include "thread/var.hpp"
 
@@ -39,7 +39,7 @@ protected:
 
 ////////////////////////////////////////////////////////////////////////////
 
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 
 class error_i : public interface_ptr<error_base>, public std::exception {
 public:
@@ -186,7 +186,7 @@ public:
 	}
 
 	T &value() & {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 		if (!has_value()) {
 			throw error();
 		}
@@ -197,7 +197,7 @@ public:
 	}
 
 	T &&value() && {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 		if (!has_value()) {
 			throw error();
 		}
@@ -208,7 +208,7 @@ public:
 	}
 
 	const T &value() const & {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 		if (!has_value()) {
 			throw error();
 		}
@@ -319,7 +319,7 @@ struct is_expected : std::false_type {};
 template <typename T>
 struct is_expected<expected<T>> : std::true_type {};
 
-#if RUA_CPP >= RUA_CPP_17 || defined(__cpp_inline_variables)
+#ifdef RUA_HAS_INLINE_VAR
 template <typename T>
 inline constexpr auto is_expected_v = is_expected<T>::value;
 #endif
@@ -372,11 +372,11 @@ template <
 	typename ExpR = warp_expected_t<RawR>>
 inline enable_if_t<!std::is_void<RawR>::value, ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		return rua::invoke(std::forward<F>(f), std::move(exp));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -391,11 +391,11 @@ template <
 	typename ExpR = warp_expected_t<RawR>>
 inline enable_if_t<std::is_void<RawR>::value, ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		rua::invoke(std::forward<F>(f), std::move(exp));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -415,11 +415,11 @@ inline enable_if_t<
 		!is_invocable<F &&, expected<T>>::value,
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		return rua::invoke(std::forward<F>(f), expected<void>(exp.error()));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -437,11 +437,11 @@ inline enable_if_t<
 		!is_invocable<F &&, expected<T>>::value,
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		rua::invoke(std::forward<F>(f), expected<void>(exp.error()));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -460,11 +460,11 @@ inline enable_if_t<
 		(std::is_void<T>::value || !is_invocable<F &&, expected<void>>::value),
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		return rua::invoke(std::forward<F>(f), exp.error());
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -484,11 +484,11 @@ inline enable_if_t<
 		!is_invocable<F &&, T>::value,
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		rua::invoke(std::forward<F>(f), exp.error());
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -513,11 +513,11 @@ expected_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		return rua::invoke(std::forward<F>(f), std::move(exp).value());
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -541,11 +541,11 @@ expected_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		rua::invoke(std::forward<F>(f), std::move(exp).value());
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -566,14 +566,14 @@ inline enable_if_t<
 		is_invocable<F &&, error_i>::value,
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		if (exp.has_value()) {
 			return rua::invoke(std::forward<F>(f), std::move(exp).value());
 		}
 		return rua::invoke(std::forward<F>(f), exp.error());
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -593,7 +593,7 @@ inline enable_if_t<
 		is_invocable<F &&, error_i>::value,
 	ExpR>
 expected_invoke(F &&f, expected<T> exp) {
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		if (exp.has_value()) {
@@ -601,7 +601,7 @@ expected_invoke(F &&f, expected<T> exp) {
 		} else {
 			rua::invoke(std::forward<F>(f), exp.error());
 		}
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -626,11 +626,11 @@ expected_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		return rua::invoke(std::forward<F>(f));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -654,11 +654,11 @@ expected_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		rua::invoke(std::forward<F>(f));
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		return current_exception_error(e);
 	}
@@ -689,12 +689,12 @@ template <
 inline decltype(expected_invoke(std::declval<F &&>(), std::declval<Exp>()))
 expected_invoke(F &&f, GetVal &&get_val, Args &&...args) {
 	Exp exp;
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
 		exp = rua::invoke(
 			std::forward<GetVal>(get_val), std::forward<Args>(args)...);
-#ifdef RUA_EXCEPTION_SUPPORTED
+#ifdef RUA_HAS_EXCEPTIONS
 	} catch (const std::exception &e) {
 		exp = current_exception_error(e);
 	}

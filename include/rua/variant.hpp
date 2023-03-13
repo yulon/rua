@@ -1,5 +1,5 @@
-#ifndef _RUA_VARIANT_HPP
-#define _RUA_VARIANT_HPP
+#ifndef _rua_variant_hpp
+#define _rua_variant_hpp
 
 #include "type_info.hpp"
 #include "util.hpp"

@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_NOW_POSIX_HPP
-#define _RUA_TIME_NOW_POSIX_HPP
+#ifndef _rua_time_now_posix_hpp
+#define _rua_time_now_posix_hpp
 
 #include "../real.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_ANY_HPP
-#define _RUA_ANY_HPP
+#ifndef _rua_any_hpp
+#define _rua_any_hpp
 
 #include "type_info.hpp"
 #include "util.hpp"
@@ -8,7 +8,7 @@
 
 namespace rua {
 
-#define _RUA_IS_CONTAINABLE(val_len, val_align, sto_len, sto_align)            \
+#define RUA_IS_CONTAINABLE(val_len, val_align, sto_len, sto_align)             \
 	(val_len <= sto_len && val_align <= sto_align)
 
 template <size_t StorageLen, size_t StorageAlign>
@@ -16,7 +16,7 @@ class basic_any : public enable_type_info {
 public:
 	template <typename T>
 	struct is_containable {
-		static constexpr auto value = _RUA_IS_CONTAINABLE(
+		static constexpr auto value = RUA_IS_CONTAINABLE(
 			size_of<T>::value, align_of<T>::value, StorageLen, StorageAlign);
 	};
 
@@ -53,7 +53,7 @@ public:
 
 		assert(_type.is_copyable());
 
-		if (_RUA_IS_CONTAINABLE(
+		if (RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
 			_type.copy_to(&_sto[0], &src._sto);
 			return;
@@ -69,7 +69,7 @@ public:
 
 		assert(_type.is_moveable());
 
-		if (_RUA_IS_CONTAINABLE(
+		if (RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
 			_type.move_to(&_sto[0], &src._sto);
 			return;
@@ -156,7 +156,7 @@ public:
 		if (!_type) {
 			return;
 		}
-		if (_RUA_IS_CONTAINABLE(
+		if (RUA_IS_CONTAINABLE(
 				_type.size(), _type.align(), StorageLen, StorageAlign)) {
 			_type.destruct(reinterpret_cast<void *>(&_sto[0]));
 		} else {

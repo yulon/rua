@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_VAR_BASE_HPP
-#define _RUA_THREAD_VAR_BASE_HPP
+#ifndef _rua_thread_var_base_hpp
+#define _rua_thread_var_base_hpp
 
 #include "../id.hpp"
 

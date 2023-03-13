@@ -1,5 +1,5 @@
-#ifndef _RUA_PROCESS_WIN32_HPP
-#define _RUA_PROCESS_WIN32_HPP
+#ifndef _rua_process_win32_hpp
+#define _rua_process_win32_hpp
 
 #include "base.hpp"
 

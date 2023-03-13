@@ -1,5 +1,5 @@
-#ifndef _RUA_DYLIB_POSIX_HPP
-#define _RUA_DYLIB_POSIX_HPP
+#ifndef _rua_dylib_posix_hpp
+#define _rua_dylib_posix_hpp
 
 #include "dyfn.h"
 

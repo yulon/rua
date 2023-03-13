@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_VIEW_HPP
-#define _RUA_STRING_VIEW_HPP
+#ifndef _rua_string_view_hpp
+#define _rua_string_view_hpp
 
 #include "../util.hpp"
 
@@ -254,7 +254,7 @@ view_string(const std::basic_string<CharT, Traits, Allocator> &str) {
 	return str;
 }
 
-#define _RUA_DEFINE_VIEW_STRING(CharT)                                         \
+#define RUA_DEFINE_VIEW_STRING(CharT)                                          \
 	template <                                                                 \
 		typename StrLike,                                                      \
 		typename RmCvrStrLike = remove_cvref_t<StrLike>,                       \
@@ -267,16 +267,16 @@ view_string(const std::basic_string<CharT, Traits, Allocator> &str) {
 		return basic_string_view<CharT>(std::forward<StrLike>(str_like));      \
 	}
 
-_RUA_DEFINE_VIEW_STRING(char);
-_RUA_DEFINE_VIEW_STRING(wchar_t);
-_RUA_DEFINE_VIEW_STRING(char16_t);
-_RUA_DEFINE_VIEW_STRING(char32_t);
+RUA_DEFINE_VIEW_STRING(char);
+RUA_DEFINE_VIEW_STRING(wchar_t);
+RUA_DEFINE_VIEW_STRING(char16_t);
+RUA_DEFINE_VIEW_STRING(char32_t);
 
 #ifdef __cpp_char8_t
-_RUA_DEFINE_VIEW_STRING(char8_t);
+RUA_DEFINE_VIEW_STRING(char8_t);
 #endif
 
-#undef _RUA_DEFINE_VIEW_STRING
+#undef RUA_DEFINE_VIEW_STRING
 
 } // namespace rua
 

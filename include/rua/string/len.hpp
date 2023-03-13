@@ -1,11 +1,11 @@
-#ifndef _RUA_STRING_LEN_HPP
-#define _RUA_STRING_LEN_HPP
+#ifndef _rua_string_len_hpp
+#define _rua_string_len_hpp
 
 #include "../util.hpp"
 
 namespace rua {
 
-#ifdef RUA_CONSTEXPR_14_SUPPORTED
+#ifdef RUA_HAS_CONSTEXPR_14
 
 template <typename CharT>
 inline constexpr size_t unsafe_c_str_len(const CharT *c_str) {

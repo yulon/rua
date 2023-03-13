@@ -1,5 +1,5 @@
-#ifndef _RUA_HARD_POSIX_HPP
-#define _RUA_HARD_POSIX_HPP
+#ifndef _rua_hard_posix_hpp
+#define _rua_hard_posix_hpp
 
 #include <unistd.h>
 

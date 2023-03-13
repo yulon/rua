@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_PATHS_UNI_HPP
-#define _RUA_SYS_PATHS_UNI_HPP
+#ifndef _rua_sys_paths_uni_hpp
+#define _rua_sys_paths_uni_hpp
 
 #include "../../file.hpp"
 #include "../../process.hpp"

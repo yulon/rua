@@ -1,5 +1,5 @@
-#ifndef _RUA_MEMORY_HPP
-#define _RUA_MEMORY_HPP
+#ifndef _rua_memory_hpp
+#define _rua_memory_hpp
 
 #include "binary/bytes.hpp"
 #include "generic_ptr.hpp"

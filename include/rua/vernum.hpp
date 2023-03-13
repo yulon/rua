@@ -1,5 +1,5 @@
-#ifndef _RUA_VERNUM_HPP
-#define _RUA_VERNUM_HPP
+#ifndef _rua_vernum_hpp
+#define _rua_vernum_hpp
 
 #include "string/conv.hpp"
 #include "string/join.hpp"

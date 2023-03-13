@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_VAR_WIN32_HPP
-#define _RUA_THREAD_VAR_WIN32_HPP
+#ifndef _rua_thread_var_win32_hpp
+#define _rua_thread_var_win32_hpp
 
 #include "base.hpp"
 

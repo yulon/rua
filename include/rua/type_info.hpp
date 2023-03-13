@@ -1,5 +1,5 @@
-#ifndef _RUA_TYPE_INFO_HPP
-#define _RUA_TYPE_INFO_HPP
+#ifndef _rua_type_info_hpp
+#define _rua_type_info_hpp
 
 #include "string/join.hpp"
 #include "string/len.hpp"
@@ -9,7 +9,7 @@
 #include <cassert>
 #include <string>
 
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 #include <typeindex>
 #endif
 
@@ -156,7 +156,7 @@ public:
 		_tab = nullptr;
 	}
 
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 	const std::type_info &std_id() const {
 		return _tab ? _tab->std_id() : typeid(void);
 	}
@@ -188,7 +188,7 @@ private:
 
 		bool (*const eq)(const void *a, const void *b);
 
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 		const std::type_info &(*const std_id)();
 #endif
 	};
@@ -325,7 +325,7 @@ private:
 		}
 	};
 
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 	template <typename T>
 	static const std::type_info &_std_id() {
 		return typeid(T);
@@ -349,7 +349,7 @@ private:
 			_move_new<T>::value,
 			_to_bool<T>::value,
 			_eq<T>::value
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 			,
 			&_std_id<T>
 #endif
@@ -375,7 +375,7 @@ inline constexpr type_info type_id<void>() {
 	return type_info();
 }
 
-#ifdef RUA_RTTI_SUPPORTED
+#ifdef RUA_HAS_RTTI
 
 inline bool operator==(const type_info &a, std::type_index b) {
 	return b == a.std_id();

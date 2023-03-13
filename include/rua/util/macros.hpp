@@ -1,6 +1,7 @@
-#ifndef _RUA_MACROS_HPP
-#define _RUA_MACROS_HPP
+#ifndef _rua_macros_hpp
+#define _rua_macros_hpp
 
+#define RUA_CPP_23 202303L
 #define RUA_CPP_20 202002L
 #define RUA_CPP_17 201703L
 #define RUA_CPP_14 201402L
@@ -31,41 +32,41 @@
 
 #ifdef __cpp_constexpr
 #if __cpp_constexpr >= 200704
-#define RUA_CONSTEXPR_SUPPORTED
+#define RUA_HAS_CONSTEXPR
 #endif
 
 #if __cpp_constexpr >= 201304
-#define RUA_CONSTEXPR_14_SUPPORTED
+#define RUA_HAS_CONSTEXPR_14
 #endif
 
 #if __cpp_constexpr >= 201603
-#define RUA_CONSTEXPR_LM_SUPPORTED
+#define RUA_HAS_CONSTEXPR_LM
 #endif
 #endif
 
-#ifdef RUA_CONSTEXPR_SUPPORTED
+#ifdef RUA_HAS_CONSTEXPR
 #define RUA_CONSTEXPR constexpr
 #else
 #define RUA_CONSTEXPR
 #endif
 
-#ifdef RUA_CONSTEXPR_14_SUPPORTED
+#ifdef RUA_HAS_CONSTEXPR_14
 #define RUA_CONSTEXPR_14 constexpr
 #else
 #define RUA_CONSTEXPR_14
 #endif
 
-#ifdef RUA_CONSTEXPR_LM_SUPPORTED
+#ifdef RUA_HAS_CONSTEXPR_LM
 #define RUA_CONSTEXPR_LM constexpr
 #else
 #define RUA_CONSTEXPR_LM
 #endif
 
 #ifdef __cpp_if_constexpr
-#define RUA_CONSTEXPR_IF_SUPPORTED
+#define RUA_HAS_CONSTEXPR_IF
 #define RUA_CONSTEXPR_IF constexpr
 
-#define RUA_CONSTEXPR_17_SUPPORTED
+#define RUA_HAS_CONSTEXPR_17
 #define RUA_CONSTEXPR_17 constexpr
 #else
 #define RUA_CONSTEXPR_IF
@@ -74,6 +75,8 @@
 #endif
 
 #if defined(__cpp_inline_variables) && __cpp_inline_variables >= 201606
+
+#define RUA_HAS_INLINE_VAR
 
 // global constexpr variable
 #define RUA_CVAL inline constexpr
@@ -188,12 +191,6 @@
 
 #endif
 
-#define RUA_ONCE_CODE(code_block)                                              \
-	{                                                                          \
-		static std::once_flag flg;                                             \
-		std::call_once(flg, []() code_block);                                  \
-	}
-
 #ifdef _MSC_VER
 #define RUA_FORCE_INLINE inline __forceinline
 #elif defined(__GNUC__)
@@ -212,17 +209,17 @@
 #define RUA_M2S(m) RUA_S(m)
 
 #if defined(__cpp_impl_coroutine) || defined(__cpp_lib_coroutine)
-#define RUA_AWAIT_SUPPORTED
+#define RUA_HAS_AWAIT
 #endif
 
 #if defined(__cpp_rtti) && __cpp_rtti
-#define RUA_RTTI_SUPPORTED __cpp_rtti
+#define RUA_HAS_RTTI __cpp_rtti
 #elif defined(_HAS_STATIC_RTTI) && _HAS_STATIC_RTTI
-#define RUA_RTTI_SUPPORTED _HAS_STATIC_RTTI
+#define RUA_HAS_RTTI _HAS_STATIC_RTTI
 #endif
 
 #if defined(__cpp_exceptions) && __cpp_exceptions
-#define RUA_EXCEPTION_SUPPORTED __cpp_exceptions
+#define RUA_HAS_EXCEPTIONS __cpp_exceptions
 #define RUA_NOEXCEPT noexcept
 #define RUA_NOEXCEPT_IF(cond) noexcept(cond)
 #else

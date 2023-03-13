@@ -1,5 +1,5 @@
-#ifndef _RUA_FILE_WIN32_HPP
-#define _RUA_FILE_WIN32_HPP
+#ifndef _rua_file_win32_hpp
+#define _rua_file_win32_hpp
 
 #include "times.hpp"
 

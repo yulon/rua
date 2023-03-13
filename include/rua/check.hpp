@@ -1,5 +1,5 @@
-#ifndef _RUA_CHECK_HPP
-#define _RUA_CHECK_HPP
+#ifndef _rua_check_hpp
+#define _rua_check_hpp
 
 #include "log.hpp"
 #include "string.hpp"
@@ -10,7 +10,7 @@
 
 namespace rua {
 
-#define _RUA_CHECK(_check, _lhs, _op, _rhs)                                    \
+#define _rua_check(_check, _lhs, _op, _rhs)                                    \
 	_check(                                                                    \
 		(_lhs)_op(_rhs),                                                       \
 		_lhs,                                                                  \
@@ -71,7 +71,7 @@ inline void _check(
 	}
 }
 
-#define RUA_CHECK(_lhs, _op, _rhs) _RUA_CHECK(rua::_check, _lhs, _op, _rhs)
+#define RUA_CHECK(_lhs, _op, _rhs) _rua_check(rua::_check, _lhs, _op, _rhs)
 
 template <typename Result, typename LHS, typename RHS>
 inline void _check_ex(
@@ -116,9 +116,9 @@ inline void _check_ex(
 }
 
 #define RUA_CHECK_EX(_lhs, _op, _rhs)                                          \
-	_RUA_CHECK(rua::_check_ex, _lhs, _op, _rhs)
+	_rua_check(rua::_check_ex, _lhs, _op, _rhs)
 
-#define _RUA_SUCCESS(_success, _expr)                                          \
+#define _rua_success(_success, _expr)                                          \
 	_success(_expr, #_expr, __FILE__, std::to_string(__LINE__))
 
 template <typename Result>
@@ -143,7 +143,7 @@ inline void _success(
 	}
 }
 
-#define RUA_SUCCESS(_expr) _RUA_SUCCESS(rua::_success, _expr)
+#define RUA_SUCCESS(_expr) _rua_success(rua::_success, _expr)
 
 template <typename Result>
 inline void _success_ex(
@@ -168,7 +168,7 @@ inline void _success_ex(
 	}
 }
 
-#define RUA_SUCCESS_EX(_expr) _RUA_SUCCESS(rua::_success_ex, _expr)
+#define RUA_SUCCESS_EX(_expr) _rua_success(rua::_success_ex, _expr)
 
 #define RUA_FAIL(_expr) RUA_SUCCESS(!(_expr))
 

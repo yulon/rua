@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_STREAM_POSIX_HPP
-#define _RUA_SYS_STREAM_POSIX_HPP
+#ifndef _rua_sys_stream_posix_hpp
+#define _rua_sys_stream_posix_hpp
 
 #include "../../io/util.hpp"
 #include "../../util.hpp"

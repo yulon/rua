@@ -1,5 +1,5 @@
-#ifndef _RUA_FILE_HPP
-#define _RUA_FILE_HPP
+#ifndef _rua_file_hpp
+#define _rua_file_hpp
 
 #include "util/macros.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_REAL_HPP
-#define _RUA_TIME_REAL_HPP
+#ifndef _rua_time_real_hpp
+#define _rua_time_real_hpp
 
 #include "duration.hpp"
 

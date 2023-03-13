@@ -1,5 +1,5 @@
-#ifndef _RUA_IO_STREAM_HPP
-#define _RUA_IO_STREAM_HPP
+#ifndef _rua_io_stream_hpp
+#define _rua_io_stream_hpp
 
 #include "../binary/bytes.hpp"
 #include "../interface_ptr.hpp"

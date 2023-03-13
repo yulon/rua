@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_JOIN_HPP
-#define _RUA_STRING_JOIN_HPP
+#ifndef _rua_string_join_hpp
+#define _rua_string_join_hpp
 
 #include "char_set.hpp"
 #include "view.hpp"

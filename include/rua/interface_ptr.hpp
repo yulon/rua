@@ -1,5 +1,5 @@
-#ifndef _RUA_INTERFACE_PTR_HPP
-#define _RUA_INTERFACE_PTR_HPP
+#ifndef _rua_interface_ptr_hpp
+#define _rua_interface_ptr_hpp
 
 #include "type_info.hpp"
 #include "util.hpp"

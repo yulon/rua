@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_TRIM_HPP
-#define _RUA_STRING_TRIM_HPP
+#ifndef _rua_string_trim_hpp
+#define _rua_string_trim_hpp
 
 #include "char_set.hpp"
 #include "slice.hpp"

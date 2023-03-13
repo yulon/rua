@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_HPP
-#define _RUA_TIME_HPP
+#ifndef _rua_time_hpp
+#define _rua_time_hpp
 
 #include "time/duration.hpp"
 #include "time/now.hpp"

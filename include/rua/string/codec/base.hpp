@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CODEC_BASE_HPP
-#define _RUA_STRING_CODEC_BASE_HPP
+#ifndef _rua_string_codec_base_hpp
+#define _rua_string_codec_base_hpp
 
 #ifdef _WIN32
 

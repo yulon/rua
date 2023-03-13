@@ -1,5 +1,5 @@
-#ifndef _RUA_BINARY_BITS_HPP
-#define _RUA_BINARY_BITS_HPP
+#ifndef _rua_binary_bits_hpp
+#define _rua_binary_bits_hpp
 
 #include "../generic_ptr.hpp"
 #include "../util.hpp"

@@ -1,5 +1,5 @@
-#ifndef _RUA_RANGE_ITERATOR_HPP
-#define _RUA_RANGE_ITERATOR_HPP
+#ifndef _rua_range_iterator_hpp
+#define _rua_range_iterator_hpp
 
 #include "../util.hpp"
 

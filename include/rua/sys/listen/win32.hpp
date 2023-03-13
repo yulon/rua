@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_LISTEN_WIN32_HPP
-#define _RUA_SYS_LISTEN_WIN32_HPP
+#ifndef _rua_sys_listen_win32_hpp
+#define _rua_sys_listen_win32_hpp
 
 #include "../../time.hpp"
 #include "../../util.hpp"

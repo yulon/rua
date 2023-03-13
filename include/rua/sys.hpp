@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_HPP
-#define _RUA_SYS_HPP
+#ifndef _rua_sys_hpp
+#define _rua_sys_hpp
 
 #include "sys/info.hpp"
 #include "sys/listen.hpp"

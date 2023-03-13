@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_CORE_POSIX_HPP
-#define _RUA_THREAD_CORE_POSIX_HPP
+#ifndef _rua_thread_core_posix_hpp
+#define _rua_thread_core_posix_hpp
 
 #include "../id/posix.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_INFO_WIN32_HPP
-#define _RUA_SYS_INFO_WIN32_HPP
+#ifndef _rua_sys_info_win32_hpp
+#define _rua_sys_info_win32_hpp
 
 #include "../../dylib/win32.hpp"
 #include "../../vernum.hpp"

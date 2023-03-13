@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_NOW_WIN32_HPP
-#define _RUA_TIME_NOW_WIN32_HPP
+#ifndef _rua_time_now_win32_hpp
+#define _rua_time_now_win32_hpp
 
 #include "../real.hpp"
 

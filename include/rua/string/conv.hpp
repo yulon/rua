@@ -1,5 +1,5 @@
-#ifndef _RUA_STRING_CONV_HPP
-#define _RUA_STRING_CONV_HPP
+#ifndef _rua_string_conv_hpp
+#define _rua_string_conv_hpp
 
 #include "codec/base.hpp"
 #include "join.hpp"

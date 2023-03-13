@@ -1,5 +1,5 @@
-#ifndef _RUA_HARD_HPP
-#define _RUA_HARD_HPP
+#ifndef _rua_hard_hpp
+#define _rua_hard_hpp
 
 #include "util/macros.hpp"
 

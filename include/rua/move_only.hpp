@@ -1,5 +1,5 @@
-#ifndef _RUA_MOVE_ONLY_HPP
-#define _RUA_MOVE_ONLY_HPP
+#ifndef _rua_move_only_hpp
+#define _rua_move_only_hpp
 
 #include "util.hpp"
 

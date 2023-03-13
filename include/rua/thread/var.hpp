@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_VAR_HPP
-#define _RUA_THREAD_VAR_HPP
+#ifndef _rua_thread_var_hpp
+#define _rua_thread_var_hpp
 
 #include "../util/macros.hpp"
 

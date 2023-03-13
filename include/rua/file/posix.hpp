@@ -1,5 +1,5 @@
-#ifndef _RUA_FILE_POSIX_HPP
-#define _RUA_FILE_POSIX_HPP
+#ifndef _rua_file_posix_hpp
+#define _rua_file_posix_hpp
 
 #include "times.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_WAIT_WIN32_HPP
-#define _RUA_SYS_WAIT_WIN32_HPP
+#ifndef _rua_sys_wait_win32_hpp
+#define _rua_sys_wait_win32_hpp
 
 #include "../../sync/future.hpp"
 #include "../../sync/promise.hpp"

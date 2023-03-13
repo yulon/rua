@@ -1,5 +1,5 @@
-#ifndef _RUA_UTIL_HPP
-#define _RUA_UTIL_HPP
+#ifndef _rua_util_hpp
+#define _rua_util_hpp
 
 #include "util/assist.hpp"
 #include "util/base.hpp"

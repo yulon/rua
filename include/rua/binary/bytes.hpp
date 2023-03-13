@@ -1,5 +1,5 @@
-#ifndef _RUA_BINARY_BYTES_HPP
-#define _RUA_BINARY_BYTES_HPP
+#ifndef _rua_binary_bytes_hpp
+#define _rua_binary_bytes_hpp
 
 /*
 	Q: Why don't I use std::byte?

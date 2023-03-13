@@ -1,5 +1,5 @@
-#ifndef _RUA_DYLIB_HPP
-#define _RUA_DYLIB_HPP
+#ifndef _rua_dylib_hpp
+#define _rua_dylib_hpp
 
 #include "util/macros.hpp"
 

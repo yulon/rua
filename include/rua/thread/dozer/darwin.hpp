@@ -1,5 +1,5 @@
-#ifndef _RUA_THREAD_DOZER_DARWIN_HPP
-#define _RUA_THREAD_DOZER_DARWIN_HPP
+#ifndef _rua_thread_dozer_darwin_hpp
+#define _rua_thread_dozer_darwin_hpp
 
 #include "../../time/duration.hpp"
 #include "../../util.hpp"

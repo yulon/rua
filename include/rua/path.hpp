@@ -1,5 +1,5 @@
-#ifndef _RUA_PATH_HPP
-#define _RUA_PATH_HPP
+#ifndef _rua_path_hpp
+#define _rua_path_hpp
 
 #include "span.hpp"
 #include "string/conv.hpp"

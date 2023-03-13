@@ -1,5 +1,5 @@
-#ifndef _RUA_SORTED_LIST_HPP
-#define _RUA_SORTED_LIST_HPP
+#ifndef _rua_sorted_list_hpp
+#define _rua_sorted_list_hpp
 
 #include "util.hpp"
 

@@ -1,5 +1,5 @@
-#ifndef _RUA_SYS_WAIT_HPP
-#define _RUA_SYS_WAIT_HPP
+#ifndef _rua_sys_wait_hpp
+#define _rua_sys_wait_hpp
 
 #include "../util/macros.hpp"
 

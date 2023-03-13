@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_DURATION_HPP
-#define _RUA_TIME_DURATION_HPP
+#ifndef _rua_time_duration_hpp
+#define _rua_time_duration_hpp
 
 #include "../binary/bytes.hpp"
 #include "../string/conv.hpp"
@@ -124,7 +124,7 @@ private:
 							   : static_cast<CountT>(c));
 	}
 
-#ifndef RUA_CONSTEXPR_14_SUPPORTED
+#ifndef RUA_HAS_CONSTEXPR_14
 
 	static constexpr duration
 	_from_overflowable__pan(int64_t seconds, int64_t nanoseconds) {

@@ -1,5 +1,5 @@
-#ifndef _RUA_TIME_TICK_DARWIN_HPP
-#define _RUA_TIME_TICK_DARWIN_HPP
+#ifndef _rua_time_tick_darwin_hpp
+#define _rua_time_tick_darwin_hpp
 
 #include "../real.hpp"
 

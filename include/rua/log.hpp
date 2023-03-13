@@ -1,5 +1,5 @@
-#ifndef _RUA_LOG_HPP
-#define _RUA_LOG_HPP
+#ifndef _rua_log_hpp
+#define _rua_log_hpp
 
 #include "io/stream.hpp"
 #include "move_only.hpp"

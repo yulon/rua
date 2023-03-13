@@ -1,5 +1,5 @@
-#ifndef _RUA_SYNC_THEN_HPP
-#define _RUA_SYNC_THEN_HPP
+#ifndef _rua_sync_then_hpp
+#define _rua_sync_then_hpp
 
 #include "await.hpp"
 #include "future.hpp"

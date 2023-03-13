@@ -1,5 +1,5 @@
-#ifndef _RUA_PIPE_WIN32_HPP
-#define _RUA_PIPE_WIN32_HPP
+#ifndef _rua_pipe_win32_hpp
+#define _rua_pipe_win32_hpp
 
 #include "../string.hpp"
 #include "../sys/stream/win32.hpp"
