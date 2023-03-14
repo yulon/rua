@@ -157,7 +157,7 @@ public:
 	}
 
 	bool await_suspend(std::function<void()> notify) noexcept {
-		assert(!await_ready());
+		assert($v.template type_is<promise<PromiseValue> *>());
 
 		return $v.template as<promise<PromiseValue> *>()->await_suspend(
 			std::move(notify));
