@@ -68,49 +68,6 @@ public:
 	}
 };
 
-class exception_error : public error_base {
-public:
-	exception_error() = default;
-
-	exception_error(std::exception_ptr ptr, std::string what) :
-		$ptr(std::move(ptr)), $what(std::move(what)) {}
-
-	virtual ~exception_error() = default;
-
-	std::string info() const override {
-		return $what;
-	}
-
-	void rethrow() {
-		if (!$ptr) {
-			return;
-		}
-		std::rethrow_exception(std::move($ptr));
-		$ptr = nullptr;
-		$what.clear();
-	}
-
-private:
-	std::exception_ptr $ptr;
-	std::string $what;
-};
-
-template <typename Exception>
-inline exception_error make_exception_error(Exception &&e) {
-	std::string what(std::forward<Exception>(e).what());
-	return exception_error(
-		std::make_exception_ptr(std::forward<Exception>(e)), std::move(what));
-}
-
-inline exception_error current_exception_error(std::string what) {
-	return exception_error(std::current_exception(), std::move(what));
-}
-
-inline exception_error current_exception_error(const std::exception &e) {
-	std::string what(e.what());
-	return exception_error(std::current_exception(), std::move(what));
-}
-
 #else
 
 using error_i = interface_ptr<error_base>;
@@ -157,6 +114,92 @@ inline std::string to_string(const error_base &err) {
 
 inline std::string to_string(error_i err) {
 	return err ? err->info() : "noerr";
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+#ifdef RUA_HAS_EXCEPTIONS
+
+class exception_error : public error_base {
+public:
+	exception_error() = default;
+
+	exception_error(std::exception_ptr ptr, std::string what) :
+		$ptr(std::move(ptr)), $what(std::move(what)) {}
+
+	virtual ~exception_error() = default;
+
+	std::string info() const override {
+		return $what;
+	}
+
+	void rethrow() {
+		if (!$ptr) {
+			return;
+		}
+		std::rethrow_exception(std::move($ptr));
+		$ptr = nullptr;
+		$what.clear();
+	}
+
+private:
+	std::exception_ptr $ptr;
+	std::string $what;
+};
+
+#endif
+
+RUA_CVAR strv_error err_disabled_exceptions("disabled exceptions");
+RUA_CVAR strv_error err_unthrowed_exception("unthrowed exception");
+RUA_CVAR strv_error err_uncatched_exception("uncatched exception");
+
+template <typename Exception>
+inline error_i make_unthrow_exception_error(Exception &&e) {
+#ifdef RUA_HAS_EXCEPTIONS
+	std::string what(std::forward<Exception>(e).what());
+	return exception_error(
+		std::make_exception_ptr(std::forward<Exception>(e)), std::move(what));
+#else
+	return err_disabled_exceptions
+#endif
+}
+
+inline error_i current_exception_error(std::string what) {
+#ifdef RUA_HAS_EXCEPTIONS
+	auto ep = std::current_exception();
+	if (!ep) {
+		return err_unthrowed_exception;
+	}
+	return exception_error(std::move(ep), std::move(what));
+#else
+	return err_disabled_exceptions
+#endif
+}
+
+inline error_i current_exception_error(const std::exception &e) {
+#ifdef RUA_HAS_EXCEPTIONS
+	std::string what(e.what());
+	return current_exception_error(std::move(what));
+#else
+	return err_disabled_exceptions
+#endif
+}
+
+inline error_i current_exception_error() {
+#ifdef RUA_HAS_EXCEPTIONS
+	auto ep = std::current_exception();
+	if (!ep) {
+		return err_unthrowed_exception;
+	}
+	try {
+		std::rethrow_exception(ep);
+	} catch (const std::exception &e) {
+		return current_exception_error(e);
+	}
+	return err_uncatched_exception;
+#else
+	return err_disabled_exceptions
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////

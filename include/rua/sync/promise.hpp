@@ -38,7 +38,7 @@ public:
 
 	/////////////////// fulfill side ///////////////////
 
-	expected<T> fulfill(expected<T> value = err_promise_breaked) {
+	expected<T> fulfill(expected<T> value = err_promise_breaked) noexcept {
 		assert(std::is_void<T>::value ? !!$val : !$val);
 
 		$val = std::move(value);
@@ -60,7 +60,7 @@ public:
 
 		case promise_state::received:
 			r = std::move($val);
-			release();
+			destroy();
 			break;
 
 		default:
@@ -72,14 +72,20 @@ public:
 
 	/////////////////// receive side ///////////////////
 
-	bool await_suspend(std::function<void()> notify) {
+	bool await_ready() const noexcept {
+		assert($state.load() != promise_state::received);
+
+		return $state.load() == promise_state::fulfilled;
+	}
+
+	bool await_suspend(std::function<void()> notify) noexcept {
 		$notify = std::move(notify);
 
 		auto old_state = $state.load();
-		while (
-			old_state == promise_state::loss_notify &&
-			!$state.compare_exchange_weak(old_state, promise_state::has_notify))
-			;
+		if (old_state == promise_state::loss_notify) {
+			$state.compare_exchange_strong(
+				old_state, promise_state::has_notify);
+		}
 
 		assert(old_state != promise_state::has_notify);
 		assert(old_state != promise_state::received);
@@ -90,32 +96,29 @@ public:
 		return old_state != promise_state::fulfilled;
 	}
 
-	constexpr bool await_ready() const {
-		return false;
-	}
-
-	expected<T> await_resume() {
+	expected<T> await_resume() noexcept {
 		expected<T> r;
 
 		auto old_state = $state.exchange(promise_state::received);
+
 		assert(old_state != promise_state::received);
 
 		if (old_state == promise_state::fulfilled) {
 			r = std::move($val);
-			release();
+			destroy();
 		} else {
 			r = err_promise_not_yet_fulfilled;
 		}
 		return r;
 	}
 
-	/////////////////// release side ///////////////////
+	/////////////////// destroy side ///////////////////
 
 	/*
-		1. If fulfilled and received, will release() automatically.
-		2. If unfulfilled and unreceived, need release() manually.
+		1. If fulfilled and received, will destroy() automatically.
+		2. If unfulfilled and unreceived, need destroy() manually.
 	*/
-	virtual void release() {}
+	virtual void destroy() noexcept {}
 
 private:
 	std::atomic<promise_state> $state;
@@ -128,7 +131,7 @@ class newable_promise : public promise<T> {
 public:
 	virtual ~newable_promise() = default;
 
-	void release() override {
+	void destroy() noexcept override {
 		delete this;
 	}
 };

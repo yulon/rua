@@ -69,7 +69,7 @@ public:
 			return future<T>(*prm);
 		}
 
-		prm->release();
+		prm->destroy();
 
 		return *std::move(val_opt);
 	}

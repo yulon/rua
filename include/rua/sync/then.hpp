@@ -55,7 +55,7 @@ inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 		return prm->then_awtr->await_resume();
 	});
 
-	prm->release();
+	prm->destroy();
 
 	return exp;
 }

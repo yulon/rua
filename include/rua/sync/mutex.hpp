@@ -47,7 +47,7 @@ public:
 			return future<>(*prm);
 		}
 
-		prm->release();
+		prm->destroy();
 
 		return future<>();
 	}
