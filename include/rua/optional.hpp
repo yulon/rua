@@ -79,25 +79,25 @@ struct nullopt_t {};
 RUA_CVAL nullopt_t nullopt;
 
 template <typename T>
-class $optional_base {
+class _optional_base {
 public:
 	using value_type = T;
 
-	constexpr $optional_base(bool has_val = false) :
+	constexpr _optional_base(bool has_val = false) :
 		$sto(), $has_val(has_val) {}
 
-	~$optional_base() {
+	~_optional_base() {
 		reset();
 	}
 
-	$optional_base(const $optional_base &src) : $has_val(src.$has_val) {
+	_optional_base(const _optional_base &src) : $has_val(src.$has_val) {
 		if (!src.$has_val) {
 			return;
 		}
 		$emplace(src.value());
 	}
 
-	$optional_base($optional_base &&src) : $has_val(src.$has_val) {
+	_optional_base(_optional_base &&src) : $has_val(src.$has_val) {
 		if (!src.$has_val) {
 			return;
 		}
@@ -106,7 +106,7 @@ public:
 		src.$has_val = false;
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT($optional_base)
+	RUA_OVERLOAD_ASSIGNMENT(_optional_base)
 
 	bool has_value() const {
 		return $has_val;
@@ -128,18 +128,6 @@ public:
 		return std::move(*reinterpret_cast<T *>(&$sto[0]));
 	}
 
-	T &operator*() & {
-		return value();
-	}
-
-	const T &operator*() const & {
-		return value();
-	}
-
-	T &&operator*() && {
-		return std::move(value());
-	}
-
 	template <
 		typename U,
 		typename = enable_if_t<
@@ -158,29 +146,6 @@ public:
 	T value_or(U &&default_value) && {
 		return $has_val ? std::move(value())
 						: static_cast<T>(std::forward<U>(default_value));
-	}
-
-	T *operator->() {
-		return &value();
-	}
-
-	const T *operator->() const {
-		return &value();
-	}
-
-	template <class... Args>
-	invoke_result_t<T &, Args &&...> operator()(Args &&...args) & {
-		return value()(std::forward<Args>(args)...);
-	}
-
-	template <class... Args>
-	invoke_result_t<const T &, Args &&...> operator()(Args &&...args) const & {
-		return value()(std::forward<Args>(args)...);
-	}
-
-	template <class... Args>
-	invoke_result_t<T &&, Args &&...> operator()(Args &&...args) && {
-		return std::move(value())(std::forward<Args>(args)...);
 	}
 
 	void reset() {
@@ -233,9 +198,11 @@ protected:
 };
 
 template <typename T>
-class optional : public $optional_base<T>, private enable_copy_move_like<T> {
+class optional : public _optional_base<T>,
+				 public enable_value_operators<optional<T>, T>,
+				 private enable_copy_move_like<T> {
 public:
-	constexpr optional(nullopt_t = nullopt) : $optional_base<T>(false) {}
+	constexpr optional(nullopt_t = nullopt) : _optional_base<T>(false) {}
 
 	template <
 		typename... Args,
@@ -243,7 +210,7 @@ public:
 			std::is_constructible<T, Args...>::value &&
 			(sizeof...(Args) > 1 ||
 			 !std::is_base_of<optional, decay_t<front_t<Args...>>>::value)>>
-	optional(Args &&...args) : $optional_base<T>(true) {
+	optional(Args &&...args) : _optional_base<T>(true) {
 		this->$emplace(std::forward<Args>(args)...);
 	}
 
@@ -253,7 +220,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, std::initializer_list<U>, Args...>::value>>
 	optional(std::initializer_list<U> il, Args &&...args) :
-		$optional_base<T>(true) {
+		_optional_base<T>(true) {
 		this->$emplace(il, std::forward<Args>(args)...);
 	}
 
@@ -262,7 +229,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, const U &>::value &&
 			!std::is_constructible<T, const optional<U> &>::value>>
-	optional(const optional<U> &src) : $optional_base<T>(src.has_value()) {
+	optional(const optional<U> &src) : _optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}
@@ -274,7 +241,7 @@ public:
 		typename = enable_if_t<
 			std::is_constructible<T, U &&>::value &&
 			!std::is_constructible<T, optional<U> &&>::value>>
-	optional(optional<U> &&src) : $optional_base<T>(src.has_value()) {
+	optional(optional<U> &&src) : _optional_base<T>(src.has_value()) {
 		if (!src.has_value()) {
 			return;
 		}

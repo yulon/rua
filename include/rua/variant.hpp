@@ -10,87 +10,15 @@
 namespace rua {
 
 template <typename... Types>
-class variant : public enable_type_info {
+class _variant_base : public enable_type_info {
 public:
-	constexpr variant() : enable_type_info(), $sto() {}
+	constexpr _variant_base() : enable_type_info(), $sto() {}
 
-	template <typename T, typename Emplaced = convertible_t<T &&, Types...>>
-	variant(T &&val) {
-		$emplace<Emplaced>(std::forward<T>(val));
-	}
-
-	template <
-		typename U,
-		typename Emplaced = convertible_t<std::initializer_list<U>, Types...>>
-	variant(std::initializer_list<U> il) {
-		$emplace<Emplaced>(il);
-	}
-
-	template <typename T, typename... Args>
-	explicit variant(in_place_type_t<T>, Args &&...args) {
-		$emplace<T>(std::forward<Args>(args)...);
-	}
-
-	template <typename T, typename U, typename... Args>
-	explicit variant(
-		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) {
-		$emplace<T>(il, std::forward<Args>(args)...);
-	}
-
-	template <
-		typename... Others,
-		typename = enable_if_t<
-			!std::is_same<variant<Others...>, variant>::value &&
-			disjunction<or_convertible<Others, Types...>...>::value>>
-	variant(const variant<Others...> &src) {
-		if (!src.type()) {
-			return;
-		}
-
-		assert(src.type().is_copyable());
-
-		if (has_type(src.type())) {
-			$type = src.type();
-			$type.copy_to(&$sto[0], src.data());
-			return;
-		}
-
-#ifdef NDEBUG
-		no_effect($conv_ov<const variant<Others...> &, Others...>(src));
-#else
-		assert(RUA_ARG($conv_ov<const variant<Others...> &, Others...>(src)));
-#endif
-	}
-
-	template <
-		typename... Others,
-		typename = enable_if_t<
-			!std::is_same<variant<Others...>, variant>::value &&
-			disjunction<or_convertible<Others, Types...>...>::value>>
-	variant(variant<Others...> &&src) {
-		if (!src.type()) {
-			return;
-		}
-
-		assert(src.type().is_moveable());
-
-		if (has_type(src.type())) {
-			$type = src.type();
-			$type.move_to(&$sto[0], src.data());
-			src.reset();
-			return;
-		}
-
-		if ($conv_ov<variant<Others...> &&, Others...>(std::move(src))) {
-			src.reset();
-		}
-	}
-
-	~variant() {
+	~_variant_base() {
 		reset();
 	}
 
-	variant(const variant &src) : enable_type_info(src.$type) {
+	_variant_base(const _variant_base &src) : enable_type_info(src.$type) {
 		if (!$type) {
 			return;
 		}
@@ -98,7 +26,7 @@ public:
 		$type.copy_to(&$sto[0], &src.$sto);
 	}
 
-	variant(variant &&src) : enable_type_info(src.$type) {
+	_variant_base(_variant_base &&src) : enable_type_info(src.$type) {
 		if (!$type) {
 			return;
 		}
@@ -106,7 +34,7 @@ public:
 		$type.move_to(&$sto[0], &src.$sto);
 	}
 
-	RUA_OVERLOAD_ASSIGNMENT(variant)
+	RUA_OVERLOAD_ASSIGNMENT(_variant_base)
 
 	bool has_value() const {
 		return $has_value(
@@ -232,7 +160,7 @@ public:
 		return &$sto[0];
 	}
 
-private:
+protected:
 	alignas(
 		max_align_of<Types...>::value) uchar $sto[max_size_of<Types...>::value];
 
@@ -255,34 +183,48 @@ private:
 		return ti == type_id<First>() || $has_typ<Second, Others...>(ti);
 	}
 
-	template <typename OV, typename First>
-	enable_if_t<or_convertible<First, Types...>::value, bool> $conv_ov(OV ov) {
+	template <typename OtherVariantRef, typename First>
+	enable_if_t<or_convertible<First, Types...>::value, bool>
+	$conv_from_other_variant(OtherVariantRef ov) {
 		if (ov.type() != type_id<First>()) {
 			return false;
 		}
 		$emplace<convertible_t<First, Types...>>(
-			std::forward<OV>(ov).template as<First>());
+			static_cast<OtherVariantRef>(ov).template as<First>());
 		return true;
 	}
 
-	template <typename OV, typename First>
-	enable_if_t<!or_convertible<First, Types...>::value, bool> $conv_ov(OV) {
+	template <typename OtherVariantRef, typename First>
+	enable_if_t<!or_convertible<First, Types...>::value, bool>
+	$conv_from_other_variant(OtherVariantRef) {
 		return false;
 	}
 
-	template <typename OV, typename First, typename Second, typename... Others>
-	enable_if_t<or_convertible<First, Types...>::value, bool> $conv_ov(OV ov) {
+	template <
+		typename OtherVariantRef,
+		typename First,
+		typename Second,
+		typename... Others>
+	enable_if_t<or_convertible<First, Types...>::value, bool>
+	$conv_from_other_variant(OtherVariantRef ov) {
 		if (ov.type() != type_id<First>()) {
-			return $conv_ov<OV, Second, Others...>(std::forward<OV>(ov));
+			return $conv_from_other_variant<OtherVariantRef, Second, Others...>(
+				static_cast<OtherVariantRef>(ov));
 		}
 		$emplace<convertible_t<First, Types...>>(
-			std::forward<OV>(ov).template as<First>());
+			static_cast<OtherVariantRef>(ov).template as<First>());
 		return true;
 	}
 
-	template <typename OV, typename First, typename Second, typename... Others>
-	enable_if_t<!or_convertible<First, Types...>::value, bool> $conv_ov(OV ov) {
-		return $conv_ov<OV, Second, Others...>(std::forward<OV>(ov));
+	template <
+		typename OtherVariantRef,
+		typename First,
+		typename Second,
+		typename... Others>
+	enable_if_t<!or_convertible<First, Types...>::value, bool>
+	$conv_from_other_variant(OtherVariantRef ov) {
+		return $conv_from_other_variant<OtherVariantRef, Second, Others...>(
+			static_cast<OtherVariantRef>(ov));
 	}
 
 	template <typename T, typename Visitor>
@@ -384,6 +326,91 @@ private:
 
 	bool $has_value(std::false_type &&) const {
 		return true;
+	}
+};
+
+template <typename... Types>
+class variant : public _variant_base<Types...>,
+				private enable_copy_move_like<Types...> {
+public:
+	constexpr variant() : _variant_base<Types...>() {}
+
+	template <typename T, typename Emplaced = convertible_t<T &&, Types...>>
+	variant(T &&val) {
+		this->template $emplace<Emplaced>(std::forward<T>(val));
+	}
+
+	template <
+		typename U,
+		typename Emplaced = convertible_t<std::initializer_list<U>, Types...>>
+	variant(std::initializer_list<U> il) {
+		this->template $emplace<Emplaced>(il);
+	}
+
+	template <typename T, typename... Args>
+	explicit variant(in_place_type_t<T>, Args &&...args) {
+		this->template $emplace<T>(std::forward<Args>(args)...);
+	}
+
+	template <typename T, typename U, typename... Args>
+	explicit variant(
+		in_place_type_t<T>, std::initializer_list<U> il, Args &&...args) {
+		this->template $emplace<T>(il, std::forward<Args>(args)...);
+	}
+
+	template <
+		typename... Others,
+		typename = enable_if_t<
+			!std::is_same<variant<Others...>, variant>::value &&
+			disjunction<or_convertible<Others, Types...>...>::value>>
+	variant(const variant<Others...> &src) {
+		if (!src.type()) {
+			return;
+		}
+
+		assert(src.type().is_copyable());
+
+		if (this->has_type(src.type())) {
+			this->$type = src.type();
+			this->$type.copy_to(this->data(), src.data());
+			return;
+		}
+
+#ifdef NDEBUG
+		no_effect(this->template $conv_from_other_variant<
+				  const variant<Others...> &,
+				  Others...>(src));
+#else
+		assert(RUA_ARG(this->template $conv_from_other_variant<
+					   const variant<Others...> &,
+					   Others...>(src)));
+#endif
+	}
+
+	template <
+		typename... Others,
+		typename = enable_if_t<
+			!std::is_same<variant<Others...>, variant>::value &&
+			disjunction<or_convertible<Others, Types...>...>::value>>
+	variant(variant<Others...> &&src) {
+		if (!src.type()) {
+			return;
+		}
+
+		assert(src.type().is_moveable());
+
+		if (this->has_type(src.type())) {
+			this->$type = src.type();
+			this->$type.move_to(this->data(), src.data());
+			src.reset();
+			return;
+		}
+
+		if (this->template $conv_from_other_variant<
+				variant<Others...> &&,
+				Others...>(std::move(src))) {
+			src.reset();
+		}
 	}
 };
 

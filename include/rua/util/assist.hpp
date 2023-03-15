@@ -206,10 +206,14 @@ public:
 	enable_copy_move &operator=(enable_copy_move &&) = delete;
 };
 
-template <typename T>
+template <typename... Types>
 using enable_copy_move_like = enable_copy_move<
-	std::is_copy_constructible<T>::value && !std::is_const<T>::value,
-	std::is_move_constructible<T>::value && !std::is_const<T>::value>;
+	conjunction<disjunction<
+		std::is_void<Types>,
+		std::is_copy_constructible<Types>>...>::value,
+	conjunction<disjunction<
+		std::is_void<Types>,
+		std::is_move_constructible<Types>>...>::value>;
 
 ////////////////////////////////////////////////////////////////////////////
 
