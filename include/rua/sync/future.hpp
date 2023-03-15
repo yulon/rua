@@ -21,7 +21,7 @@ class _future_detail {
 public:
 	template <typename PromisePtr>
 	static inline expected<T>
-	get_val(variant<T, error_i, PromisePtr> &v) noexcept {
+	get_val(variant<error_i, T, PromisePtr> &v) noexcept {
 		if (v.template type_is<T>()) {
 			return std::move(v).template as<T>();
 		}
@@ -40,7 +40,7 @@ public:
 template <>
 template <typename PromisePtr>
 inline expected<void>
-_future_detail<void>::get_val(variant<void, error_i, PromisePtr> &v) noexcept {
+_future_detail<void>::get_val(variant<error_i, void, PromisePtr> &v) noexcept {
 	if (v.template type_is<void>()) {
 		return expected<void>();
 	}
@@ -116,7 +116,7 @@ public:
 
 	constexpr future() : $v(err_unpromised) {}
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<T, error_i>), future)
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(expected<T>), future)
 	future(Args &&...args) : $v(std::forward<Args>(args)...) {}
 
 	template <
@@ -175,7 +175,7 @@ public:
 	}
 
 private:
-	variant<T, error_i, promise<PromiseValue> *> $v;
+	variant<error_i, T, promise<PromiseValue> *> $v;
 };
 
 } // namespace rua

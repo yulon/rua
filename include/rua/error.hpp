@@ -209,19 +209,19 @@ RUA_CVAR strv_error unexpected("unexpected");
 template <typename T = void>
 class expected : public enable_value_operators<expected<T>, T> {
 public:
-	constexpr expected() = default;
+	expected() : $v(unexpected) {}
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<T, error_i>), expected)
-	constexpr expected(Args &&...args) : _v(std::forward<Args>(args)...) {}
+	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<error_i, T>), expected)
+	expected(Args &&...args) : $v(std::forward<Args>(args)...) {}
 
-	expected(const expected &src) : _v(src._v) {}
+	expected(const expected &src) : $v(src.$v) {}
 
-	expected(expected &&src) : _v(std::move(src._v)) {}
+	expected(expected &&src) : $v(std::move(src.$v)) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(expected)
 
 	bool has_value() const {
-		return _v.template type_is<T>();
+		return $v.template type_is<T>();
 	}
 
 	explicit operator bool() const {
@@ -236,7 +236,7 @@ public:
 #endif
 		assert(has_value());
 
-		return _v.template as<T>();
+		return $v.template as<T>();
 	}
 
 	T &&value() && {
@@ -247,7 +247,7 @@ public:
 #endif
 		assert(has_value());
 
-		return std::move(_v).template as<T>();
+		return std::move($v).template as<T>();
 	}
 
 	const T &value() const & {
@@ -258,42 +258,40 @@ public:
 #endif
 		assert(has_value());
 
-		return _v.template as<T>();
+		return $v.template as<T>();
 	}
 
 	error_i error() const {
-		if (_v.template type_is<error_i>()) {
-			const auto &err = _v.template as<error_i>();
+		if ($v.template type_is<error_i>()) {
+			const auto &err = $v.template as<error_i>();
 			assert(err);
 			return err;
 		}
-		if (has_value()) {
-			return nullptr;
-		}
-		return unexpected;
+		assert(!$v.template type_is<void>());
+		return nullptr;
 	}
 
-	variant<T, error_i> &data() & {
-		return _v;
+	variant<error_i, T> &data() & {
+		return $v;
 	}
 
-	variant<T, error_i> &&data() && {
-		return std::move(_v);
+	variant<error_i, T> &&data() && {
+		return std::move($v);
 	}
 
-	const variant<T, error_i> &data() const & {
-		return _v;
+	const variant<error_i, T> &data() const & {
+		return $v;
 	}
 
 	void reset() {
-		_v.reset();
+		$v.reset();
 	}
 
 	template <
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<T, Args &&...>::value>>
 	void emplace(Args &&...args) {
-		_v.emplace(std::forward<Args>(args)...);
+		$v.emplace(std::forward<Args>(args)...);
 	}
 
 	template <
@@ -303,11 +301,11 @@ public:
 			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
 				value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
-		_v.emplace(il, std::forward<Args>(args)...);
+		$v.emplace(il, std::forward<Args>(args)...);
 	}
 
 private:
-	variant<T, error_i> _v;
+	variant<error_i, T> $v;
 };
 
 template <>
@@ -353,6 +351,18 @@ public:
 private:
 	error_i $err;
 };
+
+////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+inline expected<T> expected_or(error_i unexpected_err) {
+	return unexpected_err;
+}
+
+template <>
+inline expected<void> expected_or(error_i) {
+	return {};
+}
 
 ////////////////////////////////////////////////////////////////////////////
 

@@ -20,7 +20,7 @@ enum class promise_state : uintptr_t {
 	received
 };
 
-RUA_CVAR strv_error err_promise_breaked("promise breaked");
+RUA_CVAR strv_error err_promise_unfulfilled("promise unfulfilled");
 RUA_CVAR strv_error err_promise_not_yet_fulfilled("promise not yet fulfilled");
 RUA_CVAR strv_error err_promise_fulfilled("promise fulfilled");
 
@@ -38,8 +38,10 @@ public:
 
 	/////////////////// fulfill side ///////////////////
 
-	expected<T> fulfill(expected<T> value = err_promise_breaked) noexcept {
-		assert(std::is_void<T>::value ? !!$val : !$val);
+	expected<T> fulfill(
+		expected<T> value = expected_or<T>(err_promise_unfulfilled)) noexcept {
+
+		assert(std::is_void<T>::value || !$val);
 
 		$val = std::move(value);
 
@@ -47,27 +49,32 @@ public:
 
 		assert(old_state != promise_state::fulfilled);
 
-		expected<T> r(err_promise_fulfilled);
+		expected<T> refunded;
 
 		switch (old_state) {
+
+		case promise_state::received:
+			refunded = std::move($val);
+			destroy();
+			break;
 
 		case promise_state::has_notify: {
 			assert($notify);
 			auto notify = std::move($notify);
 			notify();
-			break;
+			RUA_FALLTHROUGH;
 		}
-
-		case promise_state::received:
-			r = std::move($val);
-			destroy();
-			break;
 
 		default:
+			refunded = err_promise_fulfilled;
 			break;
 		}
 
-		return r;
+		return refunded;
+	}
+
+	void unfulfill() noexcept {
+		fulfill(err_promise_unfulfilled);
 	}
 
 	/////////////////// receive side ///////////////////
