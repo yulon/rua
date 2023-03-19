@@ -75,7 +75,7 @@ public:
 
 	template <typename... Visitors>
 	bool visit(Visitors &&...viss) && {
-		return has_value() && std::move(*this).template $visitors_visit_types(
+		return has_value() && std::move(*this).$visitors_visit_types(
 								  std::forward<Visitors>(viss)...);
 	}
 
@@ -376,7 +376,7 @@ protected:
 		FirstVisitor &&first_viss, OtherVisitors &&...other_viss) && {
 		return std::move(*this).template $visit_types<FirstVisitor, Types...>(
 				   std::forward<FirstVisitor>(first_viss)) ||
-			   std::move(*this).template $visitors_visit_types(
+			   std::move(*this).$visitors_visit_types(
 				   std::forward<OtherVisitors>(other_viss)...);
 	}
 
