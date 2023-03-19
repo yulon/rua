@@ -184,7 +184,9 @@ protected:
 	}
 
 	template <typename OtherVariantRef, typename First>
-	enable_if_t<or_convertible<First, Types...>::value, bool>
+	enable_if_t<
+		!std::is_void<First>::value && or_convertible<First, Types...>::value,
+		bool>
 	$conv_from_other_variant(OtherVariantRef ov) {
 		if (ov.type() != type_id<First>()) {
 			return false;
@@ -192,6 +194,14 @@ protected:
 		$emplace<convertible_t<First, Types...>>(
 			static_cast<OtherVariantRef>(ov).template as<First>());
 		return true;
+	}
+
+	template <typename OtherVariantRef, typename First>
+	enable_if_t<
+		std::is_void<First>::value && or_convertible<First, Types...>::value,
+		bool>
+	$conv_from_other_variant(OtherVariantRef ov) {
+		return ov.type() == type_id<First>();
 	}
 
 	template <typename OtherVariantRef, typename First>
@@ -205,7 +215,9 @@ protected:
 		typename First,
 		typename Second,
 		typename... Others>
-	enable_if_t<or_convertible<First, Types...>::value, bool>
+	enable_if_t<
+		!std::is_void<First>::value && or_convertible<First, Types...>::value,
+		bool>
 	$conv_from_other_variant(OtherVariantRef ov) {
 		if (ov.type() != type_id<First>()) {
 			return $conv_from_other_variant<OtherVariantRef, Second, Others...>(
@@ -213,6 +225,22 @@ protected:
 		}
 		$emplace<convertible_t<First, Types...>>(
 			static_cast<OtherVariantRef>(ov).template as<First>());
+		return true;
+	}
+
+	template <
+		typename OtherVariantRef,
+		typename First,
+		typename Second,
+		typename... Others>
+	enable_if_t<
+		std::is_void<First>::value && or_convertible<First, Types...>::value,
+		bool>
+	$conv_from_other_variant(OtherVariantRef ov) {
+		if (ov.type() != type_id<First>()) {
+			return $conv_from_other_variant<OtherVariantRef, Second, Others...>(
+				static_cast<OtherVariantRef>(ov));
+		}
 		return true;
 	}
 
@@ -229,38 +257,79 @@ protected:
 
 	template <typename T, typename Visitor>
 	enable_if_t<
-		!is_invocable<Visitor &&, T &>::value,
+		std::is_void<T>::value
+			? !is_invocable<Visitor &&>::value
+			: !is_invocable<Visitor &&, add_lvalue_reference_t<T>>::value,
+		bool>
+	$visit_as(Visitor &&) & {
+		return false;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		std::is_void<T>::value
+			? !is_invocable<Visitor &&>::value
+			: !is_invocable<Visitor &&, add_rvalue_reference_t<T>>::value,
+		bool>
+	$visit_as(Visitor &&) && {
+		return false;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		std::is_void<T>::value
+			? !is_invocable<Visitor &&>::value
+			: !is_invocable<Visitor &&, add_lvalue_reference_t<const T>>::value,
 		bool> constexpr $visit_as(Visitor &&) const & {
 		return false;
 	}
 
 	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
-	$visit_as(Visitor &&vis) & {
-		if (!type_is<T>()) {
-			return false;
-		};
-		std::forward<Visitor>(vis)(as<T>());
-		return true;
-	}
-
-	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
-	$visit_as(Visitor &&vis) && {
-		if (!type_is<T>()) {
-			return false;
-		};
-		std::forward<Visitor>(vis)(std::move(as<T>()));
-		return true;
-	}
-
-	template <typename T, typename Visitor>
-	enable_if_t<is_invocable<Visitor &&, T &>::value, bool>
+	enable_if_t<std::is_void<T>::value && is_invocable<Visitor &&>::value, bool>
 	$visit_as(Visitor &&vis) const & {
 		if (!type_is<T>()) {
 			return false;
 		};
-		std::forward<Visitor>(vis)(as<T>());
+		rua::invoke(std::forward<Visitor>(vis));
+		return true;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		!std::is_void<T>::value &&
+			is_invocable<Visitor &&, add_lvalue_reference_t<T>>::value,
+		bool>
+	$visit_as(Visitor &&vis) & {
+		if (!type_is<T>()) {
+			return false;
+		};
+		rua::invoke(std::forward<Visitor>(vis), as<T>());
+		return true;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		!std::is_void<T>::value &&
+			is_invocable<Visitor &&, add_rvalue_reference_t<T>>::value,
+		bool>
+	$visit_as(Visitor &&vis) && {
+		if (!type_is<T>()) {
+			return false;
+		};
+		rua::invoke(std::forward<Visitor>(vis), std::move(as<T>()));
+		return true;
+	}
+
+	template <typename T, typename Visitor>
+	enable_if_t<
+		!std::is_void<T>::value &&
+			is_invocable<Visitor &&, add_lvalue_reference_t<const T>>::value,
+		bool>
+	$visit_as(Visitor &&vis) const & {
+		if (!type_is<T>()) {
+			return false;
+		};
+		rua::invoke(std::forward<Visitor>(vis), as<T>());
 		return true;
 	}
 
@@ -324,7 +393,7 @@ protected:
 		return $type;
 	}
 
-	bool $has_value(std::false_type &&) const {
+	constexpr bool $has_value(std::false_type &&) const {
 		return true;
 	}
 };
@@ -423,6 +492,12 @@ template <typename T, typename U, typename... Args>
 variant<T> make_variant(std::initializer_list<U> il, Args &&...args) {
 	return variant<T>(in_place_type_t<T>{}, il, std::forward<Args>(args)...);
 }
+
+template <typename T>
+struct is_variant : std::false_type {};
+
+template <typename... Types>
+struct is_variant<variant<Types...>> : std::true_type {};
 
 } // namespace rua
 

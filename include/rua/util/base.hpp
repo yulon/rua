@@ -39,6 +39,10 @@ struct in_place_index_t {};
 
 #endif
 
+////////////////////////////////////////////////////////////////////////////
+
+struct not_matched_t {};
+
 } // namespace rua
 
 #endif

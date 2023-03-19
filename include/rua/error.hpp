@@ -45,7 +45,7 @@ class error_i : public interface_ptr<error_base>, public std::exception {
 public:
 	error_i() = default;
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, interface_ptr<error_base>, error_i)
+	RUA_TMPL_FWD_CTOR(Args, interface_ptr<error_base>, error_i)
 	error_i(Args &&...args) :
 		interface_ptr<error_base>(std::forward<Args>(args)...) {}
 
@@ -211,8 +211,12 @@ class expected : public enable_value_operators<expected<T>, T> {
 public:
 	expected() : $v(unexpected) {}
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(variant<error_i, T>), expected)
+	RUA_TMPL_FWD_CTOR(Args, RUA_ARG(variant<error_i, T>), expected)
 	expected(Args &&...args) : $v(std::forward<Args>(args)...) {}
+
+	RUA_TMPL_FWD_CTOR_IL(U, Args, T)
+	expected(std::initializer_list<U> il, Args &&...args) :
+		$v(in_place_type_t<T>{}, il, std::forward<Args>(args)...) {}
 
 	expected(const expected &src) : $v(src.$v) {}
 
@@ -289,7 +293,8 @@ public:
 
 	template <
 		typename... Args,
-		typename = enable_if_t<std::is_constructible<T, Args &&...>::value>>
+		typename = enable_if_t<
+			std::is_constructible<variant<error_i, T>, Args &&...>::value>>
 	void emplace(Args &&...args) {
 		$v.emplace(std::forward<Args>(args)...);
 	}
@@ -297,9 +302,10 @@ public:
 	template <
 		typename U,
 		typename... Args,
-		typename = enable_if_t<
-			std::is_constructible<T, std::initializer_list<U>, Args &&...>::
-				value>>
+		typename = enable_if_t<std::is_constructible<
+			variant<error_i, T>,
+			std::initializer_list<U>,
+			Args &&...>::value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
 		$v.emplace(il, std::forward<Args>(args)...);
 	}
@@ -313,8 +319,20 @@ class expected<void> {
 public:
 	expected() = default;
 
-	RUA_CONSTRUCTIBLE_CONCEPT(ErrorArgs, error_i, expected)
-	expected(ErrorArgs &&...err) : $err(std::forward<ErrorArgs>(err)...) {}
+	template <
+		typename Error,
+		typename = enable_if_t<std::is_convertible<Error &&, error_i>::value>>
+	expected(Error &&err) : $err(std::forward<Error>(err)) {}
+
+	template <
+		typename Variant,
+		typename = enable_if_t<is_variant<decay_t<Variant>>::value>,
+		typename = enable_if_t<
+			std::is_convertible<Variant &&, variant<error_i>>::value>>
+	expected(Variant &&v) {
+		std::forward<Variant>(v).visit(
+			[this](error_i err) { $err = std::move(err); });
+	}
 
 	expected(const expected &src) : $err(src.$err) {}
 
@@ -337,10 +355,6 @@ public:
 	}
 
 	void reset() {
-		$err.reset();
-	}
-
-	void emplace() {
 		$err.reset();
 	}
 

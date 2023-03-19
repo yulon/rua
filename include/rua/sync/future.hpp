@@ -16,45 +16,6 @@
 
 namespace rua {
 
-template <typename T>
-class _future_detail {
-public:
-	template <typename PromisePtr>
-	static inline expected<T>
-	get_val(variant<error_i, T, PromisePtr> &v) noexcept {
-		if (v.template type_is<T>()) {
-			return std::move(v).template as<T>();
-		}
-		if (v.template type_is<error_i>()) {
-			return std::move(v).template as<error_i>();
-		}
-		if (v.template type_is<PromisePtr>()) {
-			auto prm = v.template as<PromisePtr>();
-			v.reset();
-			return prm->await_resume();
-		}
-		return unexpected;
-	}
-};
-
-template <>
-template <typename PromisePtr>
-inline expected<void>
-_future_detail<void>::get_val(variant<error_i, void, PromisePtr> &v) noexcept {
-	if (v.template type_is<void>()) {
-		return expected<void>();
-	}
-	if (v.template type_is<error_i>()) {
-		return std::move(v).template as<error_i>();
-	}
-	if (v.template type_is<PromisePtr>()) {
-		auto prm = v.template as<PromisePtr>();
-		v.reset();
-		return prm->await_resume();
-	}
-	return unexpected;
-}
-
 RUA_CVAR strv_error err_unpromised("unpromised");
 
 template <typename Promise, typename PromiseValue>
@@ -116,8 +77,12 @@ public:
 
 	constexpr future() : $v(err_unpromised) {}
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, RUA_ARG(expected<T>), future)
+	RUA_TMPL_FWD_CTOR(Args, RUA_ARG(expected<T>), future)
 	future(Args &&...args) : $v(std::forward<Args>(args)...) {}
+
+	RUA_TMPL_FWD_CTOR_IL(U, Args, T)
+	future(std::initializer_list<U> il, Args &&...args) :
+		$v(in_place_type_t<T>{}, il, std::forward<Args>(args)...) {}
 
 	template <
 		typename U = T,
@@ -164,7 +129,15 @@ public:
 	}
 
 	expected<T> await_resume() noexcept {
-		return _future_detail<T>::get_val($v);
+		if (!$v) {
+			return unexpected;
+		}
+		if ($v.template type_is<promise<PromiseValue> *>()) {
+			auto prm = $v.template as<promise<PromiseValue> *>();
+			$v.reset();
+			return prm->await_resume();
+		}
+		return std::move($v);
 	}
 
 	void reset() noexcept {

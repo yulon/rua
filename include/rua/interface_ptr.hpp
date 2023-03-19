@@ -15,7 +15,7 @@ public:
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
 		$raw(nullptr), $shared(), $type() {}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(SameBase *raw_ptr, type_info typ = nullptr) {
 		if (!raw_ptr) {
 			$raw = nullptr;
@@ -25,11 +25,11 @@ public:
 		$raw = static_cast<T *>(raw_ptr);
 	}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(SameBase &lv, type_info typ = nullptr) :
 		interface_ptr(&lv, typ) {}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(SameBase &&rv, type_info typ = nullptr) {
 		$type = typ ? typ : type_id<SameBase>();
 		$shared = std::static_pointer_cast<T>(
@@ -47,7 +47,7 @@ public:
 		$raw = $shared.get();
 	}
 
-	template <RUA_DERIVED_CONCEPT(T, Derived)>
+	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(
 		std::shared_ptr<Derived> derived_shared_ptr, type_info typ = nullptr) {
 		if (!derived_shared_ptr) {
@@ -59,13 +59,13 @@ public:
 		$raw = $shared.get();
 	}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(
 		const std::unique_ptr<SameBase> &unique_ptr_lv,
 		type_info typ = nullptr) :
 		interface_ptr(unique_ptr_lv.get(), typ) {}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(
 		std::unique_ptr<SameBase> &&unique_ptr_rv, type_info typ = nullptr) {
 		if (!unique_ptr_rv) {
@@ -77,7 +77,7 @@ public:
 		$raw = $shared.get();
 	}
 
-	template <RUA_DERIVED_CONCEPT(T, Derived)>
+	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(const interface_ptr<Derived> &derived_interface_ptr_lv) :
 		$type(derived_interface_ptr_lv.type()) {
 
@@ -98,7 +98,7 @@ public:
 		$raw = static_cast<T *>(raw);
 	}
 
-	template <RUA_DERIVED_CONCEPT(T, Derived)>
+	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(interface_ptr<Derived> &&derived_interface_ptr_rv) :
 		$type(derived_interface_ptr_rv.type()) {
 
@@ -192,12 +192,12 @@ public:
 		return $raw ? $type : type_id<void>();
 	}
 
-	template <RUA_IS_BASE_OF_CONCEPT(T, SameBase)>
+	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	bool type_is() const {
 		return type() == type_id<SameBase>();
 	}
 
-	template <RUA_DERIVED_CONCEPT(T, Derived)>
+	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr<Derived> as() const {
 		assert($raw);
 

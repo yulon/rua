@@ -394,7 +394,7 @@ struct _same;
 
 template <typename T>
 struct _same<T> {
-	using type = void;
+	using type = not_matched_t;
 };
 
 template <typename T, typename Cur, typename... Others>
@@ -408,7 +408,7 @@ struct _convertible;
 
 template <typename T>
 struct _convertible<T> {
-	using type = void;
+	using type = not_matched_t;
 };
 
 template <typename T, typename Cur, typename... Others>
@@ -424,12 +424,12 @@ struct _same_or_convertible {
 };
 
 template <typename Convertible>
-struct _same_or_convertible<void, Convertible> {
+struct _same_or_convertible<not_matched_t, Convertible> {
 	using type = Convertible;
 };
 
 template <>
-struct _same_or_convertible<void, void> {};
+struct _same_or_convertible<not_matched_t, not_matched_t> {};
 
 template <typename T, typename... Types>
 struct convertible : _same_or_convertible<
@@ -441,8 +441,12 @@ using convertible_t = typename convertible<T, Args...>::type;
 
 ////////////////////////////////////////////////////////////////////////////
 
+template <typename From, typename To>
+struct is_same_or_convertible
+	: disjunction<std::is_same<From, To>, std::is_convertible<From, To>> {};
+
 template <typename From, typename... To>
-struct or_convertible : disjunction<std::is_convertible<From, To>...> {};
+struct or_convertible : disjunction<is_same_or_convertible<From, To>...> {};
 
 } // namespace rua
 

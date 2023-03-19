@@ -8,30 +8,38 @@
 
 namespace rua {
 
-#define RUA_CONTAINER_OF(_member_ptr, _type, _member)                          \
+#define RUA_CONTAINER_OF(member_ptr, type, member)                             \
 	reinterpret_cast<type *>(                                                  \
-		reinterpret_cast<uintptr_t>(_member_ptr) - offsetof(_type, _member))
+		reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member))
 
-#define RUA_IS_BASE_OF_CONCEPT(_B, _D)                                         \
-	typename _D,                                                               \
+#define RUA_TMPL_IS_BASE_OF(B, D)                                              \
+	typename D,                                                                \
 		typename =                                                             \
-			enable_if_t<std::is_base_of<_B, remove_reference_t<_D>>::value>
+			enable_if_t<std::is_base_of<B, remove_reference_t<D>>::value>
 
-#define RUA_DERIVED_CONCEPT(_B, _D)                                            \
-	typename _D,                                                               \
-		typename = enable_if_t <                                               \
-					   std::is_base_of<_B, remove_reference_t<_D>>::value &&   \
-				   !std::is_same<_B, _D>::value >
+#define RUA_TMPL_DERIVED(B, D)                                                 \
+	typename D,                                                                \
+		typename =                                                             \
+			enable_if_t < std::is_base_of<B, remove_reference_t<D>>::value &&  \
+			!std::is_same<B, D>::value >
 
-#define RUA_CONSTRUCTIBLE_CONCEPT(_Args, _Constructible, _Exclusion)           \
+#define RUA_TMPL_FWD_CTOR(From, To, Self)                                      \
 	template <                                                                 \
-		typename... _Args,                                                     \
-		typename ArgsFront = decay_t<front_t<_Args &&...>>,                    \
+		typename... From,                                                      \
+		typename FromFront = decay_t<front_t<From &&...>>,                     \
+		typename = enable_if_t<(                                               \
+			sizeof...(From) > 1                                                \
+				? std::is_constructible<To, From &&...>::value                 \
+				: !std::is_base_of<Self, FromFront>::value &&                  \
+					  std::is_convertible<FromFront, To>::value)>>
+
+#define RUA_TMPL_FWD_CTOR_IL(U, From, To)                                      \
+	template <                                                                 \
+		typename U,                                                            \
+		typename... From,                                                      \
 		typename = enable_if_t<                                                \
-			(sizeof...(_Args) > 1 &&                                           \
-			 std::is_constructible<_Constructible, _Args &&...>::value) ||     \
-			(!std::is_base_of<_Exclusion, ArgsFront>::value &&                 \
-			 std::is_convertible<ArgsFront, _Constructible>::value)>>
+			std::is_constructible<To, std::initializer_list<U>, From &&...>::  \
+				value>>
 
 #define RUA_ARG(...) __VA_ARGS__
 

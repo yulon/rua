@@ -630,7 +630,7 @@ public:
 		$alloc(size);
 	}
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes_view, bytes)
+	RUA_TMPL_FWD_CTOR(Args, bytes_view, bytes)
 	bytes(Args &&...copy_src) {
 		bytes_view bv(std::forward<Args>(copy_src)...);
 		if (!bv.size()) {
@@ -762,7 +762,7 @@ class bytes_pattern {
 public:
 	bytes_pattern() = default;
 
-	RUA_CONSTRUCTIBLE_CONCEPT(Args, bytes, bytes_pattern)
+	RUA_TMPL_FWD_CTOR(Args, bytes, bytes_pattern)
 	bytes_pattern(Args &&...bytes_args) :
 		$mb(std::forward<Args>(bytes_args)...) {}
 
