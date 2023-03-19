@@ -334,7 +334,7 @@ private:
 
 	template <typename T>
 	static const $table_t &$table() {
-		RUA_SASSERT((!std::is_same<T, void>::value));
+		RUA_SASSERT(!std::is_same<T, void>::value);
 
 		static const $table_t tab{
 			size_of<T>::value,

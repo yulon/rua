@@ -244,7 +244,7 @@ public:
 
 	template <typename... Args>
 	void reset(Args &&...args) {
-		RUA_SASSERT((std::is_constructible<span<T>, Args...>::value));
+		RUA_SASSERT(std::is_constructible<span<T>, Args...>::value);
 
 		*this = span<T>(std::forward<Args>(args)...);
 	}

@@ -90,32 +90,58 @@ public:
 	}
 
 	template <typename T>
-	enable_if_t<is_containable<decay_t<T>>::value, T &> as() & {
+	enable_if_t<
+		!std::is_void<T>::value && !is_null_pointer<T>::value &&
+			is_containable<decay_t<T>>::value,
+		T &>
+	as() & {
 		assert(type_is<T>());
 		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
 	template <typename T>
-	enable_if_t<!is_containable<decay_t<T>>::value, T &> as() & {
+	enable_if_t<
+		!std::is_void<T>::value && !is_null_pointer<T>::value &&
+			!is_containable<decay_t<T>>::value,
+		T &>
+	as() & {
 		assert(type_is<T>());
 		return **reinterpret_cast<T **>(&$sto[0]);
 	}
 
 	template <typename T>
-	T &&as() && {
+	enable_if_t<!std::is_void<T>::value && !is_null_pointer<T>::value, T &&>
+	as() && {
 		return std::move(as<T>());
 	}
 
 	template <typename T>
-	enable_if_t<is_containable<decay_t<T>>::value, const T &> as() const & {
+	enable_if_t<
+		!std::is_void<T>::value && !is_null_pointer<T>::value &&
+			is_containable<decay_t<T>>::value,
+		const T &>
+	as() const & {
 		assert(type_is<T>());
 		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
 	template <typename T>
-	enable_if_t<!is_containable<decay_t<T>>::value, const T &> as() const & {
+	enable_if_t<
+		!std::is_void<T>::value && !is_null_pointer<T>::value &&
+			!is_containable<decay_t<T>>::value,
+		const T &>
+	as() const & {
 		assert(type_is<T>());
 		return **reinterpret_cast<const T *const *>(&$sto[0]);
+	}
+
+	template <typename T>
+	RUA_CONSTEXPR_14 enable_if_t<std::is_void<T>::value> as() const & {}
+
+	template <typename T>
+	constexpr enable_if_t<is_null_pointer<T>::value, std::nullptr_t>
+	as() const & {
+		return nullptr;
 	}
 
 	template <typename T, typename Emplaced = decay_t<T &&>>
@@ -166,7 +192,7 @@ public:
 	}
 
 private:
-	alignas(StorageAlign) char $sto[StorageLen];
+	alignas(StorageAlign) uchar $sto[StorageLen];
 
 	template <typename T, typename... Args>
 	enable_if_t<is_containable<T>::value, T &> $emplace(Args &&...args) {

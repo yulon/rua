@@ -77,7 +77,7 @@ public:
 
 	constexpr future() : $v(err_unpromised) {}
 
-	RUA_TMPL_FWD_CTOR(Args, RUA_ARG(expected<T>), future)
+	RUA_TMPL_FWD_CTOR(Args, RUA_A(expected<T>), future)
 	future(Args &&...args) : $v(std::forward<Args>(args)...) {}
 
 	RUA_TMPL_FWD_CTOR_IL(U, Args, T)

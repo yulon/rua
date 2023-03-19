@@ -41,8 +41,6 @@ namespace rua {
 			std::is_constructible<To, std::initializer_list<U>, From &&...>::  \
 				value>>
 
-#define RUA_ARG(...) __VA_ARGS__
-
 ////////////////////////////////////////////////////////////////////////////
 
 #if RUA_CPP >= RUA_CPP_17

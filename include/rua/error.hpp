@@ -211,8 +211,10 @@ class expected : public enable_value_operators<expected<T>, T> {
 public:
 	expected() : $v(unexpected) {}
 
-	RUA_TMPL_FWD_CTOR(Args, RUA_ARG(variant<error_i, T>), expected)
-	expected(Args &&...args) : $v(std::forward<Args>(args)...) {}
+	RUA_TMPL_FWD_CTOR(Args, RUA_A(variant<error_i, T>), expected)
+	expected(Args &&...args) : $v(std::forward<Args>(args)...) {
+		assert(has_value() || error());
+	}
 
 	RUA_TMPL_FWD_CTOR_IL(U, Args, T)
 	expected(std::initializer_list<U> il, Args &&...args) :
@@ -288,7 +290,7 @@ public:
 	}
 
 	void reset() {
-		$v.reset();
+		$v.emplace(unexpected);
 	}
 
 	template <
@@ -326,12 +328,19 @@ public:
 
 	template <
 		typename Variant,
-		typename = enable_if_t<is_variant<decay_t<Variant>>::value>,
+		typename DecayVariant = decay_t<Variant>,
 		typename = enable_if_t<
-			std::is_convertible<Variant &&, variant<error_i>>::value>>
+			is_variant<DecayVariant>::value &&
+			std::is_convertible<Variant &&, variant<error_i, void>>::value>>
 	expected(Variant &&v) {
-		std::forward<Variant>(v).visit(
-			[this](error_i err) { $err = std::move(err); });
+		if (v.template type_is<void>()) {
+			return;
+		}
+		auto r = std::forward<Variant>(v).visit([this](error_i err) {
+			assert(err);
+			$err = std::move(err);
+		});
+		assert(r);
 	}
 
 	expected(const expected &src) : $err(src.$err) {}

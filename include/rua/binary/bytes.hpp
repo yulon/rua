@@ -322,7 +322,7 @@ public:
 
 	template <typename... Args>
 	void reset(Args &&...args) {
-		RUA_SASSERT((std::is_constructible<bytes_view, Args...>::value));
+		RUA_SASSERT(std::is_constructible<bytes_view, Args...>::value);
 
 		*this = bytes_view(std::forward<Args>(args)...);
 	}
@@ -448,7 +448,7 @@ public:
 
 	template <typename... Args>
 	void reset(Args &&...args) {
-		RUA_SASSERT((std::is_constructible<bytes_ref, Args...>::value));
+		RUA_SASSERT(std::is_constructible<bytes_ref, Args...>::value);
 
 		*this = bytes_ref(std::forward<Args>(args)...);
 	}

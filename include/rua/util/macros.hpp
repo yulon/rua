@@ -105,15 +105,14 @@
 
 #endif
 
+#define RUA_A(...) __VA_ARGS__
+#define RUA_S(s) #s
+#define RUA_M2S(m) RUA_S(m)
+
 #if defined(__cpp_static_assert) && __cpp_static_assert >= 201411
-#define RUA_SASSERT(cond) static_assert(cond)
-#define RUA_SPASSERT(cond) RUA_SASSERT(cond)
+#define RUA_SASSERT(...) static_assert(__VA_ARGS__)
 #elif RUA_CPP >= RUA_CPP_11
-#define RUA_SASSERT(cond) static_assert(cond, #cond)
-#define RUA_SPASSERT(cond) RUA_SASSERT(cond)
-#else
-#define RUA_SASSERT(cond)
-#define RUA_SPASSERT(cond) assert(cond)
+#define RUA_SASSERT(...) static_assert(__VA_ARGS__, #__VA_ARGS__)
 #endif
 
 #ifdef __has_cpp_attribute
@@ -204,9 +203,6 @@
 #elif defined(__GNUC__)
 #define RUA_NO_INLINE __attribute__((noinline))
 #endif
-
-#define RUA_S(s) #s
-#define RUA_M2S(m) RUA_S(m)
 
 #if defined(__cpp_impl_coroutine) || defined(__cpp_lib_coroutine)
 #define RUA_HAS_AWAIT

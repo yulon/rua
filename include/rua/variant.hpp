@@ -12,6 +12,17 @@ namespace rua {
 template <typename... Types>
 class _variant_base : public enable_type_info {
 public:
+	template <typename T>
+	static constexpr bool has_type() {
+		return index_of<T, Types...>::value != nullpos;
+	}
+
+	static constexpr bool has_type(const type_info &ti) {
+		return $has_type<Types...>(ti);
+	}
+
+	////////////////////////////////////////////////////////////////////////
+
 	constexpr _variant_base() : enable_type_info(), $sto() {}
 
 	~_variant_base() {
@@ -46,26 +57,40 @@ public:
 	}
 
 	template <typename T>
-	enable_if_t<!std::is_void<T>::value, T &> as() & {
+	enable_if_t<!std::is_void<T>::value && !is_null_pointer<T>::value, T &>
+	as() & {
+		RUA_SASSERT(has_type<T>());
 		assert(type_is<T>());
 		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
 	template <typename T>
-	enable_if_t<!std::is_void<T>::value, T &&> as() && {
+	enable_if_t<!std::is_void<T>::value && !is_null_pointer<T>::value, T &&>
+	as() && {
 		return std::move(as<T>());
 	}
 
 	template <typename T>
-	enable_if_t<!std::is_void<T>::value, const T &> as() const & {
+	enable_if_t<
+		!std::is_void<T>::value && !is_null_pointer<T>::value,
+		const T &>
+	as() const & {
+		RUA_SASSERT(has_type<T>());
 		assert(type_is<T>());
 		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
 	template <typename T>
-	RUA_CONSTEXPR_14 enable_if_t<
-		std::is_void<T>::value && index_of<void, Types...>::value != nullpos>
-	as() const & {}
+	RUA_CONSTEXPR_14 enable_if_t<std::is_void<T>::value> as() const & {
+		RUA_SASSERT(has_type<T>());
+	}
+
+	template <typename T>
+	constexpr enable_if_t<is_null_pointer<T>::value, std::nullptr_t>
+	as() const & {
+		RUA_SASSERT(has_type<T>());
+		return nullptr;
+	}
 
 	template <typename... Visitors>
 	bool visit(Visitors &&...viss) & {
@@ -135,15 +160,6 @@ public:
 		return std::move(emplace<T>(il, std::forward<Args>(args)...));
 	}
 
-	bool has_type(const type_info &ti) {
-		return $has_typ<Types...>(ti);
-	}
-
-	template <typename T>
-	constexpr bool has_type() const {
-		return index_of<T, Types...>::value != nullpos;
-	}
-
 	void reset() {
 		if (!$type) {
 			return;
@@ -164,23 +180,23 @@ protected:
 	alignas(
 		max_align_of<Types...>::value) uchar $sto[max_size_of<Types...>::value];
 
-	template <typename T, typename... Args>
-	T &$emplace(Args &&...args) {
-		RUA_SPASSERT((index_of<decay_t<T>, Types...>::value != nullpos));
-
-		$type = type_id<T>();
-		return construct(
-			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
-	}
-
 	template <typename Last>
-	bool $has_typ(const type_info &ti) {
+	static constexpr bool $has_type(const type_info &ti) {
 		return ti == type_id<Last>();
 	}
 
 	template <typename First, typename Second, typename... Others>
-	bool $has_typ(const type_info &ti) {
-		return ti == type_id<First>() || $has_typ<Second, Others...>(ti);
+	static constexpr bool $has_type(const type_info &ti) {
+		return ti == type_id<First>() || $has_type<Second, Others...>(ti);
+	}
+
+	template <typename T, typename... Args>
+	T &$emplace(Args &&...args) {
+		RUA_SASSERT(has_type<decay_t<T>>());
+
+		$type = type_id<T>();
+		return construct(
+			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename OtherVariantRef, typename First>
@@ -450,9 +466,9 @@ public:
 				  const variant<Others...> &,
 				  Others...>(src));
 #else
-		assert(RUA_ARG(this->template $conv_from_other_variant<
-					   const variant<Others...> &,
-					   Others...>(src)));
+		assert((this->template $conv_from_other_variant<
+				const variant<Others...> &,
+				Others...>(src)));
 #endif
 	}
 

@@ -195,7 +195,7 @@ public:
 
 	template <typename... Args>
 	T &emplace(Args &&...args) {
-		RUA_SPASSERT((std::is_constructible<T, Args...>::value));
+		RUA_SASSERT(std::is_constructible<T, Args...>::value);
 
 		auto &li = $li();
 		if (li.size() <= $ix) {
