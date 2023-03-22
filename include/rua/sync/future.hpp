@@ -148,7 +148,7 @@ public:
 	}
 
 private:
-	variant<error_i, T, promise<PromiseValue> *> $v;
+	variant<T, error_i, promise<PromiseValue> *> $v;
 };
 
 } // namespace rua

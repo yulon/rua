@@ -211,7 +211,7 @@ class expected : public enable_value_operators<expected<T>, T> {
 public:
 	expected() : $v(unexpected) {}
 
-	RUA_TMPL_FWD_CTOR(Args, RUA_A(variant<error_i, T>), expected)
+	RUA_TMPL_FWD_CTOR(Args, RUA_A(variant<T, error_i>), expected)
 	expected(Args &&...args) : $v(std::forward<Args>(args)...) {
 		assert(has_value() || error());
 	}
@@ -277,15 +277,15 @@ public:
 		return nullptr;
 	}
 
-	variant<error_i, T> &data() & {
+	variant<T, error_i> &data() & {
 		return $v;
 	}
 
-	variant<error_i, T> &&data() && {
+	variant<T, error_i> &&data() && {
 		return std::move($v);
 	}
 
-	const variant<error_i, T> &data() const & {
+	const variant<T, error_i> &data() const & {
 		return $v;
 	}
 
@@ -296,7 +296,7 @@ public:
 	template <
 		typename... Args,
 		typename = enable_if_t<
-			std::is_constructible<variant<error_i, T>, Args &&...>::value>>
+			std::is_constructible<variant<T, error_i>, Args &&...>::value>>
 	void emplace(Args &&...args) {
 		$v.emplace(std::forward<Args>(args)...);
 	}
@@ -305,7 +305,7 @@ public:
 		typename U,
 		typename... Args,
 		typename = enable_if_t<std::is_constructible<
-			variant<error_i, T>,
+			variant<T, error_i>,
 			std::initializer_list<U>,
 			Args &&...>::value>>
 	void emplace(std::initializer_list<U> il, Args &&...args) {
@@ -313,7 +313,7 @@ public:
 	}
 
 private:
-	variant<error_i, T> $v;
+	variant<T, error_i> $v;
 };
 
 template <>
@@ -331,7 +331,7 @@ public:
 		typename DecayVariant = decay_t<Variant>,
 		typename = enable_if_t<
 			is_variant<DecayVariant>::value &&
-			std::is_convertible<Variant &&, variant<error_i, void>>::value>>
+			std::is_convertible<Variant &&, variant<void, error_i>>::value>>
 	expected(Variant &&v) {
 		if (v.template type_is<void>()) {
 			return;
@@ -418,7 +418,7 @@ struct warp_expected<T, enable_if_t<std::is_base_of<error_base, T>::value>> {
 };
 
 template <typename T>
-struct warp_expected<T, enable_if_t<std::is_base_of<error_i, T>::value>> {
+struct warp_expected<T, enable_if_t<std::is_base_of<T, error_i>::value>> {
 	using type = expected<>;
 };
 

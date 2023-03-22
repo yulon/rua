@@ -310,7 +310,7 @@ private:
 		auto &wv = using_word_var();
 		auto w = wv.get();
 		if (!w) {
-			w = std::vector<any>();
+			w = generic_word(std::vector<any>());
 			wv.set(w);
 		}
 		return w.template as<std::vector<any>>();

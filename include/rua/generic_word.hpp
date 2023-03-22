@@ -53,7 +53,7 @@ public:
 		typename T,
 		typename DecayT = decay_t<T>,
 		typename = enable_if_t<is_dynamic_allocation<DecayT>::value>>
-	generic_word(T &&src) :
+	explicit generic_word(T &&src) :
 		$val(reinterpret_cast<uintptr_t>(new DecayT(std::forward<T>(src)))) {}
 
 	template <
