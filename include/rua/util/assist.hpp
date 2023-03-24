@@ -81,9 +81,26 @@ inline constexpr bool is_lowest(T n) {
 	return n == nlowest<T>();
 }
 
+////////////////////////////////////////////////////////////////////////////
+
 RUA_CVAL auto nullpos = nmax<size_t>();
 
-#define RUA_FULLPTR(T) (reinterpret_cast<T *>(nmax<uintptr_t>()))
+////////////////////////////////////////////////////////////////////////////
+
+class fullptr_t {
+public:
+	constexpr fullptr_t() : $p(nmax<uintptr_t>()){};
+
+	template <typename E>
+	constexpr operator E *() const {
+		return reinterpret_cast<E *>(nmax<uintptr_t>());
+	}
+
+private:
+	uintptr_t $p;
+};
+
+RUA_CVAL fullptr_t fullptr;
 
 ////////////////////////////////////////////////////////////////////////////
 

@@ -51,18 +51,18 @@ public:
 		auto new_front = new node_t(std::forward<Args>(args)...);
 		auto old_front = $front.load();
 		do {
-			while (old_front == reinterpret_cast<node_t *>($locked)) {
+			while (old_front == fullptr) {
 				old_front = $front.load();
 			}
 			new_front->after = old_front;
-		} while (!$front.compare_exchange_weak(old_front, new_front));
+		} while (!$front.compare_exchange_strong(old_front, new_front));
 		return !old_front;
 	}
 
 	template <typename Cond, typename... Args>
 	bool emplace_front_if(Cond &&cond, Args &&...args) {
 		auto li = lock();
-		auto r = cond();
+		auto r = std::forward<Cond>(cond)();
 		if (r) {
 			li.emplace_front(std::forward<Args>(args)...);
 		}
@@ -73,7 +73,7 @@ public:
 	template <typename Cond, typename... Args>
 	bool emplace_front_if_non_empty_or(Cond &&cond, Args &&...args) {
 		auto li = lock();
-		auto r = li || cond();
+		auto r = li || std::forward<Cond>(cond)();
 		if (r) {
 			li.emplace_front(std::forward<Args>(args)...);
 		}
@@ -87,17 +87,16 @@ public:
 		new_back->after = nullptr;
 		auto old_front = $front.load();
 		for (;;) {
-			while (old_front == reinterpret_cast<node_t *>($locked)) {
+			while (old_front == fullptr) {
 				old_front = $front.load();
 			}
 			if (!old_front) {
-				if ($front.compare_exchange_weak(old_front, new_back)) {
+				if ($front.compare_exchange_strong(old_front, new_back)) {
 					return;
 				}
 				continue;
 			}
-			if ($front.compare_exchange_weak(
-					old_front, reinterpret_cast<node_t *>($locked))) {
+			if ($front.compare_exchange_strong(old_front, fullptr)) {
 				break;
 			}
 		}
@@ -109,7 +108,7 @@ public:
 	template <typename Cond, typename... Args>
 	bool emplace_back_if(Cond &&cond, Args &&...args) {
 		auto li = lock();
-		auto r = cond();
+		auto r = std::forward<Cond>(cond)();
 		if (r) {
 			li.emplace_back(std::forward<Args>(args)...);
 		}
@@ -120,7 +119,7 @@ public:
 	template <typename Cond, typename... Args>
 	bool emplace_back_if_non_empty_or(Cond &&cond, Args &&...args) {
 		auto li = lock();
-		auto r = !li || cond();
+		auto r = !li || std::forward<Cond>(cond)();
 		if (r) {
 			li.emplace_back(std::forward<Args>(args)...);
 		}
@@ -141,11 +140,11 @@ public:
 
 		auto old_front = $front.load();
 		do {
-			while (old_front == reinterpret_cast<node_t *>($locked)) {
+			while (old_front == fullptr) {
 				old_front = $front.load();
 			}
 			pp_back->after = old_front;
-		} while (!$front.compare_exchange_weak(old_front, pp_front));
+		} while (!$front.compare_exchange_strong(old_front, pp_front));
 		return !old_front;
 	}
 
@@ -164,7 +163,7 @@ public:
 	optional<T> pop_front_if(Cond &&cond) {
 		optional<T> r;
 		auto li = lock();
-		if (cond() && li) {
+		if (std::forward<Cond>(cond)() && li) {
 			r.emplace(li.pop_front());
 		}
 		unlock_and_prepend(std::move(li));
@@ -178,7 +177,7 @@ public:
 		if (!li) {
 			return r;
 		}
-		if (cond()) {
+		if (std::forward<Cond>(cond)()) {
 			r.emplace(li.pop_front());
 		}
 		unlock_and_prepend(std::move(li));
@@ -194,7 +193,7 @@ public:
 			unlock_and_prepend(std::move(li));
 			return r;
 		}
-		on_empty();
+		std::forward<OnEmpty>(on_empty)();
 		unlock();
 		return r;
 	}
@@ -214,7 +213,7 @@ public:
 	optional<T> pop_back_if(Cond &&cond) {
 		optional<T> r;
 		auto li = lock();
-		if (cond() && li) {
+		if (std::forward<Cond>(cond)() && li) {
 			r.emplace(li.pop_back());
 		}
 		unlock_and_prepend(std::move(li));
@@ -228,7 +227,7 @@ public:
 		if (!li) {
 			return r;
 		}
-		if (cond()) {
+		if (std::forward<Cond>(cond)()) {
 			r.emplace(li.pop_back());
 		}
 		unlock_and_prepend(std::move(li));
@@ -238,10 +237,10 @@ public:
 	forward_list<T> pop_all() {
 		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>($locked)) {
+			while (front == fullptr) {
 				front = $front.load();
 			}
-		} while (!$front.compare_exchange_weak(front, nullptr));
+		} while (!$front.compare_exchange_strong(front, nullptr));
 		return forward_list<T>(front);
 	}
 
@@ -254,7 +253,7 @@ public:
 		return $front.exchange(nullptr);
 #else
 		auto front = $front.exchange(nullptr);
-		assert(front == reinterpret_cast<node_t *>($locked));
+		assert(front == fullptr);
 		return front;
 #endif
 	}
@@ -262,25 +261,23 @@ public:
 	forward_list<T> lock() {
 		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>($locked)) {
+			while (front == fullptr) {
 				front = $front.load();
 			}
-		} while (!$front.compare_exchange_weak(
-			front, reinterpret_cast<node_t *>($locked)));
+		} while (!$front.compare_exchange_strong(front, fullptr));
 		return forward_list<T>(front);
 	}
 
 	forward_list<T> lock_if_non_empty() {
 		auto front = $front.load();
 		do {
-			while (front == reinterpret_cast<node_t *>($locked)) {
+			while (front == fullptr) {
 				front = $front.load();
 			}
 			if (!front) {
 				return forward_list<T>();
 			}
-		} while (!$front.compare_exchange_weak(
-			front, reinterpret_cast<node_t *>($locked)));
+		} while (!$front.compare_exchange_strong(front, fullptr));
 		return forward_list<T>(front);
 	}
 
@@ -288,7 +285,7 @@ public:
 #ifdef NDEBUG
 		$front.store(nullptr);
 #else
-		assert($front.exchange(nullptr) == reinterpret_cast<node_t *>($locked));
+		assert($front.exchange(nullptr) == fullptr);
 #endif
 	}
 
@@ -300,9 +297,7 @@ public:
 #ifdef NDEBUG
 		$front.store(pp.release());
 #else
-		assert(
-			$front.exchange(pp.release()) ==
-			reinterpret_cast<node_t *>($locked));
+		assert($front.exchange(pp.release()) == fullptr);
 #endif
 	}
 
@@ -313,18 +308,16 @@ public:
 #else
 		assert(
 			$front.exchange(new node_t(std::forward<Args>(args)...)) ==
-			reinterpret_cast<node_t *>($locked));
+			fullptr);
 #endif
 	}
 
 private:
 	std::atomic<node_t *> $front;
 
-	static constexpr auto $locked = nmax<uintptr_t>();
-
 	void $reset(node_t *new_front = nullptr) {
 		auto node = $front.exchange(new_front);
-		assert(node != reinterpret_cast<node_t *>($locked));
+		assert(node != fullptr);
 		while (node) {
 			auto n = node;
 			node = node->after;
