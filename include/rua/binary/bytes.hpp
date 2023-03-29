@@ -767,7 +767,7 @@ public:
 		$mb(std::forward<Args>(bytes_args)...) {}
 
 	bytes_pattern(rua::bytes masked, rua::bytes mask) :
-		$mb(std::move(masked)), _m(std::move(mask)) {}
+		$mb(std::move(masked)), $m(std::move(mask)) {}
 
 	template <
 		typename IntList,
@@ -792,7 +792,7 @@ public:
 	}
 
 	bytes_view mask() const {
-		return _m;
+		return $m;
 	}
 
 	bool contains(bytes_view byts) const {
@@ -800,14 +800,14 @@ public:
 		if (sz != size()) {
 			return false;
 		}
-		if (!_m) {
+		if (!$m) {
 			return bit_equal($mb.data(), byts.data(), sz);
 		}
-		return bit_contains($mb.data(), byts.data(), _m.data(), sz);
+		return bit_contains($mb.data(), byts.data(), $m.data(), sz);
 	}
 
 private:
-	bytes $mb, _m;
+	bytes $mb, $m;
 
 	template <typename IntList>
 	void $input(IntList &&li) {
@@ -820,11 +820,11 @@ private:
 				$mb[i] = static_cast<uchar>(val);
 			} else {
 				$mb[i] = 0;
-				if (!_m) {
-					_m.reset($mb.size());
-					memset(_m.data(), 255, _m.size());
+				if (!$m) {
+					$m.reset($mb.size());
+					memset($m.data(), 255, $m.size());
 				}
-				_m[i] = 0;
+				$m[i] = 0;
 			}
 		}
 	}

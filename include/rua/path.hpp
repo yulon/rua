@@ -35,64 +35,64 @@ public:
 		typename = decltype(to_temp_string(
 			std::declval<typename span_traits<PartList>::element_type>()))>
 	path_base(PartList &&part_list) :
-		_s($join(std::forward<PartList>(part_list))) {}
+		$s($join(std::forward<PartList>(part_list))) {}
 
 	explicit operator bool() const {
-		return _s.length();
+		return $s.length();
 	}
 
 	const std::string &str() const & {
-		return _s;
+		return $s;
 	}
 
 	std::string &str() & {
-		return _s;
+		return $s;
 	}
 
 	std::string &&str() && {
-		return std::move(_s);
+		return std::move($s);
 	}
 
 	Path add_tail_sep() const {
-		if (_s[_s.length() - 1] == Sep) {
-			return _s;
+		if ($s[$s.length() - 1] == Sep) {
+			return $s;
 		}
-		return _s + std::string(1, Sep);
+		return $s + std::string(1, Sep);
 	}
 
 	Path rm_tail_sep() const {
-		auto ix = _s.length() - 1;
-		if (_s[ix] == Sep) {
-			return _s.substr(0, ix);
+		auto ix = $s.length() - 1;
+		if ($s[ix] == Sep) {
+			return $s.substr(0, ix);
 		}
-		return _s;
+		return $s;
 	}
 
 	std::string back() const {
-		auto pos = _s.rfind(Sep);
-		return pos != std::string::npos ? _s.substr(pos + 1) : _s;
+		auto pos = $s.rfind(Sep);
+		return pos != std::string::npos ? $s.substr(pos + 1) : $s;
 	}
 
 	Path rm_back() const {
-		auto pos = _s.rfind(Sep);
-		return pos != std::string::npos ? _s.substr(0, pos) : "";
+		auto pos = $s.rfind(Sep);
+		return pos != std::string::npos ? $s.substr(0, pos) : "";
 	}
 
 	std::string front() const {
-		auto pos = _s.find(Sep);
-		return pos != std::string::npos ? _s.substr(0, pos) : _s;
+		auto pos = $s.find(Sep);
+		return pos != std::string::npos ? $s.substr(0, pos) : $s;
 	}
 
 	Path rm_front() const {
-		auto pos = _s.find(Sep);
-		return pos != std::string::npos ? _s.substr(pos + 1) : "";
+		auto pos = $s.find(Sep);
+		return pos != std::string::npos ? $s.substr(pos + 1) : "";
 	}
 
 protected:
 	path_base() = default;
 
 private:
-	std::string _s;
+	std::string $s;
 
 	static bool $is_other_sep(char c) {
 		static constexpr string_view other_seps(

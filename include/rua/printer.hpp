@@ -9,25 +9,25 @@ namespace rua {
 
 class printer {
 public:
-	constexpr printer(std::nullptr_t = nullptr) : _w(nullptr), $eol(eol::lf) {}
+	constexpr printer(std::nullptr_t = nullptr) : $w(nullptr), $eol(eol::lf) {}
 
 	explicit printer(stream_i w, string_view eol = eol::lf) :
-		_w(std::move(w)), $eol(eol) {}
+		$w(std::move(w)), $eol(eol) {}
 
 	~printer() {
-		if (!_w) {
+		if (!$w) {
 			return;
 		}
-		_w = nullptr;
+		$w = nullptr;
 	}
 
 	operator bool() const {
-		return _w;
+		return $w;
 	}
 
 	template <typename... Args>
 	void print(Args &&...args) {
-		_w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
+		$w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
 	}
 
 	template <typename... Args>
@@ -36,20 +36,20 @@ public:
 	}
 
 	stream_i get() {
-		return _w;
+		return $w;
 	}
 
 	void reset(stream_i w = nullptr) {
-		_w = std::move(w);
+		$w = std::move(w);
 	}
 
 	void reset(stream_i w, const char *eol) {
-		_w = std::move(w);
+		$w = std::move(w);
 		$eol = eol;
 	}
 
 private:
-	stream_i _w;
+	stream_i $w;
 	string_view $eol;
 };
 

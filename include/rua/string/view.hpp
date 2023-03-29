@@ -32,24 +32,24 @@ public:
 	using iterator = const CharT *;
 	using const_iterator = const CharT *;
 
-	constexpr basic_string_view() : _s(nullptr), _c(0) {}
+	constexpr basic_string_view() : $s(nullptr), $n(0) {}
 
 	constexpr basic_string_view(std::nullptr_t) : basic_string_view() {}
 
 	constexpr basic_string_view(const CharT *s, size_type count) :
-		_s(s), _c(count) {}
+		$s(s), $n(count) {}
 
-	constexpr basic_string_view(const CharT *s) : _s(s), _c(c_str_len(s)) {}
+	constexpr basic_string_view(const CharT *s) : $s(s), $n(c_str_len(s)) {}
 
 	basic_string_view(const std::basic_string<CharT, Traits> &s) :
 		basic_string_view(s.c_str(), s.length()) {}
 
 	constexpr size_type length() const {
-		return _c;
+		return $n;
 	}
 
 	constexpr size_type size() const {
-		return _c;
+		return $n;
 	}
 
 	constexpr size_type max_size() const {
@@ -57,7 +57,7 @@ public:
 	}
 
 	constexpr const CharT *data() const {
-		return _s;
+		return $s;
 	}
 
 	constexpr bool empty() const {
@@ -65,7 +65,7 @@ public:
 	}
 
 	constexpr const CharT &operator[](ptrdiff_t ix) const {
-		return _s[ix];
+		return $s[ix];
 	}
 
 	constexpr const CharT *begin() const {
@@ -141,8 +141,8 @@ public:
 	}
 
 private:
-	const CharT *_s;
-	size_type _c;
+	const CharT *$s;
+	size_type $n;
 };
 
 template <typename CharT, typename Traits>

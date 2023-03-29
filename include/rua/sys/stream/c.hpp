@@ -14,9 +14,9 @@ public:
 	using native_handle_t = FILE *;
 
 	constexpr c_stream(native_handle_t f = nullptr, bool need_close = true) :
-		_f(f), $nc(need_close) {}
+		$f(f), $nc(need_close) {}
 
-	c_stream(c_stream &&src) : c_stream(src._f, src.$nc) {
+	c_stream(c_stream &&src) : c_stream(src.$f, src.$nc) {
 		src.detach();
 	}
 
@@ -27,37 +27,37 @@ public:
 	}
 
 	native_handle_t &native_handle() {
-		return _f;
+		return $f;
 	}
 
 	native_handle_t native_handle() const {
-		return _f;
+		return $f;
 	}
 
 	virtual operator bool() const {
-		return _f;
+		return $f;
 	}
 
 	virtual ptrdiff_t read(bytes_ref p) {
-		return static_cast<ptrdiff_t>(fread(p.data(), 1, p.size(), _f));
+		return static_cast<ptrdiff_t>(fread(p.data(), 1, p.size(), $f));
 	}
 
 	virtual ptrdiff_t write(bytes_view p) {
-		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), _f));
+		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), $f));
 	}
 
 	bool is_need_close() const {
-		return _f && $nc;
+		return $f && $nc;
 	}
 
 	virtual void close() {
-		if (!_f) {
+		if (!$f) {
 			return;
 		}
 		if ($nc) {
-			fclose(_f);
+			fclose($f);
 		}
-		_f = nullptr;
+		$f = nullptr;
 	}
 
 	void detach() {
@@ -65,7 +65,7 @@ public:
 	}
 
 private:
-	native_handle_t _f;
+	native_handle_t $f;
 	bool $nc;
 };
 

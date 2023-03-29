@@ -69,7 +69,7 @@ private:
 
 	template <int64_t MultipleOfNanosecond>
 	constexpr int64_t $count($ge_s<MultipleOfNanosecond> &&) const {
-		return _s / (MultipleOfNanosecond / multiple_of_nanosecond::second) +
+		return $s / (MultipleOfNanosecond / multiple_of_nanosecond::second) +
 			   $ns / MultipleOfNanosecond;
 	}
 
@@ -95,14 +95,14 @@ private:
 
 	template <int64_t MultipleOfNanosecond>
 	constexpr int64_t $count($ovf_ns<MultipleOfNanosecond> &&) const {
-		return _s * (multiple_of_nanosecond::second / MultipleOfNanosecond) +
+		return $s * (multiple_of_nanosecond::second / MultipleOfNanosecond) +
 			   $ns / MultipleOfNanosecond;
 	}
 
 	constexpr int64_t $div_ns_count(int64_t ns) const {
 		return ns >= multiple_of_nanosecond::second
-				   ? _s / (ns / multiple_of_nanosecond::second) + $ns / ns
-				   : _s * (multiple_of_nanosecond::second / ns) + $ns / ns;
+				   ? $s / (ns / multiple_of_nanosecond::second) + $ns / ns
+				   : $s * (multiple_of_nanosecond::second / ns) + $ns / ns;
 	}
 
 	template <typename CountT, CountT Max>
@@ -196,27 +196,27 @@ public:
 	}
 
 public:
-	constexpr duration() : _s(0), $ns(0) {}
+	constexpr duration() : $s(0), $ns(0) {}
 
 	constexpr duration(int64_t milliseconds) :
 		duration($from(
 			$in_attr<multiple_of_nanosecond::millisecond>{}, milliseconds)) {}
 
 	constexpr duration(int64_t seconds, int32_t remaining_nanoseconds) :
-		_s(seconds), $ns(remaining_nanoseconds) {}
+		$s(seconds), $ns(remaining_nanoseconds) {}
 
-	constexpr duration(const timespec &ts) : _s(ts.tv_sec), $ns(ts.tv_nsec) {}
+	constexpr duration(const timespec &ts) : $s(ts.tv_sec), $ns(ts.tv_nsec) {}
 
 	constexpr explicit operator bool() const {
-		return _s || $ns;
+		return $s || $ns;
 	}
 
 	constexpr bool is_max() const {
-		return _s == nmax<int64_t>() && $ns == remaining_nanoseconds_max;
+		return $s == nmax<int64_t>() && $ns == remaining_nanoseconds_max;
 	}
 
 	constexpr bool is_min() const {
-		return _s == nmin<int64_t>() && $ns == remaining_nanoseconds_min;
+		return $s == nmin<int64_t>() && $ns == remaining_nanoseconds_min;
 	}
 
 	template <int64_t MultipleOfNanosecond>
@@ -234,7 +234,7 @@ public:
 	}
 
 	constexpr int64_t nanoseconds() const {
-		return _s * multiple_of_nanosecond::second + $ns;
+		return $s * multiple_of_nanosecond::second + $ns;
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
@@ -261,12 +261,12 @@ public:
 	}
 
 	constexpr int64_t seconds() const {
-		return _s;
+		return $s;
 	}
 
 	template <typename CountT, CountT Max = nmax<CountT>()>
 	constexpr CountT seconds() const {
-		return $revise_count<CountT, Max>(_s);
+		return $revise_count<CountT, Max>($s);
 	}
 
 	constexpr int32_t remaining_nanoseconds() const {
@@ -339,32 +339,32 @@ public:
 	}
 
 	constexpr bool operator==(duration target) const {
-		return _s == target._s && $ns == target.$ns;
+		return $s == target.$s && $ns == target.$ns;
 	}
 
 	constexpr bool operator!=(duration target) const {
-		return _s != target._s || $ns != target.$ns;
+		return $s != target.$s || $ns != target.$ns;
 	}
 
 	constexpr bool operator>(duration target) const {
-		return _s > target._s || (_s == target._s && $ns > target.$ns);
+		return $s > target.$s || ($s == target.$s && $ns > target.$ns);
 	}
 
 	constexpr bool operator<(duration target) const {
-		return _s < target._s || (_s == target._s && $ns < target.$ns);
+		return $s < target.$s || ($s == target.$s && $ns < target.$ns);
 	}
 
 	constexpr bool operator>=(duration target) const {
-		return _s >= target._s || (_s == target._s && $ns >= target.$ns);
+		return $s >= target.$s || ($s == target.$s && $ns >= target.$ns);
 	}
 
 	constexpr bool operator<=(duration target) const {
-		return _s <= target._s || (_s == target._s && $ns <= target.$ns);
+		return $s <= target.$s || ($s == target.$s && $ns <= target.$ns);
 	}
 
 	constexpr duration operator+(duration target) const {
 		return $from_overflowable(
-			_s + target._s,
+			$s + target.$s,
 			static_cast<int64_t>($ns) + static_cast<int64_t>(target.$ns));
 	}
 
@@ -374,12 +374,12 @@ public:
 
 	constexpr duration operator-(duration target) const {
 		return $from_overflowable(
-			_s - target._s,
+			$s - target.$s,
 			static_cast<int64_t>($ns) - static_cast<int64_t>(target.$ns));
 	}
 
 	constexpr duration operator-() const {
-		return duration(-_s, -$ns);
+		return duration(-$s, -$ns);
 	}
 
 	duration &operator-=(duration target) {
@@ -388,7 +388,7 @@ public:
 
 	constexpr duration operator*(int64_t target) const {
 		return $from_overflowable(
-			_s * target, static_cast<int64_t>($ns) * target);
+			$s * target, static_cast<int64_t>($ns) * target);
 	}
 
 	duration &operator*=(int64_t target) {
@@ -401,9 +401,9 @@ public:
 
 	constexpr duration operator/(int64_t target) const {
 		return $from_overflowable(
-			_s / target,
+			$s / target,
 			(static_cast<int64_t>($ns) +
-			 _s % target * multiple_of_nanosecond::second) /
+			 $s % target * multiple_of_nanosecond::second) /
 				target);
 	}
 
@@ -415,11 +415,11 @@ public:
 		return $from_overflowable(
 			0,
 			target.$ns ? (static_cast<int64_t>($ns) +
-						  ((target._s || !target.$ns) ? _s % target._s : 0) *
+						  ((target.$s || !target.$ns) ? $s % target.$s : 0) *
 							  multiple_of_nanosecond::second) %
 							 target.$ns
 					   : (static_cast<int64_t>($ns) +
-						  ((target._s || !target.$ns) ? _s % target._s : 0) *
+						  ((target.$s || !target.$ns) ? $s % target.$s : 0) *
 							  multiple_of_nanosecond::second));
 	}
 
@@ -427,7 +427,7 @@ public:
 		return $from_overflowable(
 			0,
 			(static_cast<int64_t>($ns) +
-			 _s % target * multiple_of_nanosecond::second) %
+			 $s % target * multiple_of_nanosecond::second) %
 				target);
 	}
 
@@ -440,7 +440,7 @@ public:
 	}
 
 private:
-	int64_t _s;
+	int64_t $s;
 	int32_t $ns;
 };
 
@@ -514,7 +514,7 @@ inline constexpr duration operator""_ms(unsigned long long count) {
 	return milliseconds(static_cast<int64_t>(count));
 }
 
-inline constexpr duration operator""_s(unsigned long long count) {
+inline constexpr duration operator"" _s(unsigned long long count) {
 	return seconds(static_cast<int64_t>(count));
 }
 
