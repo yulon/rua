@@ -8,15 +8,12 @@
 
 namespace rua {
 
-#define RUA_IS_CONTAINABLE(val_len, val_align, sto_len, sto_align)             \
-	(val_len <= sto_len && val_align <= sto_align)
-
 template <size_t StorageLen, size_t StorageAlign>
 class basic_any : public enable_type_info {
 public:
 	template <typename T>
-	struct is_containable {
-		static constexpr auto value = RUA_IS_CONTAINABLE(
+	struct is_placeable {
+		static constexpr auto value = RUA_IS_PLACEABLE(
 			size_of<T>::value, align_of<T>::value, StorageLen, StorageAlign);
 	};
 
@@ -53,8 +50,7 @@ public:
 
 		assert($type.is_copyable());
 
-		if (RUA_IS_CONTAINABLE(
-				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+		if ($type.is_placeable(StorageLen, StorageAlign)) {
 			$type.copy_to(&$sto[0], &src.$sto);
 			return;
 		}
@@ -69,8 +65,7 @@ public:
 
 		assert($type.is_moveable());
 
-		if (RUA_IS_CONTAINABLE(
-				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+		if ($type.is_placeable(StorageLen, StorageAlign)) {
 			$type.move_to(&$sto[0], &src.$sto);
 			return;
 		}
@@ -92,7 +87,7 @@ public:
 	template <typename T>
 	enable_if_t<
 		!std::is_void<T>::value && !is_null_pointer<T>::value &&
-			is_containable<decay_t<T>>::value,
+			is_placeable<decay_t<T>>::value,
 		T &>
 	as() & {
 		assert(type_is<T>());
@@ -102,7 +97,7 @@ public:
 	template <typename T>
 	enable_if_t<
 		!std::is_void<T>::value && !is_null_pointer<T>::value &&
-			!is_containable<decay_t<T>>::value,
+			!is_placeable<decay_t<T>>::value,
 		T &>
 	as() & {
 		assert(type_is<T>());
@@ -118,7 +113,7 @@ public:
 	template <typename T>
 	enable_if_t<
 		!std::is_void<T>::value && !is_null_pointer<T>::value &&
-			is_containable<decay_t<T>>::value,
+			is_placeable<decay_t<T>>::value,
 		const T &>
 	as() const & {
 		assert(type_is<T>());
@@ -128,7 +123,7 @@ public:
 	template <typename T>
 	enable_if_t<
 		!std::is_void<T>::value && !is_null_pointer<T>::value &&
-			!is_containable<decay_t<T>>::value,
+			!is_placeable<decay_t<T>>::value,
 		const T &>
 	as() const & {
 		assert(type_is<T>());
@@ -182,8 +177,7 @@ public:
 		if (!$type) {
 			return;
 		}
-		if (RUA_IS_CONTAINABLE(
-				$type.size(), $type.align(), StorageLen, StorageAlign)) {
+		if ($type.is_placeable(StorageLen, StorageAlign)) {
 			$type.destruct(reinterpret_cast<void *>(&$sto[0]));
 		} else {
 			$type.dealloc(*reinterpret_cast<void **>(&$sto[0]));
@@ -195,14 +189,14 @@ private:
 	alignas(StorageAlign) uchar $sto[StorageLen];
 
 	template <typename T, typename... Args>
-	enable_if_t<is_containable<T>::value, T &> $emplace(Args &&...args) {
+	enable_if_t<is_placeable<T>::value, T &> $emplace(Args &&...args) {
 		$type = type_id<T>();
 		return construct(
 			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
-	enable_if_t<!is_containable<T>::value, T &> $emplace(Args &&...args) {
+	enable_if_t<!is_placeable<T>::value, T &> $emplace(Args &&...args) {
 		$type = type_id<T>();
 		return *(
 			*reinterpret_cast<T **>(&$sto[0]) =
