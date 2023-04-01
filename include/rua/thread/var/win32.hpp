@@ -3,7 +3,7 @@
 
 #include "base.hpp"
 
-#include "../../generic_word.hpp"
+#include "../../any_word.hpp"
 #include "../../sys/listen/win32.hpp"
 #include "../../util.hpp"
 
@@ -15,8 +15,7 @@ namespace rua { namespace win32 {
 
 class thread_word_var {
 public:
-	thread_word_var(void (*dtor)(generic_word)) :
-		$ix(TlsAlloc()), $dtor(dtor) {}
+	thread_word_var(void (*dtor)(any_word)) : $ix(TlsAlloc()), $dtor(dtor) {}
 
 	~thread_word_var() {
 		if (!is_storable()) {
@@ -46,11 +45,11 @@ public:
 		return $ix != TLS_OUT_OF_INDEXES;
 	}
 
-	void set(generic_word value) {
+	void set(any_word value) {
 		$get(TlsGetValue($ix)) = value;
 	}
 
-	generic_word get() const {
+	any_word get() const {
 		auto val_ptr = TlsGetValue($ix);
 		if (!val_ptr) {
 			return 0;
@@ -69,13 +68,13 @@ public:
 
 private:
 	DWORD $ix;
-	void (*$dtor)(generic_word);
+	void (*$dtor)(any_word);
 
-	generic_word &$get(LPVOID val_ptr) const {
+	any_word &$get(LPVOID val_ptr) const {
 		if (val_ptr) {
-			return *reinterpret_cast<generic_word *>(val_ptr);
+			return *reinterpret_cast<any_word *>(val_ptr);
 		}
-		auto p = new generic_word;
+		auto p = new any_word;
 		TlsSetValue($ix, p);
 		auto h = OpenThread(SYNCHRONIZE, FALSE, GetCurrentThreadId());
 		assert(h);

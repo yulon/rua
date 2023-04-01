@@ -3,8 +3,8 @@
 
 #include "../id/win32.hpp"
 
+#include "../../any_word.hpp"
 #include "../../dylib/win32.hpp"
-#include "../../generic_word.hpp"
 #include "../../sync/future.hpp"
 #include "../../sync/then.hpp"
 #include "../../sys/info/win32.hpp"
@@ -101,7 +101,7 @@ public:
 		return $h;
 	}
 
-	void exit(generic_word code = 0) {
+	void exit(any_word code = 0) {
 		if (!$h) {
 			return;
 		}
@@ -109,9 +109,9 @@ public:
 		reset();
 	}
 
-	future<generic_word> RUA_OPERATOR_AWAIT() const {
+	future<any_word> RUA_OPERATOR_AWAIT() const {
 		auto h = $h;
-		return sys_wait(h) >> [h]() -> generic_word {
+		return sys_wait(h) >> [h]() -> any_word {
 			DWORD ec;
 			GetExitCodeThread(h, &ec);
 			return ec;

@@ -12,10 +12,11 @@ template <size_t StorageLen, size_t StorageAlign>
 class basic_any : public enable_type_info {
 public:
 	template <typename T>
-	struct is_placeable {
-		static constexpr auto value = RUA_IS_PLACEABLE(
-			size_of<T>::value, align_of<T>::value, StorageLen, StorageAlign);
-	};
+	struct is_placeable : bool_constant<RUA_IS_PLACEABLE(
+							  size_of<T>::value,
+							  align_of<T>::value,
+							  StorageLen,
+							  StorageAlign)> {};
 
 	////////////////////////////////////////////////////////////////////////
 

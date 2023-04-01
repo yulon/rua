@@ -86,7 +86,7 @@ public:
 			return 0;
 		}
 		auto id = $id;
-		return parallel([id]() -> generic_word {
+		return parallel([id]() -> any_word {
 			int status;
 			waitpid(id, &status, 0);
 			return WIFEXITED(status) ? 0 : WEXITSTATUS(status);

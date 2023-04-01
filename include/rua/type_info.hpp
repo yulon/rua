@@ -55,9 +55,6 @@ inline constexpr string_view type_name() {
 	return _type_name<T>(_func_name_prefix_len<T>());
 }
 
-#define RUA_IS_PLACEABLE(val_len, val_align, sto_len, sto_align)               \
-	(val_len <= sto_len && val_align <= sto_align)
-
 class type_info {
 public:
 	constexpr type_info(std::nullptr_t = nullptr) : $tab(nullptr) {}

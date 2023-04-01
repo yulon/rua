@@ -3,7 +3,7 @@
 
 #include "base.hpp"
 
-#include "../../generic_word.hpp"
+#include "../../any_word.hpp"
 #include "../../util.hpp"
 
 #include <pthread.h>
@@ -12,7 +12,7 @@ namespace rua { namespace posix {
 
 class thread_word_var {
 public:
-	thread_word_var(void (*dtor)(generic_word)) : $dtor(dtor) {
+	thread_word_var(void (*dtor)(any_word)) : $dtor(dtor) {
 		$invalid = pthread_key_create(
 			&$key,
 			reinterpret_cast<void (*)(void *)>(reinterpret_cast<void *>(dtor)));
@@ -47,11 +47,11 @@ public:
 		return !$invalid;
 	}
 
-	void set(generic_word value) {
+	void set(any_word value) {
 		pthread_setspecific($key, value);
 	}
 
-	generic_word get() const {
+	any_word get() const {
 		return pthread_getspecific($key);
 	}
 
@@ -67,7 +67,7 @@ public:
 private:
 	pthread_key_t $key;
 	bool $invalid;
-	void (*$dtor)(generic_word);
+	void (*$dtor)(any_word);
 };
 
 template <typename T>

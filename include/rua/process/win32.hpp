@@ -142,9 +142,9 @@ public:
 		return $h;
 	}
 
-	future<generic_word> RUA_OPERATOR_AWAIT() const {
+	future<any_word> RUA_OPERATOR_AWAIT() const {
 		auto h = $h;
-		return sys_wait(h) >> [h]() -> generic_word {
+		return sys_wait(h) >> [h]() -> any_word {
 			DWORD ec;
 			GetExitCodeProcess(h, &ec);
 			return ec;

@@ -3,7 +3,7 @@
 
 #include "../id/posix.hpp"
 
-#include "../../generic_word.hpp"
+#include "../../any_word.hpp"
 #include "../../sync/await.hpp"
 #include "../../sync/future.hpp"
 #include "../../util.hpp"
@@ -86,7 +86,7 @@ public:
 		return $id != target.$id;
 	}
 
-	void exit(generic_word retval = nullptr) {
+	void exit(any_word retval = nullptr) {
 		if (!$id) {
 			return;
 		}
@@ -98,7 +98,7 @@ public:
 		reset();
 	}
 
-	inline future<generic_word> RUA_OPERATOR_AWAIT() const;
+	inline future<any_word> RUA_OPERATOR_AWAIT() const;
 
 	void reset() {
 		if ($id) {

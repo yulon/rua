@@ -12,6 +12,11 @@ namespace rua {
 	reinterpret_cast<type *>(                                                  \
 		reinterpret_cast<uintptr_t>(member_ptr) - offsetof(type, member))
 
+#define RUA_IS_PLACEABLE(val_len, val_align, sto_len, sto_align)               \
+	(val_len <= sto_len && val_align <= sto_align)
+
+////////////////////////////////////////////////////////////////////////////
+
 #define RUA_TMPL_IS_BASE_OF(B, D)                                              \
 	typename D,                                                                \
 		typename =                                                             \

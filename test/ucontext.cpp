@@ -30,7 +30,7 @@ TEST_CASE("ucontext") {
 	log("make_ucontext(&sub_uc_1, ...)");
 	rua::make_ucontext(
 		&sub_uc_1,
-		[](rua::generic_word param) {
+		[](rua::any_word param) {
 			REQUIRE(param.value() == 111);
 
 			++sub_uc_1_running_count;
@@ -61,7 +61,7 @@ TEST_CASE("ucontext") {
 	log("make_ucontext(&sub_uc_2, ...)");
 	rua::make_ucontext(
 		&sub_uc_2,
-		[](rua::generic_word param) {
+		[](rua::any_word param) {
 			REQUIRE(param.value() == 222);
 
 			++sub_uc_2_running_count;
