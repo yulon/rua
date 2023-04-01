@@ -28,7 +28,7 @@ inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 	}
 
 	struct ctx_t {
-		decltype(aw) aw;
+		awaiter_wrapper<Awaitable &&> aw;
 		decay_t<Callback> cb;
 	};
 
