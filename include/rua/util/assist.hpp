@@ -27,11 +27,10 @@ namespace rua {
 	template <                                                                 \
 		typename... From,                                                      \
 		typename FromFront = decay_t<front_t<From &&...>>,                     \
-		typename = enable_if_t<(                                               \
-			sizeof...(From) > 1                                                \
-				? std::is_constructible<To, From &&...>::value                 \
-				: !std::is_base_of<Self, FromFront>::value &&                  \
-					  std::is_convertible<FromFront, To>::value)>>
+		typename = enable_if_t<                                                \
+			(sizeof...(Args) > 1 ||                                            \
+			 !std::is_base_of<Self, FromFront>::value) &&                      \
+			std::is_constructible<To, Args &&...>::value>>
 
 #define RUA_TMPL_FWD_CTOR_IL(U, From, To)                                      \
 	template <                                                                 \

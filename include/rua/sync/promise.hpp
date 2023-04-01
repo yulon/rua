@@ -24,8 +24,11 @@ RUA_CVAR strv_error err_promise_unfulfilled("promise unfulfilled");
 RUA_CVAR strv_error err_promise_not_yet_fulfilled("promise not yet fulfilled");
 RUA_CVAR strv_error err_promise_fulfilled("promise fulfilled");
 
-template <typename T = void>
-class promise {
+template <typename T = void, typename Extend = void>
+class promise;
+
+template <typename T>
+class promise<T, void> {
 public:
 	promise() : $state(promise_state::loss_notify) {}
 
@@ -133,9 +136,50 @@ private:
 	std::function<void()> $notify;
 };
 
-template <typename T = void>
-class newable_promise : public promise<T> {
+template <typename T, typename Extend>
+class promise : public promise<T, void> {
 public:
+	promise() = default;
+
+	RUA_TMPL_FWD_CTOR(Args, Extend, promise)
+	explicit promise(Args &&...args) :
+		promise<T, void>(), $ext(std::forward<Args>(args)...) {}
+
+	RUA_TMPL_FWD_CTOR_IL(U, Args, Extend)
+	explicit promise(std::initializer_list<U> il, Args &&...args) :
+		promise<T, void>(), $ext(il, std::forward<Args>(args)...) {}
+
+	virtual ~promise() = default;
+
+	Extend &extend() & {
+		return $ext;
+	}
+
+	Extend &&extend() && {
+		return std::move($ext);
+	}
+
+	const Extend &extend() const & {
+		return $ext;
+	}
+
+private:
+	Extend $ext;
+};
+
+template <typename T = void, typename Extend = void>
+class newable_promise : public promise<T, Extend> {
+public:
+	newable_promise() = default;
+
+	RUA_TMPL_FWD_CTOR(Args, RUA_A(promise<T, Extend>), newable_promise)
+	explicit newable_promise(Args &&...args) :
+		promise<T, Extend>(std::forward<Args>(args)...) {}
+
+	RUA_TMPL_FWD_CTOR_IL(U, Args, RUA_A(promise<T, Extend>))
+	explicit newable_promise(std::initializer_list<U> il, Args &&...args) :
+		promise<T, Extend>(il, std::forward<Args>(args)...) {}
+
 	virtual ~newable_promise() = default;
 
 	void destroy() noexcept override {

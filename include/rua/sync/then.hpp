@@ -20,39 +20,31 @@ template <
 			warp_expected_t<decay_t<await_result_t<Awaitable &&>>>>())),
 	typename R = unwarp_expected_t<ExpR>>
 inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
-	auto awtr = wrap_awaiter(std::forward<Awaitable>(awaitable));
-	if (awtr->await_ready()) {
+	auto aw = wrap_awaiter(std::forward<Awaitable>(awaitable));
+	if (aw->await_ready()) {
 		return expected_invoke(std::forward<Callback>(callback), [&]() {
-			return awtr->await_resume();
+			return aw->await_resume();
 		});
 	}
 
-	class then_promise : public newable_promise<R> {
-	public:
-		virtual ~then_promise() {}
-
-		awaiter_wrapper<Awaitable &&> then_awtr;
-		decay_t<Callback> then_cb;
-
-		then_promise(awaiter_wrapper<Awaitable &&> awtr, decay_t<Callback> cb) :
-			newable_promise<R>(),
-			then_awtr(std::move(awtr)),
-			then_cb(std::move(cb)) {}
+	struct ctx_t {
+		decltype(aw) aw;
+		decay_t<Callback> cb;
 	};
 
-	auto prm =
-		new then_promise(std::move(awtr), std::forward<Callback>(callback));
+	auto prm = new newable_promise<R, ctx_t>(
+		ctx_t{std::move(aw), std::forward<Callback>(callback)});
 
-	if (await_suspend(*prm->then_awtr, [prm]() {
-			prm->fulfill(expected_invoke(prm->then_cb, [prm]() {
-				return prm->then_awtr->await_resume();
+	if (await_suspend(*prm->extend().aw, [prm]() {
+			prm->fulfill(expected_invoke(prm->extend().cb, [prm]() {
+				return prm->extend().aw->await_resume();
 			}));
 		})) {
 		return future<R>(*prm);
 	}
 
-	auto exp = expected_invoke(prm->then_cb, [prm]() mutable {
-		return prm->then_awtr->await_resume();
+	auto exp = expected_invoke(prm->extend().cb, [prm]() mutable {
+		return prm->extend().aw->await_resume();
 	});
 
 	prm->destroy();
