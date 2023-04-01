@@ -1,8 +1,8 @@
 #ifndef _rua_memory_hpp
 #define _rua_memory_hpp
 
+#include "any_ptr.hpp"
 #include "binary/bytes.hpp"
-#include "generic_ptr.hpp"
 #include "util.hpp"
 
 #ifdef _WIN32
@@ -22,22 +22,22 @@ namespace rua {
 
 #ifdef RUA_UNIX
 
-static constexpr int mem_none = PROT_NONE;
-static constexpr int mem_read = PROT_READ;
-static constexpr int mem_write = PROT_WRITE;
-static constexpr int mem_exec = PROT_EXEC;
+RUA_CVAL int mem_none = PROT_NONE;
+RUA_CVAL int mem_read = PROT_READ;
+RUA_CVAL int mem_write = PROT_WRITE;
+RUA_CVAL int mem_exec = PROT_EXEC;
 
 #else
 
-static constexpr int mem_none = 0x1000;
-static constexpr int mem_read = 0x0001;
-static constexpr int mem_write = 0x0010;
-static constexpr int mem_exec = 0x0100;
+RUA_CVAL int mem_none = 0x1000;
+RUA_CVAL int mem_read = 0x0001;
+RUA_CVAL int mem_write = 0x0010;
+RUA_CVAL int mem_exec = 0x0100;
 
 #endif
 
 inline bool mem_chmod(
-	generic_ptr ptr, size_t size, int flags = mem_read | mem_write | mem_exec) {
+	any_ptr ptr, size_t size, int flags = mem_read | mem_write | mem_exec) {
 
 #ifdef _WIN32
 

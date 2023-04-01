@@ -3,7 +3,7 @@
 
 #include "dyfn.h"
 
-#include "../generic_ptr.hpp"
+#include "../any_ptr.hpp"
 #include "../string/view.hpp"
 #include "../util.hpp"
 
@@ -58,11 +58,11 @@ public:
 		return $h && $need_unload;
 	}
 
-	generic_ptr find(string_view name) const {
+	any_ptr find(string_view name) const {
 		return $h ? dlsym($h, name.data()) : nullptr;
 	}
 
-	generic_ptr operator[](string_view name) const {
+	any_ptr operator[](string_view name) const {
 		return find(name);
 	}
 
@@ -110,11 +110,11 @@ public:
 		return $h;
 	}
 
-	generic_ptr find(string_view name) const {
+	any_ptr find(string_view name) const {
 		return $h ? dlsym($h, name.data()) : nullptr;
 	}
 
-	generic_ptr operator[](string_view name) const {
+	any_ptr operator[](string_view name) const {
 		return find(name);
 	}
 

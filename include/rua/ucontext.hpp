@@ -8,9 +8,9 @@
 #ifndef _rua_ucontext_hpp
 #define _rua_ucontext_hpp
 
+#include "any_ptr.hpp"
 #include "any_word.hpp"
 #include "binary/bytes.hpp"
-#include "generic_ptr.hpp"
 #include "util.hpp"
 
 #ifndef RUA_USING_NATIVE_UCONTEXT
@@ -53,8 +53,8 @@ struct ucontext_t {
 	} regs;
 
 	struct stack_t {
-		generic_ptr base;
-		generic_ptr limit;
+		any_ptr base;
+		any_ptr limit;
 	} stack;
 
 	uintptr_t &sp() {
@@ -261,13 +261,13 @@ inline void make_ucontext(
 namespace rua {
 
 struct ucontext_t : ::ucontext_t {
-	generic_ptr $sp;
+	any_ptr $sp;
 
-	generic_ptr &sp() {
+	any_ptr &sp() {
 		return $sp;
 	}
 
-	const generic_ptr &sp() const {
+	const any_ptr &sp() const {
 		return $sp;
 	}
 };

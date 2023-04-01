@@ -3,10 +3,10 @@
 
 #include "base.hpp"
 
+#include "../any_ptr.hpp"
 #include "../binary/bytes.hpp"
 #include "../dylib/win32.hpp"
 #include "../file/win32.hpp"
-#include "../generic_ptr.hpp"
 #include "../hard/win32.hpp"
 #include "../io.hpp"
 #include "../memory.hpp"
@@ -420,7 +420,7 @@ public:
 				   : 0;
 	}
 
-	ptrdiff_t memory_read(generic_ptr ptr, bytes_ref data) const {
+	ptrdiff_t memory_read(any_ptr ptr, bytes_ref data) const {
 		SIZE_T sz;
 		if (!ReadProcessMemory($h, ptr, data.data(), data.size(), &sz)) {
 			return -1;
@@ -428,7 +428,7 @@ public:
 		return static_cast<ptrdiff_t>(sz);
 	}
 
-	ptrdiff_t memory_write(generic_ptr ptr, bytes_view data) {
+	ptrdiff_t memory_write(any_ptr ptr, bytes_view data) {
 		SIZE_T sz;
 		if (!WriteProcessMemory($h, ptr, data.data(), data.size(), &sz)) {
 			return -1;
@@ -449,7 +449,7 @@ public:
 			return $p;
 		}
 
-		generic_ptr data() const {
+		any_ptr data() const {
 			return $p;
 		}
 
@@ -491,18 +491,18 @@ public:
 
 	private:
 		native_handle_t $h;
-		generic_ptr $p;
+		any_ptr $p;
 		size_t $sz;
 		bool $need_free;
 
 		memory_block(
-			native_handle_t h, generic_ptr data, size_t n, bool need_free) :
+			native_handle_t h, any_ptr data, size_t n, bool need_free) :
 			$h(h), $p(data), $sz(n), $need_free(need_free) {}
 
 		friend process;
 	};
 
-	memory_block memory_ref(generic_ptr data, size_t size) const {
+	memory_block memory_ref(any_ptr data, size_t size) const {
 		return memory_block($h, data, size, false);
 	}
 
@@ -550,7 +550,7 @@ public:
 		return data;
 	}
 
-	thread make_thread(generic_ptr func, generic_ptr param = nullptr) {
+	thread make_thread(any_ptr func, any_ptr param = nullptr) {
 		if (sys_version() >= 6) {
 			auto nt_create_thread_ex = $ntdll().nt_create_thread_ex;
 			if (nt_create_thread_ex) {
@@ -688,7 +688,7 @@ private:
 		decltype(&GetProcessMemoryInfo) get_process_memoryinfo;
 	};
 
-	static generic_ptr
+	static any_ptr
 	$load_psapi(dylib &kernel32, dylib &psapi, string_view name) {
 		auto fp = kernel32[join("K32", name)];
 		if (fp) {
@@ -1259,13 +1259,13 @@ private:
 		_proc_load_dll_ctx ctx;
 
 #if RUA_X86 == 64
-		ctx.rtl_user_thread_start = generic_ptr(main_td_ctx.Rip);
-		ctx.td_start = generic_ptr(main_td_ctx.Rcx);
-		ctx.td_param = generic_ptr(main_td_ctx.Rdx);
+		ctx.rtl_user_thread_start = any_ptr(main_td_ctx.Rip);
+		ctx.td_start = any_ptr(main_td_ctx.Rcx);
+		ctx.td_param = any_ptr(main_td_ctx.Rdx);
 #elif RUA_X86 == 32
-		ctx.rtl_user_thread_start = generic_ptr(main_td_ctx.Eip);
-		ctx.td_start = generic_ptr(main_td_ctx.Eax);
-		ctx.td_param = generic_ptr(main_td_ctx.Edx);
+		ctx.rtl_user_thread_start = any_ptr(main_td_ctx.Eip);
+		ctx.td_start = any_ptr(main_td_ctx.Eax);
+		ctx.td_param = any_ptr(main_td_ctx.Edx);
 #endif
 
 		auto data = _make_proc_load_dll_data(proc, $info.dylibs, ctx);
@@ -1279,8 +1279,8 @@ private:
 #elif RUA_X86 == 32
 		main_td_ctx.Eip = data.loader.data().uintptr();
 		main_td_ctx.Esp -= 2 * sizeof(uintptr_t);
-		auto stk = proc.memory_ref(
-			generic_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
+		auto stk =
+			proc.memory_ref(any_ptr(main_td_ctx.Esp), 2 * sizeof(uintptr_t));
 		if (stk.write_at(
 				sizeof(uintptr_t), as_bytes(data.ctx.data().uintptr())) <= 0) {
 			return false;

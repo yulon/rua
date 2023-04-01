@@ -1,7 +1,7 @@
 #ifndef _rua_binary_bits_hpp
 #define _rua_binary_bits_hpp
 
-#include "../generic_ptr.hpp"
+#include "../any_ptr.hpp"
 #include "../util.hpp"
 
 #ifdef __cpp_lib_bitops
@@ -13,20 +13,20 @@
 
 namespace rua {
 
-// bit_as from generic_ptr
+// bit_as from any_ptr
 
 template <typename To>
-inline To &bit_as(generic_ptr ptr) {
+inline To &bit_as(any_ptr ptr) {
 	return *ptr.as<To *>();
 }
 
 template <typename To>
-inline To &bit_as(generic_ptr ptr, ptrdiff_t offset) {
+inline To &bit_as(any_ptr ptr, ptrdiff_t offset) {
 	return bit_as<To>(ptr + offset);
 }
 
 template <typename To>
-inline To &bit_aligned_as(generic_ptr ptr, ptrdiff_t ix) {
+inline To &bit_aligned_as(any_ptr ptr, ptrdiff_t ix) {
 	return bit_as<To>(ptr, ix * sizeof(To));
 }
 
@@ -61,10 +61,10 @@ inline Result &bit_aligned_as(From *ptr, ptrdiff_t ix) {
 		reinterpret_cast<uintptr_t>(ptr) + ix * sizeof(To)));
 }
 
-// bit_get from generic_ptr
+// bit_get from any_ptr
 
 template <typename To>
-inline enable_if_t<std::is_trivial<To>::value, To> bit_get(generic_ptr ptr) {
+inline enable_if_t<std::is_trivial<To>::value, To> bit_get(any_ptr ptr) {
 	To val;
 	memcpy(&val, ptr, sizeof(To));
 	return val;
@@ -72,21 +72,20 @@ inline enable_if_t<std::is_trivial<To>::value, To> bit_get(generic_ptr ptr) {
 
 template <typename To>
 inline enable_if_t<!std::is_trivially_constructible<To>::value, To>
-bit_get(generic_ptr ptr) {
+bit_get(any_ptr ptr) {
 	alignas(alignof(To)) uchar sto[sizeof(To)];
 	memcpy(&sto[0], ptr, sizeof(To));
 	return *reinterpret_cast<To *>(&sto[0]);
 }
 
 template <typename To>
-inline decltype(bit_get<To>(nullptr))
-bit_get(generic_ptr ptr, ptrdiff_t offset) {
+inline decltype(bit_get<To>(nullptr)) bit_get(any_ptr ptr, ptrdiff_t offset) {
 	return bit_get<To>(ptr + offset);
 }
 
 template <typename To>
 inline decltype(bit_get<To>(nullptr))
-bit_aligned_get(generic_ptr ptr, ptrdiff_t ix) {
+bit_aligned_get(any_ptr ptr, ptrdiff_t ix) {
 	return bit_get<To>(ptr + ix * sizeof(To));
 }
 
@@ -120,20 +119,20 @@ bit_aligned_get(From *ptr, ptrdiff_t ix) {
 	return bit_get<To>(ptr, ix * sizeof(To));
 }
 
-// bit_set to generic_ptr
+// bit_set to any_ptr
 
 template <typename From>
-inline void bit_set(generic_ptr ptr, const From &val) {
+inline void bit_set(any_ptr ptr, const From &val) {
 	memcpy(ptr, &val, sizeof(From));
 }
 
 template <typename From>
-inline void bit_set(generic_ptr ptr, ptrdiff_t offset, const From &val) {
+inline void bit_set(any_ptr ptr, ptrdiff_t offset, const From &val) {
 	bit_set<From>(ptr + offset, val);
 }
 
 template <typename From>
-inline void bit_aligned_set(generic_ptr ptr, ptrdiff_t ix, const From &val) {
+inline void bit_aligned_set(any_ptr ptr, ptrdiff_t ix, const From &val) {
 	bit_set<From>(ptr + ix * sizeof(From), val);
 }
 
@@ -189,7 +188,7 @@ inline bool bit_equal(const uchar *a, const uchar *b, size_t size) {
 	return true;
 }
 
-inline bool bit_equal(generic_ptr a, generic_ptr b, size_t size) {
+inline bool bit_equal(any_ptr a, any_ptr b, size_t size) {
 	return bit_equal(a.as<const uchar *>(), b.as<const uchar *>(), size);
 }
 
@@ -219,8 +218,7 @@ bit_and_equal(const uchar *a, const uchar *b, const uchar *mask, size_t size) {
 	return true;
 }
 
-inline bool
-bit_and_equal(generic_ptr a, generic_ptr b, generic_ptr mask, size_t size) {
+inline bool bit_and_equal(any_ptr a, any_ptr b, any_ptr mask, size_t size) {
 	return bit_and_equal(
 		a.as<const uchar *>(),
 		b.as<const uchar *>(),
@@ -257,8 +255,8 @@ inline bool bit_contains(
 	return true;
 }
 
-inline bool bit_contains(
-	generic_ptr masked, generic_ptr unmasked, generic_ptr mask, size_t size) {
+inline bool
+bit_contains(any_ptr masked, any_ptr unmasked, any_ptr mask, size_t size) {
 	return bit_contains(
 		masked.as<const uchar *>(),
 		unmasked.as<const uchar *>(),

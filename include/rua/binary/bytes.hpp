@@ -48,7 +48,7 @@ using bytes_rfinder = reverse_iterator<bytes_finder>;
 template <typename Span>
 class const_bytes_base : private disable_as_to_string {
 public:
-	generic_ptr data_generic() const {
+	any_ptr data_generic() const {
 		return $this()->data();
 	}
 
@@ -108,7 +108,7 @@ public:
 	inline bytes_view operator()(ptrdiff_t begin_offset) const;
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
-	generic_ptr derel(ptrdiff_t pos = 0) const {
+	any_ptr derel(ptrdiff_t pos = 0) const {
 		return $this()->data() + pos + SlotSize + get<RelPtr>(pos);
 	}
 
@@ -234,7 +234,7 @@ public:
 	inline size_t copy(SrcArgs &&...src);
 
 	template <typename RelPtr, size_t SlotSize = sizeof(RelPtr)>
-	RelPtr enrel(generic_ptr abs_ptr, ptrdiff_t pos = 0) {
+	RelPtr enrel(any_ptr abs_ptr, ptrdiff_t pos = 0) {
 		auto rel_ptr =
 			static_cast<RelPtr>(abs_ptr - ($this()->data() + pos + SlotSize));
 		this->template set<RelPtr>(pos, rel_ptr);
@@ -560,7 +560,7 @@ template <
 	typename T,
 	bool IsConst = std::is_const<remove_reference_t<T>>::value>
 inline enable_if_t<
-	!std::is_convertible<T &&, generic_ptr>::value && !is_span<T &&>::value,
+	!std::is_convertible<T &&, any_ptr>::value && !is_span<T &&>::value,
 	conditional_t<IsConst, bytes_view, bytes_ref>>
 as_bytes(T &&ref, size_t size = sizeof(T)) {
 	return {
