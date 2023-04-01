@@ -79,10 +79,9 @@ public:
 		return $tab ? $tab->align : 0;
 	}
 
-	bool is_placeable(size_t storage_len, size_t storage_align) const {
-		return !$tab ||
-			   RUA_IS_PLACEABLE(
-				   $tab->size, $tab->align, storage_len, storage_align);
+	bool is_placeable(size_t storage_sz, size_t storage_align) const {
+		return !$tab || RUA_IS_PLACEABLE(
+							$tab->size, $tab->align, storage_sz, storage_align);
 	}
 
 	bool is_trivial() const {
@@ -115,10 +114,10 @@ public:
 		return $tab && $tab->copy_ctor;
 	}
 
-	void copy_to(void *ptr, const void *src) const {
+	void copy_to(void *dest, const void *src) const {
 		assert($tab);
 		assert($tab->copy_ctor);
-		$tab->copy_ctor(ptr, src);
+		$tab->copy_ctor(dest, src);
 	}
 
 	void *copy_to_new(const void *src) const {
@@ -127,20 +126,78 @@ public:
 		return $tab->copy_new(src);
 	}
 
+	template <size_t Size, size_t Align>
+	void copy_to_storage(void *dest, const void *src) const {
+		if (is_placeable(Size, Align)) {
+			copy_to(dest, src);
+			return;
+		}
+		*reinterpret_cast<void **>(dest) =
+			copy_to_new(*reinterpret_cast<const void *const *>(src));
+	}
+
+	template <
+		size_t DestSize,
+		size_t DestAlign,
+		size_t SrcSize,
+		size_t SrcAlign>
+	void copy_to_storage(void *dest, const void *src) const {
+		if (!is_placeable(SrcSize, SrcAlign)) {
+			src = *reinterpret_cast<const void *const *>(src);
+		}
+		if (is_placeable(DestSize, DestAlign)) {
+			copy_to(dest, src);
+			return;
+		}
+		*reinterpret_cast<void **>(dest) = copy_to_new(src);
+	}
+
 	bool is_moveable() const {
 		return $tab && $tab->move_ctor;
 	}
 
-	void move_to(void *ptr, void *src) const {
+	void move_to(void *dest, void *src) const {
 		assert($tab);
 		assert($tab->move_ctor);
-		$tab->move_ctor(ptr, src);
+		$tab->move_ctor(dest, src);
 	}
 
 	void *move_to_new(void *src) const {
 		assert($tab);
 		assert($tab->move_new);
 		return $tab->move_new(src);
+	}
+
+	template <size_t Size, size_t Align>
+	void move_to_storage(void *dest, void *src) const {
+		if (is_placeable(Size, Align)) {
+			move_to(dest, src);
+			return;
+		}
+		*reinterpret_cast<void **>(dest) = *reinterpret_cast<void **>(src);
+	}
+
+	template <
+		size_t DestSize,
+		size_t DestAlign,
+		size_t SrcSize,
+		size_t SrcAlign>
+	void move_to_storage(void *dest, void *src) const {
+		if (is_placeable(SrcSize, SrcAlign)) {
+			if (is_placeable(DestSize, DestAlign)) {
+				move_to(dest, src);
+				return;
+			}
+			*reinterpret_cast<void **>(dest) = move_to_new(src);
+			return;
+		}
+		src = *reinterpret_cast<void **>(src);
+		if (is_placeable(DestSize, DestAlign)) {
+			move_to(dest, src);
+			dealloc(src);
+			return;
+		}
+		*reinterpret_cast<void **>(dest) = src;
 	}
 
 	bool is_convertable_to_bool() const {

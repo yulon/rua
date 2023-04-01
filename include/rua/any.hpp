@@ -8,14 +8,14 @@
 
 namespace rua {
 
-template <size_t StorageLen, size_t StorageAlign>
+template <size_t StorageSize, size_t StorageAlign>
 class basic_any : public enable_type_info {
 public:
 	template <typename T>
 	struct is_placeable : bool_constant<RUA_IS_PLACEABLE(
 							  size_of<T>::value,
 							  align_of<T>::value,
-							  StorageLen,
+							  StorageSize,
 							  StorageAlign)> {};
 
 	////////////////////////////////////////////////////////////////////////
@@ -51,12 +51,8 @@ public:
 
 		assert($type.is_copyable());
 
-		if ($type.is_placeable(StorageLen, StorageAlign)) {
-			$type.copy_to(&$sto[0], &src.$sto);
-			return;
-		}
-		*reinterpret_cast<void **>(&$sto[0]) = $type.copy_to_new(
-			*reinterpret_cast<const void *const *>(&src.$sto));
+		$type.copy_to_storage<StorageSize, StorageAlign>(
+			&$sto[0], &src.$sto[0]);
 	}
 
 	basic_any(basic_any &&src) : enable_type_info(src.$type) {
@@ -66,12 +62,8 @@ public:
 
 		assert($type.is_moveable());
 
-		if ($type.is_placeable(StorageLen, StorageAlign)) {
-			$type.move_to(&$sto[0], &src.$sto);
-			return;
-		}
-		*reinterpret_cast<void **>(&$sto[0]) =
-			*reinterpret_cast<void **>(&src.$sto);
+		$type.move_to_storage<StorageSize, StorageAlign>(
+			&$sto[0], &src.$sto[0]);
 		src.$type.reset();
 	}
 
@@ -178,7 +170,7 @@ public:
 		if (!$type) {
 			return;
 		}
-		if ($type.is_placeable(StorageLen, StorageAlign)) {
+		if ($type.is_placeable(StorageSize, StorageAlign)) {
 			$type.destruct(reinterpret_cast<void *>(&$sto[0]));
 		} else {
 			$type.dealloc(*reinterpret_cast<void **>(&$sto[0]));
@@ -187,7 +179,7 @@ public:
 	}
 
 private:
-	alignas(StorageAlign) uchar $sto[StorageLen];
+	alignas(StorageAlign) uchar $sto[StorageSize];
 
 	template <typename T, typename... Args>
 	enable_if_t<is_placeable<T>::value, T &> $emplace(Args &&...args) {

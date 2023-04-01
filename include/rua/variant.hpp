@@ -34,7 +34,7 @@ public:
 			return;
 		}
 		assert($type.is_copyable());
-		$type.copy_to(&$sto[0], &src.$sto);
+		$type.copy_to(&$sto[0], &src.$sto[0]);
 	}
 
 	_variant_base(_variant_base &&src) : enable_type_info(src.$type) {
@@ -42,7 +42,7 @@ public:
 			return;
 		}
 		assert($type.is_moveable());
-		$type.move_to(&$sto[0], &src.$sto);
+		$type.move_to(&$sto[0], &src.$sto[0]);
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(_variant_base)
