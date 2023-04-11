@@ -1,9 +1,9 @@
-#ifndef _rua_any_word_hpp
-#define _rua_any_word_hpp
+#ifndef _rua_dype_any_word_hpp
+#define _rua_dype_any_word_hpp
 
-#include "binary/bits.hpp"
-#include "string/conv.hpp"
-#include "util.hpp"
+#include "../binary/bits.hpp"
+#include "../string/conv.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 

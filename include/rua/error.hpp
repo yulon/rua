@@ -1,13 +1,13 @@
 #ifndef _rua_error_hpp
 #define _rua_error_hpp
 
-#include "interface_ptr.hpp"
+#include "dype/interface_ptr.hpp"
+#include "dype/variant.hpp"
 #include "invocable.hpp"
 #include "string/char_set.hpp"
 #include "string/conv.hpp"
 #include "string/join.hpp"
 #include "util.hpp"
-#include "variant.hpp"
 
 #ifdef RUA_HAS_EXCEPTIONS
 

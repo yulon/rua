@@ -5,9 +5,9 @@
 #include "promise.hpp"
 
 #include "../coroutine.hpp"
+#include "../dype/variant.hpp"
 #include "../error.hpp"
 #include "../util.hpp"
-#include "../variant.hpp"
 
 #include <atomic>
 #include <cassert>

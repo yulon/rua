@@ -1,8 +1,9 @@
-#ifndef _rua_variant_hpp
-#define _rua_variant_hpp
+#ifndef _rua_dype_variant_hpp
+#define _rua_dype_variant_hpp
 
 #include "type_info.hpp"
-#include "util.hpp"
+
+#include "../util.hpp"
 
 #include <array>
 #include <cassert>
@@ -10,7 +11,7 @@
 namespace rua {
 
 template <typename... Types>
-class _variant_base : public enable_type_info {
+class _variant_base : public typed_base<> {
 public:
 	template <typename T>
 	static constexpr bool has_type() {
@@ -23,26 +24,31 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr _variant_base() : enable_type_info(), $sto() {}
+	constexpr _variant_base() : typed_base<>(), $sto() {}
 
 	~_variant_base() {
 		reset();
 	}
 
-	_variant_base(const _variant_base &src) : enable_type_info(src.$type) {
-		if (!$type) {
+	_variant_base(const _variant_base &src) : typed_base<>(src.type()) {
+		if (!this->type()) {
 			return;
 		}
-		assert($type.is_copyable());
-		$type.copy_to(&$sto[0], &src.$sto[0]);
+
+		assert(this->type().is_copyable());
+
+		this->type().copy_to(&$sto[0], &src.$sto[0]);
 	}
 
-	_variant_base(_variant_base &&src) : enable_type_info(src.$type) {
-		if (!$type) {
+	_variant_base(_variant_base &&src) : typed_base<>(src.type()) {
+		if (!this->type()) {
 			return;
 		}
-		assert($type.is_moveable());
-		$type.move_to(&$sto[0], &src.$sto[0]);
+
+		assert(this->type().is_moveable());
+
+		this->type().move_to(&$sto[0], &src.$sto[0]);
+		src.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(_variant_base)
@@ -161,11 +167,11 @@ public:
 	}
 
 	void reset() {
-		if (!$type) {
+		if (!this->type()) {
 			return;
 		}
-		$type.destruct(reinterpret_cast<void *>(&$sto[0]));
-		$type.reset();
+		this->type().destruct(reinterpret_cast<void *>(&$sto[0]));
+		this->$type_reset();
 	}
 
 	uchar *data() {
@@ -194,7 +200,7 @@ protected:
 	T &$emplace(Args &&...args) {
 		RUA_SASSERT(has_type<decay_t<T>>());
 
-		$type = type_id<T>();
+		this->$type_reset<T>();
 		return construct(
 			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
 	}
@@ -406,7 +412,7 @@ protected:
 	}
 
 	bool $has_value(std::true_type &&) const {
-		return $type;
+		return this->type();
 	}
 
 	constexpr bool $has_value(std::false_type &&) const {
@@ -456,8 +462,8 @@ public:
 		assert(src.type().is_copyable());
 
 		if (this->has_type(src.type())) {
-			this->$type = src.type();
-			this->$type.copy_to(this->data(), src.data());
+			this->$type_reset(src.type());
+			this->type().copy_to(this->data(), src.data());
 			return;
 		}
 
@@ -485,8 +491,8 @@ public:
 		assert(src.type().is_moveable());
 
 		if (this->has_type(src.type())) {
-			this->$type = src.type();
-			this->$type.move_to(this->data(), src.data());
+			this->$type_reset(src.type());
+			this->type().move_to(this->data(), src.data());
 			src.reset();
 			return;
 		}

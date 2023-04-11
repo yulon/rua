@@ -1,9 +1,9 @@
 #ifndef _rua_check_hpp
 #define _rua_check_hpp
 
+#include "dype/type_info.hpp"
 #include "log.hpp"
 #include "string.hpp"
-#include "type_info.hpp"
 #include "util.hpp"
 
 #include <cstdlib>

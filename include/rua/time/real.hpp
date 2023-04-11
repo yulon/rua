@@ -3,7 +3,6 @@
 
 #include "duration.hpp"
 
-#include "../interface_ptr.hpp"
 #include "../util.hpp"
 
 #include <cassert>

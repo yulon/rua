@@ -308,6 +308,19 @@ inline constexpr auto align_of_v = align_of<T>::value;
 
 ////////////////////////////////////////////////////////////////////////////
 
+template <size_t Size>
+struct align_of_size {
+	static constexpr size_t value =
+		sizeof(void *) % Size ? sizeof(void *) / (sizeof(void *) / Size) : Size;
+};
+
+#ifdef RUA_HAS_INLINE_VAR
+template <size_t Size>
+inline constexpr auto align_of_size_v = align_of_size<Size>::value;
+#endif
+
+////////////////////////////////////////////////////////////////////////////
+
 template <typename... Types>
 struct max_size_of;
 

@@ -2,7 +2,7 @@
 #define _rua_io_stream_hpp
 
 #include "../binary/bytes.hpp"
-#include "../interface_ptr.hpp"
+#include "../dype/interface_ptr.hpp"
 #include "../util.hpp"
 
 namespace rua {

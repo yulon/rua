@@ -1,8 +1,8 @@
-#ifndef _rua_any_ptr_hpp
-#define _rua_any_ptr_hpp
+#ifndef _rua_dype_any_ptr_hpp
+#define _rua_dype_any_ptr_hpp
 
-#include "string/conv.hpp"
-#include "util.hpp"
+#include "../string/conv.hpp"
+#include "../util.hpp"
 
 #include <cstring>
 #include <functional>

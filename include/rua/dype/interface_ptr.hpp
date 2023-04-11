@@ -1,8 +1,9 @@
-#ifndef _rua_interface_ptr_hpp
-#define _rua_interface_ptr_hpp
+#ifndef _rua_dype_interface_ptr_hpp
+#define _rua_dype_interface_ptr_hpp
 
 #include "type_info.hpp"
-#include "util.hpp"
+
+#include "../util.hpp"
 
 #include <cassert>
 #include <memory>
@@ -13,48 +14,48 @@ template <typename T>
 class interface_ptr {
 public:
 	constexpr interface_ptr(std::nullptr_t = nullptr) :
-		$raw(nullptr), $shared(), $type() {}
+		$raw(nullptr), $shared(), $ti() {}
 
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
-	interface_ptr(SameBase *raw_ptr, type_info typ = nullptr) {
+	interface_ptr(SameBase *raw_ptr, type_info ti = nullptr) {
 		if (!raw_ptr) {
 			$raw = nullptr;
 			return;
 		}
-		$type = typ ? typ : type_id<SameBase>();
+		$ti = ti ? ti : type_id<SameBase>();
 		$raw = static_cast<T *>(raw_ptr);
 	}
 
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
-	interface_ptr(SameBase &lv, type_info typ = nullptr) :
-		interface_ptr(&lv, typ) {}
+	interface_ptr(SameBase &lv, type_info ti = nullptr) :
+		interface_ptr(&lv, ti) {}
 
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
-	interface_ptr(SameBase &&rv, type_info typ = nullptr) {
-		$type = typ ? typ : type_id<SameBase>();
+	interface_ptr(SameBase &&rv, type_info ti = nullptr) {
+		$ti = ti ? ti : type_id<SameBase>();
 		$shared = std::static_pointer_cast<T>(
 			std::make_shared<SameBase>(std::move(rv)));
 		$raw = $shared.get();
 	}
 
-	interface_ptr(std::shared_ptr<T> base_shared_ptr, type_info typ = nullptr) {
+	interface_ptr(std::shared_ptr<T> base_shared_ptr, type_info ti = nullptr) {
 		if (!base_shared_ptr) {
 			$raw = nullptr;
 			return;
 		}
-		$type = typ ? typ : type_id<T>();
+		$ti = ti ? ti : type_id<T>();
 		$shared = std::move(base_shared_ptr);
 		$raw = $shared.get();
 	}
 
 	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(
-		std::shared_ptr<Derived> derived_shared_ptr, type_info typ = nullptr) {
+		std::shared_ptr<Derived> derived_shared_ptr, type_info ti = nullptr) {
 		if (!derived_shared_ptr) {
 			$raw = nullptr;
 			return;
 		}
-		$type = typ ? typ : type_id<Derived>();
+		$ti = ti ? ti : type_id<Derived>();
 		$shared = std::static_pointer_cast<T>(std::move(derived_shared_ptr));
 		$raw = $shared.get();
 	}
@@ -62,24 +63,24 @@ public:
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(
 		const std::unique_ptr<SameBase> &unique_ptr_lv,
-		type_info typ = nullptr) :
-		interface_ptr(unique_ptr_lv.get(), typ) {}
+		type_info ti = nullptr) :
+		interface_ptr(unique_ptr_lv.get(), ti) {}
 
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
 	interface_ptr(
-		std::unique_ptr<SameBase> &&unique_ptr_rv, type_info typ = nullptr) {
+		std::unique_ptr<SameBase> &&unique_ptr_rv, type_info ti = nullptr) {
 		if (!unique_ptr_rv) {
 			$raw = nullptr;
 			return;
 		}
-		$type = typ ? typ : type_id<SameBase>();
+		$ti = ti ? ti : type_id<SameBase>();
 		$shared.reset(static_cast<T *>(unique_ptr_rv.release()));
 		$raw = $shared.get();
 	}
 
 	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(const interface_ptr<Derived> &derived_interface_ptr_lv) :
-		$type(derived_interface_ptr_lv.type()) {
+		$ti(derived_interface_ptr_lv.type()) {
 
 		if (!derived_interface_ptr_lv) {
 			$raw = nullptr;
@@ -100,7 +101,7 @@ public:
 
 	template <RUA_TMPL_DERIVED(T, Derived)>
 	interface_ptr(interface_ptr<Derived> &&derived_interface_ptr_rv) :
-		$type(derived_interface_ptr_rv.type()) {
+		$ti(derived_interface_ptr_rv.type()) {
 
 		if (!derived_interface_ptr_rv) {
 			$raw = nullptr;
@@ -120,10 +121,10 @@ public:
 	}
 
 	interface_ptr(const interface_ptr &src) :
-		$raw(src.$raw), $shared(src.$shared), $type(src.$type) {}
+		$raw(src.$raw), $shared(src.$shared), $ti(src.$ti) {}
 
 	interface_ptr(interface_ptr &&src) :
-		$raw(src.$raw), $shared(std::move(src.$shared)), $type(src.$type) {
+		$raw(src.$raw), $shared(std::move(src.$shared)), $ti(src.$ti) {
 		if (src.$raw) {
 			src.$raw = nullptr;
 		}
@@ -140,7 +141,7 @@ public:
 	}
 
 	bool operator==(const interface_ptr<T> &src) const {
-		return $type == src.$type && src.$type.equal($raw, src.$raw);
+		return $ti == src.$ti && src.$ti.equal($raw, src.$raw);
 	}
 
 	bool operator!=(const interface_ptr<T> &src) const {
@@ -189,7 +190,7 @@ public:
 	}
 
 	type_info type() const {
-		return $raw ? $type : type_id<void>();
+		return $raw ? $ti : type_id<void>();
 	}
 
 	template <RUA_TMPL_IS_BASE_OF(T, SameBase)>
@@ -223,19 +224,19 @@ public:
 private:
 	T *$raw;
 	std::shared_ptr<T> $shared;
-	type_info $type;
+	type_info $ti;
 };
 
 template <typename T>
 class weak_interface {
 public:
 	constexpr weak_interface(std::nullptr_t = nullptr) :
-		$raw(nullptr), $weak(), $type() {}
+		$raw(nullptr), $weak(), $ti() {}
 
 	weak_interface(const interface_ptr<T> &r) :
 		$raw(r.get_shared() ? r.get() : nullptr),
 		$weak(r.get_shared()),
-		$type(r.type()) {}
+		$ti(r.type()) {}
 
 	~weak_interface() {
 		reset();
@@ -247,10 +248,10 @@ public:
 
 	interface_ptr<T> lock() const {
 		if ($raw) {
-			return interface_ptr<T>($raw, $type);
+			return interface_ptr<T>($raw, $ti);
 		}
 		if ($weak.use_count()) {
-			return interface_ptr<T>($weak.lock(), $type);
+			return interface_ptr<T>($weak.lock(), $ti);
 		}
 		return nullptr;
 	}
@@ -265,7 +266,7 @@ public:
 private:
 	T *$raw;
 	std::weak_ptr<T> $weak;
-	type_info $type;
+	type_info $ti;
 };
 
 } // namespace rua

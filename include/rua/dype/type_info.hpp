@@ -1,10 +1,10 @@
-#ifndef _rua_type_info_hpp
-#define _rua_type_info_hpp
+#ifndef _rua_dype_type_info_hpp
+#define _rua_dype_type_info_hpp
 
-#include "string/join.hpp"
-#include "string/len.hpp"
-#include "string/view.hpp"
-#include "util.hpp"
+#include "../string/join.hpp"
+#include "../string/len.hpp"
+#include "../string/view.hpp"
+#include "../util.hpp"
 
 #include <cassert>
 #include <string>
@@ -16,7 +16,7 @@
 namespace rua {
 
 template <typename T>
-inline constexpr const char *_func_name() {
+inline constexpr const char *_func_name() RUA_NOEXCEPT {
 #if defined(__GNUC__) || defined(__clang__)
 	return __PRETTY_FUNCTION__;
 #elif defined(_MSC_VER)
@@ -25,7 +25,7 @@ inline constexpr const char *_func_name() {
 }
 
 template <typename T>
-inline constexpr size_t _func_name_prefix_len() {
+inline constexpr size_t _func_name_prefix_len() RUA_NOEXCEPT {
 #if defined(__GNUC__) || defined(__clang__)
 	return c_str_len("constexpr const char* rua::_func_name() [with T = ");
 #elif defined(_MSC_VER)
@@ -34,16 +34,21 @@ inline constexpr size_t _func_name_prefix_len() {
 }
 
 template <typename T>
-inline constexpr size_t _func_name_suffix_len() {
+inline constexpr size_t _func_name_suffix_len() RUA_NOEXCEPT {
 #if defined(__GNUC__) || defined(__clang__)
 	return c_str_len("]");
 #elif defined(_MSC_VER)
+#ifdef RUA_HAS_EXCEPTIONS
+	return c_str_len(">(void) noexcept");
+#else
 	return c_str_len(">(void)");
+#endif
 #endif
 }
 
 template <typename T>
-inline constexpr string_view _type_name(size_t func_name_prefix_len) {
+inline constexpr string_view
+_type_name(size_t func_name_prefix_len) RUA_NOEXCEPT {
 	return string_view(
 		_func_name<T>() + func_name_prefix_len,
 		c_str_len(_func_name<T>()) -
@@ -51,48 +56,57 @@ inline constexpr string_view _type_name(size_t func_name_prefix_len) {
 }
 
 template <typename T>
-inline constexpr string_view type_name() {
+inline constexpr string_view type_name() RUA_NOEXCEPT {
 	return _type_name<T>(_func_name_prefix_len<T>());
 }
 
 class type_info {
 public:
-	constexpr type_info(std::nullptr_t = nullptr) : $tab(nullptr) {}
+	constexpr type_info(std::nullptr_t = nullptr) RUA_NOEXCEPT : $tab(nullptr) {
+	}
 
-	operator bool() const {
+	template <typename T>
+	constexpr explicit type_info(in_place_type_t<T>) RUA_NOEXCEPT
+		: $tab(&$table<T>()) {}
+
+	constexpr explicit type_info(in_place_type_t<void>) RUA_NOEXCEPT
+		: $tab(nullptr) {}
+
+	operator bool() const RUA_NOEXCEPT {
 		return $tab;
 	}
 
-	bool operator==(const type_info &target) const {
+	bool operator==(const type_info &target) const RUA_NOEXCEPT {
 		return $tab == target.$tab;
 	}
 
-	bool operator!=(const type_info &target) const {
+	bool operator!=(const type_info &target) const RUA_NOEXCEPT {
 		return $tab != target.$tab;
 	}
 
-	size_t size() const {
+	size_t size() const RUA_NOEXCEPT {
 		return $tab ? $tab->size : 0;
 	}
 
-	size_t align() const {
+	size_t align() const RUA_NOEXCEPT {
 		return $tab ? $tab->align : 0;
 	}
 
-	bool is_placeable(size_t storage_sz, size_t storage_align) const {
+	bool
+	is_placeable(size_t storage_sz, size_t storage_align) const RUA_NOEXCEPT {
 		return !$tab || RUA_IS_PLACEABLE(
 							$tab->size, $tab->align, storage_sz, storage_align);
 	}
 
-	bool is_trivial() const {
+	bool is_trivial() const RUA_NOEXCEPT {
 		return $tab ? $tab->is_trivial : false;
 	}
 
-	string_view name() const {
+	string_view name() const RUA_NOEXCEPT {
 		return $tab ? $tab->name() : type_name<void>();
 	}
 
-	size_t hash_code() const {
+	size_t hash_code() const RUA_NOEXCEPT {
 		return static_cast<size_t>(reinterpret_cast<uintptr_t>($tab));
 	}
 
@@ -110,7 +124,16 @@ public:
 		$tab->del(ptr);
 	}
 
-	bool is_copyable() const {
+	template <size_t Size, size_t Align>
+	void destruct_storage(void *ptr) const {
+		if (is_placeable(Size, Align)) {
+			destruct(ptr);
+			return;
+		}
+		dealloc(ptr);
+	}
+
+	bool is_copyable() const RUA_NOEXCEPT {
 		return $tab && $tab->copy_ctor;
 	}
 
@@ -152,7 +175,7 @@ public:
 		*reinterpret_cast<void **>(dest) = copy_to_new(src);
 	}
 
-	bool is_moveable() const {
+	bool is_moveable() const RUA_NOEXCEPT {
 		return $tab && $tab->move_ctor;
 	}
 
@@ -200,7 +223,7 @@ public:
 		*reinterpret_cast<void **>(dest) = src;
 	}
 
-	bool is_convertable_to_bool() const {
+	bool is_convertable_to_bool() const RUA_NOEXCEPT {
 		return $tab && $tab->to_bool;
 	}
 
@@ -213,10 +236,6 @@ public:
 	bool equal(const void *a, const void *b) const {
 		assert($tab);
 		return a == b || ($tab->eq && $tab->eq(a, b));
-	}
-
-	void reset() {
-		$tab = nullptr;
 	}
 
 #ifdef RUA_HAS_RTTI
@@ -396,12 +415,12 @@ private:
 #endif
 
 	template <typename T>
-	static const $table_t &$table() {
+	static const $table_t &$table() RUA_NOEXCEPT {
 		RUA_SASSERT(!std::is_same<T, void>::value);
 
 		static const $table_t tab{
-			size_of<T>::value,
-			align_of<T>::value,
+			sizeof(T),
+			alignof(T),
 			std::is_trivial<T>::value,
 			type_name<T>,
 			$dtor<T>::value,
@@ -421,21 +440,11 @@ private:
 	}
 
 	const $table_t *$tab;
-
-	type_info(const $table_t &tab) : $tab(&tab) {}
-
-	template <typename T>
-	friend inline constexpr type_info type_id();
 };
 
-template <typename T>
-inline constexpr type_info type_id() {
-	return type_info(type_info::$table<T>());
-}
-
-template <>
-inline constexpr type_info type_id<void>() {
-	return type_info();
+template <typename T, typename TypeInfo = type_info>
+inline constexpr TypeInfo type_id() {
+	return TypeInfo(in_place_type_t<T>{});
 }
 
 #ifdef RUA_HAS_RTTI
@@ -458,23 +467,45 @@ inline bool operator!=(std::type_index a, const type_info &b) {
 
 #endif
 
-class enable_type_info {
+template <typename TypeInfo = type_info>
+class typed_base {
 public:
-	type_info type() const {
-		return $type;
+	const type_info &type() const {
+		return $ti;
 	}
 
 	template <typename T>
 	bool type_is() const {
-		return $type == type_id<T>();
+		return $ti == type_id<T>();
 	}
 
 protected:
-	constexpr enable_type_info() : $type() {}
+	constexpr typed_base() = default;
 
-	constexpr enable_type_info(type_info ti) : $type(ti) {}
+	constexpr explicit typed_base(TypeInfo ti) : $ti(std::move(ti)) {}
 
-	type_info $type;
+	template <typename T>
+	constexpr explicit typed_base(in_place_type_t<T> ipt) : $ti(ipt) {}
+
+	TypeInfo &$type() {
+		return $ti;
+	}
+
+	const TypeInfo &$type() const {
+		return $ti;
+	}
+
+	template <typename T = void>
+	void $type_reset() {
+		$ti = TypeInfo(in_place_type_t<T>{});
+	}
+
+	void $type_reset(TypeInfo ti) {
+		$ti = std::move(ti);
+	}
+
+private:
+	TypeInfo $ti;
 };
 
 } // namespace rua

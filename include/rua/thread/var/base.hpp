@@ -3,8 +3,8 @@
 
 #include "../id.hpp"
 
-#include "../../any.hpp"
-#include "../../any_word.hpp"
+#include "../../dype/any.hpp"
+#include "../../dype/any_word.hpp"
 #include "../../lockfree_list.hpp"
 #include "../../util.hpp"
 

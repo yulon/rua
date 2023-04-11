@@ -1,8 +1,8 @@
 #ifndef _rua_memory_hpp
 #define _rua_memory_hpp
 
-#include "any_ptr.hpp"
 #include "binary/bytes.hpp"
+#include "dype/any_ptr.hpp"
 #include "util.hpp"
 
 #ifdef _WIN32

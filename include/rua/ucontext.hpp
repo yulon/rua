@@ -8,9 +8,9 @@
 #ifndef _rua_ucontext_hpp
 #define _rua_ucontext_hpp
 
-#include "any_ptr.hpp"
-#include "any_word.hpp"
 #include "binary/bytes.hpp"
+#include "dype/any_ptr.hpp"
+#include "dype/any_word.hpp"
 #include "util.hpp"
 
 #ifndef RUA_USING_NATIVE_UCONTEXT

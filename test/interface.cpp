@@ -1,4 +1,4 @@
-#include <rua/interface_ptr.hpp>
+#include <rua/dype/interface_ptr.hpp>
 
 #include <doctest/doctest.h>
 

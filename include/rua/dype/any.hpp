@@ -1,15 +1,19 @@
-#ifndef _rua_any_hpp
-#define _rua_any_hpp
+#ifndef _rua_dype_any_hpp
+#define _rua_dype_any_hpp
 
 #include "type_info.hpp"
-#include "util.hpp"
+
+#include "../util.hpp"
 
 #include <cassert>
 
 namespace rua {
 
-template <size_t StorageSize, size_t StorageAlign>
-class basic_any : public enable_type_info {
+template <
+	size_t StorageSize = sizeof(void *),
+	size_t StorageAlign = align_of_size<StorageSize>::value,
+	typename TypeInfo = type_info>
+class basic_any : public typed_base<TypeInfo> {
 public:
 	template <typename T>
 	struct is_placeable : bool_constant<RUA_IS_PLACEABLE(
@@ -20,7 +24,7 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr basic_any() : enable_type_info(), $sto() {}
+	constexpr basic_any() : typed_base<TypeInfo>(), $sto() {}
 
 	template <
 		typename T,
@@ -44,37 +48,37 @@ public:
 		reset();
 	}
 
-	basic_any(const basic_any &src) : enable_type_info(src.$type) {
-		if (!$type) {
+	basic_any(const basic_any &src) : typed_base<TypeInfo>(src.type()) {
+		if (!this->type()) {
 			return;
 		}
 
-		assert($type.is_copyable());
+		assert(this->type().is_copyable());
 
-		$type.copy_to_storage<StorageSize, StorageAlign>(
+		this->type().template copy_to_storage<StorageSize, StorageAlign>(
 			&$sto[0], &src.$sto[0]);
 	}
 
-	basic_any(basic_any &&src) : enable_type_info(src.$type) {
-		if (!$type) {
+	basic_any(basic_any &&src) : typed_base<TypeInfo>(src.type()) {
+		if (!this->type()) {
 			return;
 		}
 
-		assert($type.is_moveable());
+		assert(this->type().is_moveable());
 
-		$type.move_to_storage<StorageSize, StorageAlign>(
+		this->type().template move_to_storage<StorageSize, StorageAlign>(
 			&$sto[0], &src.$sto[0]);
-		src.$type.reset();
+		src.reset();
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(basic_any)
 
 	bool has_value() const {
-		return $type;
+		return this->type();
 	}
 
 	operator bool() const {
-		return $type;
+		return this->type();
 	}
 
 	template <typename T>
@@ -83,7 +87,7 @@ public:
 			is_placeable<decay_t<T>>::value,
 		T &>
 	as() & {
-		assert(type_is<T>());
+		assert(this->template type_is<T>());
 		return *reinterpret_cast<T *>(&$sto[0]);
 	}
 
@@ -93,7 +97,7 @@ public:
 			!is_placeable<decay_t<T>>::value,
 		T &>
 	as() & {
-		assert(type_is<T>());
+		assert(this->template type_is<T>());
 		return **reinterpret_cast<T **>(&$sto[0]);
 	}
 
@@ -109,7 +113,7 @@ public:
 			is_placeable<decay_t<T>>::value,
 		const T &>
 	as() const & {
-		assert(type_is<T>());
+		assert(this->template type_is<T>());
 		return *reinterpret_cast<const T *>(&$sto[0]);
 	}
 
@@ -119,7 +123,7 @@ public:
 			!is_placeable<decay_t<T>>::value,
 		const T &>
 	as() const & {
-		assert(type_is<T>());
+		assert(this->template type_is<T>());
 		return **reinterpret_cast<const T *const *>(&$sto[0]);
 	}
 
@@ -167,15 +171,12 @@ public:
 	}
 
 	void reset() {
-		if (!$type) {
+		if (!this->type()) {
 			return;
 		}
-		if ($type.is_placeable(StorageSize, StorageAlign)) {
-			$type.destruct(reinterpret_cast<void *>(&$sto[0]));
-		} else {
-			$type.dealloc(*reinterpret_cast<void **>(&$sto[0]));
-		}
-		$type.reset();
+		this->type().template destruct_storage<StorageSize, StorageAlign>(
+			&$sto[0]);
+		this->$type_reset();
 	}
 
 private:
@@ -183,21 +184,21 @@ private:
 
 	template <typename T, typename... Args>
 	enable_if_t<is_placeable<T>::value, T &> $emplace(Args &&...args) {
-		$type = type_id<T>();
+		this->template $type_reset<T>();
 		return construct(
 			*reinterpret_cast<T *>(&$sto[0]), std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename... Args>
 	enable_if_t<!is_placeable<T>::value, T &> $emplace(Args &&...args) {
-		$type = type_id<T>();
+		this->template $type_reset<T>();
 		return *(
 			*reinterpret_cast<T **>(&$sto[0]) =
 				new T(std::forward<Args>(args)...));
 	}
 };
 
-using any = basic_any<sizeof(void *), alignof(void *)>;
+using any = basic_any<>;
 
 template <typename T, typename... Args>
 any make_any(Args &&...args) {

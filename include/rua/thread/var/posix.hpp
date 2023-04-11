@@ -3,7 +3,7 @@
 
 #include "base.hpp"
 
-#include "../../any_word.hpp"
+#include "../../dype/any_word.hpp"
 #include "../../util.hpp"
 
 #include <pthread.h>
