@@ -60,19 +60,19 @@ trim_right_if(StrLike &&str_like, Pred &&pred) {
 template <typename StrLike>
 inline decltype(slice(std::declval<StrLike &&>()))
 trim_space(StrLike &&str_like) {
-	return trim_if(std::forward<StrLike>(str_like), is_space);
+	return trim_if(std::forward<StrLike>(str_like), is_unispace);
 }
 
 template <typename StrLike>
 inline decltype(slice(std::declval<StrLike &&>()))
 trim_left_space(StrLike &&str_like) {
-	return trim_left_if(std::forward<StrLike>(str_like), is_space);
+	return trim_left_if(std::forward<StrLike>(str_like), is_unispace);
 }
 
 template <typename StrLike>
 inline decltype(slice(std::declval<StrLike &&>()))
 trim_right_space(StrLike &&str_like) {
-	return trim_right_if(std::forward<StrLike>(str_like), is_space);
+	return trim_right_if(std::forward<StrLike>(str_like), is_unispace);
 }
 
 template <typename StrLike>

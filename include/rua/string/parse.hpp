@@ -11,7 +11,7 @@ namespace rua {
 
 template <typename StrSpan, typename = span_traits<StrSpan &&>>
 inline bool skip_space(StrSpan &&ss, size_t &i) {
-	while (is_space(data(std::forward<StrSpan>(ss))[i])) {
+	while (is_unispace(data(std::forward<StrSpan>(ss))[i])) {
 		++i;
 		if (i >= size(std::forward<StrSpan>(ss))) {
 			return false;

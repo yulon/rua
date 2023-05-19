@@ -725,7 +725,7 @@ inline xml_node_list parse_xml_nodes(string_view xml) {
 				if (i >= xml.length()) {
 					return nodes;
 				}
-			} while (!is_space(xml[i]) && xml[i] != '>' && xml[i] != '/' &&
+			} while (!is_unispace(xml[i]) && xml[i] != '>' && xml[i] != '/' &&
 					 xml[i] != '?');
 
 			auto name =
@@ -759,7 +759,7 @@ inline xml_node_list parse_xml_nodes(string_view xml) {
 						if (i >= xml.length()) {
 							return nodes;
 						}
-					} while (!is_space(xml[i]) && xml[i] != '=' &&
+					} while (!is_unispace(xml[i]) && xml[i] != '=' &&
 							 xml[i] != '>' && xml[i] != '/' && xml[i] != '?');
 
 					auto attr_name = to_string(
@@ -836,7 +836,7 @@ inline xml_node_list parse_xml_nodes(string_view xml) {
 		} while (i < xml.length() && xml[i] != '<');
 
 		auto text = xml.substr(text_start, i - text_start);
-		if (is_space(text)) {
+		if (is_unispace(text)) {
 			continue;
 		}
 

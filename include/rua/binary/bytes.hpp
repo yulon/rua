@@ -764,10 +764,10 @@ public:
 
 	RUA_TMPL_FWD_CTOR(Args, bytes, bytes_pattern)
 	bytes_pattern(Args &&...bytes_args) :
-		$mb(std::forward<Args>(bytes_args)...) {}
+		$b(std::forward<Args>(bytes_args)...) {}
 
 	bytes_pattern(rua::bytes masked, rua::bytes mask) :
-		$mb(std::move(masked)), $m(std::move(mask)) {}
+		$b(std::move(masked)), $m(std::move(mask)) {}
 
 	template <
 		typename IntList,
@@ -775,20 +775,67 @@ public:
 		typename Int = typename IntListTraits::value_type,
 		typename = enable_if_t<
 			std::is_integral<Int>::value && (sizeof(Int) > sizeof(uchar))>>
-	bytes_pattern(IntList &&li) {
-		$input(li);
+	bytes_pattern(IntList &&int_list) {
+		$from_ints(int_list);
 	}
 
-	bytes_pattern(std::initializer_list<uint16_t> il) {
-		$input(il);
+	bytes_pattern(std::initializer_list<uint16_t> int_il) {
+		$from_ints(int_il);
 	}
+
+	bytes_pattern(string_view fmt_strv) {
+		$b.reserve(fmt_strv.length() / 2);
+		$m.reserve($b.capacity());
+		bool fst = true;
+		for (size_t i = 0; i < fmt_strv.length(); ++i) {
+			if (is_unispace(fmt_strv[i])) {
+				if (!fst) {
+					fst = true;
+				}
+				continue;
+			}
+			auto dec = h2d(fmt_strv[i]);
+			if (fst) {
+				fst = false;
+				auto j = $b.size();
+				$b.resize($b.size() + 1);
+				$m.resize($b.size());
+				if (dec < 0) {
+					$b[j] = 0;
+					$m[j] = 0;
+					continue;
+				}
+				$b[j] = dec;
+				$m[j] = 0xFF;
+				continue;
+			}
+			auto j = $b.size() - 1;
+			if (!$m[j]) {
+				continue;
+			}
+			if (dec < 0) {
+				$m[j] = 0;
+				continue;
+			}
+			auto b = static_cast<size_t>($b[j]) * 16 + dec;
+			if (b > 255) {
+				$m[j] = 0;
+				continue;
+			}
+			$b[j] = static_cast<uchar>(b);
+			continue;
+		}
+	}
+
+	bytes_pattern(const char *fmt_c_str) :
+		bytes_pattern(string_view(fmt_c_str)) {}
 
 	size_t size() const {
-		return $mb.size();
+		return $b.size();
 	}
 
 	bytes_view masked() const {
-		return $mb;
+		return $b;
 	}
 
 	bytes_view mask() const {
@@ -801,27 +848,27 @@ public:
 			return false;
 		}
 		if (!$m) {
-			return bit_equal($mb.data(), byts.data(), sz);
+			return bit_equal($b.data(), byts.data(), sz);
 		}
-		return bit_contains($mb.data(), byts.data(), $m.data(), sz);
+		return bit_contains($b.data(), byts.data(), $m.data(), sz);
 	}
 
 private:
-	bytes $mb, $m;
+	bytes $b, $m;
 
 	template <typename IntList>
-	void $input(IntList &&li) {
-		$mb.reset(li.size());
+	void $from_ints(IntList &&li) {
+		$b.reset(li.size());
 		auto begin = li.begin();
 		size_t i;
-		for (i = 0; i < $mb.size(); ++i) {
+		for (i = 0; i < $b.size(); ++i) {
 			auto val = begin[i];
 			if (val < 256) {
-				$mb[i] = static_cast<uchar>(val);
+				$b[i] = static_cast<uchar>(val);
 			} else {
-				$mb[i] = 0;
+				$b[i] = 0;
 				if (!$m) {
-					$m.reset($mb.size());
+					$m.reset($b.size());
 					memset($m.data(), 255, $m.size());
 				}
 				$m[i] = 0;

@@ -39,13 +39,35 @@ TEST_CASE("memory find") {
 	REQUIRE(pos_opt);
 	REQUIRE(*pos_opt == pat_pos);
 
-	// bytes::index_of(masked_bytes)
+	// bytes::index_of({>255})
 
 	tp = rua::tick();
 
 	pos_opt = dat.index_of({255, 1111, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::index_of(masked_bytes):", rua::tick() - tp);
+	rua::log("bytes::index_of({>255}):", rua::tick() - tp);
+
+	REQUIRE(pos_opt);
+	REQUIRE(*pos_opt == pat_pos);
+
+	// bytes::index_of("?")
+
+	tp = rua::tick();
+
+	pos_opt = dat.index_of("FF ?? FF FF FF 06 07 FF");
+
+	rua::log("bytes::index_of(\"?\"):", rua::tick() - tp);
+
+	REQUIRE(pos_opt);
+	REQUIRE(*pos_opt == pat_pos);
+
+	// bytes::index_of("\s|0+")
+
+	tp = rua::tick();
+
+	pos_opt = dat.index_of("FF ? FF 00FF  FF 0006    7 0FF");
+
+	rua::log("bytes::index_of(\"\\s|0+\"):", rua::tick() - tp);
 
 	REQUIRE(pos_opt);
 	REQUIRE(*pos_opt == pat_pos);
@@ -62,13 +84,13 @@ TEST_CASE("memory find") {
 	REQUIRE(found.pos() == pat_pos);
 	REQUIRE(found->size() == 8);
 
-	// bytes::find(masked_bytes)
+	// bytes::find({>255})
 
 	tp = rua::tick();
 
 	found = dat.find({255, 1111, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::find(masked_bytes):", rua::tick() - tp);
+	rua::log("bytes::find({>255}):", rua::tick() - tp);
 
 	REQUIRE(found);
 	REQUIRE(found.pos() == pat_pos);
@@ -88,13 +110,35 @@ TEST_CASE("memory find") {
 	REQUIRE(pos_opt);
 	REQUIRE(*pos_opt == pat_pos);
 
-	// bytes::last_index_of(masked_bytes)
+	// bytes::last_index_of({>255})
 
 	tp = rua::tick();
 
 	pos_opt = dat.last_index_of({255, 1111, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::last_index_of(masked_bytes):", rua::tick() - tp);
+	rua::log("bytes::last_index_of({>255}):", rua::tick() - tp);
+
+	REQUIRE(pos_opt);
+	REQUIRE(*pos_opt == pat_pos);
+
+	// bytes::last_index_of("?")
+
+	tp = rua::tick();
+
+	pos_opt = dat.last_index_of("FF ?? FF FF FF 06 07 FF");
+
+	rua::log("bytes::last_index_of(\"?\"):", rua::tick() - tp);
+
+	REQUIRE(pos_opt);
+	REQUIRE(*pos_opt == pat_pos);
+
+	// bytes::last_index_of("\s|0+")
+
+	tp = rua::tick();
+
+	pos_opt = dat.last_index_of("FF ? FF 00FF  FF 0006    7 0FF");
+
+	rua::log("bytes::last_index_of(\"\\s|0+\"):", rua::tick() - tp);
 
 	REQUIRE(pos_opt);
 	REQUIRE(*pos_opt == pat_pos);
@@ -111,13 +155,13 @@ TEST_CASE("memory find") {
 	REQUIRE(rfr.pos() == pat_pos);
 	REQUIRE(rfr->size() == 8);
 
-	// bytes::rfind(masked_bytes)
+	// bytes::rfind({>255})
 
 	tp = rua::tick();
 
 	rfr = dat.rfind({255, 1111, 255, 255, 255, 6, 7, 255});
 
-	rua::log("bytes::rfind(masked_bytes):", rua::tick() - tp);
+	rua::log("bytes::rfind({>255}):", rua::tick() - tp);
 
 	REQUIRE(rfr);
 	REQUIRE(rfr.pos() == pat_pos);

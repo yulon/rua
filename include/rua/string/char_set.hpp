@@ -206,9 +206,19 @@ inline RUA_CONSTEXPR_14 bool is_controls(StrLike &&str_like) {
 	return chars_all(std::forward<StrLike>(str_like), is_control);
 }
 
-inline constexpr bool is_blank(char32_t c) {
-	return c == char_code::sp || c == char_code::ht || c == char_code::nbsp ||
-		   c == char_code::ospmk ||
+inline constexpr bool is_space(char32_t c) {
+	return c == char_code::sp || c == char_code::ht || is_control(c);
+}
+
+template <
+	typename StrLike,
+	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
+inline RUA_CONSTEXPR_14 bool is_spaces(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_space);
+}
+
+inline constexpr bool is_unispace(char32_t c) {
+	return is_space(c) || c == char_code::nbsp || c == char_code::ospmk ||
 		   (c >= char_code::w1en && c <= char_code::w1o10emsp) ||
 		   c == char_code::nnbsp || c == char_code::mmsp ||
 		   c == char_code::w1cjksp;
@@ -217,19 +227,8 @@ inline constexpr bool is_blank(char32_t c) {
 template <
 	typename StrLike,
 	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
-inline RUA_CONSTEXPR_14 bool is_blanks(StrLike &&str_like) {
-	return chars_all(std::forward<StrLike>(str_like), is_blank);
-}
-
-inline constexpr bool is_space(char32_t c) {
-	return is_blank(c) || is_control(c);
-}
-
-template <
-	typename StrLike,
-	typename StrView = decltype(view_string(std::declval<StrLike &&>()))>
-inline RUA_CONSTEXPR_14 bool is_spaces(StrLike &&str_like) {
-	return chars_all(std::forward<StrLike>(str_like), is_space);
+inline RUA_CONSTEXPR_14 bool is_unispaces(StrLike &&str_like) {
+	return chars_all(std::forward<StrLike>(str_like), is_unispace);
 }
 
 inline constexpr bool is_lower(char32_t c) {
@@ -242,6 +241,21 @@ inline constexpr bool is_upper(char32_t c) {
 
 inline constexpr bool is_alphabet(char32_t c) {
 	return is_lower(c) || is_upper(c);
+}
+
+inline constexpr bool is_hex(char32_t c) {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+		   (c >= 'A' && c <= 'F');
+}
+
+inline constexpr char h2d(char32_t c) {
+	return (c >= '0' && c <= '9')
+			   ? static_cast<char>(c - '0')
+			   : ((c >= 'a' && c <= 'f')
+					  ? static_cast<char>(c - 'a' + 10)
+					  : ((c >= 'A' && c <= 'F')
+							 ? static_cast<char>(c - 'A' + 10)
+							 : -1));
 }
 
 namespace eol {
