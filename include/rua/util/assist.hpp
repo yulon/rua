@@ -91,18 +91,18 @@ RUA_CVAL auto nullpos = nmax<size_t>();
 
 ////////////////////////////////////////////////////////////////////////////
 
-class fullptr_t {
+template <intptr_t Val>
+class fakeptr_t {
 public:
-	constexpr fullptr_t() : $p(nmax<uintptr_t>()){};
-
 	template <typename E>
 	constexpr operator E *() const {
-		return reinterpret_cast<E *>(nmax<uintptr_t>());
+		return reinterpret_cast<E *>(static_cast<uintptr_t>(Val));
 	}
-
-private:
-	uintptr_t $p;
 };
+
+////////////////////////////////////////////////////////////////////////////
+
+using fullptr_t = fakeptr_t<-1>;
 
 RUA_CVAL fullptr_t fullptr;
 
