@@ -279,9 +279,9 @@ protected:
 
 	template <typename T, typename Visitor>
 	enable_if_t<
-		std::is_void<T>::value
-			? !is_invocable<Visitor &&>::value
-			: !is_invocable<Visitor &&, add_lvalue_reference_t<T>>::value,
+		(std::is_void<T>::value
+			 ? !is_invocable<Visitor &&>::value
+			 : !is_invocable<Visitor &&, add_lvalue_reference_t<T>>::value),
 		bool>
 	$visit_as(Visitor &&) & {
 		return false;
@@ -289,9 +289,9 @@ protected:
 
 	template <typename T, typename Visitor>
 	enable_if_t<
-		std::is_void<T>::value
-			? !is_invocable<Visitor &&>::value
-			: !is_invocable<Visitor &&, add_rvalue_reference_t<T>>::value,
+		(std::is_void<T>::value
+			 ? !is_invocable<Visitor &&>::value
+			 : !is_invocable<Visitor &&, add_rvalue_reference_t<T>>::value),
 		bool>
 	$visit_as(Visitor &&) && {
 		return false;
@@ -299,9 +299,10 @@ protected:
 
 	template <typename T, typename Visitor>
 	enable_if_t<
-		std::is_void<T>::value
-			? !is_invocable<Visitor &&>::value
-			: !is_invocable<Visitor &&, add_lvalue_reference_t<const T>>::value,
+		(std::is_void<T>::value
+			 ? !is_invocable<Visitor &&>::value
+			 : !is_invocable<Visitor &&, add_lvalue_reference_t<const T>>::
+				   value),
 		bool> constexpr $visit_as(Visitor &&) const & {
 		return false;
 	}
