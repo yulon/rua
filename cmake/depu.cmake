@@ -264,3 +264,51 @@ function(depu A_NAME)
 	set(DEPU_${A_NAME}_SRC "${SRC}" PARENT_SCOPE)
 	set(DEPU_${A_NAME}_BUILD "${BUILD}" PARENT_SCOPE)
 endfunction()
+
+function(depu_set_msvc)
+	if (NOT MSVC)
+		return()
+	endif()
+
+	set(oneValueArgs
+		FLAGS
+		STATIC_CRT
+	)
+	cmake_parse_arguments(A "" "${oneValueArgs}" "" ${ARGN})
+
+	set(_BUILD_FLAG_NAMES
+		CMAKE_CXX_FLAGS
+		CMAKE_C_FLAGS
+	)
+
+	if(CMAKE_BUILD_TYPE)
+		set(_BUILD_CONFIG_TYPES "${CMAKE_BUILD_TYPE}")
+	elseif(CMAKE_CONFIGURATION_TYPES)
+		set(_BUILD_CONFIG_TYPES "${CMAKE_CONFIGURATION_TYPES}")
+	endif()
+
+	foreach(_BUILD_FLAG_NAME ${_BUILD_FLAG_NAMES})
+		foreach(_BUILD_CONFIG_TYPE ${_BUILD_CONFIG_TYPES})
+			string(TOUPPER ${_BUILD_CONFIG_TYPE} _BUILD_CONFIG_TYPE)
+			list(APPEND _BUILD_CONFIG_FLAG_NAMES "${_BUILD_FLAG_NAME}_${_BUILD_CONFIG_TYPE}")
+		endforeach()
+	endforeach()
+
+	if(A_FLAGS)
+		foreach(_BUILD_FLAG_NAME ${_BUILD_FLAG_NAMES})
+			set(${_BUILD_FLAG_NAME} "${${_BUILD_FLAG_NAME}} ${A_FLAGS}")
+			set(${_BUILD_FLAG_NAME} "${${_BUILD_FLAG_NAME}}" PARENT_SCOPE)
+		endforeach()
+	endif()
+
+	if(A_STATIC_CRT)
+		if(${CMAKE_MINIMUM_REQUIRED_VERSION} VERSION_LESS 3.15)
+			foreach(_BUILD_CONFIG_FLAG_NAME ${_BUILD_CONFIG_FLAG_NAMES})
+				string(REPLACE "/MD" "/MT" ${_BUILD_CONFIG_FLAG_NAME} "${${_BUILD_CONFIG_FLAG_NAME}}")
+				set(${_BUILD_CONFIG_FLAG_NAME} "${${_BUILD_CONFIG_FLAG_NAME}}" PARENT_SCOPE)
+			endforeach()
+		else()
+			set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" PARENT_SCOPE)
+		endif()
+	endif()
+endfunction()
