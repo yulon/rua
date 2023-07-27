@@ -17,7 +17,11 @@ enum class promise_state : uintptr_t {
 	loss_notify,
 	has_notify,
 	fulfilled,
-	received
+	harvested
+#ifndef NDEBUG
+	,
+	destroying
+#endif
 };
 
 RUA_CVAR strv_error err_promise_unfulfilled("promise unfulfilled");
@@ -37,9 +41,14 @@ public:
 	promise &operator=(const promise &) = delete;
 	promise &operator=(promise &&) = delete;
 
-	virtual ~promise() = default;
+	virtual ~promise() {
+#ifndef NDEBUG
+		auto old_state = $state.load();
+		assert(old_state == promise_state::destroying);
+#endif
+	}
 
-	/////////////////// fulfill side ///////////////////
+	//////////////////// fulfill ////////////////////
 
 	expected<T> fulfill(
 		expected<T> value = expected_or<T>(err_promise_unfulfilled)) noexcept {
@@ -56,9 +65,12 @@ public:
 
 		switch (old_state) {
 
-		case promise_state::received:
+		case promise_state::harvested:
+			assert(
+				$state.exchange(promise_state::destroying) ==
+				promise_state::fulfilled);
 			refunded = std::move($val);
-			destroy();
+			on_destroy();
 			break;
 
 		case promise_state::has_notify: {
@@ -80,10 +92,10 @@ public:
 		fulfill(err_promise_unfulfilled);
 	}
 
-	/////////////////// receive side ///////////////////
+	////////////////// harvesting //////////////////
 
 	bool await_ready() const noexcept {
-		assert($state.load() != promise_state::received);
+		assert($state.load() != promise_state::harvested);
 
 		return $state.load() == promise_state::fulfilled;
 	}
@@ -98,7 +110,7 @@ public:
 		}
 
 		assert(old_state != promise_state::has_notify);
-		assert(old_state != promise_state::received);
+		assert(old_state != promise_state::harvested);
 		assert(
 			old_state == promise_state::loss_notify ||
 			old_state == promise_state::fulfilled);
@@ -109,26 +121,31 @@ public:
 	expected<T> await_resume() noexcept {
 		expected<T> r;
 
-		auto old_state = $state.exchange(promise_state::received);
+		auto old_state = $state.exchange(promise_state::harvested);
 
-		assert(old_state != promise_state::received);
+		assert(old_state != promise_state::harvested);
 
 		if (old_state == promise_state::fulfilled) {
+			assert(
+				$state.exchange(promise_state::destroying) ==
+				promise_state::harvested);
 			r = std::move($val);
-			destroy();
+			on_destroy();
 		} else {
 			r = err_promise_not_yet_fulfilled;
 		}
 		return r;
 	}
 
-	/////////////////// destroy side ///////////////////
+	//////////////////// unused ////////////////////
 
-	/*
-		1. If fulfilled and received, will destroy() automatically.
-		2. If unfulfilled and unreceived, need destroy() manually.
-	*/
-	virtual void destroy() noexcept {}
+	void unfulfill_and_harvest() noexcept {
+		unfulfill();
+		await_resume();
+	}
+
+protected:
+	virtual void on_destroy() noexcept {}
 
 private:
 	std::atomic<promise_state> $state;
@@ -182,7 +199,7 @@ public:
 
 	virtual ~newable_promise() = default;
 
-	void destroy() noexcept override {
+	void on_destroy() noexcept override {
 		delete this;
 	}
 };

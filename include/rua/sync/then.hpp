@@ -47,7 +47,7 @@ inline future<R> then(Awaitable &&awaitable, Callback &&callback) {
 		return prm->extend().aw->await_resume();
 	});
 
-	prm->destroy();
+	prm->unfulfill_and_harvest();
 
 	return exp;
 }

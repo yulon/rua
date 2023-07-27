@@ -69,7 +69,7 @@ public:
 			return future<T>(*prm);
 		}
 
-		prm->destroy();
+		prm->unfulfill_and_harvest();
 
 		return *std::move(val_opt);
 	}

@@ -44,12 +44,6 @@ public:
 	public:
 		virtual ~promise_type() = default;
 
-		void destroy() noexcept override {
-			coroutine_handle<promise_type>::from_promise(*this).destroy();
-		}
-
-		////////////////////////////////////////////////////////////////////
-
 		future get_return_object() noexcept {
 			return *static_cast<promise<PromiseValue> *>(this);
 		}
@@ -71,6 +65,11 @@ public:
 			this->fulfill(current_exception_error());
 		}
 #endif
+
+	protected:
+		void on_destroy() noexcept override {
+			coroutine_handle<promise_type>::from_promise(*this).destroy();
+		}
 	};
 
 	////////////////////////////////////////////////////////////////////////

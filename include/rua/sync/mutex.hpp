@@ -47,7 +47,7 @@ public:
 			return future<>(*prm);
 		}
 
-		prm->destroy();
+		prm->unfulfill_and_harvest();
 
 		return future<>();
 	}
