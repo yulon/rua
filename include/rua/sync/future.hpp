@@ -96,6 +96,10 @@ public:
 			std::is_convertible<Promise &, promise<PromiseValue> &>::value>>
 	future(Promise &prm) : $v(&static_cast<promise<PromiseValue> &>(prm)) {}
 
+	~future() {
+		reset();
+	}
+
 	template <
 		typename U,
 		typename = enable_if_t<
