@@ -27,23 +27,32 @@ public:
 	using native_handle_t = HANDLE;
 
 	virtual ssize_t read(bytes_ref p) {
-		return sys_stream(GetStdHandle(Id), false).read(p);
+		return sys_stream(native_handle(), false).read(p);
 	}
 
 	virtual ssize_t write(bytes_view p) {
-		return sys_stream(GetStdHandle(Id), false).write(p);
+		return sys_stream(native_handle(), false).write(p);
 	}
 
 	native_handle_t native_handle() const {
-		return GetStdHandle(Id);
+		auto h = GetStdHandle(Id);
+#ifndef NDEBUG
+		if (!h) {
+			static auto has_con = AllocConsole();
+			if (has_con) {
+				h = GetStdHandle(Id);
+			}
+		}
+#endif
+		return h;
 	}
 
 	operator sys_stream() const {
-		return sys_stream(GetStdHandle(Id), false);
+		return sys_stream(native_handle(), false);
 	}
 
 	virtual operator bool() const {
-		return GetStdHandle(Id);
+		return native_handle();
 	}
 
 	_basic_stdio_stream &operator=(sys_stream s) {
