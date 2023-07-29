@@ -277,15 +277,15 @@ public:
 		return nullptr;
 	}
 
-	variant<T, error_i> &data() & {
+	variant<T, error_i> &vrt() & {
 		return $v;
 	}
 
-	variant<T, error_i> &&data() && {
+	variant<T, error_i> &&vrt() && {
 		return std::move($v);
 	}
 
-	const variant<T, error_i> &data() const & {
+	const variant<T, error_i> &vrt() const & {
 		return $v;
 	}
 
@@ -357,9 +357,23 @@ public:
 		return has_value();
 	}
 
-	RUA_CONSTEXPR_14 void value() const {}
+	void value() const {
+#ifdef RUA_HAS_EXCEPTIONS
+		if (!has_value()) {
+			throw error();
+		}
+#endif
+	}
 
 	error_i error() const {
+		return $err;
+	}
+
+	variant<void, error_i> vrt() && {
+		return std::move($err);
+	}
+
+	variant<void, error_i> vrt() const & {
 		return $err;
 	}
 

@@ -88,7 +88,7 @@ public:
 		typename = enable_if_t<
 			(std::is_void<T>::value && std::is_void<U>::value) ||
 			std::is_convertible<U, T>::value>>
-	future(expected<U> exp) : $v(std::move(exp).data()) {}
+	future(expected<U> exp) : $v(std::move(exp).vrt()) {}
 
 	template <
 		typename Promise,
