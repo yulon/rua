@@ -114,36 +114,38 @@ public:
 	}
 
 	xml_node_list
-	querys(string_view selector, size_t max_count = nmax<size_t>()) const {
+	querys(string_view selector, size_t depth = 0, size_t max_count = 0) const {
 		xml_node_list matcheds;
-
-		if (!max_count) {
-			return matcheds;
-		}
 
 		for (auto &node : children()) {
 			if (node->node_name() == selector) {
 				matcheds.emplace_back(node);
+				if (max_count && matcheds.size() == max_count) {
+					return matcheds;
+				}
+			}
+
+			if (depth == 1) {
+				continue;
 			}
 
 			auto child_matcheds = node->querys(
 				selector,
-				max_count == nmax<size_t>() ? max_count
-											: max_count - matcheds.size());
+				depth ? depth - 1 : 0,
+				max_count ? max_count - matcheds.size() : 0);
 			if (child_matcheds.size()) {
 				matcheds.splice(matcheds.end(), std::move(child_matcheds));
-			}
-
-			if (matcheds.size() == max_count) {
-				return matcheds;
+				if (max_count && matcheds.size() == max_count) {
+					return matcheds;
+				}
 			}
 		}
 
 		return matcheds;
 	}
 
-	xml_node_ptr query(string_view selector) const {
-		auto matcheds = querys(selector, 1);
+	xml_node_ptr query(string_view selector, size_t depth = 0) const {
+		auto matcheds = querys(selector, depth, 1);
 		if (matcheds.empty()) {
 			return nullptr;
 		}
@@ -836,7 +838,7 @@ inline xml_node_list parse_xml_nodes(string_view xml) {
 		} while (i < xml.length() && xml[i] != '<');
 
 		auto text = xml.substr(text_start, i - text_start);
-		if (is_unispace(text)) {
+		if (is_unispaces(text)) {
 			continue;
 		}
 
