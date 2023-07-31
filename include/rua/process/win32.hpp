@@ -11,6 +11,7 @@
 #include "../io.hpp"
 #include "../memory.hpp"
 #include "../stdio/win32.hpp"
+#include "../string/case.hpp"
 #include "../string/char_set.hpp"
 #include "../string/codec/base/win32.hpp"
 #include "../string/join.hpp"
@@ -1330,7 +1331,7 @@ namespace _find_process {
 
 class process_finder : private wandering_iterator {
 public:
-	process_finder() : $snapshot(INVALID_HANDLE_VALUE) {}
+	process_finder() : $snap(INVALID_HANDLE_VALUE) {}
 
 	~process_finder() {
 		if (*this) {
@@ -1338,79 +1339,132 @@ public:
 		}
 	}
 
-	process_finder(process_finder &&src) :
-		$snapshot(src.$snapshot), $entry(src.$entry) {
+	process_finder(process_finder &&src) : $snap(src.$snap), $ety(src.$ety) {
 		if (src) {
-			src.$snapshot = INVALID_HANDLE_VALUE;
+			src.$snap = INVALID_HANDLE_VALUE;
 		}
 	}
 
 	RUA_OVERLOAD_ASSIGNMENT(process_finder)
 
 	operator bool() const {
-		return $snapshot != INVALID_HANDLE_VALUE;
+		return $snap != INVALID_HANDLE_VALUE;
 	}
 
 	process operator*() const {
-		return *this ? process($entry.th32ProcessID) : process();
+		return *this ? process($ety.th32ProcessID) : process();
 	}
 
 	process_finder &operator++() {
 		assert(*this);
 
-		while (Process32NextW($snapshot, &$entry)) {
-			if (!$name.size() || $entry.szExeFile == $name) {
-				if ($entry.th32ProcessID) {
-					return *this;
-				}
+		while (Process32NextW($snap, &$ety)) {
+			if (!$ety.th32ProcessID) {
+				continue;
+			}
+			if ((!$id && !$name.size()) || $ety.th32ProcessID == $id ||
+				rua::to_lowers($ety.szExeFile) == $name) {
+				return *this;
 			}
 		}
 		$reset();
 		return *this;
 	}
 
+	using native_handle_t = HANDLE;
+
+	native_handle_t native_handle() const {
+		return $snap;
+	}
+
+	using native_info_t = PROCESSENTRY32W;
+
+	const native_info_t &native_info() const {
+		return $ety;
+	}
+
+	pid_t id() const {
+		return $ety.th32ProcessID;
+	}
+
+	pid_t parent_id() const {
+		return $ety.th32ParentProcessID;
+	}
+
+	std::string name() const {
+		return w2u($ety.szExeFile);
+	}
+
 private:
+	pid_t $id;
 	std::wstring $name;
-	HANDLE $snapshot;
-	PROCESSENTRY32W $entry;
+	HANDLE $snap;
+	PROCESSENTRY32W $ety;
 
-	process_finder(string_view name) {
-		$name = u2w(name);
+	process_finder(pid_t id, string_view name) : $id(id) {
+		if (!id && name.length()) {
+			$name = u2w(rua::to_lowers(name));
+		}
 
-		$snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		if ($snapshot == INVALID_HANDLE_VALUE) {
+		$snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+		if ($snap == INVALID_HANDLE_VALUE) {
+			$ety.th32ProcessID = 0;
+			$ety.th32ParentProcessID = 0;
+			$ety.szExeFile[0] = 0;
 			return;
 		}
 
-		$entry.dwSize = sizeof(PROCESSENTRY32W);
+		$ety.dwSize = sizeof(PROCESSENTRY32W);
 
-		if (!Process32FirstW($snapshot, &$entry)) {
+		if (!Process32FirstW($snap, &$ety)) {
 			$reset();
 			return;
 		}
 		do {
-			if (!$name.size() || $entry.szExeFile == $name) {
-				if ($entry.th32ProcessID) {
-					return;
-				}
+			if (!$ety.th32ProcessID) {
+				continue;
 			}
-		} while (Process32NextW($snapshot, &$entry));
+			if ((!$id && !$name.size()) || $ety.th32ProcessID == $id ||
+				rua::to_lowers($ety.szExeFile) == $name) {
+				return;
+			}
+		} while (Process32NextW($snap, &$ety));
 		$reset();
 	}
 
 	void $reset() {
-		CloseHandle($snapshot);
-		$snapshot = INVALID_HANDLE_VALUE;
+		CloseHandle($snap);
+		$snap = INVALID_HANDLE_VALUE;
+		$ety.th32ProcessID = 0;
+		$ety.th32ParentProcessID = 0;
+		$ety.szExeFile[0] = 0;
 	}
 
+	friend process_finder find_process(pid_t);
 	friend process_finder find_process(string_view);
 };
 
-inline process_finder find_process(string_view name) {
-	return process_finder(name);
+inline process_finder find_process(pid_t id) {
+	return process_finder(id, "");
 }
 
-inline process_finder found_process(string_view name, duration interval) {
+inline process_finder found_process(pid_t id, duration interval = 100) {
+	process_finder pf;
+	for (;;) {
+		pf = find_process(id);
+		if (pf) {
+			break;
+		}
+		sleep(interval);
+	}
+	return pf;
+}
+
+inline process_finder find_process(string_view name) {
+	return process_finder(0, name);
+}
+
+inline process_finder found_process(string_view name, duration interval = 100) {
 	process_finder pf;
 	for (;;) {
 		pf = find_process(name);
@@ -1420,6 +1474,22 @@ inline process_finder found_process(string_view name, duration interval) {
 		sleep(interval);
 	}
 	return pf;
+}
+
+inline std::string process_name(pid_t id) {
+	process proc(id);
+	if (proc) {
+		return proc.name();
+	}
+	return find_process(id).name();
+}
+
+inline file_path process_path(pid_t id) {
+	process proc(id);
+	if (proc) {
+		return proc.path();
+	}
+	return find_process(id).name();
 }
 
 } // namespace _find_process
