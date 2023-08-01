@@ -25,7 +25,7 @@ public:
 
 	chan &operator=(const chan &) = delete;
 
-	bool send(T val) {
+	bool send(expected<T> val) {
 		optional<promise<T> *> recv_wtr;
 		if ($vals.emplace_front_if(
 				[this, &recv_wtr]() -> bool {
@@ -37,26 +37,21 @@ public:
 		}
 		assert(recv_wtr);
 		assert(*recv_wtr);
-		auto refunded = (*recv_wtr)->fulfill(std::move(val));
-		if (refunded) {
-			send(std::move(refunded).value());
-		}
+		(*recv_wtr)->fulfill(
+			std::move(val), [this](expected<T> val) { send(std::move(val)); });
 		return true;
 	}
 
-	optional<T> try_recv() {
-#ifdef NDEBUG
-		return $vals.pop_back();
-#else
-		return $vals.pop_back_if_non_empty_and([this]() -> bool {
-			assert(!$recv_wtrs);
-			return !$recv_wtrs;
-		});
-#endif
-	}
-
 	future<T> recv() {
-		auto val_opt = try_recv();
+		auto val_opt =
+#ifdef NDEBUG
+			$vals.pop_back();
+#else
+			$vals.pop_back_if_non_empty_and([this]() -> bool {
+				assert(!$recv_wtrs);
+				return !$recv_wtrs;
+			});
+#endif
 		if (val_opt) {
 			return *std::move(val_opt);
 		}
@@ -69,13 +64,13 @@ public:
 			return future<T>(*prm);
 		}
 
-		prm->unfulfill_and_harvest();
+		prm->unuse();
 
 		return *std::move(val_opt);
 	}
 
 private:
-	lockfree_list<T> $vals;
+	lockfree_list<expected<T>> $vals;
 	lockfree_list<promise<T> *> $recv_wtrs;
 };
 

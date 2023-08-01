@@ -50,18 +50,18 @@ public:
 
 	//////////////////// fulfill ////////////////////
 
-	expected<T> fulfill(
-		expected<T> value = expected_or<T>(err_promise_unfulfilled)) noexcept {
+	void fulfill(
+		expected<T> value = expected_or<T>(err_promise_unfulfilled),
+		std::function<void(expected<T>)> on_unharvested = nullptr) noexcept {
 
 		assert(std::is_void<T>::value || !$val);
 
 		$val = std::move(value);
+		$on_unharvested = std::move(on_unharvested);
 
 		auto old_state = $state.exchange(promise_state::fulfilled);
 
 		assert(old_state != promise_state::fulfilled);
-
-		expected<T> refunded;
 
 		switch (old_state) {
 
@@ -69,7 +69,9 @@ public:
 			assert(
 				$state.exchange(promise_state::destroying) ==
 				promise_state::fulfilled);
-			refunded = std::move($val);
+			if ($on_unharvested && $val) {
+				$on_unharvested(std::move($val));
+			}
 			on_destroy();
 			break;
 
@@ -77,15 +79,9 @@ public:
 			assert($notify);
 			auto notify = std::move($notify);
 			notify();
-			RUA_FALLTHROUGH;
-		}
-
-		default:
-			refunded = err_promise_fulfilled;
 			break;
 		}
-
-		return refunded;
+		}
 	}
 
 	void unfulfill() noexcept {
@@ -137,11 +133,28 @@ public:
 		return r;
 	}
 
+	void unharvest() noexcept {
+		auto old_state = $state.exchange(promise_state::harvested);
+
+		assert(old_state != promise_state::harvested);
+
+		if (old_state != promise_state::fulfilled) {
+			return;
+		}
+		assert(
+			$state.exchange(promise_state::destroying) ==
+			promise_state::harvested);
+		if ($on_unharvested && $val) {
+			$on_unharvested(std::move($val));
+		}
+		on_destroy();
+	}
+
 	//////////////////// unused ////////////////////
 
-	void unfulfill_and_harvest() noexcept {
+	void unuse() noexcept {
 		unfulfill();
-		await_resume();
+		unharvest();
 	}
 
 protected:
@@ -151,6 +164,7 @@ private:
 	std::atomic<promise_state> $state;
 	expected<T> $val;
 	std::function<void()> $notify;
+	std::function<void(expected<T>)> $on_unharvested;
 };
 
 template <typename T, typename Extend>

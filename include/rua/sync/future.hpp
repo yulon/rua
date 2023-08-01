@@ -145,7 +145,7 @@ public:
 
 	void reset() noexcept {
 		if ($v.template type_is<promise<PromiseValue> *>()) {
-			$v.template as<promise<PromiseValue> *>()->await_resume();
+			$v.template as<promise<PromiseValue> *>()->unharvest();
 		}
 		$v.reset();
 	}
