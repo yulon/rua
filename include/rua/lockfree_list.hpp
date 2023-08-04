@@ -220,6 +220,20 @@ public:
 		return r;
 	}
 
+	template <typename OnEmpty>
+	optional<T> pop_back_or(OnEmpty &&on_empty) {
+		optional<T> r;
+		auto li = lock();
+		if (li) {
+			r.emplace(li.pop_back());
+			unlock_and_prepend(std::move(li));
+			return r;
+		}
+		std::forward<OnEmpty>(on_empty)();
+		unlock();
+		return r;
+	}
+
 	template <typename Cond>
 	optional<T> pop_back_if_non_empty_and(Cond &&cond) {
 		optional<T> r;
