@@ -39,8 +39,8 @@ public:
 		return true;
 	}
 
-	future<T> recv() {
-		auto val_opt =
+	optional<T> try_recv() {
+		return
 #ifdef NDEBUG
 			$buf.pop_back();
 #else
@@ -49,6 +49,10 @@ public:
 				return !$recv_wtrs;
 			});
 #endif
+	}
+
+	future<T> recv() {
+		auto val_opt = try_recv();
 		if (val_opt) {
 			return *std::move(val_opt);
 		}
