@@ -14,27 +14,19 @@ namespace rua {
 
 class mutex {
 public:
-	constexpr mutex() : _c(0), $wtrs() {}
+	constexpr mutex() : $c(0), $wtrs() {}
 
 	mutex(const mutex &) = delete;
 
 	mutex &operator=(const mutex &) = delete;
 
 	bool try_lock() {
-		for (;;) {
-			auto c = ++_c;
-			if (c == 1) {
-				return true;
-			}
-			c = --_c;
-			if (c) {
-				return false;
-			}
-		}
+		size_t old_val = 0;
+		return $c.compare_exchange_strong(old_val, 1);
 	}
 
 	future<> lock() {
-		auto c = ++_c;
+		auto c = ++$c;
 		if (c == 1) {
 			return future<>();
 		}
@@ -42,7 +34,7 @@ public:
 		auto prm = new newable_promise<>;
 
 		auto is_emplaced = $wtrs.emplace_front_if_non_empty_or(
-			[this]() -> bool { return _c.load() == 1; }, prm);
+			[this]() -> bool { return $c.load() > 1; }, prm);
 		if (!is_emplaced) {
 			return future<>(*prm);
 		}
@@ -53,7 +45,9 @@ public:
 	}
 
 	void unlock() {
-		auto wtr_opt = $wtrs.pop_back_if([this]() -> bool { return --_c > 0; });
+		assert($c.load());
+
+		auto wtr_opt = $wtrs.pop_back_if([this]() -> bool { return --$c > 0; });
 		if (!wtr_opt) {
 			return;
 		}
@@ -61,7 +55,7 @@ public:
 	}
 
 private:
-	std::atomic<uintptr_t> _c;
+	std::atomic<uintptr_t> $c;
 	lockfree_list<promise<> *> $wtrs;
 };
 
