@@ -51,7 +51,7 @@ public:
 	//////////////////// fulfill ////////////////////
 
 	void fulfill(
-		expected<T> value = expected_or<T>(err_promise_unfulfilled),
+		expected<T> value = meet_expected,
 		std::function<void(expected<T>)> on_unharvested = nullptr) noexcept {
 
 		assert(std::is_void<T>::value || !$val);

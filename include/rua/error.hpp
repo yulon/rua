@@ -206,6 +206,10 @@ inline error_i current_exception_error() {
 
 RUA_CVAR strv_error unexpected("unexpected");
 
+struct meet_expected_t {};
+
+RUA_CVAL meet_expected_t meet_expected;
+
 template <typename T = void>
 class expected : public enable_value_operators<expected<T>, T> {
 public:
@@ -219,6 +223,8 @@ public:
 	RUA_TMPL_FWD_CTOR_IL(U, Args, T)
 	expected(std::initializer_list<U> il, Args &&...args) :
 		$v(in_place_type_t<T>{}, il, std::forward<Args>(args)...) {}
+
+	expected(meet_expected_t) : $v(in_place_type_t<T>{}) {}
 
 	expected(const expected &src) : $v(src.$v) {}
 
@@ -343,6 +349,8 @@ public:
 		assert(r);
 	}
 
+	expected(meet_expected_t) : $err() {}
+
 	expected(const expected &src) : $err(src.$err) {}
 
 	expected(expected &&src) : $err(std::move(src.$err)) {}
@@ -388,18 +396,6 @@ public:
 private:
 	error_i $err;
 };
-
-////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-inline expected<T> expected_or(error_i unexpected_err) {
-	return unexpected_err;
-}
-
-template <>
-inline expected<void> expected_or(error_i) {
-	return {};
-}
 
 ////////////////////////////////////////////////////////////////////////////
 
