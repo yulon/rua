@@ -3,7 +3,7 @@
 
 #include "await.hpp"
 
-#include "../optional.hpp"
+#include "../error.hpp"
 #include "../thread/dozer.hpp"
 #include "../time/tick.hpp"
 
@@ -39,8 +39,12 @@ inline Result operator*(Awaitable &&awaitable) {
 
 } // namespace await_operators
 
+RUA_CVAR strv_error err_waiting_timeout("waiting timeout");
+
 template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
-inline enable_if_t<!std::is_void<Result>::value, optional<Result>>
+inline enable_if_t<
+	!std::is_void<Result>::value,
+	expected<unwarp_expected_t<Result>>>
 try_wait(Awaitable &&awaitable, duration timeout = 0) {
 	if (timeout == duration_max()) {
 		return wait(std::forward<Awaitable>(awaitable));
@@ -51,7 +55,7 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 		return awaiter.await_resume();
 	}
 	if (!timeout) {
-		return nullopt;
+		return err_waiting_timeout;
 	}
 
 	dozer dzr;
@@ -74,24 +78,24 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 			break;
 		}
 	}
-	return nullopt;
+	return err_waiting_timeout;
 }
 
 template <typename Awaitable, typename Result = await_result_t<Awaitable &&>>
-inline enable_if_t<std::is_void<Result>::value, bool>
+inline enable_if_t<std::is_void<Result>::value, expected<Result>>
 try_wait(Awaitable &&awaitable, duration timeout = 0) {
 	if (timeout == duration_max()) {
 		wait(std::forward<Awaitable>(awaitable));
-		return true;
+		return meet_expected;
 	}
 
 	auto &&awaiter = make_awaiter(std::forward<Awaitable>(awaitable));
 	if (awaiter.await_ready()) {
 		awaiter.await_resume();
-		return true;
+		return meet_expected;
 	}
 	if (!timeout) {
-		return false;
+		return err_waiting_timeout;
 	}
 
 	dozer dzr;
@@ -102,7 +106,7 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 			wkr_sp->wake();
 		})) {
 		awaiter.await_resume();
-		return true;
+		return meet_expected;
 	}
 
 	auto end_ti = tick() + timeout;
@@ -110,13 +114,13 @@ try_wait(Awaitable &&awaitable, duration timeout = 0) {
 		auto ok = dzr.doze(timeout);
 		if (ok) {
 			awaiter.await_resume();
-			return true;
+			return meet_expected;
 		}
 		if (!ok || assign(timeout, end_ti - tick()) <= 0) {
 			break;
 		}
 	}
-	return false;
+	return err_waiting_timeout;
 }
 
 } // namespace rua
