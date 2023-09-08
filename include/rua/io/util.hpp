@@ -265,7 +265,7 @@ public:
 	read_group(std::initializer_list<stream_i> r_li, size_t buf_sz = 1024) :
 		read_group(buf_sz) {
 		for (auto &r : r_li) {
-			add(std::move(r));
+			add(r);
 		}
 	}
 

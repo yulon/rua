@@ -81,6 +81,9 @@ public:
 			notify();
 			break;
 		}
+
+		default:
+			break;
 		}
 	}
 
