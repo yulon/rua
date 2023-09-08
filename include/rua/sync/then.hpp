@@ -16,7 +16,7 @@ inline enable_if_t<!is_awaitable<R>::value, future<R>>
 _then(Awaitable &&awaitable, Callback &&callback) {
 	auto aw = wrap_awaiter(std::forward<Awaitable>(awaitable));
 	if (aw->await_ready()) {
-		return expected_invoke(std::forward<Callback>(callback), [&]() {
+		return try_invoke(std::forward<Callback>(callback), [&]() {
 			return aw->await_resume();
 		});
 	}
@@ -30,14 +30,14 @@ _then(Awaitable &&awaitable, Callback &&callback) {
 		ctx_t{std::move(aw), std::forward<Callback>(callback)});
 
 	if (await_suspend(*prm->extend().aw, [prm]() {
-			prm->fulfill(expected_invoke(prm->extend().cb, [prm]() {
+			prm->fulfill(try_invoke(prm->extend().cb, [prm]() {
 				return prm->extend().aw->await_resume();
 			}));
 		})) {
 		return future<R>(*prm);
 	}
 
-	auto r_exp = expected_invoke(
+	auto r_exp = try_invoke(
 		prm->extend().cb, [prm]() { return prm->extend().aw->await_resume(); });
 
 	prm->unuse();
@@ -48,7 +48,7 @@ _then(Awaitable &&awaitable, Callback &&callback) {
 template <
 	typename Awaitable,
 	typename Callback,
-	typename ExpR = decltype(expected_invoke(
+	typename ExpR = decltype(try_invoke(
 		std::declval<Callback &&>(),
 		std::declval<
 			warp_expected_t<decay_t<await_result_t<Awaitable &&>>>>())),
@@ -69,7 +69,7 @@ inline enable_if_t<is_awaitable<R>::value, future<R2>>
 _then(Awaitable &&awaitable, Callback &&callback) {
 	auto aw = wrap_awaiter(std::forward<Awaitable>(awaitable));
 	if (aw->await_ready()) {
-		auto r_exp = expected_invoke(std::forward<Callback>(callback), [&]() {
+		auto r_exp = try_invoke(std::forward<Callback>(callback), [&]() {
 			return aw->await_resume();
 		});
 
@@ -91,7 +91,7 @@ _then(Awaitable &&awaitable, Callback &&callback) {
 		ctx_t{std::move(aw), std::forward<Callback>(callback)});
 
 	if (await_suspend(*prm->extend().aw, [prm]() {
-			auto r_exp = expected_invoke(prm->extend().cb, [prm]() {
+			auto r_exp = try_invoke(prm->extend().cb, [prm]() {
 				return prm->extend().aw->await_resume();
 			});
 			if (!r_exp) {
@@ -105,7 +105,7 @@ _then(Awaitable &&awaitable, Callback &&callback) {
 		return future<R2>(*prm);
 	}
 
-	auto r_exp = expected_invoke(
+	auto r_exp = try_invoke(
 		prm->extend().cb, [prm]() { return prm->extend().aw->await_resume(); });
 
 	prm->unuse();

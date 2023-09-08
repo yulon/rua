@@ -457,7 +457,7 @@ template <
 	typename RawR = decay_t<invoke_result_t<F &&, expected<T>>>,
 	typename ExpR = warp_expected_t<RawR>>
 inline enable_if_t<!std::is_void<RawR>::value, ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -476,7 +476,7 @@ template <
 	typename RawR = decay_t<invoke_result_t<F &&, expected<T>>>,
 	typename ExpR = warp_expected_t<RawR>>
 inline enable_if_t<std::is_void<RawR>::value, ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -500,7 +500,7 @@ inline enable_if_t<
 	!std::is_void<RawR>::value && !std::is_void<T>::value &&
 		!is_invocable<F &&, expected<T>>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -522,7 +522,7 @@ inline enable_if_t<
 	std::is_void<RawR>::value && !std::is_void<T>::value &&
 		!is_invocable<F &&, expected<T>>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -545,7 +545,7 @@ inline enable_if_t<
 	!std::is_void<RawR>::value && !is_invocable<F &&, expected<T>>::value &&
 		(std::is_void<T>::value || !is_invocable<F &&, expected<void>>::value),
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -569,7 +569,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		!is_invocable<F &&, T>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -595,7 +595,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		!is_invocable<F &&, error_i>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
@@ -623,7 +623,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		!is_invocable<F &&, error_i>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
@@ -651,7 +651,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		is_invocable<F &&, error_i>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -678,7 +678,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		is_invocable<F &&, error_i>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
 #endif
@@ -708,7 +708,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		!is_invocable<F &&, error_i>::value && !is_invocable<F &&, T>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
@@ -736,7 +736,7 @@ inline enable_if_t<
 		 !is_invocable<F &&, expected<void>>::value) &&
 		!is_invocable<F &&, error_i>::value && !is_invocable<F &&, T>::value,
 	ExpR>
-expected_invoke(F &&f, expected<T> exp) {
+try_invoke(F &&f, expected<T> exp) {
 	if (!exp) {
 		return exp.error();
 	}
@@ -760,9 +760,9 @@ template <
 	typename Exp = enable_if_t<
 		!is_expected<Val>::value && !is_invocable<T &&>::value,
 		warp_expected_t<Val>>>
-inline decltype(expected_invoke(std::declval<F &&>(), std::declval<Exp>()))
-expected_invoke(F &&f, T &&arg) {
-	return expected_invoke(std::forward<F>(f), Exp(std::forward<T>(arg)));
+inline decltype(try_invoke(std::declval<F &&>(), std::declval<Exp>()))
+try_invoke(F &&f, T &&arg) {
+	return try_invoke(std::forward<F>(f), Exp(std::forward<T>(arg)));
 }
 
 // INVOKE(F, GetVal() -> T => expected<T>) -> R => expected<R>
@@ -772,8 +772,8 @@ template <
 	typename... Args,
 	typename Exp =
 		warp_expected_t<decay_t<invoke_result_t<GetVal &&, Args &&...>>>>
-inline decltype(expected_invoke(std::declval<F &&>(), std::declval<Exp>()))
-expected_invoke(F &&f, GetVal &&get_val, Args &&...args) {
+inline decltype(try_invoke(std::declval<F &&>(), std::declval<Exp>()))
+try_invoke(F &&f, GetVal &&get_val, Args &&...args) {
 	Exp exp;
 #ifdef RUA_HAS_EXCEPTIONS
 	try {
@@ -785,15 +785,15 @@ expected_invoke(F &&f, GetVal &&get_val, Args &&...args) {
 		exp = current_exception_error(e);
 	}
 #endif
-	return expected_invoke(std::forward<F>(f), std::move(exp));
+	return try_invoke(std::forward<F>(f), std::move(exp));
 }
 
 // INVOKE(F, void => expected<void>) -> R => expected<R>
 template <typename F>
-inline decltype(expected_invoke(
+inline decltype(try_invoke(
 	std::declval<F &&>(), std::declval<expected<void>>()))
-expected_invoke(F &&f) {
-	return expected_invoke(std::forward<F>(f), expected<void>());
+try_invoke(F &&f) {
+	return try_invoke(std::forward<F>(f), expected<void>());
 }
 
 } // namespace rua
