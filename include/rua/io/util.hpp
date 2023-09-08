@@ -35,7 +35,7 @@ public:
 	virtual ~buffered_reader() = default;
 
 	virtual operator bool() const {
-		return $r;
+		return !!$r;
 	}
 
 	virtual ssize_t read(bytes_ref buf) {
@@ -204,7 +204,7 @@ public:
 	constexpr buffered_writer() = default;
 
 	buffered_writer(stream_i w, bytes &&w_buf = nullptr) :
-		_w(std::move(w)), $w_buf(std::move(w_buf)) {}
+		$w(std::move(w)), $w_buf(std::move(w_buf)) {}
 
 	buffered_writer(stream_i w, size_t buf_sz) :
 		buffered_writer(std::move(w), bytes(buf_sz)) {}
@@ -212,12 +212,12 @@ public:
 	virtual ~buffered_writer() = default;
 
 	virtual operator bool() const {
-		return _w;
+		return !!$w;
 	}
 
 	virtual ssize_t write(bytes_view data) {
 		if (!$w_buf) {
-			return _w->write(data);
+			return $w->write(data);
 		}
 		auto dsz = to_signed(data.size());
 		ssize_t tsz = 0;
@@ -244,7 +244,7 @@ public:
 	}
 
 private:
-	stream_i _w;
+	stream_i $w;
 	bytes $w_buf;
 	bytes_ref $w_cache;
 

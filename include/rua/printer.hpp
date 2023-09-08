@@ -22,7 +22,7 @@ public:
 	}
 
 	operator bool() const {
-		return $w;
+		return !!$w;
 	}
 
 	template <typename... Args>

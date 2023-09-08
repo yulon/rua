@@ -136,7 +136,7 @@ public:
 		reset();
 	}
 
-	operator bool() const {
+	explicit operator bool() const {
 		return is_valid($raw);
 	}
 

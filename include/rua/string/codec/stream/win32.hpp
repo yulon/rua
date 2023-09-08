@@ -24,7 +24,7 @@ public:
 	}
 
 	virtual operator bool() const {
-		return $lr;
+		return !!$lr;
 	}
 
 	virtual ssize_t read(bytes_ref p) {
@@ -76,7 +76,7 @@ public:
 	}
 
 	explicit operator bool() const {
-		return $lw;
+		return !!$lw;
 	}
 
 	virtual ssize_t write(bytes_view p) {
