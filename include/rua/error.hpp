@@ -342,10 +342,8 @@ public:
 		if (v.template type_is<void>()) {
 			return;
 		}
-		auto r = std::forward<Variant>(v).visit([this](error_i err) {
-			assert(err);
-			$err = std::move(err);
-		});
+		auto r = std::forward<Variant>(v).visit(
+			[this](error_i err) { $err = std::move(err); });
 		assert(r);
 	}
 
