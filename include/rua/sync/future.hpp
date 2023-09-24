@@ -119,12 +119,18 @@ public:
 
 	RUA_OVERLOAD_ASSIGNMENT(future);
 
+	explicit operator bool() const noexcept {
+		return $v && (!$v.template type_is<error_i>() ||
+					  $v.template as<error_i>() != err_unpromised);
+	}
+
 	bool await_ready() const noexcept {
-		return !$v.template type_is<promise<PromiseValue> *>() ||
+		return !$v || !$v.template type_is<promise<PromiseValue> *>() ||
 			   $v.template as<promise<PromiseValue> *>()->await_ready();
 	}
 
 	bool await_suspend(std::function<void()> notify) noexcept {
+		assert($v);
 		assert($v.template type_is<promise<PromiseValue> *>());
 
 		return $v.template as<promise<PromiseValue> *>()->await_suspend(
@@ -133,7 +139,7 @@ public:
 
 	expected<T> await_resume() noexcept {
 		if (!$v) {
-			return unexpected;
+			return err_unpromised;
 		}
 		if ($v.template type_is<promise<PromiseValue> *>()) {
 			auto prm = $v.template as<promise<PromiseValue> *>();
@@ -144,6 +150,9 @@ public:
 	}
 
 	void reset() noexcept {
+		if (!$v) {
+			return;
+		}
 		if ($v.template type_is<promise<PromiseValue> *>()) {
 			$v.template as<promise<PromiseValue> *>()->unharvest();
 		}
