@@ -20,18 +20,19 @@ public:
 		if ($executed.load()) {
 			return {};
 		}
-		if ($mtx.try_lock()) {
+		auto ul = $mtx.try_lock();
+		if (ul) {
 			if ($executed.load()) {
 				return {};
 			}
 			std::forward<Callable>(callable)(std::forward<Args>(args)...);
 			$executed.store(true);
-			$mtx.unlock();
+			ul();
 			return {};
 		}
-		return $mtx.lock() >> [this]() {
+		return $mtx.lock() >> [this](mutex::unlocker ul) {
 			assert($executed.load());
-			$mtx.unlock();
+			ul();
 		};
 	}
 

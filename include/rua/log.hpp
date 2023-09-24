@@ -86,7 +86,7 @@ inline void log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	auto lg = *make_lock_guard(log_mutex());
+	auto ul = *log_mutex().lock();
 	p.println(std::forward<Args>(args)...);
 }
 
@@ -96,11 +96,11 @@ inline void err_log(Args &&...args) {
 	if (!p) {
 		return;
 	}
-	auto lg = *make_lock_guard(log_mutex());
+	auto ul = *log_mutex().lock();
 	p.println(std::forward<Args>(args)...);
 }
 
-inline chan<std::function<void()>> &log_chan() {
+inline chan<std::function<void()>> &_log_ch() {
 	static chan<std::function<void()>> ch;
 	static thread log_td([]() {
 		for (;;) {
@@ -117,8 +117,8 @@ inline void post_log(Args &&...args) {
 		return;
 	}
 	auto s = make_move_only(join({to_temp_string(args)...}, " "));
-	log_chan().send([&p, s]() mutable {
-		auto lg = *make_lock_guard(log_mutex());
+	_log_ch().send([&p, s]() mutable {
+		auto ul = *log_mutex().lock();
 		p.println(std::move(s.value()));
 	});
 }
@@ -130,8 +130,8 @@ inline void post_err_log(Args &&...args) {
 		return;
 	}
 	auto s = make_move_only(join({to_temp_string(args)...}, " "));
-	log_chan().send([&p, s]() mutable {
-		auto lg = *make_lock_guard(log_mutex());
+	_log_ch().send([&p, s]() mutable {
+		auto ul = *log_mutex().lock();
 		p.println(std::move(s.value()));
 	});
 }
