@@ -28,12 +28,12 @@ public:
 
 		unlocker(unlocker &&src) : $mtx(exchange(src.$mtx, nullptr)) {}
 
-		unlocker &operator=(unlocker &&src) {
+		unlocker &operator=(unlocker &&src) noexcept {
 			$mtx = exchange(src.$mtx, nullptr);
 			return *this;
 		}
 
-		explicit operator bool() const {
+		explicit operator bool() const noexcept {
 			return $mtx;
 		}
 
@@ -68,7 +68,7 @@ public:
 
 	mutex &operator=(const mutex &) = delete;
 
-	unlocker try_lock() {
+	unlocker try_lock() noexcept {
 		size_t old_val = 0;
 		return $c.compare_exchange_strong(old_val, 1) ? unlocker(*this)
 													  : unlocker();
