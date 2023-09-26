@@ -160,7 +160,7 @@ inline error_i make_unthrow_exception_error(Exception &&e) {
 	return exception_error(
 		std::make_exception_ptr(std::forward<Exception>(e)), std::move(what));
 #else
-	return err_disabled_exceptions
+	return err_disabled_exceptions;
 #endif
 }
 
@@ -172,7 +172,7 @@ inline error_i current_exception_error(std::string what) {
 	}
 	return exception_error(std::move(ep), std::move(what));
 #else
-	return err_disabled_exceptions
+	return err_disabled_exceptions;
 #endif
 }
 
@@ -181,7 +181,7 @@ inline error_i current_exception_error(const std::exception &e) {
 	std::string what(e.what());
 	return current_exception_error(std::move(what));
 #else
-	return err_disabled_exceptions
+	return err_disabled_exceptions;
 #endif
 }
 
@@ -198,7 +198,7 @@ inline error_i current_exception_error() {
 	}
 	return err_uncatched_exception;
 #else
-	return err_disabled_exceptions
+	return err_disabled_exceptions;
 #endif
 }
 
