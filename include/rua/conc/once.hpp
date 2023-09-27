@@ -1,5 +1,5 @@
-#ifndef _rua_sync_once_hpp
-#define _rua_sync_once_hpp
+#ifndef _rua_conc_once_hpp
+#define _rua_conc_once_hpp
 
 #include "mutex.hpp"
 #include "then.hpp"

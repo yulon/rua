@@ -7,10 +7,10 @@
 #include "../file/posix.hpp"
 #include "../stdio/posix.hpp"
 #include "../string.hpp"
-#include "../sync/await.hpp"
-#include "../sync/future.hpp"
-#include "../sync/then.hpp"
-#include "../sync/wait.hpp"
+#include "../conc/await.hpp"
+#include "../conc/future.hpp"
+#include "../conc/then.hpp"
+#include "../conc/wait.hpp"
 #include "../util.hpp"
 
 #include <limits.h>

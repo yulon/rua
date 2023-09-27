@@ -9,6 +9,6 @@
 #include "thread/var.hpp"
 #include "thread/wait.hpp"
 
-#include "sync.hpp"
+#include "conc.hpp"
 
 #endif

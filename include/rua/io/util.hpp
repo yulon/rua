@@ -4,7 +4,7 @@
 #include "./stream.hpp"
 
 #include "../string/conv.hpp"
-#include "../sync/chan.hpp"
+#include "../conc/chan.hpp"
 #include "../thread.hpp"
 #include "../util.hpp"
 

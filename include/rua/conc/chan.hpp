@@ -1,5 +1,5 @@
-#ifndef _rua_sync_chan_hpp
-#define _rua_sync_chan_hpp
+#ifndef _rua_conc_chan_hpp
+#define _rua_conc_chan_hpp
 
 #include "future.hpp"
 #include "promise.hpp"

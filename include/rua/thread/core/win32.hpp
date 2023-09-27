@@ -5,8 +5,8 @@
 
 #include "../../dylib/win32.hpp"
 #include "../../dype/any_word.hpp"
-#include "../../sync/future.hpp"
-#include "../../sync/then.hpp"
+#include "../../conc/future.hpp"
+#include "../../conc/then.hpp"
 #include "../../sys/info/win32.hpp"
 #include "../../sys/wait/win32.hpp"
 #include "../../util.hpp"

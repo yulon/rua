@@ -10,7 +10,7 @@
 #include "string/conv.hpp"
 #include "string/join.hpp"
 #include "string/view.hpp"
-#include "sync.hpp"
+#include "conc.hpp"
 #include "thread.hpp"
 #include "util.hpp"
 

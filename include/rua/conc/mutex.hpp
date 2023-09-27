@@ -1,5 +1,5 @@
-#ifndef _rua_sync_mutex_hpp
-#define _rua_sync_mutex_hpp
+#ifndef _rua_conc_mutex_hpp
+#define _rua_conc_mutex_hpp
 
 #include "future.hpp"
 #include "promise.hpp"

@@ -1,5 +1,5 @@
-#ifndef _rua_sync_await_hpp
-#define _rua_sync_await_hpp
+#ifndef _rua_conc_await_hpp
+#define _rua_conc_await_hpp
 
 #include "../coroutine.hpp"
 #include "../invocable.hpp"

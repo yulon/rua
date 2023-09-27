@@ -5,11 +5,11 @@
 
 #include "../invocable.hpp"
 #include "../move_only.hpp"
-#include "../sync/chan.hpp"
-#include "../sync/future.hpp"
-#include "../sync/promise.hpp"
-#include "../sync/then.hpp"
-#include "../sync/wait.hpp"
+#include "../conc/chan.hpp"
+#include "../conc/future.hpp"
+#include "../conc/promise.hpp"
+#include "../conc/then.hpp"
+#include "../conc/wait.hpp"
 #include "../util.hpp"
 
 #include <functional>

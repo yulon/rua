@@ -4,8 +4,8 @@
 #include "../id/posix.hpp"
 
 #include "../../dype/any_word.hpp"
-#include "../../sync/await.hpp"
-#include "../../sync/future.hpp"
+#include "../../conc/await.hpp"
+#include "../../conc/future.hpp"
 #include "../../util.hpp"
 
 #include <pthread.h>

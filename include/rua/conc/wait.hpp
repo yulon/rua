@@ -1,5 +1,5 @@
-#ifndef _rua_sync_wait_hpp
-#define _rua_sync_wait_hpp
+#ifndef _rua_conc_wait_hpp
+#define _rua_conc_wait_hpp
 
 #include "await.hpp"
 
