@@ -1180,20 +1180,6 @@ bytes_util<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
 		const_bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
-class writeable_bytes : public bytes_ref {
-public:
-	constexpr writeable_bytes(std::nullptr_t = nullptr) : bytes_ref(), $b() {}
-
-	writeable_bytes(bytes_ref br) : bytes_ref(br), $b() {}
-
-	writeable_bytes(bytes &&b) : bytes_ref(), $b(std::move(b)) {
-		*static_cast<bytes_ref *>(this) = $b;
-	}
-
-private:
-	bytes $b;
-};
-
 template <typename Derived, size_t Size = size_of<Derived>::value>
 class enable_bytes_accessor
 	: public bytes_util<enable_bytes_accessor<Derived, Size>> {

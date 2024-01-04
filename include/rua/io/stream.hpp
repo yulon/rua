@@ -106,7 +106,7 @@ public:
 
 		auto w_cac = $w_cac();
 		if (!w_cac.size()) {
-			return {};
+			return meet_expected;
 		}
 
 		return unbuf_async_write(w_cac) >> [=](size_t wn) mutable -> future<> {
@@ -119,6 +119,9 @@ public:
 			if ($->$w_cac_start == $->$w_cac_end) {
 				$->$w_cac_start = 0;
 				$->$w_cac_end = 0;
+				if ($->$w_buf.size() > 4096) {
+					$->$w_buf.resize(4096);
+				}
 				return meet_expected;
 			}
 
@@ -131,19 +134,29 @@ public:
 			return err_stream_was_closed;
 		}
 
+		assert($w_cac_start == 0);
+		assert($w_cac_end <= $w_buf.size());
+
 		auto $ = self();
 
 		if (!$w_buf) {
 			$w_buf.reset(4096);
 		}
 
+		auto w_buf_tail_n = $w_buf.size() - $w_cac_end;
+		auto data_n = data.size();
+		auto no_flush = w_buf_tail_n > data_n;
+
+		if (data_n > w_buf_tail_n) {
+			$w_buf.resize((($w_cac_end + data_n - 1) / 1024 + 1) * 1024);
+			assert($w_buf.size() > 4096);
+		}
+
 		auto cp_n = $w_buf($w_cac_end).copy(data);
+		assert(cp_n == data_n);
 		$w_cac_end += cp_n;
 
-		assert($w_cac_start == 0);
-		assert($w_cac_end <= $w_buf.size());
-		if ($w_cac_end < $w_buf.size()) {
-			assert(cp_n == data.size());
+		if (no_flush) {
 			return cp_n;
 		}
 
@@ -151,12 +164,7 @@ public:
 			assert($->$w_cac_start == 0);
 			assert($->$w_cac_end == 0);
 
-			if (cp_n == data.size()) {
-				return cp_n;
-			}
-
-			return $->write(data(cp_n)) >>
-					   [=](size_t wn) -> future<size_t> { return cp_n + wn; };
+			return data_n;
 		};
 	}
 

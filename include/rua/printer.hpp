@@ -7,6 +7,11 @@
 
 namespace rua {
 
+template <typename... Args>
+inline std::string sprint(Args &&...args) {
+	return join({to_temp_string(args)...}, ' ');
+}
+
 class printer {
 public:
 	constexpr printer(std::nullptr_t = nullptr) : $w(nullptr), $eol(eol::lf) {}
@@ -26,12 +31,12 @@ public:
 	}
 
 	template <typename... Args>
-	future<> print(Args &&...args) {
-		return $w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
+	future<size_t> print(Args &&...args) {
+		return $w->write(as_bytes(sprint(std::forward<Args>(args)...)));
 	}
 
 	template <typename... Args>
-	future<> println(Args &&...args) {
+	future<size_t> println(Args &&...args) {
 		return print(std::forward<Args>(args)..., $eol);
 	}
 

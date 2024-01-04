@@ -80,23 +80,31 @@ inline mutex &log_mutex() {
 }
 
 template <typename... Args>
-inline void log(Args &&...args) {
-	auto &p = log_printer();
-	if (!p) {
-		return;
+inline future<> log(Args &&...args) {
+	if (!sout()) {
+		return future<>();
 	}
-	auto ul = *log_mutex().lock();
-	*p.println(std::forward<Args>(args)...);
+	auto s = make_move_only(sprint(std::forward<Args>(args)..., eol::sys));
+	return log_mutex().lock() >> [s]() {
+		return sout().write_all(as_bytes(*s)) >> [](expected<> exp) {
+			log_mutex().unlock();
+			return exp;
+		};
+	};
 }
 
 template <typename... Args>
-inline void err_log(Args &&...args) {
-	auto &p = err_log_printer();
-	if (!p) {
-		return;
+inline future<> err_log(Args &&...args) {
+	if (!serr()) {
+		return future<>();
 	}
-	auto ul = *log_mutex().lock();
-	*p.println(std::forward<Args>(args)...);
+	auto s = make_move_only(sprint(std::forward<Args>(args)..., eol::sys));
+	return log_mutex().lock() >> [s]() {
+		return serr().write_all(as_bytes(*s)) >> [](expected<> exp) {
+			log_mutex().unlock();
+			return exp;
+		};
+	};
 }
 
 } // namespace rua
