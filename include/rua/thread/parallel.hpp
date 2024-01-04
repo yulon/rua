@@ -3,13 +3,14 @@
 
 #include "core.hpp"
 
-#include "../invocable.hpp"
-#include "../move_only.hpp"
 #include "../conc/chan.hpp"
 #include "../conc/future.hpp"
 #include "../conc/promise.hpp"
 #include "../conc/then.hpp"
 #include "../conc/wait.hpp"
+#include "../error.hpp"
+#include "../invocable.hpp"
+#include "../move_only.hpp"
 #include "../util.hpp"
 
 #include <functional>
@@ -33,22 +34,22 @@ inline void _parallel(std::function<void()> f) {
 template <
 	typename Func,
 	typename... Args,
-	typename Result = invoke_result_t<Func, Args &&...>>
+	typename Result = unwarp_expected_t<invoke_result_t<Func, Args &&...>>>
 inline enable_if_t<!std::is_void<Result>::value, future<Result>>
 parallel(Func func, Args &&...args) {
 	auto prm = new newable_promise<Result>;
-	auto f = make_move_only(func);
+	auto f = make_move_only(std::move(func));
 	_parallel([=]() mutable { prm->fulfill(f(args...)); });
 	return *prm;
 }
 
 template <typename Func, typename... Args>
 inline enable_if_t<
-	std::is_void<invoke_result_t<Func, Args &&...>>::value,
+	std::is_void<unwarp_expected_t<invoke_result_t<Func, Args &&...>>>::value,
 	future<>>
 parallel(Func func, Args &&...args) {
 	auto prm = new newable_promise<>;
-	auto f = make_move_only(func);
+	auto f = make_move_only(std::move(func));
 	_parallel([=]() mutable {
 		f(args...);
 		prm->fulfill();

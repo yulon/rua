@@ -216,6 +216,7 @@ public:
 
 	virtual ~newable_promise() = default;
 
+protected:
 	void on_destroy() noexcept override {
 		delete this;
 	}

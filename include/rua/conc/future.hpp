@@ -16,7 +16,7 @@
 
 namespace rua {
 
-RUA_CVAR strv_error err_unpromised("unpromised");
+RUA_CVAR const strv_error err_unpromised("unpromised");
 
 template <typename Promise, typename PromiseValue>
 struct _future_promise_returner {
@@ -74,10 +74,11 @@ public:
 
 	////////////////////////////////////////////////////////////////////////
 
-	constexpr future() : $v(err_unpromised) {}
+	future() : $v(err_unpromised) {}
 
 	RUA_TMPL_FWD_CTOR(Args, RUA_A(expected<T>), future)
-	future(Args &&...args) : $v(std::forward<Args>(args)...) {}
+	future(Args &&...args) :
+		$v(expected<T>(std::forward<Args>(args)...).vrt()) {}
 
 	RUA_TMPL_FWD_CTOR_IL(U, Args, T)
 	future(std::initializer_list<U> il, Args &&...args) :

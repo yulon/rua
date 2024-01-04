@@ -2,96 +2,178 @@
 #define _rua_io_stream_hpp
 
 #include "../binary/bytes.hpp"
+#include "../conc.hpp"
 #include "../dype/interface_ptr.hpp"
+#include "../error.hpp"
+#include "../move_only.hpp"
+#include "../thread.hpp"
 #include "../util.hpp"
+
+#include <cassert>
 
 namespace rua {
 
-class stream_base;
+RUA_CVAR const strv_error err_stream_was_closed("stream was closed");
 
-using stream_i = interface_ptr<stream_base>;
+class stream;
 
-class stream_base {
+using stream_i = interface_ptr<stream>;
+
+class readed_bytes : public bytes_view {
 public:
-	virtual ~stream_base() = default;
+	constexpr readed_bytes() = default;
 
-	virtual operator bool() const {
+	readed_bytes(stream_i strm, bytes_view data) :
+		bytes_view(data), $strm(std::move(strm)) {}
+
+	const stream_i &strm() const & {
+		return $strm;
+	}
+
+	stream_i &&strm() && {
+		return std::move($strm);
+	}
+
+private:
+	stream_i $strm;
+};
+
+class stream {
+public:
+	virtual ~stream() = default;
+
+	virtual explicit operator bool() const {
 		return true;
 	}
 
-	virtual ssize_t read(bytes_ref) {
-		return 0;
+	virtual future<readed_bytes> peek(size_t n = 0) {
+		if (!*this) {
+			return err_stream_was_closed;
+		}
+
+		auto $ = self();
+
+		auto r_cac = $r_cac();
+		if (n) {
+			if (r_cac.size() >= n) {
+				return readed_bytes($, $r_buf($r_cac_start, $r_cac_start + n));
+			}
+			if ($r_buf.size() - $r_cac_start < n) {
+				$r_buf.resize((($r_cac_start + n - 1) / 1024 + 1) * 1024);
+			}
+		} else {
+			if (r_cac.size()) {
+				return readed_bytes($, r_cac);
+			}
+			if (!$r_buf) {
+				$r_buf.reset(4096);
+			}
+		}
+
+		return unbuf_async_read($r_buf($r_cac_end)) >> [=](size_t rn) mutable {
+			$->$r_cac_end += rn;
+			return $->peek(n);
+		};
 	}
 
-	ssize_t read_full(bytes_ref buf) {
-		auto fsz = to_signed(buf.size());
-		ssize_t tsz = 0;
-		while (tsz < fsz) {
-			auto sz = read(buf(tsz));
-			if (sz <= 0) {
-				return tsz ? tsz : sz;
-			}
-			tsz += sz;
+	virtual future<readed_bytes> read(size_t n = 0) {
+		if (!*this) {
+			return err_stream_was_closed;
 		}
-		return tsz;
+
+		return peek(n) >> [this](readed_bytes data) mutable {
+			assert(data.size());
+
+			assert($r_cac_start < $r_cac_end);
+			$r_cac_start += data.size();
+
+			assert($r_cac_end >= $r_cac_start);
+			if ($r_cac_end == $r_cac_start) {
+				$r_cac_start = 0;
+				$r_cac_end = 0;
+			}
+
+			return data;
+		};
 	}
 
-	bytes read_all(bytes &&buf = nullptr, size_t buf_alloc_sz = 1024) {
-		if (!buf) {
-			buf.resize(buf_alloc_sz);
+	virtual future<> flush() {
+		if (!*this) {
+			return err_stream_was_closed;
 		}
-		size_t tsz = 0;
-		for (;;) {
-			auto sz = read(buf(tsz));
-			if (!sz) {
-				break;
-			}
-			tsz += static_cast<size_t>(sz);
-			if (buf.size() - tsz < buf_alloc_sz / 2) {
-				buf.resize(buf.size() + buf_alloc_sz);
-				buf_alloc_sz *= 2;
-			}
+
+		auto $ = self();
+
+		auto w_cac = $w_cac();
+		if (!w_cac.size()) {
+			return {};
 		}
-		buf.resize(tsz);
-		return std::move(buf);
+
+		return unbuf_async_write(w_cac) >> [=](size_t wn) mutable -> future<> {
+			assert(wn);
+
+			assert($->$w_cac_start < $->$w_cac_end);
+			$->$w_cac_start += wn;
+
+			assert($->$w_cac_start <= $->$w_cac_end);
+			if ($->$w_cac_start == $->$w_cac_end) {
+				$->$w_cac_start = 0;
+				$->$w_cac_end = 0;
+				return meet_expected;
+			}
+
+			return $->flush();
+		};
 	}
 
-	virtual ssize_t write(bytes_view) {
-		return 0;
+	virtual future<size_t> write(bytes_view data) {
+		if (!*this) {
+			return err_stream_was_closed;
+		}
+
+		auto $ = self();
+
+		if (!$w_buf) {
+			$w_buf.reset(4096);
+		}
+
+		auto cp_n = $w_buf($w_cac_end).copy(data);
+		$w_cac_end += cp_n;
+
+		assert($w_cac_start == 0);
+		assert($w_cac_end <= $w_buf.size());
+		if ($w_cac_end < $w_buf.size()) {
+			assert(cp_n == data.size());
+			return cp_n;
+		}
+
+		return flush() >> [=]() -> future<size_t> {
+			assert($->$w_cac_start == 0);
+			assert($->$w_cac_end == 0);
+
+			if (cp_n == data.size()) {
+				return cp_n;
+			}
+
+			return $->write(data(cp_n)) >>
+					   [=](size_t wn) -> future<size_t> { return cp_n + wn; };
+		};
 	}
 
-	ssize_t write_all(bytes_view p) {
-		auto asz = to_signed(p.size());
-		ssize_t tsz = 0;
-		while (tsz < asz) {
-			auto sz = write(p(tsz));
-			if (!sz) {
-				return tsz ? tsz : sz;
-			}
-			tsz += sz;
-		}
-		return tsz;
+	future<> write_all(bytes_view data) {
+		auto $ = self();
+		return write(data) >> [=]() { return $->flush(); };
 	}
 
-	bool copy(stream_i r, bytes_ref buf = nullptr) {
-		bytes inner_buf;
-		if (!buf) {
-			inner_buf.reset(1024);
-			buf = inner_buf;
-		}
-		for (;;) {
-			auto sz = r->read(buf);
-			if (sz <= 0) {
-				return true;
-			}
-			if (!write_all(buf(0, sz))) {
-				return false;
-			}
-		}
-		return false;
+	future<> copy(stream_i r) {
+		return meet_expected;
 	}
 
 	virtual int64_t seek(int64_t /* offset */, uchar /* whence */) {
+		if (!*this) {
+			return 0;
+		}
+
 		return 0;
 	}
 
@@ -107,10 +189,58 @@ public:
 		return seek(offset, 2);
 	}
 
-	virtual void close() {}
+	virtual future<> close() {
+		if (!*this) {
+			return err_stream_was_closed;
+		}
+		return flush();
+	}
 
 protected:
-	stream_base() = default;
+	constexpr stream() :
+		$r_buf(),
+		$w_buf(),
+		$r_cac_start(0),
+		$r_cac_end(0),
+		$w_cac_start(0),
+		$w_cac_end(0) {}
+
+	virtual expected<size_t> unbuf_sync_read(bytes_ref) {
+		return err_unimplemented;
+	}
+
+	virtual expected<size_t> unbuf_sync_write(bytes_view) {
+		return err_unimplemented;
+	}
+
+	virtual future<size_t> unbuf_async_read(bytes_ref buf) {
+		auto $ = self();
+		return parallel(
+			[=]() -> rua::expected<size_t> { return $->unbuf_sync_read(buf); });
+	}
+
+	virtual future<size_t> unbuf_async_write(bytes_view data) {
+		auto $ = self();
+		return parallel([=]() -> rua::expected<size_t> {
+			return $->unbuf_sync_write(data);
+		});
+	}
+
+	virtual stream_i self() {
+		return this;
+	}
+
+private:
+	bytes $r_buf, $w_buf;
+	size_t $r_cac_start, $r_cac_end, $w_cac_start, $w_cac_end;
+
+	bytes_view $r_cac() {
+		return $r_buf($r_cac_start, $r_cac_end);
+	}
+
+	bytes_view $w_cac() {
+		return $w_buf($w_cac_start, $w_cac_end);
+	}
 };
 
 } // namespace rua

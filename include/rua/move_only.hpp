@@ -64,7 +64,7 @@ private:
 
 template <typename T>
 move_only<decay_t<T>> make_move_only(T &&val) {
-	return std::move(val);
+	return std::forward<T>(val);
 }
 
 } // namespace rua

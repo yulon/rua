@@ -10,7 +10,7 @@
 
 namespace rua { namespace posix {
 
-class sys_stream : public stream_base {
+class sys_stream : public stream {
 public:
 	using native_handle_t = int;
 
@@ -55,17 +55,17 @@ public:
 		return $fd;
 	}
 
-	virtual operator bool() const {
+	explicit operator bool() const override {
 		return $fd >= 0;
 	}
 
-	virtual ssize_t read(bytes_ref buf) {
+	future<size_t> read(bytes_ref buf) override {
 		assert(*this);
 
 		return $read($fd, buf);
 	}
 
-	virtual ssize_t write(bytes_view data) {
+	future<size_t> write(bytes_view data) override {
 		assert(*this);
 
 		return $write($fd, data);
@@ -75,7 +75,7 @@ public:
 		return $fd >= 0 && $nc;
 	}
 
-	virtual void close() {
+	void close() override {
 		if ($fd < 0) {
 			return;
 		}
@@ -100,12 +100,12 @@ private:
 	int $fd;
 	bool $nc;
 
-	static ssize_t $read(int $fd, bytes_ref p) {
-		return static_cast<ssize_t>(::read($fd, p.data(), p.size()));
+	static size_t $read(int $fd, bytes_ref p) {
+		return static_cast<size_t>(::read($fd, p.data(), p.size()));
 	}
 
-	static ssize_t $write(int $fd, bytes_view p) {
-		return static_cast<ssize_t>(::write($fd, p.data(), p.size()));
+	static size_t $write(int $fd, bytes_view p) {
+		return static_cast<size_t>(::write($fd, p.data(), p.size()));
 	}
 };
 

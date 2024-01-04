@@ -46,9 +46,9 @@ using const_bytes_rfinder = reverse_iterator<const_bytes_finder>;
 using bytes_rfinder = reverse_iterator<bytes_finder>;
 
 template <typename Span>
-class const_bytes_base : private disable_as_to_string {
+class const_bytes_util : private disable_as_to_string {
 public:
-	any_ptr data_generic() const {
+	any_ptr any_data() const {
 		return $this()->data();
 	}
 
@@ -133,7 +133,7 @@ public:
 	rfind(bytes_pattern, size_t start_pos = nullpos) const;
 
 protected:
-	const_bytes_base() = default;
+	const_bytes_util() = default;
 
 private:
 	const Span *$this() const {
@@ -142,7 +142,7 @@ private:
 };
 
 template <typename Span>
-class bytes_base : public const_bytes_base<Span> {
+class bytes_util : public const_bytes_util<Span> {
 public:
 	uchar *begin() {
 		return $this()->data();
@@ -260,7 +260,7 @@ private:
 	}
 };
 
-class bytes_view : public const_bytes_base<bytes_view> {
+class bytes_view : public const_bytes_util<bytes_view> {
 public:
 	constexpr bytes_view(std::nullptr_t = nullptr) : $p(nullptr), $n(0) {}
 
@@ -333,7 +333,7 @@ private:
 };
 
 template <typename Span>
-inline bytes_view const_bytes_base<Span>::slice(
+inline bytes_view const_bytes_util<Span>::slice(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 	assert(end_offset >= begin_offset);
 
@@ -346,24 +346,24 @@ inline bytes_view const_bytes_base<Span>::slice(
 }
 
 template <typename Span>
-inline bytes_view const_bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
+inline bytes_view const_bytes_util<Span>::slice(ptrdiff_t begin_offset) const {
 	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
-inline bytes_view const_bytes_base<Span>::operator()(
+inline bytes_view const_bytes_util<Span>::operator()(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
 inline bytes_view
-const_bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
+const_bytes_util<Span>::operator()(ptrdiff_t begin_offset) const {
 	return slice(begin_offset);
 }
 
 template <typename Span>
-inline bool const_bytes_base<Span>::equal(bytes_view target) const {
+inline bool const_bytes_util<Span>::equal(bytes_view target) const {
 	auto sz = $this()->size();
 	if (sz != target.size()) {
 		return false;
@@ -380,11 +380,11 @@ inline bool const_bytes_base<Span>::equal(bytes_view target) const {
 }
 
 template <typename Span>
-inline bool const_bytes_base<Span>::operator==(bytes_view target) const {
+inline bool const_bytes_util<Span>::operator==(bytes_view target) const {
 	return equal(target);
 }
 
-class bytes_ref : public bytes_base<bytes_ref> {
+class bytes_ref : public bytes_util<bytes_ref> {
 public:
 	constexpr bytes_ref(std::nullptr_t = nullptr) : $p(nullptr), $n(0) {}
 
@@ -460,7 +460,7 @@ private:
 
 template <typename Span>
 inline bytes_view
-bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
+bytes_util<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 	assert(end_offset >= begin_offset);
 
 	if (begin_offset == end_offset) {
@@ -472,13 +472,13 @@ bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 }
 
 template <typename Span>
-inline bytes_view bytes_base<Span>::slice(ptrdiff_t begin_offset) const {
+inline bytes_view bytes_util<Span>::slice(ptrdiff_t begin_offset) const {
 	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
 inline bytes_ref
-bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
+bytes_util<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
 	assert(end_offset >= begin_offset);
 
 	if (begin_offset == end_offset) {
@@ -490,35 +490,35 @@ bytes_base<Span>::slice(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
 }
 
 template <typename Span>
-inline bytes_ref bytes_base<Span>::slice(ptrdiff_t begin_offset) {
+inline bytes_ref bytes_util<Span>::slice(ptrdiff_t begin_offset) {
 	return slice(begin_offset, $this()->size());
 }
 
 template <typename Span>
-inline bytes_view bytes_base<Span>::operator()(
+inline bytes_view bytes_util<Span>::operator()(
 	ptrdiff_t begin_offset, ptrdiff_t end_offset) const {
 	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
-inline bytes_view bytes_base<Span>::operator()(ptrdiff_t begin_offset) const {
+inline bytes_view bytes_util<Span>::operator()(ptrdiff_t begin_offset) const {
 	return slice(begin_offset);
 }
 
 template <typename Span>
 inline bytes_ref
-bytes_base<Span>::operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
+bytes_util<Span>::operator()(ptrdiff_t begin_offset, ptrdiff_t end_offset) {
 	return slice(begin_offset, end_offset);
 }
 
 template <typename Span>
-inline bytes_ref bytes_base<Span>::operator()(ptrdiff_t begin_offset) {
+inline bytes_ref bytes_util<Span>::operator()(ptrdiff_t begin_offset) {
 	return slice(begin_offset);
 }
 
 template <typename Span>
 template <typename... SrcArgs>
-inline size_t bytes_base<Span>::copy(SrcArgs &&...src) {
+inline size_t bytes_util<Span>::copy(SrcArgs &&...src) {
 	bytes_view src_b(std::forward<SrcArgs>(src)...);
 	auto cp_sz =
 		src_b.size() < $this()->size() ? src_b.size() : $this()->size();
@@ -610,7 +610,7 @@ inline bytes_ref as_writable_bytes(T &&data) {
 }
 
 template <typename Bytes>
-inline string_view as_string(const const_bytes_base<Bytes> &b) {
+inline string_view as_string(const const_bytes_util<Bytes> &b) {
 	return static_cast<const Bytes &>(b).size()
 			   ? string_view(
 					 reinterpret_cast<const char *>(
@@ -722,7 +722,7 @@ private:
 };
 
 template <typename Span>
-inline bytes const_bytes_base<Span>::reverse() const {
+inline bytes const_bytes_util<Span>::reverse() const {
 	auto n = $this()->size();
 	bytes r(n);
 	auto p = $this()->data();
@@ -735,7 +735,7 @@ inline bytes const_bytes_base<Span>::reverse() const {
 
 template <typename Span>
 template <size_t Unit>
-inline bytes const_bytes_base<Span>::reverse() const {
+inline bytes const_bytes_util<Span>::reverse() const {
 	auto n = $this()->size();
 	bytes r(n);
 	auto p = $this()->data();
@@ -878,7 +878,7 @@ private:
 };
 
 template <typename Span>
-inline optional<size_t> const_bytes_base<Span>::index_of(
+inline optional<size_t> const_bytes_util<Span>::index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
 	auto sz = $this()->size();
@@ -935,7 +935,7 @@ inline optional<size_t> const_bytes_base<Span>::index_of(
 }
 
 template <typename Span>
-inline optional<size_t> const_bytes_base<Span>::last_index_of(
+inline optional<size_t> const_bytes_util<Span>::last_index_of(
 	const bytes_pattern &pat, size_t start_pos) const {
 
 	auto sz = $this()->size();
@@ -1143,46 +1143,60 @@ private:
 
 template <typename Span>
 inline const_bytes_finder
-const_bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) const {
+const_bytes_util<Span>::find(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline const_bytes_rfinder
-const_bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
+const_bytes_util<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_rfinder(
 		const_bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
 template <typename Span>
 inline bytes_finder
-bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) {
+bytes_util<Span>::find(bytes_pattern pat, size_t start_pos) {
 	return bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline const_bytes_finder
-bytes_base<Span>::find(bytes_pattern pat, size_t start_pos) const {
+bytes_util<Span>::find(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_finder::find(*$this(), std::move(pat), {}, start_pos);
 }
 
 template <typename Span>
 inline bytes_rfinder
-bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) {
+bytes_util<Span>::rfind(bytes_pattern pat, size_t start_pos) {
 	return bytes_rfinder(
 		bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
 template <typename Span>
 inline const_bytes_rfinder
-bytes_base<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
+bytes_util<Span>::rfind(bytes_pattern pat, size_t start_pos) const {
 	return const_bytes_rfinder(
 		const_bytes_finder::rfind(*$this(), std::move(pat), {}, start_pos));
 }
 
+class writeable_bytes : public bytes_ref {
+public:
+	constexpr writeable_bytes(std::nullptr_t = nullptr) : bytes_ref(), $b() {}
+
+	writeable_bytes(bytes_ref br) : bytes_ref(br), $b() {}
+
+	writeable_bytes(bytes &&b) : bytes_ref(), $b(std::move(b)) {
+		*static_cast<bytes_ref *>(this) = $b;
+	}
+
+private:
+	bytes $b;
+};
+
 template <typename Derived, size_t Size = size_of<Derived>::value>
 class enable_bytes_accessor
-	: public bytes_base<enable_bytes_accessor<Derived, Size>> {
+	: public bytes_util<enable_bytes_accessor<Derived, Size>> {
 public:
 	uchar *data() {
 		return reinterpret_cast<uchar *>(static_cast<Derived *>(this));
@@ -1202,7 +1216,7 @@ protected:
 };
 
 template <size_t Size, size_t Align = Size + Size % 2>
-class bytes_block : public bytes_base<bytes_block<Size, Align>> {
+class bytes_block : public bytes_util<bytes_block<Size, Align>> {
 public:
 	template <typename... Bytes>
 	constexpr bytes_block(Bytes... byts) : $raw{static_cast<uchar>(byts)...} {}

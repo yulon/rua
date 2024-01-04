@@ -26,13 +26,13 @@ public:
 	}
 
 	template <typename... Args>
-	void print(Args &&...args) {
-		$w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
+	future<> print(Args &&...args) {
+		return $w->write_all(as_bytes(join({to_temp_string(args)...}, ' ')));
 	}
 
 	template <typename... Args>
-	void println(Args &&...args) {
-		print(std::forward<Args>(args)..., $eol);
+	future<> println(Args &&...args) {
+		return print(std::forward<Args>(args)..., $eol);
 	}
 
 	stream_i get() {

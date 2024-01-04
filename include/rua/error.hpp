@@ -41,21 +41,20 @@ protected:
 
 #ifdef RUA_HAS_EXCEPTIONS
 
-class error_i : public interface_ptr<error_base>, public std::exception {
+using _error_i_base = interface_ptr<const error_base>;
+
+class error_i : public _error_i_base, public std::exception {
 public:
 	error_i() = default;
 
-	RUA_TMPL_FWD_CTOR(Args, interface_ptr<error_base>, error_i)
-	error_i(Args &&...args) :
-		interface_ptr<error_base>(std::forward<Args>(args)...) {}
+	RUA_TMPL_FWD_CTOR(Args, _error_i_base, error_i)
+	error_i(Args &&...args) : _error_i_base(std::forward<Args>(args)...) {}
 
 	error_i(const error_i &src) :
-		interface_ptr<error_base>(
-			static_cast<const interface_ptr<error_base> &>(src)) {}
+		_error_i_base(static_cast<const _error_i_base &>(src)) {}
 
 	error_i(error_i &&src) :
-		interface_ptr<error_base>(
-			static_cast<interface_ptr<error_base> &&>(std::move(src))) {}
+		_error_i_base(static_cast<_error_i_base &&>(std::move(src))) {}
 
 	RUA_OVERLOAD_ASSIGNMENT(error_i)
 
@@ -70,7 +69,7 @@ public:
 
 #else
 
-using error_i = interface_ptr<error_base>;
+using error_i = interface_ptr<const error_base>;
 
 #endif
 
@@ -115,6 +114,8 @@ inline std::string to_string(const error_base &err) {
 inline std::string to_string(error_i err) {
 	return err ? err->info() : "noerr";
 }
+
+RUA_CVAR const strv_error err_unimplemented("unimplemented");
 
 ////////////////////////////////////////////////////////////////////////////
 
@@ -342,8 +343,10 @@ public:
 		if (v.template type_is<void>()) {
 			return;
 		}
-		auto r = std::forward<Variant>(v).visit(
-			[this](error_i err) { $err = std::move(err); });
+		auto r = std::forward<Variant>(v).visit([this](error_i err) {
+			assert(err);
+			$err = std::move(err);
+		});
 		assert(r);
 	}
 
@@ -376,11 +379,12 @@ public:
 	}
 
 	variant<void, error_i> vrt() && {
-		return std::move($err);
+		return $err ? variant<void, error_i>(std::move($err))
+					: variant<void, error_i>();
 	}
 
 	variant<void, error_i> vrt() const & {
-		return $err;
+		return $err ? variant<void, error_i>($err) : variant<void, error_i>();
 	}
 
 	void reset() {

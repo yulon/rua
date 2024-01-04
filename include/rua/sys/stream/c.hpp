@@ -1,7 +1,7 @@
 #ifndef _rua_sys_stream_c_hpp
 #define _rua_sys_stream_c_hpp
 
-#include "../../io/util.hpp"
+#include "../../io/stream.hpp"
 #include "../../util.hpp"
 
 #include <cstddef>
@@ -9,7 +9,7 @@
 
 namespace rua {
 
-class c_stream : public stream_base {
+class c_stream : public stream {
 public:
 	using native_handle_t = FILE *;
 
@@ -34,34 +34,38 @@ public:
 		return $f;
 	}
 
-	virtual operator bool() const {
+	explicit operator bool() const override {
 		return $f;
-	}
-
-	virtual ptrdiff_t read(bytes_ref p) {
-		return static_cast<ptrdiff_t>(fread(p.data(), 1, p.size(), $f));
-	}
-
-	virtual ptrdiff_t write(bytes_view p) {
-		return static_cast<ptrdiff_t>(fwrite(p.data(), 1, p.size(), $f));
 	}
 
 	bool is_need_close() const {
 		return $f && $nc;
 	}
 
-	virtual void close() {
-		if (!$f) {
-			return;
-		}
-		if ($nc) {
-			fclose($f);
-		}
-		$f = nullptr;
+	future<> close() override {
+		auto $ = self().as<c_stream>();
+		return stream::close() >> [$]() {
+			if (!$->$f) {
+				return;
+			}
+			if ($->$nc) {
+				fclose($->$f);
+			}
+			$->$f = nullptr;
+		};
 	}
 
 	void detach() {
 		$nc = false;
+	}
+
+protected:
+	expected<size_t> unbuf_sync_read(bytes_ref p) override {
+		return static_cast<size_t>(fread(p.data(), 1, p.size(), $f));
+	}
+
+	expected<size_t> unbuf_sync_write(bytes_view p) override {
+		return static_cast<size_t>(fwrite(p.data(), 1, p.size(), $f));
 	}
 
 private:

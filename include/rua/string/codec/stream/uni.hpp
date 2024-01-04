@@ -10,7 +10,7 @@ namespace rua { namespace uni {
 
 namespace _string_codec_stream {
 
-class l2u_reader : public stream_base {
+class l2u_reader : public stream {
 public:
 	constexpr l2u_reader() : $lr(nullptr) {}
 
@@ -23,19 +23,19 @@ public:
 		$lr = nullptr;
 	}
 
-	virtual operator bool() const {
+	operator bool() const override {
 		return !!$lr;
 	}
 
-	virtual ssize_t read(bytes_ref p) {
-		return $lr->read(p);
+	future<readed_bytes> read(size_t n = 0) override {
+		return $lr->read(n);
 	}
 
 private:
 	stream_i $lr;
 };
 
-class u2l_writer : public stream_base {
+class u2l_writer : public stream {
 public:
 	constexpr u2l_writer() : $lw(nullptr) {}
 
@@ -48,11 +48,11 @@ public:
 		$lw = nullptr;
 	}
 
-	virtual operator bool() const {
+	explicit operator bool() const override {
 		return !!$lw;
 	}
 
-	virtual ssize_t write(bytes_view p) {
+	future<size_t> write(bytes_view p) override {
 		return $lw->write(p);
 	}
 

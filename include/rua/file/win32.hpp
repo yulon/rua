@@ -205,7 +205,7 @@ public:
 		return static_cast<uint64_t>(sz.QuadPart);
 	}
 
-	virtual int64_t seek(int64_t offset, uchar whence = 0) {
+	int64_t seek(int64_t offset, uchar whence = 0) override {
 		LARGE_INTEGER off_li, seeked_li;
 		off_li.QuadPart =
 			static_cast<decltype(LARGE_INTEGER::QuadPart)>(offset);
@@ -218,7 +218,7 @@ public:
 	bytes read_all() {
 		auto fsz = size();
 		bytes buf(static_cast<size_t>(fsz));
-		auto rsz = read_full(buf);
+		auto rsz = **read_full(buf);
 		if (rsz >= 0 && static_cast<uint64_t>(rsz) != fsz) {
 			buf.reset();
 		}

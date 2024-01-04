@@ -15,57 +15,15 @@ namespace rua { namespace win32 {
 namespace _stdio {
 
 template <DWORD Id>
-class _basic_stdio_stream;
-
-using stdout_stream = _basic_stdio_stream<STD_OUTPUT_HANDLE>;
-using stderr_stream = _basic_stdio_stream<STD_ERROR_HANDLE>;
-using stdin_stream = _basic_stdio_stream<STD_INPUT_HANDLE>;
-
-template <DWORD Id>
-class _basic_stdio_stream : public stream_base {
+class stdio_stream : public sys_stream {
 public:
-	using native_handle_t = HANDLE;
+	stdio_stream() : sys_stream(GetStdHandle(Id)) {}
 
-	virtual ssize_t read(bytes_ref p) {
-		return sys_stream(native_handle(), false).read(p);
-	}
+	stdio_stream &operator=(const sys_stream &s) {
+		static_cast<sys_stream &>(*this) = s.dup();
 
-	virtual ssize_t write(bytes_view p) {
-		return sys_stream(native_handle(), false).write(p);
-	}
-
-	native_handle_t native_handle() const {
-		auto h = GetStdHandle(Id);
-#ifndef NDEBUG
-		if (!h) {
-			static auto has_con = AllocConsole();
-			if (has_con) {
-				h = GetStdHandle(Id);
-			}
-		}
-#endif
-		return h;
-	}
-
-	operator sys_stream() const {
-		return sys_stream(native_handle(), false);
-	}
-
-	virtual operator bool() const {
-		return native_handle();
-	}
-
-	_basic_stdio_stream &operator=(sys_stream s) {
-		auto h = s.native_handle();
-		if (h) {
-			if (!s.is_need_close()) {
-				s = s.dup();
-				h = s.native_handle();
-			}
-			s.detach();
-		}
-
-		SetStdHandle(Id, h);
+		auto h = native_handle();
+		SetStdHandle(Id, native_handle());
 
 		static std::atomic<HANDLE> h_cache;
 		auto old_h = h_cache.exchange(h);
@@ -76,19 +34,15 @@ public:
 		return *this;
 	}
 
-	virtual void close() {
-		operator=(INVALID_HANDLE_VALUE);
+	future<> close() override {
+		auto $ = self().template as<stdio_stream>();
+		return stream::close() >> [=]() { $->operator=(INVALID_HANDLE_VALUE); };
 	}
-
-private:
-	_basic_stdio_stream() = default;
-	_basic_stdio_stream(const _basic_stdio_stream &) = delete;
-	_basic_stdio_stream(_basic_stdio_stream &&) = delete;
-
-	friend stdout_stream &out();
-	friend stderr_stream &err();
-	friend stdin_stream &in();
 };
+
+using stdout_stream = stdio_stream<STD_OUTPUT_HANDLE>;
+using stderr_stream = stdio_stream<STD_ERROR_HANDLE>;
+using stdin_stream = stdio_stream<STD_INPUT_HANDLE>;
 
 inline stdout_stream &out() {
 	static stdout_stream s;
@@ -105,7 +59,19 @@ inline stdin_stream &in() {
 	return s;
 }
 
-inline u2l_writer &sout() {
+inline stdout_stream &sout() {
+	return out();
+}
+
+inline stderr_stream &serr() {
+	return err();
+}
+
+inline stdin_stream &sin() {
+	return in();
+}
+
+/*inline u2l_writer &sout() {
 	static u2l_writer s(out());
 	return s;
 }
@@ -118,7 +84,7 @@ inline u2l_writer &serr() {
 inline l2u_reader &sin() {
 	static l2u_reader s(in());
 	return s;
-}
+}*/
 
 } // namespace _stdio
 

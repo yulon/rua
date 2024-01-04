@@ -135,7 +135,7 @@ public:
 		return info().size();
 	}
 
-	virtual int64_t seek(int64_t offset, uchar whence = 0) {
+	int64_t seek(int64_t offset, uchar whence = 0) override {
 		return static_cast<int64_t>(lseek(native_handle(), offset, whence));
 	}
 

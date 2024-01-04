@@ -1,7 +1,8 @@
 #ifndef _rua_sys_stream_win32_hpp
 #define _rua_sys_stream_win32_hpp
 
-#include "../../io/util.hpp"
+#include "../../io/stream.hpp"
+#include "../../thread/parallel.hpp"
 #include "../../util.hpp"
 
 #include <windows.h>
@@ -11,7 +12,7 @@
 
 namespace rua { namespace win32 {
 
-class sys_stream : public stream_base {
+class sys_stream : public stream {
 public:
 	using native_handle_t = HANDLE;
 
@@ -60,34 +61,25 @@ public:
 		return $h;
 	}
 
-	virtual operator bool() const {
+	explicit operator bool() const override {
 		return $h != INVALID_HANDLE_VALUE;
-	}
-
-	virtual ssize_t read(bytes_ref buf) {
-		assert(*this);
-
-		return $read($h, buf);
-	}
-
-	virtual ssize_t write(bytes_view data) {
-		assert(*this);
-
-		return $write($h, data);
 	}
 
 	bool is_need_close() const {
 		return $h && $nc;
 	}
 
-	virtual void close() {
-		if (!*this) {
-			return;
-		}
-		if ($nc) {
-			CloseHandle($h);
-		}
-		$h = INVALID_HANDLE_VALUE;
+	future<> close() override {
+		auto $ = self().as<sys_stream>();
+		return stream::close() >> [$]() {
+			if (!$) {
+				return;
+			}
+			if ($->$nc) {
+				CloseHandle($->$h);
+			}
+			$->$h = INVALID_HANDLE_VALUE;
+		};
 	}
 
 	void detach() {
@@ -111,25 +103,37 @@ public:
 		return h_cp;
 	}
 
+protected:
+	expected<size_t> unbuf_sync_read(bytes_ref buf) override {
+		assert(*this);
+
+		DWORD n;
+		if (ReadFile(
+				$h, buf.data(), static_cast<DWORD>(buf.size()), &n, nullptr)) {
+			return static_cast<size_t>(n);
+		}
+		return err_waiting_timeout;
+	}
+
+	expected<size_t> unbuf_sync_write(bytes_view data) override {
+		assert(*this);
+
+		DWORD n;
+		if (WriteFile(
+				$h,
+				data.data(),
+				static_cast<DWORD>(data.size()),
+				&n,
+				nullptr)) {
+			return static_cast<size_t>(n);
+		}
+		printf("write err %d %p\n", GetLastError(), $h);
+		return err_waiting_timeout;
+	}
+
 private:
 	HANDLE $h;
 	bool $nc;
-
-	static ssize_t $read(HANDLE h, bytes_ref p) {
-		DWORD rsz;
-		return ReadFile(
-				   h, p.data(), static_cast<DWORD>(p.size()), &rsz, nullptr)
-				   ? static_cast<ssize_t>(rsz)
-				   : static_cast<ssize_t>(0);
-	}
-
-	static ssize_t $write(HANDLE h, bytes_view p) {
-		DWORD wsz;
-		return WriteFile(
-				   h, p.data(), static_cast<DWORD>(p.size()), &wsz, nullptr)
-				   ? static_cast<ssize_t>(wsz)
-				   : static_cast<ssize_t>(0);
-	}
 };
 
 }} // namespace rua::win32

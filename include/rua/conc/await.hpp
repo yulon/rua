@@ -142,7 +142,7 @@ _await_suspend(Awaiter &&awaiter, Callback callback) {
 		};
 		coroutine_handle<promise_type> co;
 	};
-	auto cb = make_move_only(callback);
+	auto cb = make_move_only(std::move(callback));
 	return std::forward<Awaiter>(awaiter).await_suspend(
 		([cb]() -> callback_coroutine { co_return cb(); })().co);
 }
